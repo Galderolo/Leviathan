@@ -11,6 +11,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 - Accounts: several GitHub, GitLab, Gitea or other accounts with encrypted personal access tokens. A repository bound to an account commits with its name and no-reply email and pushes/pulls with its token. Clone from an account's repository list.
 - Fetch button in the toolbar.
 - Choose the starting point when creating a branch.
+- Branches, remote branches and tags show when they were last updated.
+- A bar above commit details points back to uncommitted changes and the commit box.
 
 ### Fixed
 
