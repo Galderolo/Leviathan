@@ -10,6 +10,7 @@ import type {
   Settings,
   Stash
 } from '../../shared/types'
+import { buildPartialPatch } from '../../shared/patch'
 import { isFetchDue } from './autofetch'
 import { remotesToChooseFrom } from './pushTarget'
 import { resolveLang, t } from './i18n'
@@ -707,6 +708,26 @@ export async function discardAll(path: string): Promise<void> {
 
 export function ignorePattern(path: string, pattern: string): Promise<boolean> {
   return runOp(path, () => api.ignore(path, pattern), { log: false })
+}
+
+/** Stages or unstages only the selected lines of a hunk. */
+export async function applyLines(
+  path: string,
+  diff: FileDiff,
+  hunk: DiffHunk,
+  selected: Set<number>,
+  mode: 'stage' | 'unstage'
+): Promise<void> {
+  if (getRepo(path)?.applying) return
+  const patch = buildPartialPatch(diff.header, hunk, selected, mode === 'unstage')
+  if (!patch) return
+  patchRepo(path, { applying: true })
+  try {
+    await runOp(path, () => api.applyPatch(path, patch, { cached: true, reverse: mode === 'unstage' }), { log: false })
+    await reloadDiff(path)
+  } finally {
+    patchRepo(path, { applying: false })
+  }
 }
 
 export async function applyHunk(

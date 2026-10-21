@@ -1432,9 +1432,33 @@ a:hover {
 
 .diff-line {
   display: grid;
-  grid-template-columns: 48px 48px 20px 1fr;
+  grid-template-columns: 116px 1fr;
   line-height: 20px;
   white-space: pre;
+}
+
+.diff-line .gutter {
+  display: grid;
+  grid-template-columns: 48px 48px 20px;
+  user-select: none;
+}
+
+.diff-line.selectable .gutter {
+  cursor: pointer;
+}
+
+.diff-line.selectable .gutter:hover .sign {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.diff-line.picked {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.diff-line.picked .ln {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text);
 }
 
 .diff-line .ln {

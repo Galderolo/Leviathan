@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import type { FileChange } from '../../../shared/types'
-import { applyHunk, closeDiff, discardFiles, openFile, stageFiles, unstageFiles } from '../actions'
+import { applyHunk, applyLines, closeDiff, discardFiles, openFile, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
 import { useRepo } from '../store'
 import { cx, shortHash, splitPath } from '../utils'
@@ -12,9 +12,19 @@ export function DiffView({ path }: { path: string }) {
   const view = useRepo(path)
   const t = useT()
   const [showAll, setShowAll] = useState(false)
+  // Lines picked for line-level staging; only one hunk at a time.
+  const [picked, setPicked] = useState<{ hunk: number; lines: Set<number> } | null>(null)
+  const anchor = useRef<number | null>(null)
   const diff = view?.diff
+  const data = diff?.data
+
+  useEffect(() => {
+    setPicked(null)
+    anchor.current = null
+  }, [data])
+
   if (!diff) return null
-  const { source, data, error } = diff
+  const { source, error } = diff
   const { dir, name } = splitPath(source.path)
 
   const asChange: FileChange = {
@@ -34,6 +44,24 @@ export function DiffView({ path }: { path: string }) {
   if (source.kind === 'unstaged') context = source.conflicted ? t('diff.conflicted') : t('diff.unstaged')
   else if (source.kind === 'staged') context = t('diff.staged')
   else context = `${t('commit.commit')} ${shortHash(source.hash)}`
+
+  /** Click on the gutter toggles a line; shift-click selects a range within the hunk. */
+  const pickLine = (hunkIndex: number, lineIndex: number, range: boolean) => {
+    const lines = data?.hunks[hunkIndex]?.lines
+    if (!hunkMode || !lines) return
+    const isChange = (i: number) => lines[i]?.type === 'add' || lines[i]?.type === 'del'
+    if (!isChange(lineIndex)) return
+    setPicked((prev) => {
+      const next = new Set(prev?.hunk === hunkIndex ? prev.lines : [])
+      if (range && prev?.hunk === hunkIndex && anchor.current !== null) {
+        const [from, to] = [Math.min(anchor.current, lineIndex), Math.max(anchor.current, lineIndex)]
+        for (let i = from; i <= to; i++) if (isChange(i)) next.add(i)
+      } else if (next.has(lineIndex)) next.delete(lineIndex)
+      else next.add(lineIndex)
+      anchor.current = lineIndex
+      return next.size ? { hunk: hunkIndex, lines: next } : null
+    })
+  }
 
   let budget = showAll ? Number.POSITIVE_INFINITY : LINE_LIMIT
   const totalLines = data?.hunks.reduce((n, h) => n + h.lines.length, 0) ?? 0
@@ -93,7 +121,25 @@ export function DiffView({ path }: { path: string }) {
               <div className="hunk" key={hi}>
                 <div className="hunk-header">
                   <code>{hunk.header}</code>
-                  {hunkMode === 'unstaged' && (
+                  {picked?.hunk === hi && hunkMode && (
+                    <span className="hunk-actions">
+                      <button className="btn tiny" onClick={() => setPicked(null)}>
+                        {t('diff.clearSelection')}
+                      </button>
+                      <button
+                        className={cx('btn tiny', hunkMode === 'unstaged' ? 'btn-stage' : 'btn-unstage')}
+                        disabled={view?.applying}
+                        onClick={() =>
+                          void applyLines(path, data, hunk, picked.lines, hunkMode === 'unstaged' ? 'stage' : 'unstage')
+                        }
+                      >
+                        {t(hunkMode === 'unstaged' ? 'diff.stageLines' : 'diff.unstageLines', {
+                          count: picked.lines.size
+                        })}
+                      </button>
+                    </span>
+                  )}
+                  {picked?.hunk !== hi && hunkMode === 'unstaged' && (
                     <span className="hunk-actions">
                       <button
                         className="btn tiny btn-danger-ghost"
@@ -111,7 +157,7 @@ export function DiffView({ path }: { path: string }) {
                       </button>
                     </span>
                   )}
-                  {hunkMode === 'staged' && (
+                  {picked?.hunk !== hi && hunkMode === 'staged' && (
                     <span className="hunk-actions">
                       <button
                         className="btn tiny btn-unstage"
@@ -124,14 +170,33 @@ export function DiffView({ path }: { path: string }) {
                   )}
                 </div>
                 <div className="hunk-lines">
-                  {lines.map((line, li) => (
-                    <div key={li} className={cx('diff-line', line.type, conflictMarker(line.text) && 'marker')}>
-                      <span className="ln">{line.oldNo ?? ''}</span>
-                      <span className="ln">{line.newNo ?? ''}</span>
-                      <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
-                      <span className="code">{line.text || ' '}</span>
-                    </div>
-                  ))}
+                  {lines.map((line, li) => {
+                    const selectable = !!hunkMode && (line.type === 'add' || line.type === 'del')
+                    return (
+                      <div
+                        key={li}
+                        className={cx(
+                          'diff-line',
+                          line.type,
+                          conflictMarker(line.text) && 'marker',
+                          selectable && 'selectable',
+                          picked?.hunk === hi && picked.lines.has(li) && 'picked'
+                        )}
+                      >
+                        <span
+                          className="gutter"
+                          title={selectable ? t('diff.pickLine') : undefined}
+                          onMouseDown={(e) => selectable && e.shiftKey && e.preventDefault()}
+                          onClick={(e) => pickLine(hi, li, e.shiftKey)}
+                        >
+                          <span className="ln">{line.oldNo ?? ''}</span>
+                          <span className="ln">{line.newNo ?? ''}</span>
+                          <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
+                        </span>
+                        <span className="code">{line.text || ' '}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )

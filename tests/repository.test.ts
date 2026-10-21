@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { git } from '../src/main/git/runner'
+import { buildPartialPatch } from '../src/shared/patch'
 
 let dir: string
 
@@ -154,6 +155,28 @@ describe('repository', () => {
     state = await repo.getState(dir)
     expect(state.status.staged).toEqual([])
     expect(state.status.unstaged.map((f) => f.path).sort()).toEqual(['new.txt', 'old.txt'])
+  })
+
+  it('stages and unstages individual lines', async () => {
+    await commitFile('f.txt', 'one\ntwo\n', 'base')
+    writeFileSync(join(dir, 'f.txt'), 'one\nfirst new\nsecond new\ntwo\n')
+    const diff = await repo.getDiff(dir, { kind: 'unstaged', path: 'f.txt' })
+    const hunk = diff.hunks[0]
+    const second = hunk.lines.findIndex((l) => l.text === 'second new')
+    await repo.applyPatch(dir, buildPartialPatch(diff.header, hunk, new Set([second]), false)!, {
+      cached: true,
+      reverse: false
+    })
+
+    const staged = await repo.getDiff(dir, { kind: 'staged', path: 'f.txt' })
+    expect(staged.hunks[0].lines.filter((l) => l.type === 'add').map((l) => l.text)).toEqual(['second new'])
+
+    const back = staged.hunks[0].lines.findIndex((l) => l.text === 'second new')
+    await repo.applyPatch(dir, buildPartialPatch(staged.header, staged.hunks[0], new Set([back]), true)!, {
+      cached: true,
+      reverse: true
+    })
+    expect((await repo.getState(dir)).status.staged).toEqual([])
   })
 
   it('discards tracked and untracked changes', async () => {
