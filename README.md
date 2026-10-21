@@ -92,7 +92,6 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 [MIT](LICENSE). Leviathan is free software and will stay that way.
 
-
 ---
 
 ## En español
