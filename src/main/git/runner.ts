@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { isAbsolute, relative, resolve } from 'node:path'
 
 export class GitError extends Error {
   constructor(
@@ -71,11 +72,36 @@ export function setGitEnv(env: Record<string, string>): void {
   appEnv = { ...env }
 }
 
+const repoArgs = new Map<string, string[]>()
+
+function repoKey(path: string): string {
+  const full = resolve(path)
+  return process.platform === 'win32' ? full.toLowerCase() : full
+}
+
+/**
+ * Extra `-c` arguments for every git command run in `repo` (or a folder inside
+ * it), e.g. the credentials of the account bound to it. `null` removes them.
+ */
+export function setRepoGitArgs(repo: string, args: string[] | null): void {
+  if (args) repoArgs.set(repoKey(repo), [...args])
+  else repoArgs.delete(repoKey(repo))
+}
+
+function argsForCwd(cwd: string): string[] {
+  const key = repoKey(cwd)
+  for (const [repo, args] of repoArgs) {
+    const rel = relative(repo, key)
+    if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return args
+  }
+  return []
+}
+
 /**
  * Runs git with an argument array (never through a shell) and collects output.
  */
 export function git(args: string[], opts: RunOptions): Promise<RunResult> {
-  const fullArgs = [...BASE_ARGS, ...args]
+  const fullArgs = [...BASE_ARGS, ...argsForCwd(opts.cwd), ...args]
   return new Promise((resolve, reject) => {
     const child = spawn('git', fullArgs, {
       cwd: opts.cwd,

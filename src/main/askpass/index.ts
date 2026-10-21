@@ -3,6 +3,7 @@ import { join, sep } from 'node:path'
 import { BrowserWindow } from 'electron'
 import { IPC_ASKPASS } from '../../shared/api'
 import type { AskpassRequest } from '../../shared/types'
+import { answerFromAccounts, type AccountCredentials } from '../accounts/auth'
 import { setGitEnv } from '../git/runner'
 import { startAskpassServer, type AskpassBridge } from './server'
 
@@ -10,8 +11,20 @@ const TIMEOUT_MS = 5 * 60 * 1000
 const pending = new Map<string, (value: string | null) => void>()
 let bridge: AskpassBridge | null = null
 
-/** Sends a prompt to the app window and waits for the user's answer (null = cancelled). */
+let accountSource: () => AccountCredentials[] = () => []
+
+/** Where stored account credentials come from (set by the accounts module). */
+export function setAccountSource(source: () => AccountCredentials[]): void {
+  accountSource = source
+}
+
+/**
+ * Answers from a stored account when one matches; otherwise sends the prompt to
+ * the app window and waits for the user's answer (null = cancelled).
+ */
 function ask(prompt: string): Promise<string | null> {
+  const automatic = answerFromAccounts(prompt, accountSource())
+  if (automatic !== null) return Promise.resolve(automatic)
   const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
   if (!win || win.isDestroyed()) return Promise.resolve(null)
   const id = randomUUID()
