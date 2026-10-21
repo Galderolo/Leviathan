@@ -24,7 +24,7 @@ import type {
   RepoState,
   ResetMode
 } from '../../shared/types'
-import type { HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
+import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
 
 export type ProgressFn = (line: string) => void
@@ -576,7 +576,11 @@ export async function removeRemote(repo: string, name: string): Promise<void> {
 async function currentHead(repo: string): Promise<HeadState> {
   const sym = await git(['symbolic-ref', '-q', 'HEAD'], { cwd: repo, okCodes: [0, 1] })
   const branch = sym.exitCode === 0 ? sym.stdout.trim().replace(/^refs\/heads\//, '') : null
-  return { branch, hash: await refValue(repo, 'HEAD') }
+  const head: HeadState = { branch, hash: await refValue(repo, 'HEAD') }
+  const mergeHead = await fs.readFile(join(await gitDir(repo), 'MERGE_HEAD'), 'utf8').catch(() => '')
+  const merge = mergeHead.split(/\r?\n/).filter(Boolean)
+  if (merge.length) head.merge = merge
+  return head
 }
 
 async function refValue(repo: string, ref: string): Promise<string | null> {
@@ -584,44 +588,102 @@ async function refValue(repo: string, ref: string): Promise<string | null> {
   return exitCode === 0 ? stdout.trim() : null
 }
 
+/** `branch.<name>.<key>` settings of the repository, by branch name. */
+async function branchConfig(repo: string): Promise<Record<string, BranchConfig>> {
+  const { stdout } = await git(['config', '--local', '-z', '--get-regexp', '^branch\\.'], {
+    cwd: repo,
+    okCodes: [0, 1]
+  })
+  const config: Record<string, BranchConfig> = {}
+  for (const entry of stdout.split('\0')) {
+    // `key\nvalue`; a bare key is a boolean set to true.
+    const nl = entry.indexOf('\n')
+    const key = nl < 0 ? entry : entry.slice(0, nl)
+    const dot = key.lastIndexOf('.')
+    if (dot <= 'branch.'.length) continue
+    const name = key.slice('branch.'.length, dot)
+    ;(config[name] ??= []).push([key.slice(dot + 1), nl < 0 ? 'true' : entry.slice(nl + 1)])
+  }
+  return config
+}
+
 /** Every local branch and tag (unpeeled, so annotated tags can be restored) plus HEAD. */
 export async function getSnapshot(repo: string): Promise<Snapshot> {
-  const out = await run(repo, ['for-each-ref', '--format=%(refname)%1f%(objectname)', 'refs/heads', 'refs/tags'])
+  const [out, head, config] = await Promise.all([
+    run(repo, ['for-each-ref', '--format=%(refname)%1f%(objectname)', 'refs/heads', 'refs/tags']),
+    currentHead(repo),
+    branchConfig(repo)
+  ])
   const refs: Record<string, string> = {}
   for (const line of out.split('\n')) {
     const [ref, hash] = line.replace(/\r$/, '').split('\x1f')
     if (ref && hash) refs[ref] = hash
   }
-  return { head: await currentHead(repo), refs }
+  return { head, refs, config }
 }
 
 async function moveRef(repo: string, move: RefMove): Promise<void> {
   assertSafeArg(move.ref, 'ref')
   if (move.to === null) await run(repo, ['update-ref', '-d', move.ref])
   else await run(repo, ['update-ref', move.ref, move.to])
+  if (!move.ref.startsWith('refs/heads/') || (move.from !== null && move.to !== null)) return
+  // A branch appears or disappears: its settings (upstream, ...) go with it.
+  const section = `branch.${move.ref.slice('refs/heads/'.length)}`
+  await git(['config', '--local', '--remove-section', section], { cwd: repo, okCodes: [0, 128] })
+  if (move.to === null) return
+  for (const [key, value] of move.config ?? []) {
+    await run(repo, ['config', '--local', '--add', `${section}.${key}`, value])
+  }
 }
+
+const MERGE_STATE = ['MERGE_HEAD', 'MERGE_MSG', 'MERGE_MODE', 'AUTO_MERGE']
 
 /**
  * Applies a recorded change (forwards for redo, inverted for undo). Refuses when
- * the repository is no longer in the state the change starts from, and moves the
- * checked-out branch only with `reset --soft` / `reset --keep`, which never drop
- * uncommitted work.
+ * the repository is no longer in the state the change starts from or an operation
+ * is in progress, and moves HEAD only with `reset --soft` / `--mixed` / `--keep`,
+ * which never drop uncommitted work.
  */
 export async function applyChange(repo: string, change: RepoChange): Promise<void> {
+  const { from, to } = change.head
+  // Redoing the commit that concluded a merge is the one change allowed while merging.
+  const concludesMerge =
+    change.mode === 'soft' && from.branch === to.branch && !!from.merge && !to.merge && !!from.hash && !!to.hash
+  const operation = await currentOperation(repo)
+  if (operation && !(operation === 'merge' && concludesMerge)) {
+    throw new Error(`A ${operation} is in progress. Finish or abort it first.`)
+  }
+
   const changed = new Error('The repository changed since this action, so it can no longer be undone.')
   const head = await currentHead(repo)
-  if (head.branch !== change.head.from.branch || head.hash !== change.head.from.hash) throw changed
+  if (head.branch !== from.branch || head.hash !== from.hash) throw changed
+  if (String(head.merge ?? '') !== String(from.merge ?? '')) throw changed
   for (const move of change.refs) {
     if ((await refValue(repo, move.ref)) !== move.from) throw changed
   }
 
-  const startRef = change.head.from.branch ? `refs/heads/${change.head.from.branch}` : null
-  const staysOnBranch = change.head.from.branch !== null && change.head.from.branch === change.head.to.branch
-  if (staysOnBranch) {
-    for (const move of change.refs) {
-      if (move.ref !== startRef) await moveRef(repo, move)
-      else if (move.to) await run(repo, ['reset', '-q', `--${change.mode}`, move.to])
-      else throw new Error('The checked-out branch cannot be deleted')
+  const startRef = from.branch ? `refs/heads/${from.branch}` : null
+  if (from.branch === to.branch) {
+    if (change.refs.some((m) => m.ref === startRef && m.to === null)) {
+      throw new Error('The checked-out branch cannot be deleted')
+    }
+    for (const move of change.refs) if (move.ref !== startRef) await moveRef(repo, move)
+    if (to.hash && to.hash !== from.hash) {
+      if (concludesMerge) {
+        // `reset --soft` refuses mid-merge; moving HEAD is all a soft reset does.
+        await run(repo, ['update-ref', 'HEAD', to.hash, from.hash!])
+        const dir = await gitDir(repo)
+        await Promise.all(MERGE_STATE.map((f) => fs.rm(join(dir, f), { force: true })))
+      } else {
+        await run(repo, ['reset', '-q', `--${change.mode}`, to.hash])
+      }
+    }
+    if (change.mode === 'soft' && to.merge && !from.merge && from.hash) {
+      // Undoing a merge commit: bring back the merge it concluded, ready to commit again.
+      const message = await run(repo, ['log', '-1', '--format=%B', from.hash])
+      const dir = await gitDir(repo)
+      await fs.writeFile(join(dir, 'MERGE_HEAD'), to.merge.join('\n') + '\n')
+      await fs.writeFile(join(dir, 'MERGE_MSG'), message)
     }
     return
   }
@@ -629,9 +691,8 @@ export async function applyChange(repo: string, change: RepoChange): Promise<voi
   // HEAD moves: create/move the target refs, switch, then update the branch we left and delete refs.
   const later = change.refs.filter((m) => m.ref === startRef || m.to === null)
   for (const move of change.refs) if (!later.includes(move)) await moveRef(repo, move)
-  const target = change.head.to
-  if (target.branch) await run(repo, ['checkout', '-q', target.branch, '--'])
-  else if (target.hash) await run(repo, ['checkout', '-q', '--detach', target.hash])
+  if (to.branch) await run(repo, ['checkout', '-q', to.branch, '--'])
+  else if (to.hash) await run(repo, ['checkout', '-q', '--detach', to.hash])
   for (const move of later) await moveRef(repo, move)
 }
 

@@ -16,7 +16,7 @@ import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import { isFetchDue } from './autofetch'
 import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
-import { popRedo, popUndo, pushEntry } from './undoStack'
+import { isStaleUndoError, popRedo, popUndo, pushEntry, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView, type Tab } from './store'
 import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
@@ -767,7 +767,9 @@ export async function resetTo(path: string, hash: string, mode: ResetMode): Prom
     })
     if (!ok) return
   }
-  await runOp(path, () => api.reset(path, hash, mode), { undo: { label: t('undo.reset', { name: hash.slice(0, 7) }) } })
+  await runOp(path, () => api.reset(path, hash, mode), {
+    undo: { label: t('undo.reset', { name: hash.slice(0, 7) }), mode: undoModeForReset(mode) }
+  })
 }
 
 export function abortOperation(path: string): Promise<boolean> {
@@ -951,10 +953,13 @@ async function applyHistory(path: string, direction: 'undo' | 'redo'): Promise<v
     patchRepo(path, popped.stacks)
     toast('success', t(direction === 'undo' ? 'toast.undone' : 'toast.redone', { label: entry.label }))
   } catch (err) {
-    // The repository moved on: this entry can no longer be applied, so drop it.
-    patchRepo(path, (r) =>
-      direction === 'undo' ? { undo: r.undo.filter((e) => e !== entry) } : { redo: r.redo.filter((e) => e !== entry) }
-    )
+    // The repository moved on: this entry can never apply again, so drop it.
+    // Other failures (local changes in the way, an operation in progress) may pass later.
+    if (isStaleUndoError(errorMessage(err))) {
+      patchRepo(path, (r) =>
+        direction === 'undo' ? { undo: r.undo.filter((e) => e !== entry) } : { redo: r.redo.filter((e) => e !== entry) }
+      )
+    }
     toast('error', errorMessage(err))
   } finally {
     await refreshRepo(path)

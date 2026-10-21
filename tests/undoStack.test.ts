@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_UNDO, popRedo, popUndo, pushEntry, type Stacks, type UndoEntry } from '../src/renderer/src/undoStack'
+import {
+  MAX_UNDO,
+  isStaleUndoError,
+  popRedo,
+  popUndo,
+  pushEntry,
+  undoModeForReset,
+  type Stacks,
+  type UndoEntry
+} from '../src/renderer/src/undoStack'
 
 const entry = (label: string): UndoEntry => ({
   label,
@@ -36,5 +45,19 @@ describe('undo stacks', () => {
     for (let i = 0; i < MAX_UNDO + 5; i++) stacks = pushEntry(stacks, entry(String(i)))
     expect(stacks.undo).toHaveLength(MAX_UNDO)
     expect(stacks.undo[0].label).toBe('5')
+  })
+})
+
+describe('undo helpers', () => {
+  it('records each reset with the mode that can reverse it', () => {
+    expect(undoModeForReset('soft')).toBe('soft')
+    expect(undoModeForReset('mixed')).toBe('mixed')
+    expect(undoModeForReset('hard')).toBe('keep')
+  })
+
+  it('drops an entry only when the repository moved on', () => {
+    expect(isStaleUndoError('The repository changed since this action, so it can no longer be undone.')).toBe(true)
+    expect(isStaleUndoError('Finish or abort the merge in progress first.')).toBe(false)
+    expect(isStaleUndoError("error: Entry 'a.txt' not uptodate. Cannot merge.")).toBe(false)
   })
 })

@@ -30,3 +30,13 @@ export function popRedo(stacks: Stacks): { stacks: Stacks; entry: UndoEntry } | 
   if (!entry) return null
   return { entry, stacks: { undo: [...stacks.undo, entry], redo: stacks.redo.slice(0, -1) } }
 }
+
+/** How to move the branch back and forth so the index and files end up as the reset left them. */
+export function undoModeForReset(mode: 'soft' | 'mixed' | 'hard'): RepoChange['mode'] {
+  return mode === 'hard' ? 'keep' : mode
+}
+
+/** True when an entry failed because the repository moved on, so it can never apply again. */
+export function isStaleUndoError(message: string): boolean {
+  return /can no longer be undone/.test(message)
+}

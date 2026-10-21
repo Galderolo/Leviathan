@@ -118,3 +118,107 @@ describe('applyChange', () => {
     expect(readFileSync(join(dir, 'a.txt'), 'utf8')).toBe('my unsaved work\n')
   })
 })
+
+describe('applyChange edge cases', () => {
+  const config = async (key: string) => {
+    const r = await git(['config', '--get', key], { cwd: dir, okCodes: [0, 1] })
+    return r.exitCode === 0 ? r.stdout.trim() : null
+  }
+
+  it('undoes a commit made on a detached HEAD keeping its changes staged', async () => {
+    await repo.checkoutDetached(dir, (await repo.getSnapshot(dir)).head.hash!)
+    writeFileSync(join(dir, 'b.txt'), 'b\n')
+    await repo.stage(dir, ['b.txt'])
+    const change = await track(() => repo.commit(dir, 'detached work', false), 'soft')
+    await repo.applyChange(dir, invertChange(change))
+    expect(await subject()).toBe('base')
+    expect((await repo.getState(dir)).status.staged).toEqual([{ path: 'b.txt', status: 'A' }])
+  })
+
+  it('undoes and redoes a mixed reset', async () => {
+    const base = (await repo.getSnapshot(dir)).head.hash!
+    await commitFile('b.txt', 'b\n', 'second')
+    const change = await track(() => repo.reset(dir, base, 'mixed'), 'mixed')
+    await repo.applyChange(dir, invertChange(change))
+    expect(await subject()).toBe('second')
+    expect((await repo.getState(dir)).status.unstaged).toEqual([])
+    await repo.applyChange(dir, change)
+    expect(await subject()).toBe('base')
+    expect((await repo.getState(dir)).status.unstaged).toEqual([{ path: 'b.txt', status: '?' }])
+  })
+
+  it('redoing a soft reset leaves the changes staged again', async () => {
+    const base = (await repo.getSnapshot(dir)).head.hash!
+    await commitFile('b.txt', 'b\n', 'second')
+    const change = await track(() => repo.reset(dir, base, 'soft'), 'soft')
+    await repo.applyChange(dir, invertChange(change))
+    await repo.applyChange(dir, change)
+    expect((await repo.getState(dir)).status.staged).toEqual([{ path: 'b.txt', status: 'A' }])
+  })
+
+  it('keeps the upstream configuration when undoing a rename', async () => {
+    await git(['config', 'branch.main.remote', 'origin'], { cwd: dir })
+    await git(['config', 'branch.main.merge', 'refs/heads/main'], { cwd: dir })
+    const change = await track(() => repo.renameBranch(dir, 'main', 'renamed'))
+    await repo.applyChange(dir, invertChange(change))
+    expect((await repo.getSnapshot(dir)).head.branch).toBe('main')
+    expect(await config('branch.main.remote')).toBe('origin')
+    expect(await config('branch.renamed.remote')).toBeNull()
+  })
+
+  it('restores the tracking configuration of a deleted branch', async () => {
+    await repo.createBranch(dir, 'old', null, false)
+    await git(['config', 'branch.old.remote', 'origin'], { cwd: dir })
+    await git(['config', 'branch.old.merge', 'refs/heads/old'], { cwd: dir })
+    const change = await track(() => repo.deleteBranch(dir, 'old', true))
+    await repo.applyChange(dir, invertChange(change))
+    expect(await config('branch.old.remote')).toBe('origin')
+    expect(await config('branch.old.merge')).toBe('refs/heads/old')
+  })
+
+  it('refuses to undo while a merge is in progress, without touching it', async () => {
+    const change = await track(() => repo.createBranch(dir, 'side', null, false))
+    await repo.checkout(dir, 'side')
+    await commitFile('a.txt', 'side\n', 'side edit')
+    await repo.checkout(dir, 'main')
+    await commitFile('a.txt', 'main\n', 'main edit')
+    await repo.merge(dir, 'side').catch(() => {})
+    const head = (await repo.getSnapshot(dir)).head.hash!
+    const later = await track(() => repo.createTag(dir, 't', head, null))
+    await expect(repo.applyChange(dir, invertChange(later))).rejects.toThrow(/in progress/)
+    expect((await repo.getState(dir)).operation).toBe('merge')
+    expect(change.refs).toHaveLength(1)
+  })
+
+  it('undoing a merge commit brings back the merge in progress', async () => {
+    await repo.createBranch(dir, 'side', null, true)
+    await commitFile('a.txt', 'side\n', 'side edit')
+    const sideTip = (await repo.getSnapshot(dir)).head.hash
+    await repo.checkout(dir, 'main')
+    await commitFile('a.txt', 'main\n', 'main edit')
+    await repo.merge(dir, 'side').catch(() => {})
+    await repo.resolveConflictFile(dir, 'a.txt', 'both\n')
+    const change = await track(() => repo.commit(dir, "Merge branch 'side'", false), 'soft')
+
+    await repo.applyChange(dir, invertChange(change))
+    const state = await repo.getState(dir)
+    expect(state.operation).toBe('merge')
+    expect(state.status.staged.map((f) => f.path)).toContain('a.txt')
+    expect((await git(['rev-parse', 'MERGE_HEAD'], { cwd: dir })).stdout.trim()).toBe(sideTip)
+
+    await repo.applyChange(dir, change)
+    expect(await subject()).toBe("Merge branch 'side'")
+    expect((await repo.getState(dir)).operation).toBeNull()
+  })
+
+  it('removes the tracking configuration when undoing a created branch', async () => {
+    const change = await track(async () => {
+      await repo.createBranch(dir, 'topic', null, false)
+      await git(['config', 'branch.topic.remote', 'origin'], { cwd: dir })
+    })
+    await repo.applyChange(dir, invertChange(change))
+    expect(await config('branch.topic.remote')).toBeNull()
+    await repo.applyChange(dir, change)
+    expect(await config('branch.topic.remote')).toBe('origin')
+  })
+})
