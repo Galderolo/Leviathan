@@ -6,11 +6,17 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- Pull a branch that is not checked out (right-click it: *Pull … (fast-forward)*), without switching to it.
+
 - Interactive rebase: right-click a commit and reorder, reword, squash, fixup or drop the commits after it. A conflict stops the rebase with the usual banner and conflict editor. A rebase that finishes without stopping can be undone.
 
 - Conflict editor: current and incoming versions side by side, per-block choices, whole-file sides (including deletions).
 
 - Undo and redo (toolbar buttons, Ctrl+Z / Ctrl+Shift+Z) for commits, amends, checkouts, branch and tag changes, merges, rebases, cherry-picks, reverts, resets and pulls.
+
+### Changed
+
+- After a pull, the message names the branch that was pulled and says when it was already up to date, and the graph scrolls to the new tip.
 
 ## [0.2.0] - 2026-10-21
 

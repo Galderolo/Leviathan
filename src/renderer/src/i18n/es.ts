@@ -143,6 +143,7 @@ const es: Record<keyof typeof en, string> = {
   'menu.merge': 'Merge de {name} en {current}',
   'menu.checkoutMerge': 'Checkout de {into} y merge de {from} en ella',
   'menu.rebase': 'Rebase de {current} sobre {name}',
+  'menu.pullBranch': 'Pull de {name} (fast-forward)',
   'menu.pushBranch': 'Push de {name}',
   'menu.rename': 'Renombrar {name}',
   'menu.delete': 'Borrar {name}',
@@ -197,7 +198,8 @@ const es: Record<keyof typeof en, string> = {
 
   'toast.cloned': 'Repositorio clonado',
   'toast.fetched': 'Fetch completado',
-  'toast.pulled': 'Pull completado',
+  'toast.pulledInto': 'Pull hecho en {branch}',
+  'toast.upToDate': '{branch} ya está al día',
   'toast.pushed': 'Push de {branch} completado',
   'toast.nothingToDrop': 'No se puede hacer nada soltándolo ahí',
   'toast.copied': 'Copiado al portapapeles',

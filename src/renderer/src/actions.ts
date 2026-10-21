@@ -500,15 +500,51 @@ export function autoFetchTick(): void {
   }
 }
 
+/** Tip of a local branch (or of a detached HEAD) as the store last saw it. */
+function branchTip(path: string, branch: string | null): string | null {
+  const state = getRepo(path)?.state
+  if (!branch) return state?.head.hash ?? null
+  return state?.refs.find((r) => r.type === 'head' && r.name === branch)?.hash ?? null
+}
+
+/** Names the branch that was pulled and says whether it moved. */
+function pulledToast(path: string, branch: string | null, before: string | null): void {
+  const moved = branchTip(path, branch) !== before
+  toast(moved ? 'success' : 'info', t(moved ? 'toast.pulledInto' : 'toast.upToDate', { branch: branch ?? 'HEAD' }))
+}
+
+/** After HEAD moved, show where it is now (unless the user is looking at their uncommitted changes). */
+function revealHead(path: string, hash: string): void {
+  const view = getRepo(path)
+  const status = view?.state?.status
+  const dirty = !!status && status.staged.length + status.unstaged.length + status.conflicted.length > 0
+  if (view?.selection?.kind === 'wip' && dirty) patchRepo(path, (r) => ({ scrollNonce: r.scrollNonce + 1 }))
+  else void selectCommit(path, hash, true)
+}
+
 export async function pull(path: string, mode?: PullMode): Promise<boolean> {
   const settings = useStore.getState().settings
   const effective = mode ?? settings.pullMode
   if (mode && mode !== settings.pullMode) void saveSettings({ pullMode: mode })
-  return runOp(path, () => api.pull(path, effective), {
+  const branch = headBranch(path)
+  const before = branchTip(path, branch)
+  const ok = await runOp(path, () => api.pull(path, effective), { busy: 'pull', undo: { label: t('undo.pull') } })
+  if (ok) {
+    pulledToast(path, branch, before)
+    const head = getRepo(path)?.state?.head.hash
+    if (head && head !== before) revealHead(path, head)
+  }
+  return ok
+}
+
+/** Fast-forwards a local branch that is not checked out, without switching to it. */
+export async function pullBranch(path: string, ref: GitRef): Promise<boolean> {
+  const ok = await runOp(path, () => api.pullBranch(path, ref.name), {
     busy: 'pull',
-    success: t('toast.pulled'),
     undo: { label: t('undo.pull') }
   })
+  if (ok) pulledToast(path, ref.name, ref.hash)
+  return ok
 }
 
 export async function push(path: string, opts: { force?: boolean; branch?: string } = {}): Promise<boolean> {

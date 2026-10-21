@@ -141,6 +141,7 @@ const en = {
   'menu.merge': 'Merge {name} into {current}',
   'menu.checkoutMerge': 'Checkout {into} and merge {from} into it',
   'menu.rebase': 'Rebase {current} onto {name}',
+  'menu.pullBranch': 'Pull {name} (fast-forward)',
   'menu.pushBranch': 'Push {name}',
   'menu.rename': 'Rename {name}',
   'menu.delete': 'Delete {name}',
@@ -194,7 +195,8 @@ const en = {
 
   'toast.cloned': 'Repository cloned',
   'toast.fetched': 'Fetch complete',
-  'toast.pulled': 'Pull complete',
+  'toast.pulledInto': 'Pulled into {branch}',
+  'toast.upToDate': '{branch} is already up to date',
   'toast.pushed': 'Pushed {branch}',
   'toast.nothingToDrop': 'Nothing can be done by dropping it there',
   'toast.copied': 'Copied to clipboard',

@@ -101,6 +101,8 @@ export interface LeviathanInvokeApi {
   /** `background` fetches never prompt for credentials. */
   fetch(repo: string, background?: boolean): Promise<void>
   pull(repo: string, mode: PullMode): Promise<void>
+  /** Fast-forwards a branch that is not checked out to its upstream. */
+  pullBranch(repo: string, branch: string): Promise<void>
   push(repo: string, opts: { force: boolean; branch?: string; remote?: string }): Promise<void>
   pushTag(repo: string, remote: string, tag: string): Promise<void>
   addRemote(repo: string, name: string, url: string): Promise<void>
@@ -209,6 +211,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   stashDrop: true,
   fetch: true,
   pull: true,
+  pullBranch: true,
   push: true,
   pushTag: true,
   addRemote: true,

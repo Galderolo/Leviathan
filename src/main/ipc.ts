@@ -95,6 +95,7 @@ const handlers: LeviathanInvokeApi = {
 
   fetch: (path, background) => repo.fetchAll(path, background ? () => {} : progress(path), !!background),
   pull: (path, mode) => repo.pull(path, mode, progress(path)),
+  pullBranch: (path, branch) => repo.pullBranch(path, branch, progress(path)),
   push: (path, opts) => repo.push(path, opts, progress(path)),
   pushTag: (path, remote, tag) => repo.pushTag(path, remote, tag, progress(path)),
   addRemote: (path, name, url) => repo.addRemote(path, name, url),

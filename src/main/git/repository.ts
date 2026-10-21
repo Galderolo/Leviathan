@@ -585,6 +585,24 @@ async function configValue(repo: string, key: string): Promise<string | null> {
   return exitCode === 0 ? stdout.trim() : null
 }
 
+/** Brings a branch that is not checked out up to date with its upstream; fast-forward only. */
+export async function pullBranch(repo: string, branch: string, onProgress: ProgressFn): Promise<void> {
+  assertSafeArg(branch, 'branch')
+  const remote = await configValue(repo, `branch.${branch}.remote`)
+  const merge = await configValue(repo, `branch.${branch}.merge`)
+  if (!remote || !merge) throw new Error(`${branch} has no upstream branch to pull from.`)
+  assertSafeArg(remote, 'remote')
+  try {
+    // Without a leading `+`, git only accepts a fast-forward (and updates the remote-tracking branch too).
+    await git(['fetch', '--progress', remote, `${merge}:refs/heads/${branch}`], { cwd: repo, onProgress })
+  } catch (err) {
+    if (err instanceof GitError && /non-fast-forward/.test(err.stderr)) {
+      throw new Error(`${branch} has commits its upstream does not have. To combine them, check it out and pull.`)
+    }
+    throw err
+  }
+}
+
 export async function push(
   repo: string,
   opts: { force: boolean; branch?: string; remote?: string },
