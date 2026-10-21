@@ -6,6 +6,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- Pull requests: the open pull requests (merge requests on GitLab) of the repository appear in the side panel when one of your accounts is on its remote; open, check out or copy the link of any of them, and create one from a branch (right-click it). Works with GitHub, GitLab and Gitea. GitLab tokens need the `api` scope to create merge requests.
+
 - Pull a branch that is not checked out (right-click it: *Pull … (fast-forward)*), without switching to it.
 
 - Interactive rebase: right-click a commit and reorder, reword, squash, fixup or drop the commits after it. A conflict stops the rebase with the usual banner and conflict editor. A rebase that finishes without stopping can be undone.

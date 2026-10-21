@@ -31,7 +31,9 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 ## Remotes and collaboration
 
 - [ ] Sign in to accounts with the browser (OAuth device flow) instead of a personal access token
-- [ ] Pull request list for GitHub / GitLab / Gitea / Bitbucket via personal access tokens
+- [ ] Pull requests on Bitbucket
+- [ ] Review pull requests in the app (diff, comments, approve, merge)
+- [ ] Show which branches have an open pull request in the graph
 - [ ] Submodule support in the side panel
 - [ ] Git LFS status
 

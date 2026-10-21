@@ -41,6 +41,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Search** commits by message, author or SHA.
 - **Live refresh** when files change on disk.
 - **Accounts**: add as many GitHub, GitLab, Gitea or other accounts as you like with a personal access token (stored encrypted). Each repository can use an account: commits get its name and private no-reply email, and push/pull use its token without asking. Clone straight from an account's repository list.
+- **Pull requests**: see the open pull requests (merge requests on GitLab) of the repository in the side panel, check one out, or open a new one from a branch — on GitHub, GitLab and Gitea, through your account.
 - **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets and pulls — without ever losing uncommitted work.
 - **Dark and light themes**, or follow the system.
 - **English and Spanish** interface (more languages welcome!).
@@ -109,6 +110,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Arrastrar una rama sobre otra para hacer merge o rebase.
 - Repos privados: usuario/token HTTPS, passphrase SSH y huellas de host se piden en la app; gestión de claves SSH.
 - Varias cuentas (GitHub, GitLab, Gitea…) con token cifrado: cada repo usa la suya para el autor de los commits (email privado por defecto) y para push/pull sin contraseñas; clonar desde la lista de repos de la cuenta.
+- Pull requests (merge requests en GitLab) en el panel lateral: verlas, hacer checkout y crear una desde una rama, en GitHub, GitLab y Gitea.
 - Editor de conflictos: versión actual y entrante lado a lado, eligiendo por bloque o el archivo entero.
 - Deshacer / rehacer (Ctrl+Z / Ctrl+Mayús+Z) commits, checkouts, ramas, tags, merges, rebases, resets y pulls.
 - Fetch automático, tema claro y oscuro.

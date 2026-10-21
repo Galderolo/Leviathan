@@ -5,6 +5,8 @@ import type {
   CommitDetails,
   DiffSource,
   FileDiff,
+  Provider,
+  PullRequest,
   RebaseCommit,
   RepoState,
   Settings
@@ -55,9 +57,19 @@ export interface RepoView {
   lastFetchError: string | null
   /** Account bound to this repository, if any. */
   account: Account | null
+  /** Open pull requests; null when no account can reach the repository's remote. */
+  pullRequests: PullRequestsView | null
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
   undo: UndoEntry[]
   redo: UndoEntry[]
+}
+
+export interface PullRequestsView {
+  provider: Provider | null
+  /** Remote the pull requests belong to. */
+  remote: string | null
+  items: PullRequest[]
+  error: string | null
 }
 
 export interface Tab {
@@ -161,6 +173,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     lastFetchAt: null,
     lastFetchError: null,
     account: null,
+    pullRequests: null,
     undo: [],
     redo: []
   }

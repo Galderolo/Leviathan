@@ -9,6 +9,8 @@ import {
   Cloud,
   Folder,
   GitBranch,
+  GitPullRequest,
+  GitPullRequestDraft,
   Laptop,
   Plus,
   Search,
@@ -16,9 +18,9 @@ import {
   X
 } from 'lucide-react'
 import type { GitRef, Stash } from '../../../shared/types'
-import { addRemote, checkoutRef, selectRef, selectStash } from '../actions'
+import { addRemote, checkoutPullRequest, checkoutRef, openExternal, selectRef, selectStash } from '../actions'
 import { useT } from '../i18n'
-import { branchMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
+import { branchMenu, pullRequestMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
 import { useRepo, useStore } from '../store'
 import { openMenu } from '../ui'
 import { buildTree, cx, formatDate, relativeDate, type TreeNode } from '../utils'
@@ -43,6 +45,8 @@ export function LeftPanel({ path }: { path: string }) {
   const tags = refs.filter((r) => r.type === 'tag' && match(r.name))
   const stashes = (state?.stashes ?? []).filter((s) => match(s.message))
   const remotes = state?.remotes ?? []
+  const prs = view?.pullRequests
+  const prItems = (prs?.items ?? []).filter((p) => match('#' + p.number + ' ' + p.title + ' ' + p.sourceBranch))
   const selectedHash = view?.selection && view.selection.kind !== 'wip' ? view.selection.hash : null
 
   const branchRow = (ref: GitRef, name: string) => (
@@ -167,6 +171,50 @@ export function LeftPanel({ path }: { path: string }) {
             )
           })}
         </Section>
+
+        {prs && (
+          <Section
+            id="prs"
+            icon={<GitPullRequest size={14} />}
+            title={t('left.pullRequests')}
+            count={prItems.length}
+            collapsed={collapsed}
+            toggle={toggle}
+          >
+            {prs.error && <div className="side-note error">{prs.error}</div>}
+            {!prs.error && !prItems.length && <div className="side-note">{t('left.noPullRequests')}</div>}
+            {prItems.map((pr) => (
+              <div
+                key={pr.number}
+                className="side-row pr-row"
+                onClick={() => openExternal(pr.url)}
+                onDoubleClick={() => void checkoutPullRequest(path, pr)}
+                onContextMenu={(e) => openMenu(e, pullRequestMenu(path, pr))}
+                title={
+                  '#' +
+                  pr.number +
+                  ' ' +
+                  pr.title +
+                  '\n' +
+                  pr.sourceBranch +
+                  ' → ' +
+                  pr.targetBranch +
+                  ' · ' +
+                  pr.author
+                }
+              >
+                {pr.draft ? (
+                  <GitPullRequestDraft size={13} className="dim" />
+                ) : (
+                  <GitPullRequest size={13} className="pr-icon" />
+                )}
+                <span className="pr-number">#{pr.number}</span>
+                <span className="side-name">{pr.title}</span>
+                <span className="side-date">{pr.author}</span>
+              </div>
+            ))}
+          </Section>
+        )}
 
         <Section
           id="stashes"

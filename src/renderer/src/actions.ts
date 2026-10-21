@@ -5,6 +5,7 @@ import type {
   FileChange,
   FileDiff,
   GitRef,
+  PullRequest,
   PullMode,
   ResetMode,
   Settings,
@@ -196,13 +197,120 @@ export async function cloneRepository(
   }
 }
 
-/** Loads which account the repository uses (shown in the toolbar). */
+/** Loads which account the repository uses (shown in the toolbar), and its pull requests. */
 export async function loadRepoAccount(path: string): Promise<void> {
   try {
     const [id, accounts] = await Promise.all([api.getRepoAccount(path), api.listAccounts()])
     patchRepo(path, { account: accounts.find((a) => a.id === id) ?? null })
   } catch {
     // not critical: the toolbar just shows no account
+  }
+  void loadPullRequests(path)
+}
+
+const prSeq: Record<string, number> = {}
+
+/** Loads the open pull requests, when an account can reach the repository's remote. */
+export async function loadPullRequests(path: string): Promise<void> {
+  const seq = (prSeq[path] = (prSeq[path] ?? 0) + 1)
+  try {
+    const result = await api.getPullRequests(path)
+    if (prSeq[path] !== seq) return
+    patchRepo(path, { pullRequests: result && { ...result, error: null } })
+  } catch (err) {
+    if (prSeq[path] !== seq) return
+    patchRepo(path, (r) => ({
+      pullRequests: {
+        provider: r.pullRequests?.provider ?? null,
+        remote: r.pullRequests?.remote ?? null,
+        items: r.pullRequests?.items ?? [],
+        error: errorMessage(err)
+      }
+    }))
+  }
+}
+
+export async function checkoutPullRequest(path: string, pr: PullRequest): Promise<boolean> {
+  const info = getRepo(path)?.pullRequests
+  if (!info?.provider || !info.remote) return false
+  const { provider, remote } = info
+  return runOp(
+    path,
+    () =>
+      api.checkoutPullRequest(
+        path,
+        remote,
+        { number: pr.number, sourceBranch: pr.sourceBranch, fromFork: pr.fromFork },
+        provider
+      ),
+    { undo: { label: t('undo.checkout', { name: '#' + pr.number }) } }
+  )
+}
+
+/**
+ * Opens a pull request for a local branch. A branch that is not on the pull
+ * requests' remote yet, or has commits that are not, is pushed first.
+ */
+export async function createPullRequestFor(path: string, ref: GitRef): Promise<void> {
+  const remote = getRepo(path)?.pullRequests?.remote
+  if (!remote) return
+  const current = () => getRepo(path)?.state?.refs.find((r) => r.type === 'head' && r.name === ref.name)
+  if (!current()?.upstream || current()?.ahead) {
+    if (!(await push(path, { branch: ref.name }))) return
+  }
+  const upstream = current()?.upstream
+  if (!upstream?.startsWith(remote + '/')) {
+    toast('error', t('error.prRemote', { name: ref.name, remote }))
+    return
+  }
+  const source = upstream.slice(remote.length + 1)
+  const targets = (getRepo(path)?.state?.refs ?? [])
+    .filter((r) => r.type === 'remote' && r.remote === remote && !r.name.endsWith('/HEAD'))
+    .map((r) => r.name.slice(remote.length + 1))
+    .filter((name) => name !== source)
+  const preferred = await api.getDefaultBranch(path).catch(() => null)
+  const target = preferred && targets.includes(preferred) ? preferred : (targets[0] ?? '')
+  const subject = getRepo(path)?.commits.find((c) => c.hash === current()?.hash)?.subject ?? ref.name
+  const values = await formDialog({
+    title: t('dlg.createPr', { name: ref.name }),
+    confirmText: t('dlg.createPrConfirm'),
+    fields: [
+      { key: 'title', label: t('dlg.prTitle'), value: subject },
+      { key: 'body', label: t('dlg.prBody'), multiline: true, value: '' },
+      {
+        key: 'target',
+        label: t('dlg.prTarget'),
+        type: 'select',
+        value: target,
+        options: targets.map((name) => ({ value: name, label: remote + '/' + name }))
+      },
+      {
+        key: 'draft',
+        label: t('dlg.prDraft'),
+        type: 'select',
+        value: 'no',
+        options: [
+          { value: 'no', label: t('dlg.prReady') },
+          { value: 'yes', label: t('dlg.prIsDraft') }
+        ]
+      }
+    ]
+  })
+  if (!values) return
+  try {
+    const pr = await api.createPullRequest(path, {
+      title: values.title,
+      body: values.body,
+      source,
+      target: values.target,
+      draft: values.draft === 'yes'
+    })
+    toast('success', t('toast.prCreated', { number: pr.number }))
+    if (pr.url) openExternal(pr.url)
+  } catch (err) {
+    toast('error', errorMessage(err))
+  } finally {
+    void loadPullRequests(path)
   }
 }
 
@@ -232,6 +340,7 @@ export async function chooseRepoAccount(path: string): Promise<void> {
     await api.setRepoAccount(path, id)
     const account = accounts.find((a) => a.id === id) ?? null
     patchRepo(path, { account })
+    void loadPullRequests(path)
     if (account) toast('success', t('toast.repoAccountSet', { name: `${account.username}@${account.host}` }))
     if (account && !hasRemoteOnHost(getRepo(path)?.state?.remotes ?? [], account.host)) {
       toast('info', t('toast.accountHostMismatch', { host: account.host }))
@@ -473,6 +582,7 @@ function defaultRemote(path: string): string | null {
 export async function fetchAll(path: string): Promise<boolean> {
   const ok = await runOp(path, () => api.fetch(path), { busy: 'fetch', success: t('toast.fetched') })
   if (ok) patchRepo(path, { lastFetchAt: Date.now(), lastFetchError: null })
+  void loadPullRequests(path)
   return ok
 }
 
@@ -485,6 +595,7 @@ export async function fetchInBackground(path: string): Promise<void> {
     await api.fetch(path, true)
     patchRepo(path, { lastFetchError: null })
     await refreshRepo(path)
+    void loadPullRequests(path)
   } catch (err) {
     patchRepo(path, { lastFetchError: errorMessage(err) })
   }

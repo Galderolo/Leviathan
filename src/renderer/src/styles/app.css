@@ -1842,6 +1842,28 @@ a:hover {
   margin-top: 4px;
 }
 
+.side-note {
+  padding: 4px 12px 6px 30px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.side-note.error {
+  color: var(--red);
+  word-break: break-word;
+}
+
+.pr-number {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.pr-icon {
+  color: var(--green);
+}
+
 .rebase-modal {
   width: 760px;
   max-height: calc(100vh - 80px);

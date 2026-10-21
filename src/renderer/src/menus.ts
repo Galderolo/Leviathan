@@ -1,11 +1,13 @@
-import type { FileChange, GitRef, Stash } from '../../shared/types'
+import type { FileChange, GitRef, PullRequest, Stash } from '../../shared/types'
 import {
   applyStash,
   checkoutAndMerge,
   checkoutCommit,
+  checkoutPullRequest,
   checkoutRef,
   cherryPick,
   createBranch,
+  createPullRequestFor,
   createTag,
   deleteBranch,
   deleteRemoteBranch,
@@ -15,6 +17,7 @@ import {
   dropStash,
   ignorePattern,
   mergeRef,
+  openExternal,
   openFile,
   openInteractiveRebase,
   popStash,
@@ -74,6 +77,15 @@ export function commitMenu(path: string, hash: string): MenuItem[] {
   ]
 }
 
+export function pullRequestMenu(path: string, pr: PullRequest): MenuItem[] {
+  return [
+    { label: t('menu.openPr'), onClick: () => openExternal(pr.url) },
+    { label: t('menu.checkoutPr'), onClick: () => void checkoutPullRequest(path, pr) },
+    { separator: true },
+    { label: t('menu.copyPrLink'), onClick: () => void copyText(pr.url, t('toast.copied')) }
+  ]
+}
+
 export function branchMenu(path: string, ref: GitRef): MenuItem[] {
   const { branch } = current(path)
   const items: MenuItem[] = []
@@ -95,6 +107,9 @@ export function branchMenu(path: string, ref: GitRef): MenuItem[] {
   }
   items.push({ separator: true })
   if (ref.type === 'head') {
+    if (getRepo(path)?.pullRequests?.remote) {
+      items.push({ label: t('menu.createPr'), onClick: () => void createPullRequestFor(path, ref) })
+    }
     // The checked-out branch is pulled from the toolbar; any other one can be fast-forwarded in place.
     if (!ref.isHead && ref.upstream) {
       items.push({ label: t('menu.pullBranch', { name: ref.name }), onClick: () => void pullBranch(path, ref) })
