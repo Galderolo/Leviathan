@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs'
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import {
   API_METHODS,
@@ -9,7 +10,7 @@ import {
 } from '../shared/api'
 import * as repo from './git/repository'
 import { loadSettings, saveSettings } from './settings'
-import { openTerminal } from './shell'
+import { isExecutableFile, openTerminal } from './shell'
 import { watchRepo, unwatchRepo } from './watcher'
 
 function broadcast(channel: string, payload: unknown): void {
@@ -87,8 +88,19 @@ const handlers: LeviathanInvokeApi = {
 
   openTerminal: (path) => openTerminal(path),
   openPath: async (path) => {
+    if (!statSync(path).isDirectory()) throw new Error('Only folders can be opened this way')
     const error = await shell.openPath(path)
     if (error) throw new Error(error)
+  },
+  openRepoFile: async (repoPath, file) => {
+    const full = repo.insideRepo(repoPath, file)
+    if (isExecutableFile(full)) {
+      shell.showItemInFolder(full)
+      return 'revealed'
+    }
+    const error = await shell.openPath(full)
+    if (error) throw new Error(error)
+    return 'opened'
   },
   showInFolder: async (path) => shell.showItemInFolder(path),
   openExternal: async (url) => {

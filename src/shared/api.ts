@@ -82,7 +82,13 @@ export interface LeviathanInvokeApi {
 
   // Shell integration
   openTerminal(repo: string): Promise<void>
+  /** Opens a folder in the file manager. */
   openPath(path: string): Promise<void>
+  /**
+   * Opens a repository file with its default app, or only reveals it in its
+   * folder when opening would execute it (scripts, executables, shortcuts).
+   */
+  openRepoFile(repo: string, file: string): Promise<'opened' | 'revealed'>
   showInFolder(path: string): Promise<void>
   openExternal(url: string): Promise<void>
 }
@@ -152,6 +158,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   removeRemote: true,
   openTerminal: true,
   openPath: true,
+  openRepoFile: true,
   showInFolder: true,
   openExternal: true
 }

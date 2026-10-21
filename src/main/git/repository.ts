@@ -190,7 +190,8 @@ export async function getCommitDetails(repo: string, hash: string): Promise<Comm
   return { commit, message: message.trimEnd(), files: parseNameStatus(filesOut) }
 }
 
-function insideRepo(repo: string, file: string): string {
+/** Resolves `file` inside `repo`, refusing paths that escape it. */
+export function insideRepo(repo: string, file: string): string {
   const full = resolve(repo, file)
   const rel = relative(repo, full)
   if (rel.startsWith('..') || isAbsolute(rel)) throw new Error(`Path is outside the repository: ${file}`)

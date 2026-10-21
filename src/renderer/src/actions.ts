@@ -720,7 +720,10 @@ export function openInFileManager(path: string): void {
 }
 
 export function openFile(repo: string, file: string): void {
-  api.openPath(joinPath(repo, file)).catch((err) => toast('error', errorMessage(err)))
+  api
+    .openRepoFile(repo, file)
+    .then((result) => result === 'revealed' && toast('info', t('toast.revealedExecutable')))
+    .catch((err) => toast('error', errorMessage(err)))
 }
 
 export function showFileInFolder(repo: string, file: string): void {

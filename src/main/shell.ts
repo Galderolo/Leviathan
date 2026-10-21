@@ -1,5 +1,43 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { extname } from 'node:path'
+
+/** Extensions the OS runs (or imports) on double-click instead of opening in an editor. */
+const EXECUTABLE_EXTENSIONS = new Set([
+  '.app',
+  '.appimage',
+  '.bat',
+  '.bin',
+  '.cmd',
+  '.com',
+  '.command',
+  '.cpl',
+  '.desktop',
+  '.exe',
+  '.hta',
+  '.jar',
+  '.js',
+  '.jse',
+  '.lnk',
+  '.msc',
+  '.msi',
+  '.pif',
+  '.ps1',
+  '.psm1',
+  '.reg',
+  '.run',
+  '.scr',
+  '.sh',
+  '.url',
+  '.vbe',
+  '.vbs',
+  '.wsf',
+  '.wsh'
+])
+
+export function isExecutableFile(path: string): boolean {
+  return EXECUTABLE_EXTENSIONS.has(extname(path).toLowerCase())
+}
 
 function launch(command: string, args: string[], cwd: string): Promise<boolean> {
   return new Promise((resolve) => {
