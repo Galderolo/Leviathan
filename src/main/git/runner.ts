@@ -98,6 +98,8 @@ export function git(args: string[], opts: RunOptions): Promise<RunResult> {
       }
     })
 
+    // git may exit without reading stdin (EPIPE / EOF); the exit code still tells what happened.
+    child.stdin.on('error', () => {})
     if (opts.input !== undefined) child.stdin.end(opts.input)
     else child.stdin.end()
   })

@@ -85,6 +85,11 @@ describe('repository', () => {
     expect((await repo.getState(dir)).status.staged).toEqual([])
   })
 
+  it('survives git exiting before reading stdin', async () => {
+    const result = await git(['--version'], { cwd: dir, input: 'x'.repeat(8_000_000) })
+    expect(result.stdout).toContain('git version')
+  })
+
   it('treats file names literally, not as globs', async () => {
     writeFileSync(join(dir, '[id].tsx'), 'route\n')
     writeFileSync(join(dir, 'i.tsx'), 'i\n')
