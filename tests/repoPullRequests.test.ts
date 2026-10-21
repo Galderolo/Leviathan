@@ -99,6 +99,15 @@ describe('pull requests of a repository', () => {
     ).rejects.toThrow(/Invalid/)
   })
 
+  it('refuses a pasted token with spaces or line breaks inside, without repeating it', async () => {
+    const broken = 'ghp_part_one' + String.fromCharCode(10) + 'part_two'
+    const error = (await accounts
+      .addAccount({ provider: 'github', host: 'github.com', token: broken })
+      .catch((e) => e)) as Error
+    expect(error.message).toMatch(/token/i)
+    expect(error.message).not.toContain('part_two')
+  })
+
   it('never hands the token to the renderer', async () => {
     const result = await accounts.getPullRequests(work)
     expect(JSON.stringify(result)).not.toContain(TOKEN)

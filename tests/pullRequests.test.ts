@@ -46,6 +46,73 @@ beforeEach(async () => {
   await git(['checkout', '-q', '-b', 'fork-work', 'main'], { cwd: other })
   forkTip = await commitFile(other, 'k.txt', 'fork work')
   await git(['push', '-q', 'origin', 'HEAD:refs/pull/7/head'], { cwd: other })
+  await git(['push', '-q', 'origin', 'feature:refs/pull/3/head'], { cwd: other })
+  otherDir = other
+})
+
+let otherDir: string
+const tip = async (dir: string, ref: string) => (await git(['rev-parse', ref], { cwd: dir })).stdout.trim()
+
+/** The contributor rewrites the fork's pull request (amend + force push). */
+async function rewriteForkPr() {
+  await git(['checkout', '-q', 'fork-work'], { cwd: otherDir })
+  await git(['commit', '-q', '--amend', '-m', 'fork work, rewritten'], { cwd: otherDir })
+  await git(['push', '-q', '-f', 'origin', 'HEAD:refs/pull/7/head'], { cwd: otherDir })
+  return tip(otherDir, 'HEAD')
+}
+
+describe('checking out a pull request again', () => {
+  const fork = { number: 7, sourceBranch: 'fork-work', fromFork: true }
+  const same = { number: 3, sourceBranch: 'feature', fromFork: false }
+
+  it('updates pr/N, checked out, when the fork pull request gained commits', async () => {
+    await repo.checkoutPullRequest(work, 'origin', fork, 'github')
+    await git(['checkout', '-q', 'fork-work'], { cwd: otherDir })
+    const newer = await commitFile(otherDir, 'k2.txt', 'more fork work')
+    await git(['push', '-q', 'origin', 'HEAD:refs/pull/7/head'], { cwd: otherDir })
+    await repo.checkoutPullRequest(work, 'origin', fork, 'github')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'pr/7', hash: newer })
+  })
+
+  it('follows a rewritten fork pull request when pr/N has no commits of its own', async () => {
+    await repo.checkoutPullRequest(work, 'origin', fork, 'github')
+    const rewritten = await rewriteForkPr()
+    await repo.checkoutPullRequest(work, 'origin', fork, 'github')
+    expect((await repo.getState(work)).head.hash).toBe(rewritten)
+  })
+
+  it('never drops commits made on pr/N', async () => {
+    await repo.checkoutPullRequest(work, 'origin', fork, 'github')
+    const mine = await commitFile(work, 'mine.txt', 'my review fix')
+    await rewriteForkPr()
+    await expect(repo.checkoutPullRequest(work, 'origin', fork, 'github')).rejects.toThrow(/own/)
+    expect(await tip(work, 'pr/7')).toBe(mine)
+  })
+
+  it('checks out a same-repository pull request after its branch was force-pushed', async () => {
+    await git(['fetch', '-q', 'origin'], { cwd: work })
+    await git(['checkout', '-q', 'feature'], { cwd: otherDir })
+    await git(['commit', '-q', '--amend', '-m', 'feature, rewritten'], { cwd: otherDir })
+    await git(['push', '-q', '-f', 'origin', 'feature'], { cwd: otherDir })
+    await repo.checkoutPullRequest(work, 'origin', same, 'github')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'feature', hash: await tip(otherDir, 'HEAD') })
+  })
+
+  it('fast-forwards the local branch that tracks the pull request branch', async () => {
+    await repo.checkoutPullRequest(work, 'origin', same, 'github')
+    await repo.checkout(work, 'main')
+    await git(['checkout', '-q', 'feature'], { cwd: otherDir })
+    const newer = await commitFile(otherDir, 'f2.txt', 'more feature work')
+    await git(['push', '-q', 'origin', 'feature'], { cwd: otherDir })
+    await repo.checkoutPullRequest(work, 'origin', same, 'github')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'feature', hash: newer })
+  })
+
+  it('uses pr/N when a local branch with the same name is unrelated', async () => {
+    await repo.createBranch(work, 'feature', null, false)
+    await repo.checkoutPullRequest(work, 'origin', same, 'github')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'pr/3', hash: await tip(otherDir, 'feature') })
+  })
 })
 
 afterEach(() => rmSync(root, { recursive: true, force: true }))

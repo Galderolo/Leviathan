@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseRemoteUrl, pickProject } from '../src/shared/forge'
+import { needsPushForPullRequest, parseRemoteUrl, pickProject } from '../src/shared/forge'
 import type { Account, Remote } from '../src/shared/types'
 
 describe('parseRemoteUrl', () => {
@@ -64,5 +64,29 @@ describe('pickProject', () => {
     const remotes = [remote('origin', 'https://git.example.com/me/repo.git')]
     expect(pickProject(remotes, [account('o', 'git.example.com', 'other')], null)).toBeNull()
     expect(pickProject(remotes, [work], null)).toBeNull()
+  })
+})
+
+describe('needsPushForPullRequest', () => {
+  const ref = (upstream?: string, extra: { ahead?: number; upstreamGone?: boolean } = {}) => ({
+    name: 'feature',
+    upstream,
+    ...extra
+  })
+
+  it('is false only when the branch is on the remote under its own name, with nothing left to push', () => {
+    expect(needsPushForPullRequest(ref('origin/feature'), 'origin')).toBe(false)
+  })
+
+  it('is true when the branch is not there yet, is ahead, or its remote branch is gone', () => {
+    expect(needsPushForPullRequest(ref(), 'origin')).toBe(true)
+    expect(needsPushForPullRequest(ref('origin/feature', { ahead: 2 }), 'origin')).toBe(true)
+    expect(needsPushForPullRequest(ref('origin/feature', { upstreamGone: true }), 'origin')).toBe(true)
+  })
+
+  it('is true when it tracks a branch with another name or on another remote', () => {
+    // A branch created from origin/main tracks main: a pull request "from" it would come from main.
+    expect(needsPushForPullRequest(ref('origin/main'), 'origin')).toBe(true)
+    expect(needsPushForPullRequest(ref('fork/feature'), 'origin')).toBe(true)
   })
 })

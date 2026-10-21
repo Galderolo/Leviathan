@@ -71,6 +71,9 @@ export async function addAccount(input: {
   const host = normaliseHost(input.host)
   const token = input.token.trim()
   if (!token) throw new Error('The token is empty')
+  // A token is one word; spaces or line breaks inside mean something else was pasted with it.
+  if (/[\s\x00-\x1f\x7f]/.test(token))
+    throw new Error('The token has spaces or line breaks inside: paste only the token')
   let identity: { username: string; name: string; email: string }
   if (input.provider === 'other') {
     const username = input.username?.trim()

@@ -12,6 +12,7 @@ import type {
   Stash
 } from '../../shared/types'
 import { buildPartialPatch } from '../../shared/patch'
+import { needsPushForPullRequest } from '../../shared/forge'
 import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
@@ -254,23 +255,25 @@ export async function checkoutPullRequest(path: string, pr: PullRequest): Promis
 export async function createPullRequestFor(path: string, ref: GitRef): Promise<void> {
   const remote = getRepo(path)?.pullRequests?.remote
   if (!remote) return
-  const current = () => getRepo(path)?.state?.refs.find((r) => r.type === 'head' && r.name === ref.name)
-  if (!current()?.upstream || current()?.ahead) {
+  const find = (refs: GitRef[] | undefined) => refs?.find((r) => r.type === 'head' && r.name === ref.name)
+  if (needsPushForPullRequest(find(getRepo(path)?.state?.refs) ?? ref, remote)) {
     if (!(await push(path, { branch: ref.name }))) return
   }
-  const upstream = current()?.upstream
-  if (!upstream?.startsWith(remote + '/')) {
+  // Read the state again: a refresh started meanwhile may not have landed in the store yet.
+  const state = await api.getState(path).catch(() => null)
+  const branch = find(state?.refs)
+  if (!state || !branch || needsPushForPullRequest(branch, remote)) {
     toast('error', t('error.prRemote', { name: ref.name, remote }))
     return
   }
-  const source = upstream.slice(remote.length + 1)
-  const targets = (getRepo(path)?.state?.refs ?? [])
+  const source = ref.name
+  const targets = state.refs
     .filter((r) => r.type === 'remote' && r.remote === remote && !r.name.endsWith('/HEAD'))
     .map((r) => r.name.slice(remote.length + 1))
     .filter((name) => name !== source)
   const preferred = await api.getDefaultBranch(path).catch(() => null)
   const target = preferred && targets.includes(preferred) ? preferred : (targets[0] ?? '')
-  const subject = getRepo(path)?.commits.find((c) => c.hash === current()?.hash)?.subject ?? ref.name
+  const subject = getRepo(path)?.commits.find((c) => c.hash === branch.hash)?.subject ?? ref.name
   const values = await formDialog({
     title: t('dlg.createPr', { name: ref.name }),
     confirmText: t('dlg.createPrConfirm'),

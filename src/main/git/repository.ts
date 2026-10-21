@@ -19,6 +19,7 @@ import type {
   CommitDetails,
   DiffSource,
   FileDiff,
+  GitRef,
   Provider,
   PullMode,
   RebaseCommit,
@@ -148,29 +149,41 @@ export async function getState(repo: string): Promise<RepoState> {
   ])
   const remotes = parseRemotes(remotesOut)
   const { head, status } = parseStatus(statusOut)
+  const refs = parseRefs(
+    refsOut,
+    remotes.map((r) => r.name)
+  )
   return {
     path: repo,
     head,
-    refs: parseRefs(
-      refsOut,
-      remotes.map((r) => r.name)
-    ),
+    refs,
     stashes: parseStashes(stashOut),
     remotes,
     status,
     operation,
-    unpushed: await unpushedCommits(repo, head, remotes.length > 0)
+    unpushed: await unpushedCommits(repo, head, refs, remotes.length > 0)
   }
 }
 
 /**
  * Commits of the checked-out branch that a push would send, newest first (at
- * most 500): those not on its upstream, or on no remote when it has none.
+ * most 500): those not on its upstream, or on no remote when the branch has no
+ * upstream on a remote (none, deleted, or a local branch).
  */
-async function unpushedCommits(repo: string, head: RepoState['head'], hasRemotes: boolean): Promise<string[]> {
+async function unpushedCommits(
+  repo: string,
+  head: RepoState['head'],
+  refs: GitRef[],
+  hasRemotes: boolean
+): Promise<string[]> {
   if (!head.branch || !head.hash || !hasRemotes) return []
-  const range = head.upstream ? ['@{upstream}..HEAD'] : ['HEAD', '--not', '--remotes']
-  // A configured upstream that no longer exists makes the range fail: nothing to show then.
+  const onRemote = refs.some((r) => r.type === 'remote' && r.name === head.upstream)
+  let range = ['HEAD', '--not', '--remotes']
+  if (head.upstream && onRemote) {
+    // Runs on every refresh: when status already says nothing is ahead, skip the walk.
+    if (!head.ahead) return []
+    range = ['@{upstream}..HEAD']
+  }
   const out = await git(['rev-list', '--max-count=500', ...range, '--'], { cwd: repo, okCodes: [0, 128] })
   return out.exitCode === 0 ? out.stdout.split('\n').filter(Boolean) : []
 }
@@ -599,10 +612,25 @@ async function configValue(repo: string, key: string): Promise<string | null> {
   return exitCode === 0 ? stdout.trim() : null
 }
 
+async function isAncestor(repo: string, ancestor: string, of: string): Promise<boolean> {
+  const { exitCode } = await git(['merge-base', '--is-ancestor', ancestor, of], { cwd: repo, okCodes: [0, 1] })
+  return exitCode === 0
+}
+
+/** Points a branch at `to`; when it is checked out, with `reset --keep`, which never drops local changes. */
+async function moveBranch(repo: string, branch: string, from: string, to: string): Promise<void> {
+  if (from === to) return
+  if ((await currentHead(repo)).branch === branch) await run(repo, ['reset', '-q', '--keep', to])
+  else await run(repo, ['update-ref', `refs/heads/${branch}`, to, from])
+}
+
 /**
- * Checks out a pull request: its branch (tracking the remote one) when it lives
- * in this repository, or the provider's `pull/N/head` (GitLab:
- * `merge-requests/N/head`) as a local `pr/N` branch when it comes from a fork.
+ * Checks out a pull request. A pull request whose branch lives in this
+ * repository is checked out as that branch, tracking the remote one (and
+ * fast-forwarded to it) — unless a local branch of that name is something else.
+ * Otherwise (forks) the provider's `pull/N/head` (GitLab: `merge-requests/N/head`)
+ * becomes a local `pr/N` branch. Checking out again brings it up to date, also
+ * after the author rewrote it, but never drops commits made on the local branch.
  */
 export async function checkoutPullRequest(
   repo: string,
@@ -612,20 +640,44 @@ export async function checkoutPullRequest(
 ): Promise<void> {
   assertSafeArg(remote, 'remote')
   if (!Number.isInteger(pr.number) || pr.number <= 0) throw new Error(`Invalid pull request number: ${pr.number}`)
-  if (pr.fromFork) {
-    const ref = provider === 'gitlab' ? `refs/merge-requests/${pr.number}/head` : `refs/pull/${pr.number}/head`
-    const branch = `pr/${pr.number}`
-    // No `+`: a local pr/N with commits of its own is never overwritten.
-    await git(['fetch', remote, `${ref}:refs/heads/${branch}`], { cwd: repo })
-    await run(repo, ['checkout', '-q', branch, '--'])
-    return
+  if (!pr.fromFork) {
+    const branch = pr.sourceBranch
+    assertSafeArg(branch, 'branch')
+    const tracking = `refs/remotes/${remote}/${branch}`
+    // `+` like git's default refspec: the remote-tracking branch follows force pushes.
+    await git(['fetch', remote, `+refs/heads/${branch}:${tracking}`], { cwd: repo })
+    const local = await refValue(repo, `refs/heads/${branch}`)
+    if (!local) {
+      await run(repo, ['checkout', '-q', '--track', `${remote}/${branch}`])
+      return
+    }
+    const follows =
+      (await configValue(repo, `branch.${branch}.remote`)) === remote &&
+      (await configValue(repo, `branch.${branch}.merge`)) === `refs/heads/${branch}`
+    if (follows) {
+      const target = (await refValue(repo, tracking))!
+      if (await isAncestor(repo, local, target)) await moveBranch(repo, branch, local, target)
+      await run(repo, ['checkout', '-q', branch, '--'])
+      return
+    }
+    // A local branch with that name holds other work: leave it alone and use pr/N.
   }
-  assertSafeArg(pr.sourceBranch, 'branch')
-  await git(['fetch', remote, `refs/heads/${pr.sourceBranch}:refs/remotes/${remote}/${pr.sourceBranch}`], {
-    cwd: repo
-  })
-  if (await refValue(repo, `refs/heads/${pr.sourceBranch}`)) await run(repo, ['checkout', '-q', pr.sourceBranch, '--'])
-  else await run(repo, ['checkout', '-q', '--track', `${remote}/${pr.sourceBranch}`])
+
+  const branch = `pr/${pr.number}`
+  const source = provider === 'gitlab' ? `refs/merge-requests/${pr.number}/head` : `refs/pull/${pr.number}/head`
+  // The last version fetched, out of sight of the branch lists, tells whether pr/N has commits of its own.
+  const mirror = `refs/leviathan/pulls/${pr.number}`
+  const previous = await refValue(repo, mirror)
+  await git(['fetch', remote, `+${source}:${mirror}`], { cwd: repo })
+  const target = (await refValue(repo, mirror))!
+  const local = await refValue(repo, `refs/heads/${branch}`)
+  if (!local) await run(repo, ['branch', '-q', branch, target])
+  else if (local === previous || (await isAncestor(repo, local, target))) await moveBranch(repo, branch, local, target)
+  else
+    throw new Error(
+      `${branch} has commits of its own that the pull request does not have. Rename or delete ${branch} to check out its latest version.`
+    )
+  await run(repo, ['checkout', '-q', branch, '--'])
 }
 
 /** Brings a branch that is not checked out up to date with its upstream; fast-forward only. */

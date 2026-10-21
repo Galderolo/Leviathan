@@ -46,8 +46,9 @@ async function request(
   try {
     res = await fetchFn(base + path, post ? { headers, method: 'POST', body: JSON.stringify(post) } : { headers })
   } catch (err) {
-    // The token only travels in headers, so network error messages cannot contain it.
-    throw new Error(`Could not reach ${host}: ${err instanceof Error ? err.message : String(err)}`)
+    // An invalid header value is quoted in the error: never let the token through.
+    const detail = (err instanceof Error ? err.message : String(err)).split(token).join('…')
+    throw new Error(`Could not reach ${host}: ${detail}`)
   }
   if (res.status === 401 || res.status === 403) {
     const label = `${LABELS[provider]} rejected the token (${res.status})`

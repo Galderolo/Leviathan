@@ -243,3 +243,14 @@ describe('pull requests', () => {
     expect(await defaultBranch('gitlab', 'gitlab.com', 'group/sub/app', TOKEN, fn)).toBe('trunk')
   })
 })
+
+describe('network errors', () => {
+  it('never repeat the token, even when the error quotes a header', async () => {
+    const fn: FetchFn = async (_url, init) => {
+      throw new Error(`Headers.append: "${init?.headers?.Authorization}" is an invalid header value.`)
+    }
+    const error = (await fetchIdentity('github', 'github.com', TOKEN, fn).catch((e) => e)) as Error
+    expect(error.message).toMatch(/Could not reach github.com/)
+    expect(error.message).not.toContain(TOKEN)
+  })
+})

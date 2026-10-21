@@ -1,4 +1,4 @@
-import type { Account, Remote } from './types'
+import type { Account, GitRef, Remote } from './types'
 
 /**
  * The host and project path a remote URL points at (`github.com` + `owner/repo`),
@@ -44,4 +44,16 @@ export function pickProject(
     if (account) return { remote: remote.name, account, path: project.path }
   }
   return null
+}
+
+/**
+ * Whether a branch has to be pushed before a pull request can be opened from it:
+ * the pull request takes the branch of the same name on `remote`, so that one
+ * must exist and hold all of the local commits.
+ */
+export function needsPushForPullRequest(
+  ref: Pick<GitRef, 'name' | 'upstream' | 'ahead' | 'upstreamGone'>,
+  remote: string
+): boolean {
+  return ref.upstream !== `${remote}/${ref.name}` || !!ref.upstreamGone || !!ref.ahead
 }

@@ -18,7 +18,7 @@ import {
   X
 } from 'lucide-react'
 import type { GitRef, Stash } from '../../../shared/types'
-import { addRemote, checkoutPullRequest, checkoutRef, openExternal, selectRef, selectStash } from '../actions'
+import { addRemote, checkoutPullRequest, checkoutRef, selectRef, selectStash } from '../actions'
 import { useT } from '../i18n'
 import { branchMenu, pullRequestMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
 import { useRepo, useStore } from '../store'
@@ -187,7 +187,11 @@ export function LeftPanel({ path }: { path: string }) {
               <div
                 key={pr.number}
                 className="side-row pr-row"
-                onClick={() => openExternal(pr.url)}
+                // Like a branch: a click shows it in the graph, a double click checks it out.
+                onClick={() => {
+                  const source = !pr.fromFork && refs.find((r) => r.name === `${prs.remote}/${pr.sourceBranch}`)
+                  if (source) selectRef(path, source)
+                }}
                 onDoubleClick={() => void checkoutPullRequest(path, pr)}
                 onContextMenu={(e) => openMenu(e, pullRequestMenu(path, pr))}
                 title={

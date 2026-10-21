@@ -49,6 +49,28 @@ describe('unpushed commits', () => {
     expect((await repo.getState(work)).unpushed).toEqual([mine])
   })
 
+  it('falls back to "on no remote" when the upstream branch was deleted', async () => {
+    await git(['remote', 'add', 'origin', join(root, 'origin.git')], { cwd: work })
+    await git(['push', '-q', 'origin', 'main'], { cwd: work })
+    await repo.createBranch(work, 'topic', null, true)
+    const first = await commitFile('t1.txt', 'pushed once')
+    await git(['push', '-q', '-u', 'origin', 'topic'], { cwd: work })
+    const second = await commitFile('t2.txt', 'local only')
+    await git(['push', '-q', 'origin', '--delete', 'topic'], { cwd: work })
+    await git(['fetch', '-q', '--prune'], { cwd: work })
+    expect((await repo.getState(work)).unpushed).toEqual([second, first])
+  })
+
+  it('does not count commits already on a remote when the upstream is a local branch', async () => {
+    await git(['remote', 'add', 'origin', join(root, 'origin.git')], { cwd: work })
+    await git(['push', '-q', 'origin', 'main'], { cwd: work })
+    await git(['checkout', '-q', '-b', 'topic', '--track', 'main'], { cwd: work })
+    await commitFile('t1.txt', 'on the remote')
+    await git(['push', '-q', 'origin', 'topic'], { cwd: work })
+    const local = await commitFile('t2.txt', 'local only')
+    expect((await repo.getState(work)).unpushed).toEqual([local])
+  })
+
   it('is empty without remotes', async () => {
     await commitFile('b.txt', 'one')
     expect((await repo.getState(work)).unpushed).toEqual([])
