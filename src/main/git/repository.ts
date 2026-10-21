@@ -158,8 +158,21 @@ export async function getState(repo: string): Promise<RepoState> {
     stashes: parseStashes(stashOut),
     remotes,
     status,
-    operation
+    operation,
+    unpushed: await unpushedCommits(repo, head, remotes.length > 0)
   }
+}
+
+/**
+ * Commits of the checked-out branch that a push would send, newest first (at
+ * most 500): those not on its upstream, or on no remote when it has none.
+ */
+async function unpushedCommits(repo: string, head: RepoState['head'], hasRemotes: boolean): Promise<string[]> {
+  if (!head.branch || !head.hash || !hasRemotes) return []
+  const range = head.upstream ? ['@{upstream}..HEAD'] : ['HEAD', '--not', '--remotes']
+  // A configured upstream that no longer exists makes the range fail: nothing to show then.
+  const out = await git(['rev-list', '--max-count=500', ...range, '--'], { cwd: repo, okCodes: [0, 128] })
+  return out.exitCode === 0 ? out.stdout.split('\n').filter(Boolean) : []
 }
 
 export async function getLog(repo: string, limit: number): Promise<{ commits: Commit[]; hasMore: boolean }> {

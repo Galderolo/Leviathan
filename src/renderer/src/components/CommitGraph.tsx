@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Archive, Check, Cloud, Laptop, Tag } from 'lucide-react'
+import { Archive, ArrowUp, Check, Cloud, Laptop, Tag } from 'lucide-react'
 import { buildGraphItems, layoutItems, WIP_HASH, type GraphItem, type GraphRow } from '../../../shared/graph'
 import { laneX, linePath, type GraphGeometry } from '../../../shared/graphPaths'
 import { checkoutRef, loadMore, selectCommit, selectWip } from '../actions'
@@ -120,6 +120,9 @@ export function CommitGraph({ path }: { path: string }) {
     else openMenu(e, commitMenu(path, item.hash))
   }
 
+  const unpushedList = view?.state?.unpushed
+  const unpushed = useMemo(() => new Set(unpushedList ?? []), [unpushedList])
+
   const rows = []
   for (let i = first; i < last; i++) {
     const item = items[i]
@@ -140,6 +143,7 @@ export function CommitGraph({ path }: { path: string }) {
         changeCount={item.kind === 'wip' ? changeCount : 0}
         lang={lang}
         wipLabel={t('graph.wip')}
+        unpushedTitle={item.kind === 'commit' && unpushed.has(item.hash) ? t('graph.unpushed') : null}
         onSelect={selectItem}
         onContext={onContext}
       />
@@ -190,6 +194,8 @@ interface RowProps {
   changeCount: number
   lang: string
   wipLabel: string
+  /** Set (as its tooltip) when the commit is not pushed yet. */
+  unpushedTitle: string | null
   onSelect: (item: GraphItem) => void
   onContext: (e: React.MouseEvent, item: GraphItem) => void
 }
@@ -222,7 +228,7 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
     sha = shortHash(item.hash)
   } else {
     const c = item.commit
-    message = <span>{c.subject}</span>
+    message = <span className="ellipsis">{c.subject}</span>
     author = (
       <>
         <Avatar name={c.authorName} email={c.authorEmail} size={18} />
@@ -244,7 +250,14 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
       <div className="cell graph-cell">
         <GraphSvg row={row} item={item} width={props.graphWidth} connector={!!labels} />
       </div>
-      <div className="cell msg-cell">{message}</div>
+      <div className="cell msg-cell">
+        {message}
+        {props.unpushedTitle && (
+          <span className="unpushed" title={props.unpushedTitle}>
+            <ArrowUp size={11} strokeWidth={3} />
+          </span>
+        )}
+      </div>
       <div className="cell author-cell">{author}</div>
       <div className="cell date-cell">{date}</div>
       <div className="cell sha-cell">{sha}</div>

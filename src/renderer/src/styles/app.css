@@ -858,6 +858,20 @@ a:hover {
   color: var(--text);
 }
 
+/* Not pushed yet: a small arrow at the end of the message, like a pending upload. */
+.unpushed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 22px;
+  height: 15px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text-dim) 35%, transparent);
+  color: var(--text);
+}
+
 /* Lane-coloured bar at the start of the message, as a continuation of the row band. */
 .msg-cell::before {
   content: '';

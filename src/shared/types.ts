@@ -87,6 +87,8 @@ export interface RepoState {
   remotes: Remote[]
   status: WorkingStatus
   operation: RepoOperation
+  /** Commits of the checked-out branch that are not pushed yet, newest first. */
+  unpushed: string[]
 }
 
 export interface CommitDetails {

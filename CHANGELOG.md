@@ -6,6 +6,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- Commits that are not pushed yet show a small arrow at the end of their message in the graph.
+
 - Pull requests: the open pull requests (merge requests on GitLab) of the repository appear in the side panel when one of your accounts is on its remote; open, check out or copy the link of any of them, and create one from a branch (right-click it). Works with GitHub, GitLab and Gitea. GitLab tokens need the `api` scope to create merge requests.
 
 - Pull a branch that is not checked out (right-click it: *Pull … (fast-forward)*), without switching to it.

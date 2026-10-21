@@ -339,6 +339,8 @@ const es: Record<keyof typeof en, string> = {
   'toast.prCreated': 'Pull request #{number} creada',
   'error.prRemote': '{name} no está en {remote}: súbela ahí para abrir una pull request.',
 
+  'graph.unpushed': 'Sin subir todavía',
+
   'status.ready': 'Listo',
   'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',

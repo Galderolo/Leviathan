@@ -334,6 +334,8 @@ const en = {
   'toast.prCreated': 'Pull request #{number} created',
   'error.prRemote': '{name} is not on {remote}: push it there to open a pull request.',
 
+  'graph.unpushed': 'Not pushed yet',
+
   'status.ready': 'Ready',
   'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',
