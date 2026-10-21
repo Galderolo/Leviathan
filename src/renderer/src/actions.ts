@@ -12,6 +12,7 @@ import type {
 } from '../../shared/types'
 import { buildPartialPatch } from '../../shared/patch'
 import { isFetchDue } from './autofetch'
+import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
 import { resolveLang, t } from './i18n'
 import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView, type Tab } from './store'
@@ -471,14 +472,22 @@ export async function push(path: string, opts: { force?: boolean; branch?: strin
   })
 }
 
-export async function createBranch(path: string, startPoint: string | null): Promise<void> {
-  const name = await promptText({
+/** Asks for the name and the starting point (preselected: `startHash`, or HEAD). */
+export async function createBranch(path: string, startHash: string | null): Promise<void> {
+  const view = getRepo(path)
+  if (!view?.state) return
+  const start = branchStartOptions(view.state.head, view.state.refs, view.commits, startHash)
+  const values = await formDialog({
     title: t('dlg.newBranch'),
-    label: t('dlg.branchName'),
-    placeholder: 'feature/my-change',
-    confirmText: t('dlg.create')
+    confirmText: t('dlg.create'),
+    fields: [
+      { key: 'name', label: t('dlg.branchName'), placeholder: 'feature/my-change' },
+      { key: 'start', label: t('dlg.startPoint'), type: 'select', value: start.value, options: start.options }
+    ]
   })
+  const name = values?.name?.trim()
   if (!name) return
+  const startPoint = values!.start === 'HEAD' ? null : values!.start
   await runOp(path, () => api.createBranch(path, name, startPoint, true))
 }
 

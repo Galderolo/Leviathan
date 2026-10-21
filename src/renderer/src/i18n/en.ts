@@ -162,6 +162,7 @@ const en = {
   'dlg.newBranch': 'Create branch',
   'dlg.renameBranch': 'Rename branch',
   'dlg.branchName': 'Branch name',
+  'dlg.startPoint': 'Start from',
   'dlg.newTag': 'Create tag',
   'dlg.tagName': 'Tag name',
   'dlg.tagMessage': 'Message (optional — creates an annotated tag)',

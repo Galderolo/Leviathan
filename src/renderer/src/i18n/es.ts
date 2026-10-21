@@ -164,6 +164,7 @@ const es: Record<keyof typeof en, string> = {
   'dlg.newBranch': 'Crear rama',
   'dlg.renameBranch': 'Renombrar rama',
   'dlg.branchName': 'Nombre de la rama',
+  'dlg.startPoint': 'Partir de',
   'dlg.newTag': 'Crear tag',
   'dlg.tagName': 'Nombre del tag',
   'dlg.tagMessage': 'Mensaje (opcional — crea un tag anotado)',
