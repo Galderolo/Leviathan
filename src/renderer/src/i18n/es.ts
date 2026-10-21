@@ -195,6 +195,13 @@ const es: Record<keyof typeof en, string> = {
   'error.detachedPush': 'HEAD está desacoplado. Haz checkout de una rama antes del push.',
   'error.noRemote': 'Este repositorio no tiene remotos. Añade uno desde la sección REMOTO.',
 
+  'askpass.title': 'Autenticación necesaria',
+  'askpass.hostTitle': 'Host SSH desconocido',
+  'askpass.trust': 'Confiar y conectar',
+  'askpass.continue': 'Continuar',
+  'askpass.answer': 'Respuesta',
+  'askpass.secret': 'Contraseña, token o passphrase',
+
   'status.ready': 'Listo',
   'status.commits': '{count} commits cargados',
   'status.commits_one': '1 commit cargado',

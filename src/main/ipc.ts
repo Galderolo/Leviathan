@@ -8,6 +8,7 @@ import {
   type LeviathanInvokeApi,
   type IpcResult
 } from '../shared/api'
+import { answerAskpass } from './askpass'
 import * as repo from './git/repository'
 import { loadSettings, saveSettings } from './settings'
 import { isExecutableFile, openTerminal } from './shell'
@@ -103,6 +104,7 @@ const handlers: LeviathanInvokeApi = {
     return 'opened'
   },
   showInFolder: async (path) => shell.showItemInFolder(path),
+  answerAskpass: async (id, value) => answerAskpass(id, value),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')
     await shell.openExternal(url)

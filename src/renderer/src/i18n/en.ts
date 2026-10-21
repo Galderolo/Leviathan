@@ -191,6 +191,13 @@ const en = {
   'error.detachedPush': 'HEAD is detached. Check out a branch before pushing.',
   'error.noRemote': 'This repository has no remotes. Add one from the REMOTE section.',
 
+  'askpass.title': 'Authentication required',
+  'askpass.hostTitle': 'Unknown SSH host',
+  'askpass.trust': 'Trust and connect',
+  'askpass.continue': 'Continue',
+  'askpass.answer': 'Answer',
+  'askpass.secret': 'Password, token or passphrase',
+
   'status.ready': 'Ready',
   'status.commits': '{count} commits loaded',
   'status.commits_one': '1 commit loaded',

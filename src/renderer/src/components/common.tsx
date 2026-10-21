@@ -160,7 +160,7 @@ export function Dialog() {
             ) : (
               <input
                 ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
-                type={field.type === 'number' ? 'number' : 'text'}
+                type={field.type === 'number' || field.type === 'password' ? field.type : 'text'}
                 value={values[field.key] ?? ''}
                 placeholder={field.placeholder}
                 spellCheck={false}

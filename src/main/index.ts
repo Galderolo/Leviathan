@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { BrowserWindow, Menu, app, screen, shell } from 'electron'
+import { disposeAskpass, initAskpass } from './askpass'
 import { registerIpc } from './ipc'
 import { loadSettings, saveSettings } from './settings'
 import { unwatchAll } from './watcher'
@@ -68,9 +69,10 @@ function createWindow(): void {
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   registerIpc()
+  await initAskpass()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -79,5 +81,6 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   unwatchAll()
+  void disposeAskpass()
   if (process.platform !== 'darwin') app.quit()
 })

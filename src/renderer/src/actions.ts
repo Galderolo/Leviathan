@@ -1,4 +1,5 @@
 import type {
+  AskpassRequest,
   DiffHunk,
   DiffSource,
   FileChange,
@@ -189,6 +190,32 @@ export async function initRepository(path: string, branch: string, tabId: string
     toast('error', errorMessage(err))
     return false
   }
+}
+
+/** Answers a git/ssh prompt (credentials, passphrase or unknown host key) with a dialog. */
+export async function handleAskpass(request: AskpassRequest): Promise<void> {
+  const prompt = request.prompt.trim()
+  let value: string | null
+  if (/\(yes\/no/i.test(prompt)) {
+    const trust = await confirmDialog({
+      title: t('askpass.hostTitle'),
+      message: prompt,
+      confirmText: t('askpass.trust')
+    })
+    value = trust ? 'yes' : 'no'
+  } else {
+    const secret = /pass(word|phrase)|token|\bpin\b/i.test(prompt)
+    const values = await formDialog({
+      title: t('askpass.title'),
+      message: prompt,
+      confirmText: t('askpass.continue'),
+      fields: [
+        { key: 'value', label: secret ? t('askpass.secret') : t('askpass.answer'), type: secret ? 'password' : 'text' }
+      ]
+    })
+    value = values ? values.value : null
+  }
+  await api.answerAskpass(request.id, value)
 }
 
 export function handleProgress(repo: string, line: string): void {

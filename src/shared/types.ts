@@ -157,6 +157,12 @@ export const DEFAULT_SETTINGS: Settings = {
   cloneDir: ''
 }
 
+/** A git/ssh prompt (username, password, passphrase, host key confirmation) forwarded to the UI. */
+export interface AskpassRequest {
+  id: string
+  prompt: string
+}
+
 export interface RepoChangedEvent {
   repo: string
   /** `git` when refs/HEAD/index changed, `workdir` for working tree edits only. */

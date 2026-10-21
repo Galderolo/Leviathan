@@ -70,7 +70,7 @@ export interface FormField {
   value?: string
   placeholder?: string
   multiline?: boolean
-  type?: 'text' | 'select' | 'number'
+  type?: 'text' | 'select' | 'number' | 'password'
   options?: { value: string; label: string }[]
 }
 

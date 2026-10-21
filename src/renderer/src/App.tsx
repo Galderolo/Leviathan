@@ -4,6 +4,7 @@ import {
   closeTab,
   cycleTab,
   browseAndOpen,
+  handleAskpass,
   handleProgress,
   initApp,
   newTab,
@@ -34,6 +35,7 @@ export function App() {
       if (getRepo(e.repo)) void refreshRepo(e.repo, { log: e.kind === 'git' })
     })
     const offProgress = api.onProgress((e) => handleProgress(e.repo, e.line))
+    const offAskpass = api.onAskpass((e) => void handleAskpass(e))
     const onFocus = () => {
       const s = useStore.getState()
       const active = s.tabs.find((x) => x.id === s.activeTab)
@@ -43,6 +45,7 @@ export function App() {
     return () => {
       offChanged()
       offProgress()
+      offAskpass()
       window.removeEventListener('focus', onFocus)
     }
   }, [])

@@ -2,12 +2,13 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import {
   API_METHODS,
   IPC_INVOKE,
+  IPC_ASKPASS,
   IPC_PROGRESS,
   IPC_REPO_CHANGED,
   type LeviathanApi,
   type IpcResult
 } from '../shared/api'
-import type { ProgressEvent, RepoChangedEvent } from '../shared/types'
+import type { AskpassRequest, ProgressEvent, RepoChangedEvent } from '../shared/types'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T) => cb(payload)
@@ -17,7 +18,8 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 
 const api: Record<string, unknown> = {
   onRepoChanged: (cb: (e: RepoChangedEvent) => void) => subscribe(IPC_REPO_CHANGED, cb),
-  onProgress: (cb: (e: ProgressEvent) => void) => subscribe(IPC_PROGRESS, cb)
+  onProgress: (cb: (e: ProgressEvent) => void) => subscribe(IPC_PROGRESS, cb),
+  onAskpass: (cb: (e: AskpassRequest) => void) => subscribe(IPC_ASKPASS, cb)
 }
 
 for (const method of API_METHODS) {

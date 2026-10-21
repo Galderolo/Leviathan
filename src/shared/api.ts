@@ -1,4 +1,5 @@
 import type {
+  AskpassRequest,
   Commit,
   CommitDetails,
   DiffSource,
@@ -92,12 +93,17 @@ export interface LeviathanInvokeApi {
   openRepoFile(repo: string, file: string): Promise<'opened' | 'revealed'>
   showInFolder(path: string): Promise<void>
   openExternal(url: string): Promise<void>
+
+  // Authentication
+  /** Answers a prompt received through `onAskpass`; null cancels it. */
+  answerAskpass(id: string, value: string | null): Promise<void>
 }
 
 /** Event subscriptions exposed next to the invoke methods. */
 export interface LeviathanEventsApi {
   onRepoChanged(cb: (e: RepoChangedEvent) => void): () => void
   onProgress(cb: (e: ProgressEvent) => void): () => void
+  onAskpass(cb: (e: AskpassRequest) => void): () => void
 }
 
 export type LeviathanApi = LeviathanInvokeApi & LeviathanEventsApi
@@ -161,7 +167,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   openPath: true,
   openRepoFile: true,
   showInFolder: true,
-  openExternal: true
+  openExternal: true,
+  answerAskpass: true
 }
 
 export const API_METHODS = Object.keys(METHODS) as (keyof LeviathanInvokeApi)[]
@@ -169,5 +176,6 @@ export const API_METHODS = Object.keys(METHODS) as (keyof LeviathanInvokeApi)[]
 export const IPC_INVOKE = 'leviathan:invoke'
 export const IPC_REPO_CHANGED = 'leviathan:repo-changed'
 export const IPC_PROGRESS = 'leviathan:progress'
+export const IPC_ASKPASS = 'leviathan:askpass'
 
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string }

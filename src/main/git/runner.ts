@@ -52,6 +52,13 @@ const BASE_ENV: Record<string, string> = {
   GIT_EDITOR: 'true'
 }
 
+let appEnv: Record<string, string> = {}
+
+/** Extra variables for every git invocation (e.g. the askpass bridge). */
+export function setGitEnv(env: Record<string, string>): void {
+  appEnv = { ...env }
+}
+
 /**
  * Runs git with an argument array (never through a shell) and collects output.
  */
@@ -60,7 +67,7 @@ export function git(args: string[], opts: RunOptions): Promise<RunResult> {
   return new Promise((resolve, reject) => {
     const child = spawn('git', fullArgs, {
       cwd: opts.cwd,
-      env: { ...process.env, ...BASE_ENV, ...opts.env },
+      env: { ...process.env, ...BASE_ENV, ...appEnv, ...opts.env },
       windowsHide: true
     })
 

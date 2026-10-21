@@ -9,6 +9,9 @@ files:
   - resources/**
   - package.json
 icon: resources/icon.png
+# git/ssh execute the askpass scripts from disk, so keep them out of the asar archive.
+asarUnpack:
+  - resources/askpass/**
 win:
   target:
     - nsis
