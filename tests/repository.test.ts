@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -108,6 +108,19 @@ describe('repository', () => {
         else process.env[k] = v
       }
     }
+  })
+
+  it('does not follow untracked symlinks when previewing them', async (ctx) => {
+    const secret = join(dir, '..', 'secret.txt')
+    writeFileSync(secret, 'TOP SECRET\n')
+    try {
+      symlinkSync(secret, join(dir, 'link.txt'))
+    } catch {
+      ctx.skip() // Windows without Developer Mode cannot create symlinks.
+    }
+    const diff = await repo.getDiff(dir, { kind: 'unstaged', path: 'link.txt', untracked: true })
+    expect(diff.binary).toBe(true)
+    expect(JSON.stringify(diff)).not.toContain('TOP SECRET')
   })
 
   it('survives git exiting before reading stdin', async () => {

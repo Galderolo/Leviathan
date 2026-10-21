@@ -239,7 +239,8 @@ export function parseDiff(out: string, fallbackPath: string): FileDiff {
     if (h.startsWith('Binary files ') || h.startsWith('GIT binary patch')) binary = true
     else if (h.startsWith('rename from ')) oldPath = h.slice(12)
     else if (h.startsWith('rename to ')) path = h.slice(10)
-    else if (h.startsWith('+++ b/')) path = h.slice(6).replace(/\r$/, '')
+    // git appends a tab when the name contains spaces
+    else if (h.startsWith('+++ b/')) path = h.slice(6).replace(/\t?\r?$/, '')
   }
 
   const hunks: DiffHunk[] = []

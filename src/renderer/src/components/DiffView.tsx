@@ -21,8 +21,10 @@ export function DiffView({ path }: { path: string }) {
     path: source.path,
     status: source.kind === 'unstaged' && source.untracked ? '?' : 'M'
   }
-  const hunkMode =
-    source.kind === 'unstaged' && !source.untracked && !source.conflicted
+  // Renamed files carry rename headers, so a single-hunk (reverse) patch would also undo the rename.
+  const hunkMode = data?.oldPath
+    ? null
+    : source.kind === 'unstaged' && !source.untracked && !source.conflicted
       ? 'unstaged'
       : source.kind === 'staged'
         ? 'staged'
@@ -95,11 +97,16 @@ export function DiffView({ path }: { path: string }) {
                     <span className="hunk-actions">
                       <button
                         className="btn tiny btn-danger-ghost"
+                        disabled={view?.applying}
                         onClick={() => void applyHunk(path, data, hunk, 'discard')}
                       >
                         {t('diff.discardHunk')}
                       </button>
-                      <button className="btn tiny btn-stage" onClick={() => void applyHunk(path, data, hunk, 'stage')}>
+                      <button
+                        className="btn tiny btn-stage"
+                        disabled={view?.applying}
+                        onClick={() => void applyHunk(path, data, hunk, 'stage')}
+                      >
                         {t('diff.stageHunk')}
                       </button>
                     </span>
@@ -108,6 +115,7 @@ export function DiffView({ path }: { path: string }) {
                     <span className="hunk-actions">
                       <button
                         className="btn tiny btn-unstage"
+                        disabled={view?.applying}
                         onClick={() => void applyHunk(path, data, hunk, 'unstage')}
                       >
                         {t('diff.unstageHunk')}

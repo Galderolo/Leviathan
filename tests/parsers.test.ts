@@ -166,6 +166,12 @@ describe('parseDiff', () => {
     expect(diff.hunks[0].patch).toBe('@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n')
   })
 
+  it('strips the tab git appends to file names with spaces', () => {
+    const out =
+      'diff --git a/my file.txt b/my file.txt\n--- a/my file.txt\t\n+++ b/my file.txt\t\n@@ -1 +1 @@\n-a\n+b\n'
+    expect(parseDiff(out, 'fallback').path).toBe('my file.txt')
+  })
+
   it('detects binary files and renames', () => {
     const bin = parseDiff('diff --git a/x.png b/x.png\nBinary files a/x.png and b/x.png differ\n', 'x.png')
     expect(bin.binary).toBe(true)

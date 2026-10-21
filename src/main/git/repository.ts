@@ -203,8 +203,9 @@ export function insideRepo(repo: string, file: string): string {
 
 async function readPreview(repo: string, path: string): Promise<{ binary: boolean; content: string }> {
   const full = insideRepo(repo, path)
-  const stat = await fs.stat(full)
-  if (stat.isDirectory()) return { binary: true, content: '' }
+  // lstat: never follow a symlink, its target may live outside the repository.
+  const stat = await fs.lstat(full)
+  if (stat.isDirectory() || stat.isSymbolicLink()) return { binary: true, content: '' }
   const handle = await fs.open(full, 'r')
   try {
     const size = Math.min(stat.size, MAX_FILE_PREVIEW)

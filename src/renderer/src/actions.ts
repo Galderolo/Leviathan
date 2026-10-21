@@ -20,6 +20,7 @@ const MAX_RECENT = 15
 const stateSeq: Record<string, number> = {}
 const logSeq: Record<string, number> = {}
 const detailsSeq: Record<string, number> = {}
+const diffSeq: Record<string, number> = {}
 
 // ---------------------------------------------------------------------------
 // App & tabs
@@ -307,13 +308,14 @@ export async function openDiff(path: string, source: DiffSource): Promise<void> 
 }
 
 async function loadDiff(path: string, source: DiffSource): Promise<void> {
+  // Reloads of the same file can overlap (watcher + operation refresh); only the latest may land.
+  const seq = (diffSeq[path] = (diffSeq[path] ?? 0) + 1)
+  const isCurrent = (r: RepoView) => diffSeq[path] === seq && !!r.diff && sameSource(r.diff.source, source)
   try {
     const data = await api.getDiff(path, source)
-    patchRepo(path, (r) => (r.diff && sameSource(r.diff.source, source) ? { diff: { source, data } } : {}))
+    patchRepo(path, (r) => (isCurrent(r) ? { diff: { source, data } } : {}))
   } catch (err) {
-    patchRepo(path, (r) =>
-      r.diff && sameSource(r.diff.source, source) ? { diff: { source, data: null, error: errorMessage(err) } } : {}
-    )
+    patchRepo(path, (r) => (isCurrent(r) ? { diff: { source, data: null, error: errorMessage(err) } } : {}))
   }
 }
 
@@ -638,6 +640,8 @@ export async function applyHunk(
   hunk: DiffHunk,
   mode: 'stage' | 'unstage' | 'discard'
 ): Promise<void> {
+  // The hunk on screen is only valid until the patch lands; ignore clicks until the diff reloads.
+  if (getRepo(path)?.applying) return
   if (mode === 'discard') {
     const ok = await confirmDialog({
       title: t('diff.discardHunk'),
@@ -654,7 +658,13 @@ export async function applyHunk(
       : mode === 'unstage'
         ? { cached: true, reverse: true }
         : { cached: false, reverse: true }
-  await runOp(path, () => api.applyPatch(path, patch, opts), { log: false })
+  patchRepo(path, { applying: true })
+  try {
+    await runOp(path, () => api.applyPatch(path, patch, opts), { log: false })
+    await reloadDiff(path)
+  } finally {
+    patchRepo(path, { applying: false })
+  }
 }
 
 export function updateDraft(path: string, patch: Partial<RepoView['draft']>): void {

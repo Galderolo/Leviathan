@@ -38,6 +38,8 @@ export interface RepoView {
   draft: CommitDraft
   /** Incremented to ask the graph to scroll the selection into view. */
   scrollNonce: number
+  /** A hunk patch is being applied; the diff on screen is about to change. */
+  applying: boolean
 }
 
 export interface Tab {
@@ -133,7 +135,8 @@ export function newRepoView(path: string, limit: number): RepoView {
     diff: null,
     filter: '',
     draft: { summary: '', body: '', amend: false },
-    scrollNonce: 0
+    scrollNonce: 0,
+    applying: false
   }
 }
 
