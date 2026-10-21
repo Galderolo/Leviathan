@@ -43,6 +43,11 @@ export interface LeviathanInvokeApi {
   getCommitDetails(repo: string, hash: string): Promise<CommitDetails>
   getDiff(repo: string, source: DiffSource): Promise<FileDiff>
   getSnapshot(repo: string): Promise<Snapshot>
+
+  // Conflicts
+  readWorkingFile(repo: string, path: string): Promise<{ text: string | null; binary: boolean }>
+  resolveConflictFile(repo: string, path: string, content: string): Promise<void>
+  resolveConflictWith(repo: string, path: string, side: 'ours' | 'theirs'): Promise<void>
   /** Applies a recorded change; refuses when the repository no longer matches its starting state. */
   applyChange(repo: string, change: RepoChange): Promise<void>
 
@@ -157,6 +162,9 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getCommitDetails: true,
   getDiff: true,
   getSnapshot: true,
+  readWorkingFile: true,
+  resolveConflictFile: true,
+  resolveConflictWith: true,
   applyChange: true,
   stage: true,
   stageAll: true,

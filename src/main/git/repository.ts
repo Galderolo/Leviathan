@@ -634,3 +634,35 @@ export async function applyChange(repo: string, change: RepoChange): Promise<voi
   else if (target.hash) await run(repo, ['checkout', '-q', '--detach', target.hash])
   for (const move of later) await moveRef(repo, move)
 }
+
+// ---------------------------------------------------------------------------
+// Conflict resolution
+
+/** Raw content of a working-tree file (null for binary files), for the conflict editor. */
+export async function readWorkingFile(repo: string, path: string): Promise<{ text: string | null; binary: boolean }> {
+  const { binary, content } = await readPreview(repo, path)
+  return binary ? { text: null, binary: true } : { text: content, binary: false }
+}
+
+/** Writes the resolved content and marks the file resolved. */
+export async function resolveConflictFile(repo: string, path: string, content: string): Promise<void> {
+  await fs.writeFile(insideRepo(repo, path), content, 'utf8')
+  await run(repo, ['add', '--', path], { env: LITERAL_PATHS })
+}
+
+/**
+ * Resolves a conflict with one side of the whole file. When that side deleted
+ * the file (no index stage for it), the deletion is taken.
+ */
+export async function resolveConflictWith(repo: string, path: string, side: 'ours' | 'theirs'): Promise<void> {
+  insideRepo(repo, path)
+  const stages = await run(repo, ['ls-files', '-u', '-z', '--', path], { env: LITERAL_PATHS })
+  const wanted = side === 'ours' ? '2' : '3'
+  const present = stages.split('\0').some((entry) => entry.split(/\s+/)[2] === wanted)
+  if (present) {
+    await run(repo, ['checkout', `--${side}`, '--', path], { env: LITERAL_PATHS })
+    await run(repo, ['add', '--', path], { env: LITERAL_PATHS })
+  } else {
+    await run(repo, ['rm', '-q', '--', path], { env: LITERAL_PATHS })
+  }
+}
