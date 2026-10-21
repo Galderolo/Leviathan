@@ -33,6 +33,11 @@ describe('answerFromAccounts', () => {
     expect(answerFromAccounts("Username for 'https://example.com': ", two)).toBeNull()
   })
 
+  it('never sends a token over plain http', () => {
+    expect(answerFromAccounts("Password for 'http://ana@example.com': ", accounts)).toBeNull()
+    expect(answerFromAccounts("Username for 'http://example.com': ", accounts)).toBeNull()
+  })
+
   it('leaves everything else to the user', () => {
     expect(answerFromAccounts("Password for 'https://zed@example.com': ", accounts)).toBeNull()
     expect(answerFromAccounts("Password for 'https://ana@unknown.net': ", accounts)).toBeNull()

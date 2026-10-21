@@ -5,8 +5,9 @@ export interface AccountCredentials {
   token: string
 }
 
-const PASSWORD = /^Password for '(?:https?):\/\/([^@']+)@([^/']+)/i
-const USERNAME = /^Username for '(?:https?):\/\/([^/']+)/i
+// https only: a token must never be answered to a plain-http remote.
+const PASSWORD = /^Password for 'https:\/\/([^@']+)@([^/']+)/i
+const USERNAME = /^Username for 'https:\/\/([^/']+)/i
 
 /**
  * Answers git's credential prompts from the stored accounts, so pushes and
