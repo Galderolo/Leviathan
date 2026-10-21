@@ -30,6 +30,16 @@ describe('parseLog', () => {
 })
 
 describe('parseRefs', () => {
+  it('reads the date of the last commit (or tag) of each ref', () => {
+    const out = [
+      ['refs/heads/main', 'h1', '', '', '', '*', '', '1700000000'].join(F),
+      ['refs/remotes/origin/main', 'h1', '', '', '', ' ', '', '1700000100'].join(F),
+      ['refs/tags/v1', 'tag', 'h1', '', '', ' ', '', '1700000200'].join(F),
+      ['refs/heads/no-date', 'h2', '', '', '', ' ', ''].join(F)
+    ].join('\n')
+    expect(parseRefs(out, ['origin']).map((r) => r.date)).toEqual([1700000000, 1700000100, 1700000200, undefined])
+  })
+
   it('classifies heads, remotes and tags, skipping symrefs', () => {
     const out = [
       ['refs/heads/main', 'h1', '', 'origin/main', '[ahead 2, behind 1]', '*', ''].join(F),

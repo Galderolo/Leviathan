@@ -31,6 +31,8 @@ export interface GitRef {
   upstreamGone?: boolean
   /** True for the currently checked-out local branch. */
   isHead?: boolean
+  /** Unix time of the tip commit (or of the tag for annotated tags). */
+  date?: number
 }
 
 export interface Stash {

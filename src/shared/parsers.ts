@@ -42,7 +42,7 @@ export function parseLog(out: string): Commit[] {
 
 /** `git for-each-ref --format=` string understood by {@link parseRefs}. */
 export const REF_FORMAT =
-  '%(refname)%1f%(objectname)%1f%(*objectname)%1f%(upstream:short)%1f%(upstream:track)%1f%(HEAD)%1f%(symref)'
+  '%(refname)%1f%(objectname)%1f%(*objectname)%1f%(upstream:short)%1f%(upstream:track)%1f%(HEAD)%1f%(symref)%1f%(creatordate:unix)'
 
 /** Parses `for-each-ref` output. Remote names are needed because they may contain slashes. */
 export function parseRefs(out: string, remoteNames: string[]): GitRef[] {
@@ -51,20 +51,23 @@ export function parseRefs(out: string, remoteNames: string[]): GitRef[] {
   const remotes = [...remoteNames].sort((a, b) => b.length - a.length)
   for (const line of out.split('\n')) {
     if (!line.trim()) continue
-    const [fullName, objectName, peeled, upstream, track, head, symref] = line.replace(/\r$/, '').split(FS)
+    const [fullName, objectName, peeled, upstream, track, head, symref, created] = line.replace(/\r$/, '').split(FS)
     if (symref) continue // e.g. refs/remotes/origin/HEAD
     const hash = peeled || objectName
+    // creatordate: committer date of the tip commit, or the tagger date of an annotated tag
+    const date = created ? Number(created) : NaN
+    const withDate = (ref: GitRef): GitRef => (Number.isFinite(date) ? { ...ref, date } : ref)
     if (fullName.startsWith('refs/heads/')) {
       const ref: GitRef = { name: fullName.slice(11), fullName, type: 'head', hash, isHead: head === '*' }
       if (upstream) ref.upstream = upstream
       Object.assign(ref, parseTrack(track))
-      refs.push(ref)
+      refs.push(withDate(ref))
     } else if (fullName.startsWith('refs/remotes/')) {
       const name = fullName.slice(13)
       const remote = remotes.find((r) => name.startsWith(r + '/')) ?? name.split('/')[0]
-      refs.push({ name, fullName, type: 'remote', hash, remote })
+      refs.push(withDate({ name, fullName, type: 'remote', hash, remote }))
     } else if (fullName.startsWith('refs/tags/')) {
-      refs.push({ name: fullName.slice(10), fullName, type: 'tag', hash })
+      refs.push(withDate({ name: fullName.slice(10), fullName, type: 'tag', hash }))
     }
   }
   return refs

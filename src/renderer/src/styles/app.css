@@ -594,6 +594,12 @@ a:hover {
   min-width: 0;
 }
 
+.side-date {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 .head-icon {
   color: var(--accent);
 }

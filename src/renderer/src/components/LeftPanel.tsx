@@ -19,9 +19,9 @@ import type { GitRef, Stash } from '../../../shared/types'
 import { addRemote, checkoutRef, selectRef, selectStash } from '../actions'
 import { useT } from '../i18n'
 import { branchMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
-import { useRepo } from '../store'
+import { useRepo, useStore } from '../store'
 import { openMenu } from '../ui'
-import { buildTree, cx, type TreeNode } from '../utils'
+import { buildTree, cx, formatDate, relativeDate, type TreeNode } from '../utils'
 import { refDragProps, refDropProps } from './refDnd'
 
 type Collapsed = Record<string, boolean>
@@ -29,6 +29,7 @@ type Collapsed = Record<string, boolean>
 export function LeftPanel({ path }: { path: string }) {
   const view = useRepo(path)
   const t = useT()
+  const lang = useStore((s) => s.lang)
   const [filter, setFilter] = useState('')
   const [collapsed, setCollapsed] = useState<Collapsed>({})
   const toggle = (key: string) => setCollapsed((c) => ({ ...c, [key]: !c[key] }))
@@ -77,6 +78,11 @@ export function LeftPanel({ path }: { path: string }) {
       {ref.upstreamGone && (
         <span className="ab-badge gone">
           <X size={10} strokeWidth={3} />
+        </span>
+      )}
+      {ref.date !== undefined && (
+        <span className="side-date" title={formatDate(ref.date, lang)}>
+          {relativeDate(ref.date, lang)}
         </span>
       )}
     </div>
