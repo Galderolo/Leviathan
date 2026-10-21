@@ -54,11 +54,12 @@ const BASE_ENV: Record<string, string> = {
 }
 
 /**
- * For background work (auto-fetch): never ask the user anything. Empty askpass
- * variables disable the in-app bridge, and Git Credential Manager stays silent.
+ * For background work (auto-fetch): never ask the user anything. The askpass
+ * bridge only answers from stored accounts (no window), ssh may not prompt,
+ * and Git Credential Manager stays silent.
  */
 export const NON_INTERACTIVE_ENV: Record<string, string> = {
-  GIT_ASKPASS: '',
+  LEVIATHAN_ASKPASS_MODE: 'accounts',
   SSH_ASKPASS: '',
   SSH_ASKPASS_REQUIRE: 'never',
   GCM_INTERACTIVE: 'never',

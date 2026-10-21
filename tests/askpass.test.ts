@@ -44,16 +44,25 @@ describe('askpass bridge', () => {
   })
 
   it('never prompts during background operations', async () => {
-    const prompts: string[] = []
+    const interactivePrompts: string[] = []
     bridge = await startAskpassServer(
-      async (prompt) => {
-        prompts.push(prompt)
-        return 'x'
+      async (prompt, { interactive }) => {
+        if (interactive) interactivePrompts.push(prompt)
+        return interactive ? 'x' : null
       },
       { scriptDir: SCRIPT_DIR, nodePath: process.execPath }
     )
     await expect(credentialFill({ ...bridge.env, ...NON_INTERACTIVE_ENV })).rejects.toThrow()
-    expect(prompts).toEqual([])
+    expect(interactivePrompts).toEqual([])
+  })
+
+  it('still answers background prompts that stored accounts can answer', async () => {
+    bridge = await startAskpassServer(
+      async (prompt, { interactive }) => (interactive ? null : /username/i.test(prompt) ? 'ana' : 'T0K'),
+      { scriptDir: SCRIPT_DIR, nodePath: process.execPath }
+    )
+    const { stdout } = await credentialFill({ ...bridge.env, ...NON_INTERACTIVE_ENV })
+    expect(stdout).toContain('password=T0K')
   })
 
   it('rejects requests without the token', async () => {

@@ -22,7 +22,7 @@ export function setAccountSource(source: () => AccountCredentials[]): void {
  * Answers from a stored account when one matches; otherwise sends the prompt to
  * the app window and waits for the user's answer (null = cancelled).
  */
-function ask(prompt: string): Promise<string | null> {
+function ask(prompt: string, context: { interactive: boolean }): Promise<string | null> {
   let automatic: string | null = null
   try {
     automatic = answerFromAccounts(prompt, accountSource())
@@ -30,6 +30,7 @@ function ask(prompt: string): Promise<string | null> {
     // a broken account store must never block the prompt itself
   }
   if (automatic !== null) return Promise.resolve(automatic)
+  if (!context.interactive) return Promise.resolve(null)
   const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
   if (!win || win.isDestroyed()) return Promise.resolve(null)
   const id = randomUUID()

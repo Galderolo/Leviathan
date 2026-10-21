@@ -14,7 +14,9 @@ const req = http.request(
     headers: {
       'content-type': 'application/json',
       'content-length': Buffer.byteLength(body),
-      'x-leviathan-token': process.env.LEVIATHAN_ASKPASS_TOKEN || ''
+      'x-leviathan-token': process.env.LEVIATHAN_ASKPASS_TOKEN || '',
+      // "accounts" for background work: answer from stored accounts only, never show a window
+      'x-leviathan-mode': process.env.LEVIATHAN_ASKPASS_MODE || 'interactive'
     }
   },
   (res) => {

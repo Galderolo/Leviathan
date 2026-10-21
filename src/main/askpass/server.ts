@@ -17,8 +17,11 @@ export interface AskpassOptions {
   nodePath: string
 }
 
-/** Returns the answer, or null when the user cancels. */
-export type AskpassHandler = (prompt: string) => Promise<string | null>
+/**
+ * Returns the answer, or null when the user cancels. `interactive` is false for
+ * background work, where nothing may be shown to the user.
+ */
+export type AskpassHandler = (prompt: string, context: { interactive: boolean }) => Promise<string | null>
 
 const MAX_BODY = 64 * 1024
 
@@ -66,7 +69,8 @@ export function startAskpassServer(handler: AskpassHandler, opts: AskpassOptions
     }
     try {
       const { prompt } = JSON.parse(await readBody(req)) as { prompt?: unknown }
-      const answer = await handler(typeof prompt === 'string' ? prompt : '')
+      const interactive = req.headers['x-leviathan-mode'] !== 'accounts'
+      const answer = await handler(typeof prompt === 'string' ? prompt : '', { interactive })
       res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ answer }))
     } catch {
       res.writeHead(400).end()
