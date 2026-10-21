@@ -41,6 +41,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Search** commits by message, author or SHA.
 - **Live refresh** when files change on disk.
 - **Accounts**: add as many GitHub, GitLab, Gitea or other accounts as you like with a personal access token (stored encrypted). Each repository can use an account: commits get its name and private no-reply email, and push/pull use its token without asking. Clone straight from an account's repository list.
+- **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets and pulls — without ever losing uncommitted work.
 - **Dark and light themes**, or follow the system.
 - **English and Spanish** interface (more languages welcome!).
 - Uses **your installed Git**, so your config, credential helpers, SSH keys and hooks work as usual.
@@ -77,6 +78,7 @@ npm run dist     # build installers into dist/
 | `Ctrl+F`                  | Search commits (`Enter` for next) |
 | `↑` / `↓`, `PgUp` / `PgDn` | Move through the graph           |
 | `Ctrl+Enter`              | Commit                            |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo                       |
 | `Esc`                     | Close the diff                    |
 | `F5`                      | Refresh                           |
 | `F12`                     | Developer tools                   |
@@ -107,6 +109,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Arrastrar una rama sobre otra para hacer merge o rebase.
 - Repos privados: usuario/token HTTPS, passphrase SSH y huellas de host se piden en la app; gestión de claves SSH.
 - Varias cuentas (GitHub, GitLab, Gitea…) con token cifrado: cada repo usa la suya para el autor de los commits (email privado por defecto) y para push/pull sin contraseñas; clonar desde la lista de repos de la cuenta.
+- Deshacer / rehacer (Ctrl+Z / Ctrl+Mayús+Z) commits, checkouts, ramas, tags, merges, rebases, resets y pulls.
 - Fetch automático, tema claro y oscuro.
 - Ramas: crear, checkout con doble clic, renombrar, borrar, merge, rebase, push.
 - Cherry-pick, revert, reset, tags, stash, fetch/pull/push, clonar y crear repositorios.

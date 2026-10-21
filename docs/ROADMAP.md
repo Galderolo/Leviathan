@@ -25,7 +25,6 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 ## History editing
 
 - [ ] Interactive rebase (reorder, squash, reword, drop) with drag and drop
-- [ ] Undo / redo for the last operation (checkout, commit, reset...)
 - [ ] Edit the message of any commit (reword)
 
 ## Remotes and collaboration
