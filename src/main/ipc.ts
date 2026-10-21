@@ -12,6 +12,7 @@ import { answerAskpass } from './askpass'
 import * as repo from './git/repository'
 import { loadSettings, saveSettings } from './settings'
 import { isExecutableFile, openTerminal } from './shell'
+import { generateKey, listKeys } from './ssh'
 import { watchRepo, unwatchRepo } from './watcher'
 
 function broadcast(channel: string, payload: unknown): void {
@@ -105,6 +106,8 @@ const handlers: LeviathanInvokeApi = {
   },
   showInFolder: async (path) => shell.showItemInFolder(path),
   answerAskpass: async (id, value) => answerAskpass(id, value),
+  listSshKeys: () => listKeys(),
+  generateSshKey: (opts) => generateKey(opts),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')
     await shell.openExternal(url)

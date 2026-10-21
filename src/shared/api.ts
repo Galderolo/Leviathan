@@ -9,7 +9,8 @@ import type {
   RepoChangedEvent,
   RepoState,
   ResetMode,
-  Settings
+  Settings,
+  SshKey
 } from './types'
 
 /**
@@ -97,6 +98,9 @@ export interface LeviathanInvokeApi {
   // Authentication
   /** Answers a prompt received through `onAskpass`; null cancels it. */
   answerAskpass(id: string, value: string | null): Promise<void>
+  listSshKeys(): Promise<SshKey[]>
+  /** Creates an ed25519 key in ~/.ssh; refuses to overwrite. */
+  generateSshKey(opts: { email: string; passphrase: string; fileName: string }): Promise<SshKey>
 }
 
 /** Event subscriptions exposed next to the invoke methods. */
@@ -168,7 +172,9 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   openRepoFile: true,
   showInFolder: true,
   openExternal: true,
-  answerAskpass: true
+  answerAskpass: true,
+  listSshKeys: true,
+  generateSshKey: true
 }
 
 export const API_METHODS = Object.keys(METHODS) as (keyof LeviathanInvokeApi)[]

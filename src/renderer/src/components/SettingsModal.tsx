@@ -3,6 +3,7 @@ import { openExternal, saveSettings } from '../actions'
 import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import type { Settings } from '../../../shared/types'
+import { SshKeysSection } from './SshKeysSection'
 
 const REPO_URL = 'https://github.com/leviathan-git/leviathan'
 
@@ -32,7 +33,7 @@ export function SettingsModal() {
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <form
-        className="modal"
+        className="modal wide"
         onSubmit={(e) => {
           e.preventDefault()
           void save()
@@ -62,6 +63,7 @@ export function SettingsModal() {
             onChange={(e) => setLimit(e.target.value)}
           />
         </label>
+        <SshKeysSection />
         <div className="about">
           <div>
             Leviathan {versions.app} · git {versions.git}

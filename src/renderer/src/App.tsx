@@ -92,8 +92,8 @@ export function App() {
         (tab.path ? <RepoScreen key={tab.path} path={tab.path} /> : <WelcomeView key={tab.id} tabId={tab.id} />)}
       <StatusBar />
       <ContextMenu />
-      <Dialog />
       <SettingsModal />
+      <Dialog />
       <Toasts />
     </div>
   )

@@ -157,6 +157,16 @@ export const DEFAULT_SETTINGS: Settings = {
   cloneDir: ''
 }
 
+export interface SshKey {
+  /** Path of the `.pub` file. */
+  path: string
+  /** e.g. `ssh-ed25519` */
+  type: string
+  comment: string
+  /** The whole public key line, ready to paste into GitHub/GitLab. */
+  publicKey: string
+}
+
 /** A git/ssh prompt (username, password, passphrase, host key confirmation) forwarded to the UI. */
 export interface AskpassRequest {
   id: string

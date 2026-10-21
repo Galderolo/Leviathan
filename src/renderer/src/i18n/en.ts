@@ -198,6 +198,19 @@ const en = {
   'askpass.answer': 'Answer',
   'askpass.secret': 'Password, token or passphrase',
 
+  'ssh.title': 'SSH keys',
+  'ssh.none': 'No SSH keys found in your .ssh folder.',
+  'ssh.copy': 'Copy public key',
+  'ssh.generate': 'Generate new key',
+  'ssh.generateHint':
+    'Creates an ed25519 key in your .ssh folder and copies the public key, ready to paste into GitHub or GitLab.',
+  'ssh.email': 'Email (key comment)',
+  'ssh.fileName': 'File name',
+  'ssh.passphrase': 'Passphrase (optional)',
+  'ssh.created': 'SSH key created. Public key copied to the clipboard.',
+  'ssh.addGithub': 'Add to GitHub',
+  'ssh.addGitlab': 'Add to GitLab',
+
   'status.ready': 'Ready',
   'status.commits': '{count} commits loaded',
   'status.commits_one': '1 commit loaded',

@@ -202,6 +202,19 @@ const es: Record<keyof typeof en, string> = {
   'askpass.answer': 'Respuesta',
   'askpass.secret': 'Contraseña, token o passphrase',
 
+  'ssh.title': 'Claves SSH',
+  'ssh.none': 'No hay claves SSH en tu carpeta .ssh.',
+  'ssh.copy': 'Copiar clave pública',
+  'ssh.generate': 'Generar clave nueva',
+  'ssh.generateHint':
+    'Crea una clave ed25519 en tu carpeta .ssh y copia la clave pública para pegarla en GitHub o GitLab.',
+  'ssh.email': 'Email (comentario de la clave)',
+  'ssh.fileName': 'Nombre del archivo',
+  'ssh.passphrase': 'Passphrase (opcional)',
+  'ssh.created': 'Clave SSH creada. Clave pública copiada al portapapeles.',
+  'ssh.addGithub': 'Añadir en GitHub',
+  'ssh.addGitlab': 'Añadir en GitLab',
+
   'status.ready': 'Listo',
   'status.commits': '{count} commits cargados',
   'status.commits_one': '1 commit cargado',
