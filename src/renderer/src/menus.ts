@@ -1,0 +1,184 @@
+import type { FileChange, GitRef, Stash } from '../../shared/types'
+import {
+  applyStash,
+  checkoutCommit,
+  checkoutRef,
+  cherryPick,
+  createBranch,
+  createTag,
+  deleteBranch,
+  deleteRemoteBranch,
+  deleteTag,
+  discardAll,
+  discardFiles,
+  dropStash,
+  ignorePattern,
+  mergeRef,
+  openFile,
+  popStash,
+  push,
+  pushTag,
+  rebaseOnto,
+  removeRemote,
+  renameBranch,
+  resetTo,
+  revertCommit,
+  showFileInFolder,
+  stageFiles,
+  stashChanges,
+  unstageFiles
+} from './actions'
+import { t } from './i18n'
+import { getRepo, type MenuItem } from './store'
+import { copyText } from './ui'
+
+function current(path: string): { branch: string | null; head: string | null } {
+  const head = getRepo(path)?.state?.head
+  return { branch: head?.branch ?? null, head: head?.hash ?? null }
+}
+
+export function commitMenu(path: string, hash: string): MenuItem[] {
+  const { branch, head } = current(path)
+  const target = branch ?? 'HEAD'
+  const isHead = hash === head
+  return [
+    { label: t('menu.createBranchHere'), onClick: () => void createBranch(path, hash) },
+    { label: t('menu.createTagHere'), onClick: () => void createTag(path, hash) },
+    { label: t('menu.checkoutCommit'), disabled: isHead, onClick: () => void checkoutCommit(path, hash) },
+    { separator: true },
+    { label: t('menu.cherryPick'), disabled: isHead, onClick: () => void cherryPick(path, hash) },
+    { label: t('menu.revert'), onClick: () => void revertCommit(path, hash) },
+    { separator: true },
+    {
+      label: t('menu.resetSoft', { branch: target }),
+      disabled: isHead,
+      onClick: () => void resetTo(path, hash, 'soft')
+    },
+    {
+      label: t('menu.resetMixed', { branch: target }),
+      disabled: isHead,
+      onClick: () => void resetTo(path, hash, 'mixed')
+    },
+    { label: t('menu.resetHard', { branch: target }), danger: true, onClick: () => void resetTo(path, hash, 'hard') },
+    { separator: true },
+    { label: t('menu.copySha'), onClick: () => void copyText(hash, t('toast.copied')) }
+  ]
+}
+
+export function branchMenu(path: string, ref: GitRef): MenuItem[] {
+  const { branch } = current(path)
+  const items: MenuItem[] = []
+  if (ref.type === 'head') {
+    items.push({
+      label: t('menu.checkoutBranch', { name: ref.name }),
+      disabled: ref.isHead,
+      onClick: () => void checkoutRef(path, ref)
+    })
+  } else {
+    items.push({ label: t('menu.checkoutBranch', { name: ref.name }), onClick: () => void checkoutRef(path, ref) })
+  }
+  if (branch && !ref.isHead) {
+    items.push(
+      { separator: true },
+      { label: t('menu.merge', { name: ref.name, current: branch }), onClick: () => void mergeRef(path, ref.name) },
+      { label: t('menu.rebase', { name: ref.name, current: branch }), onClick: () => void rebaseOnto(path, ref.name) }
+    )
+  }
+  items.push({ separator: true })
+  if (ref.type === 'head') {
+    items.push(
+      { label: t('menu.pushBranch', { name: ref.name }), onClick: () => void push(path, { branch: ref.name }) },
+      { label: t('menu.rename', { name: ref.name }), onClick: () => void renameBranch(path, ref) },
+      {
+        label: t('menu.delete', { name: ref.name }),
+        danger: true,
+        disabled: ref.isHead,
+        onClick: () => void deleteBranch(path, ref)
+      }
+    )
+  } else {
+    items.push({
+      label: t('menu.deleteRemote', { name: ref.name }),
+      danger: true,
+      onClick: () => void deleteRemoteBranch(path, ref)
+    })
+  }
+  items.push(
+    { separator: true },
+    { label: t('menu.createBranchHere'), onClick: () => void createBranch(path, ref.hash) },
+    { label: t('menu.createTagHere'), onClick: () => void createTag(path, ref.hash) },
+    { label: t('menu.copyName'), onClick: () => void copyText(ref.name, t('toast.copied')) }
+  )
+  return items
+}
+
+export function tagMenu(path: string, ref: GitRef): MenuItem[] {
+  return [
+    { label: t('menu.checkoutBranch', { name: ref.name }), onClick: () => void checkoutRef(path, ref) },
+    { label: t('menu.pushTag', { name: ref.name }), onClick: () => void pushTag(path, ref.name) },
+    { separator: true },
+    { label: t('menu.deleteTag', { name: ref.name }), danger: true, onClick: () => void deleteTag(path, ref.name) },
+    { label: t('menu.copyName'), onClick: () => void copyText(ref.name, t('toast.copied')) }
+  ]
+}
+
+export function refMenu(path: string, ref: GitRef): MenuItem[] {
+  return ref.type === 'tag' ? tagMenu(path, ref) : branchMenu(path, ref)
+}
+
+export function stashMenu(path: string, stash: Stash): MenuItem[] {
+  return [
+    { label: t('menu.stashApply'), onClick: () => void applyStash(path, stash.index) },
+    { label: t('menu.stashPop'), onClick: () => void popStash(path, stash.index) },
+    { separator: true },
+    { label: t('menu.stashDrop'), danger: true, onClick: () => void dropStash(path, stash) }
+  ]
+}
+
+export function wipMenu(path: string): MenuItem[] {
+  return [
+    { label: t('menu.stashChanges'), onClick: () => void stashChanges(path) },
+    { label: t('menu.discardAll'), danger: true, onClick: () => void discardAll(path) }
+  ]
+}
+
+export function remoteMenu(path: string, name: string): MenuItem[] {
+  return [{ label: t('menu.removeRemote', { name }), danger: true, onClick: () => void removeRemote(path, name) }]
+}
+
+export function fileMenu(
+  path: string,
+  file: FileChange,
+  area: 'unstaged' | 'staged' | 'conflicted' | 'commit'
+): MenuItem[] {
+  const items: MenuItem[] = []
+  if (area === 'unstaged') {
+    items.push(
+      { label: t('wip.stage'), onClick: () => void stageFiles(path, [file]) },
+      { label: t('menu.discard'), danger: true, onClick: () => void discardFiles(path, [file]) },
+      { separator: true }
+    )
+    if (file.status === '?') {
+      const name = file.path.split('/').pop() ?? file.path
+      const ext = name.includes('.') ? name.split('.').pop() : null
+      items.push({
+        label: t('menu.ignore', { name: file.path }),
+        onClick: () => void ignorePattern(path, `/${file.path}`)
+      })
+      if (ext) items.push({ label: t('menu.ignoreExt', { ext }), onClick: () => void ignorePattern(path, `*.${ext}`) })
+      items.push({ separator: true })
+    }
+  } else if (area === 'staged') {
+    items.push({ label: t('wip.unstage'), onClick: () => void unstageFiles(path, [file]) }, { separator: true })
+  } else if (area === 'conflicted') {
+    items.push({ label: t('wip.markResolved'), onClick: () => void stageFiles(path, [file]) }, { separator: true })
+  }
+  if (area !== 'commit' || file.status !== 'D') {
+    items.push(
+      { label: t('menu.openFile'), onClick: () => openFile(path, file.path) },
+      { label: t('menu.showInFolder'), onClick: () => showFileInFolder(path, file.path) }
+    )
+  }
+  items.push({ label: t('menu.copyPath'), onClick: () => void copyText(file.path, t('toast.copied')) })
+  return items
+}

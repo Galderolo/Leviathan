@@ -1,0 +1,59 @@
+{
+  "name": "calamar",
+  "productName": "Calamar",
+  "version": "0.1.0",
+  "description": "Free and open source Git GUI with a visual commit graph. No ads, no accounts, no paywalls.",
+  "license": "MIT",
+  "author": "Calamar contributors",
+  "homepage": "https://github.com/calamar-git/calamar",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev --watch",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dist": "electron-vite build && electron-builder",
+    "dist:win": "electron-vite build && electron-builder --win",
+    "dist:mac": "electron-vite build && electron-builder --mac",
+    "dist:linux": "electron-vite build && electron-builder --linux",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "lucide-react": "^1.61.0",
+    "prettier": "^3.9.10",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5",
+    "zustand": "^5.0.15"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/calamar-git/calamar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/calamar-git/calamar/issues"
+  },
+  "keywords": [
+    "git",
+    "gui",
+    "git-client",
+    "electron",
+    "commit-graph",
+    "open-source"
+  ]
+}

@@ -1,0 +1,378 @@
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Archive, Check, Cloud, Laptop, Tag } from 'lucide-react'
+import {
+  buildGraphItems,
+  layoutItems,
+  WIP_HASH,
+  type GraphItem,
+  type GraphLine,
+  type GraphRow
+} from '../../../shared/graph'
+import { checkoutRef, loadMore, selectCommit, selectWip } from '../actions'
+import { useT } from '../i18n'
+import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
+import { useRepo, useStore } from '../store'
+import { openMenu } from '../ui'
+import {
+  cx,
+  formatDate,
+  groupRefs,
+  hashColor,
+  initials,
+  laneColor,
+  matchesFilter,
+  shortHash,
+  type RefLabel
+} from '../utils'
+import { Avatar } from './common'
+
+const ROW_H = 30
+const LANE_W = 18
+const PAD = 12
+const NODE_R = 9
+const MAX_LANES = 24
+const OVERSCAN = 12
+
+export function CommitGraph({ path }: { path: string }) {
+  const view = useRepo(path)
+  const lang = useStore((s) => s.lang)
+  const t = useT()
+
+  const state = view?.state ?? null
+  const commits = view?.commits
+  const stashes = state?.stashes
+  const headHash = state?.head.hash ?? null
+  const changeCount = state
+    ? state.status.staged.length + state.status.unstaged.length + state.status.conflicted.length
+    : 0
+  const hasChanges = changeCount > 0
+
+  const items = useMemo(
+    () => buildGraphItems(commits ?? [], stashes ?? [], headHash, hasChanges),
+    [commits, stashes, headHash, hasChanges]
+  )
+  const layout = useMemo(() => layoutItems(items), [items])
+  const refMap = useMemo(() => groupRefs(state?.refs ?? []), [state?.refs])
+  const lanes = Math.min(Math.max(layout.maxWidth, 1), MAX_LANES)
+  const graphWidth = Math.max(PAD * 2 + (lanes - 1) * LANE_W, 64)
+  const columns = `200px ${graphWidth}px minmax(160px, 1fr) 150px 150px 70px`
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [height, setHeight] = useState(600)
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setHeight(el.clientHeight))
+    ro.observe(el)
+    setHeight(el.clientHeight)
+    return () => ro.disconnect()
+  }, [])
+
+  const first = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN)
+  const last = Math.min(items.length, Math.ceil((scrollTop + height) / ROW_H) + OVERSCAN)
+
+  const selection = view?.selection ?? null
+  const selectedHash = selection ? (selection.kind === 'wip' ? WIP_HASH : selection.hash) : null
+  const selectedIndex = selectedHash ? items.findIndex((it) => it.hash === selectedHash) : -1
+
+  const ensureVisible = (index: number, center: boolean) => {
+    const el = scrollRef.current
+    if (!el || index < 0) return
+    const top = index * ROW_H
+    if (top < el.scrollTop || top + ROW_H > el.scrollTop + el.clientHeight) {
+      el.scrollTop = center
+        ? top - el.clientHeight / 2 + ROW_H / 2
+        : top < el.scrollTop
+          ? top
+          : top + ROW_H - el.clientHeight
+    }
+  }
+
+  // Scroll to the selection when asked (clicking a branch in the left panel, search...).
+  const scrollNonce = view?.scrollNonce ?? 0
+  useEffect(() => {
+    if (scrollNonce) ensureVisible(selectedIndex, true)
+  }, [scrollNonce, selectedIndex >= 0])
+
+  // Infinite scroll.
+  const requested = useRef(0)
+  useEffect(() => {
+    if (view?.hasMore && last >= items.length - 20 && requested.current !== items.length) {
+      requested.current = items.length
+      void loadMore(path)
+    }
+  }, [last, items.length, view?.hasMore, path])
+
+  const filter = view?.filter ?? ''
+
+  const selectItem = (item: GraphItem) => {
+    if (item.kind === 'wip') selectWip(path)
+    else void selectCommit(path, item.hash)
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!items.length) return
+    let next = -1
+    if (e.key === 'ArrowDown') next = Math.min(items.length - 1, selectedIndex + 1)
+    else if (e.key === 'ArrowUp') next = Math.max(0, selectedIndex - 1)
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = items.length - 1
+    else if (e.key === 'PageDown') next = Math.min(items.length - 1, selectedIndex + Math.floor(height / ROW_H))
+    else if (e.key === 'PageUp') next = Math.max(0, selectedIndex - Math.floor(height / ROW_H))
+    if (next === -1) return
+    e.preventDefault()
+    selectItem(items[next])
+    ensureVisible(next, false)
+  }
+
+  const onContext = (e: React.MouseEvent, item: GraphItem) => {
+    selectItem(item)
+    if (item.kind === 'wip') openMenu(e, wipMenu(path))
+    else if (item.kind === 'stash') openMenu(e, stashMenu(path, item.stash))
+    else openMenu(e, commitMenu(path, item.hash))
+  }
+
+  const rows = []
+  for (let i = first; i < last; i++) {
+    const item = items[i]
+    const row = layout.rows[i]
+    rows.push(
+      <GraphRowView
+        key={item.hash}
+        path={path}
+        item={item}
+        row={row}
+        index={i}
+        columns={columns}
+        graphWidth={graphWidth}
+        labels={refMap.get(item.hash)}
+        selected={i === selectedIndex}
+        dimmed={!!filter && item.kind === 'commit' && !matchesFilter(item.commit, filter)}
+        draft={item.kind === 'wip' ? (view?.draft.summary ?? '') : ''}
+        changeCount={item.kind === 'wip' ? changeCount : 0}
+        lang={lang}
+        wipLabel={t('graph.wip')}
+        onSelect={selectItem}
+        onContext={onContext}
+      />
+    )
+  }
+
+  return (
+    <div className="graph-view">
+      <div className="graph-header" style={{ gridTemplateColumns: columns }}>
+        <div>{t('graph.branchTag')}</div>
+        <div>{t('graph.graph')}</div>
+        <div>{t('graph.message')}</div>
+        <div>{t('graph.author')}</div>
+        <div>{t('graph.date')}</div>
+        <div>{t('graph.sha')}</div>
+      </div>
+      <div
+        className="graph-scroll"
+        ref={scrollRef}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      >
+        <div className="graph-canvas" style={{ height: items.length * ROW_H }}>
+          {rows}
+        </div>
+        {!items.length && (
+          <div className="empty-state">
+            {view?.loading ? t('graph.loading') : view?.error ? view.error : t('graph.empty')}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface RowProps {
+  path: string
+  item: GraphItem
+  row: GraphRow
+  index: number
+  columns: string
+  graphWidth: number
+  labels: RefLabel[] | undefined
+  selected: boolean
+  dimmed: boolean
+  draft: string
+  changeCount: number
+  lang: string
+  wipLabel: string
+  onSelect: (item: GraphItem) => void
+  onContext: (e: React.MouseEvent, item: GraphItem) => void
+}
+
+const GraphRowView = memo(function GraphRowView(props: RowProps) {
+  const { item, row, labels, selected, dimmed, path } = props
+  const color = laneColor(row.color)
+  const style = { top: props.index * ROW_H, gridTemplateColumns: props.columns, '--lane': color } as CSSProperties
+
+  let message: React.ReactNode
+  let author: React.ReactNode = null
+  let date = ''
+  let sha = ''
+  if (item.kind === 'wip') {
+    message = (
+      <>
+        <span className="wip-label">{props.wipLabel}</span>
+        {props.draft && <span className="wip-draft">{props.draft}</span>}
+        <span className="wip-count">{props.changeCount}</span>
+      </>
+    )
+  } else if (item.kind === 'stash') {
+    message = (
+      <>
+        <Archive size={13} className="stash-icon" />
+        <span>{item.stash.message}</span>
+      </>
+    )
+    date = formatDate(item.stash.date, props.lang)
+    sha = shortHash(item.hash)
+  } else {
+    const c = item.commit
+    message = <span>{c.subject}</span>
+    author = (
+      <>
+        <Avatar name={c.authorName} email={c.authorEmail} size={18} />
+        <span className="ellipsis">{c.authorName}</span>
+      </>
+    )
+    date = formatDate(c.authorDate, props.lang)
+    sha = shortHash(c.hash)
+  }
+
+  return (
+    <div
+      className={cx('graph-row', selected && 'selected', dimmed && 'dimmed', `row-${item.kind}`)}
+      style={style}
+      onMouseDown={(e) => e.button === 0 && props.onSelect(item)}
+      onContextMenu={(e) => props.onContext(e, item)}
+    >
+      <div className="cell refs-cell">{labels && <RefLabels path={path} labels={labels} color={color} />}</div>
+      <div className="cell graph-cell">
+        <GraphSvg row={row} item={item} width={props.graphWidth} connector={!!labels} />
+      </div>
+      <div className="cell msg-cell">{message}</div>
+      <div className="cell author-cell">{author}</div>
+      <div className="cell date-cell">{date}</div>
+      <div className="cell sha-cell">{sha}</div>
+    </div>
+  )
+})
+
+function RefLabels({ path, labels, color }: { path: string; labels: RefLabel[]; color: string }) {
+  const [first, ...rest] = labels
+  return (
+    <div className="ref-labels">
+      <RefPill path={path} label={first} color={color} />
+      {rest.length > 0 && (
+        <div className="ref-more">
+          <span className="ref-count">+{rest.length}</span>
+          <div className="ref-popover">
+            {labels.map((l) => (
+              <RefPill key={l.key} path={path} label={l} color={color} />
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="ref-connector" />
+    </div>
+  )
+}
+
+function RefPill({ path, label, color }: { path: string; label: RefLabel; color: string }) {
+  const primary = label.local ?? label.remotes[0] ?? label.tag!
+  const title = [label.local?.name, ...label.remotes.map((r) => r.name), label.tag?.name].filter(Boolean).join('\n')
+  return (
+    <span
+      className={cx('ref-pill', label.isHead && 'head', label.tag && 'tag')}
+      style={{ '--lane': color } as CSSProperties}
+      title={title}
+      onDoubleClick={(e) => {
+        e.stopPropagation()
+        void checkoutRef(path, primary)
+      }}
+      onContextMenu={(e) => openMenu(e, refMenu(path, primary))}
+    >
+      {label.isHead && <Check size={12} strokeWidth={3} />}
+      {label.local && <Laptop size={12} />}
+      {label.remotes.length > 0 && <Cloud size={12} />}
+      {label.tag && <Tag size={12} />}
+      <span className="ref-name">{label.name}</span>
+    </span>
+  )
+}
+
+function linePath(line: GraphLine, x: (col: number) => number): string {
+  const mid = ROW_H / 2
+  const x1 = x(line.from)
+  const x2 = x(line.to)
+  switch (line.kind) {
+    case 'full':
+      return `M ${x1} 0 V ${ROW_H}`
+    case 'top':
+      return x1 === x2 ? `M ${x1} 0 V ${mid}` : `M ${x1} 0 Q ${x1} ${mid} ${x2} ${mid}`
+    case 'bottom':
+      return x1 === x2 ? `M ${x1} ${mid} V ${ROW_H}` : `M ${x1} ${mid} Q ${x2} ${mid} ${x2} ${ROW_H}`
+  }
+}
+
+function GraphSvg({
+  row,
+  item,
+  width,
+  connector
+}: {
+  row: GraphRow
+  item: GraphItem
+  width: number
+  connector: boolean
+}) {
+  const x = (col: number) => PAD + col * LANE_W
+  const mid = ROW_H / 2
+  const cx = x(row.column)
+  const color = laneColor(row.color)
+
+  let node: React.ReactNode
+  if (item.kind === 'wip') {
+    node = <circle cx={cx} cy={mid} r={NODE_R - 1} className="node-wip" stroke={color} />
+  } else if (item.kind === 'stash') {
+    node = <rect x={cx - 7} y={mid - 7} width={14} height={14} rx={3} className="node-stash" stroke={color} />
+  } else if (item.commit.parents.length > 1) {
+    node = <circle cx={cx} cy={mid} r={5} fill={color} className="node-merge" />
+  } else {
+    const c = item.commit
+    node = (
+      <g>
+        <circle cx={cx} cy={mid} r={NODE_R} fill={color} />
+        <circle cx={cx} cy={mid} r={NODE_R - 2} fill={hashColor(c.authorEmail || c.authorName)} />
+        <text x={cx} y={mid} className="node-initials">
+          {initials(c.authorName)}
+        </text>
+      </g>
+    )
+  }
+
+  return (
+    <svg width={width} height={ROW_H} className="graph-svg">
+      {connector && <line x1={0} y1={mid} x2={cx} y2={mid} stroke={color} strokeWidth={1.5} />}
+      {row.lines.map((line, i) => (
+        <path
+          key={i}
+          d={linePath(line, x)}
+          stroke={laneColor(line.color)}
+          strokeWidth={2}
+          fill="none"
+          strokeDasharray={line.dashed ? '4 3' : undefined}
+        />
+      ))}
+      {node}
+    </svg>
+  )
+}
