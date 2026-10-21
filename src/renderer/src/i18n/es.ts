@@ -198,8 +198,7 @@ const es: Record<keyof typeof en, string> = {
   'toast.copied': 'Copiado al portapapeles',
   'toast.nothingToStash': 'No hay cambios para guardar en stash',
   'toast.noStashes': 'No hay stashes',
-  'toast.revealedExecutable':
-    'Este archivo podría ejecutar un programa, así que se muestra en su carpeta en lugar de abrirlo.',
+  'toast.revealedExecutable': 'Por seguridad, este archivo se muestra en su carpeta en lugar de abrirlo.',
 
   'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Leviathan.',
   'error.detachedPush': 'HEAD está desacoplado. Haz checkout de una rama antes del push.',

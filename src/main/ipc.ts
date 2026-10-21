@@ -1,4 +1,4 @@
-import { statSync } from 'node:fs'
+import { lstatSync, statSync } from 'node:fs'
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import {
   API_METHODS,
@@ -11,7 +11,7 @@ import {
 import { answerAskpass } from './askpass'
 import * as repo from './git/repository'
 import { loadSettings, saveSettings } from './settings'
-import { isExecutableFile, openTerminal } from './shell'
+import { openAction, openTerminal } from './shell'
 import { generateKey, listKeys } from './ssh'
 import { watchRepo, unwatchRepo } from './watcher'
 
@@ -96,7 +96,12 @@ const handlers: LeviathanInvokeApi = {
   },
   openRepoFile: async (repoPath, file) => {
     const full = repo.insideRepo(repoPath, file)
-    if (isExecutableFile(full)) {
+    const stat = lstatSync(full)
+    const action = openAction(full, {
+      symlink: stat.isSymbolicLink(),
+      executable: process.platform !== 'win32' && (stat.mode & 0o111) !== 0
+    })
+    if (action === 'reveal') {
       shell.showItemInFolder(full)
       return 'revealed'
     }

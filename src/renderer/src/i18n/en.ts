@@ -195,7 +195,7 @@ const en = {
   'toast.copied': 'Copied to clipboard',
   'toast.nothingToStash': 'There are no changes to stash',
   'toast.noStashes': 'There are no stashes to pop',
-  'toast.revealedExecutable': 'This file could run a program, so it is shown in its folder instead of being opened.',
+  'toast.revealedExecutable': 'For safety this file is shown in its folder instead of being opened.',
 
   'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Leviathan.',
   'error.detachedPush': 'HEAD is detached. Check out a branch before pushing.',
