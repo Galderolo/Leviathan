@@ -58,6 +58,18 @@ describe('AccountStore', () => {
     expect(store.token(account.id)).toBeNull()
   })
 
+  it('treats a token that can no longer be decrypted as missing', () => {
+    const account = new AccountStore(file, fakeCipher).add(input, TOKEN)
+    const broken = new AccountStore(file, {
+      ...fakeCipher,
+      decrypt: () => {
+        throw new Error('keyring changed')
+      }
+    })
+    expect(broken.token(account.id)).toBeNull()
+    expect(broken.list()).toHaveLength(1)
+  })
+
   it('refuses to store tokens without secure storage', () => {
     const store = new AccountStore(file, { ...fakeCipher, available: () => false })
     expect(() => store.add(input, TOKEN)).toThrow(/Secure storage is not available/)

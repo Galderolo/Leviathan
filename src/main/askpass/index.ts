@@ -23,7 +23,12 @@ export function setAccountSource(source: () => AccountCredentials[]): void {
  * the app window and waits for the user's answer (null = cancelled).
  */
 function ask(prompt: string): Promise<string | null> {
-  const automatic = answerFromAccounts(prompt, accountSource())
+  let automatic: string | null = null
+  try {
+    automatic = answerFromAccounts(prompt, accountSource())
+  } catch {
+    // a broken account store must never block the prompt itself
+  }
   if (automatic !== null) return Promise.resolve(automatic)
   const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
   if (!win || win.isDestroyed()) return Promise.resolve(null)

@@ -38,9 +38,15 @@ export class AccountStore {
     return found && publicPart(found)
   }
 
+  /** null when the account is unknown or its token can no longer be decrypted (e.g. a restored profile). */
   token(id: string): string | null {
     const found = this.accounts.find((a) => a.id === id)
-    return found ? this.cipher.decrypt(Buffer.from(found.token, 'base64')) : null
+    if (!found) return null
+    try {
+      return this.cipher.decrypt(Buffer.from(found.token, 'base64'))
+    } catch {
+      return null
+    }
   }
 
   add(account: Omit<Account, 'id'>, token: string): Account {
