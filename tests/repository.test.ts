@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { git } from '../src/main/git/runner'
@@ -279,6 +280,16 @@ describe('repository', () => {
     expect(state.head.hash).toBe(commits[1].hash)
     await repo.deleteTag(dir, 'v1.0')
     expect((await repo.getState(dir)).refs.some((r) => r.type === 'tag')).toBe(false)
+  })
+
+  it('passes extra git arguments to clone (used for account credentials)', async () => {
+    const remoteDir = join(dir, '..', 'remote.git')
+    await git(['init', '-q', '--bare', '--initial-branch=main', remoteDir], { cwd: join(dir, '..') })
+    const url = pathToFileURL(remoteDir).href
+    await expect(
+      repo.cloneRepo(url, join(dir, '..', 'blocked'), () => {}, ['-c', 'protocol.file.allow=never'])
+    ).rejects.toThrow()
+    await expect(repo.cloneRepo(url, join(dir, '..', 'allowed'), () => {}, [])).resolves.toContain('allowed')
   })
 
   it('publishes a new branch to the chosen remote', async () => {

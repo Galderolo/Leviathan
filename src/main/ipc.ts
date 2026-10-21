@@ -8,6 +8,7 @@ import {
   type LeviathanInvokeApi,
   type IpcResult
 } from '../shared/api'
+import * as accounts from './accounts'
 import { answerAskpass } from './askpass'
 import * as repo from './git/repository'
 import { loadSettings, saveSettings } from './settings'
@@ -39,7 +40,11 @@ const handlers: LeviathanInvokeApi = {
 
   openRepo: (path) => repo.openRepo(path),
   initRepo: (path, branch) => repo.initRepo(path, branch),
-  cloneRepo: (url, dest) => repo.cloneRepo(url, dest, progress(dest)),
+  cloneRepo: async (url, dest, accountId) => {
+    const path = await repo.cloneRepo(url, dest, progress(dest), accountId ? accounts.cloneArgsFor(accountId) : [])
+    if (accountId) await accounts.setRepoAccount(path, accountId)
+    return path
+  },
   watchRepo: async (path) => watchRepo(path, (e) => broadcast(IPC_REPO_CHANGED, e)),
   unwatchRepo: async (path) => unwatchRepo(path),
 
@@ -112,6 +117,13 @@ const handlers: LeviathanInvokeApi = {
   showInFolder: async (path) => shell.showItemInFolder(path),
   answerAskpass: async (id, value) => answerAskpass(id, value),
   listSshKeys: () => listKeys(),
+  listAccounts: async () => accounts.listAccounts(),
+  addAccount: (input) => accounts.addAccount(input),
+  updateAccount: (id, patch) => accounts.updateAccount(id, patch),
+  removeAccount: async (id) => accounts.removeAccount(id),
+  listAccountRepos: (id) => accounts.listAccountRepos(id),
+  getRepoAccount: async (path) => accounts.getRepoAccount(path),
+  setRepoAccount: (path, id) => accounts.setRepoAccount(path, id),
   generateSshKey: (opts) => generateKey(opts),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')

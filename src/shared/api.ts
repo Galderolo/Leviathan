@@ -1,11 +1,14 @@
 import type {
+  Account,
   AskpassRequest,
   Commit,
   CommitDetails,
   DiffSource,
   FileDiff,
   ProgressEvent,
+  Provider,
   PullMode,
+  RemoteRepo,
   RepoChangedEvent,
   RepoState,
   ResetMode,
@@ -28,7 +31,8 @@ export interface LeviathanInvokeApi {
   // Repository lifecycle
   openRepo(path: string): Promise<string>
   initRepo(path: string, branch: string): Promise<string>
-  cloneRepo(url: string, dest: string): Promise<string>
+  /** With `accountId`, clones with that account and binds the new repository to it. */
+  cloneRepo(url: string, dest: string, accountId?: string | null): Promise<string>
   watchRepo(repo: string): Promise<void>
   unwatchRepo(repo: string): Promise<void>
 
@@ -100,6 +104,22 @@ export interface LeviathanInvokeApi {
   /** Answers a prompt received through `onAskpass`; null cancels it. */
   answerAskpass(id: string, value: string | null): Promise<void>
   listSshKeys(): Promise<SshKey[]>
+
+  // Accounts (tokens never leave the main process)
+  listAccounts(): Promise<Account[]>
+  addAccount(input: {
+    provider: Provider
+    host: string
+    token: string
+    username?: string
+    name?: string
+    email?: string
+  }): Promise<Account>
+  updateAccount(id: string, patch: { name?: string; email?: string }): Promise<Account>
+  removeAccount(id: string): Promise<void>
+  listAccountRepos(id: string): Promise<RemoteRepo[]>
+  getRepoAccount(repo: string): Promise<string | null>
+  setRepoAccount(repo: string, accountId: string | null): Promise<void>
   /** Creates an ed25519 key in ~/.ssh; refuses to overwrite. */
   generateSshKey(opts: { email: string; passphrase: string; fileName: string }): Promise<SshKey>
 }
@@ -175,6 +195,13 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   openExternal: true,
   answerAskpass: true,
   listSshKeys: true,
+  listAccounts: true,
+  addAccount: true,
+  updateAccount: true,
+  removeAccount: true,
+  listAccountRepos: true,
+  getRepoAccount: true,
+  setRepoAccount: true,
   generateSshKey: true
 }
 

@@ -89,7 +89,13 @@ export async function initRepo(path: string, branch: string): Promise<string> {
   return openRepo(path)
 }
 
-export async function cloneRepo(url: string, dest: string, onProgress: ProgressFn): Promise<string> {
+/** `extraArgs` (e.g. account credentials as `-c` options) go before the `clone` subcommand. */
+export async function cloneRepo(
+  url: string,
+  dest: string,
+  onProgress: ProgressFn,
+  extraArgs: string[] = []
+): Promise<string> {
   assertSafeArg(url.trim(), 'URL')
   if (!isAbsolute(dest)) throw new Error('Destination must be an absolute path')
   if (existsSync(dest) && (await fs.readdir(dest)).length > 0) {
@@ -97,7 +103,7 @@ export async function cloneRepo(url: string, dest: string, onProgress: ProgressF
   }
   const parent = dirname(dest)
   await fs.mkdir(parent, { recursive: true })
-  await git(['clone', '--progress', '--', url.trim(), dest], { cwd: parent, onProgress })
+  await git([...extraArgs, 'clone', '--progress', '--', url.trim(), dest], { cwd: parent, onProgress })
   return openRepo(dest)
 }
 
