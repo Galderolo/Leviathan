@@ -506,11 +506,15 @@ export async function push(
 
   const upstreamRemote = await configValue(repo, `branch.${branch}.remote`)
   const upstreamMerge = await configValue(repo, `branch.${branch}.merge`)
-  if (upstreamRemote && upstreamMerge && !opts.remote) {
-    args.push(upstreamRemote, `refs/heads/${branch}:${upstreamMerge}`)
+  // Only reuse the upstream when it has the same name: a branch created from
+  // origin/main tracks main, and pushing there would overwrite someone else's branch.
+  const sameName = upstreamMerge === `refs/heads/${branch}`
+  if (upstreamRemote && sameName && !opts.remote) {
+    args.push(upstreamRemote, `refs/heads/${branch}:refs/heads/${branch}`)
   } else {
     const remotes = parseRemotes(await run(repo, ['remote', '-v'])).map((r) => r.name)
-    const remote = opts.remote ?? (remotes.includes('origin') ? 'origin' : remotes[0])
+    const preferred = upstreamRemote && remotes.includes(upstreamRemote) ? upstreamRemote : null
+    const remote = opts.remote ?? preferred ?? (remotes.includes('origin') ? 'origin' : remotes[0])
     if (!remote) throw new Error('This repository has no remotes. Add one first.')
     assertSafeArg(remote, 'remote')
     args.push('--set-upstream', remote, `refs/heads/${branch}:refs/heads/${branch}`)

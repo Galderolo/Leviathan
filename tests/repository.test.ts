@@ -201,6 +201,24 @@ describe('repository', () => {
     expect((await repo.getState(dir)).refs.some((r) => r.type === 'tag')).toBe(false)
   })
 
+  it('never pushes a branch onto a differently named upstream', async () => {
+    const remoteDir = join(dir, '..', 'remote.git')
+    await git(['init', '-q', '--bare', '--initial-branch=main', remoteDir], { cwd: join(dir, '..') })
+    await commitFile('a.txt', 'a\n', 'base')
+    await repo.addRemote(dir, 'origin', remoteDir)
+    await repo.push(dir, { force: false }, () => {})
+    const mainBefore = (await git(['rev-parse', 'main'], { cwd: remoteDir })).stdout.trim()
+
+    // Starting a branch from origin/main makes origin/main its upstream.
+    await git(['checkout', '-q', '-b', 'feature', 'origin/main'], { cwd: dir })
+    await commitFile('b.txt', 'b\n', 'feature work')
+    await repo.push(dir, { force: false }, () => {})
+
+    expect((await git(['rev-parse', 'main'], { cwd: remoteDir })).stdout.trim()).toBe(mainBefore)
+    const feature = await git(['rev-parse', '--verify', 'refs/heads/feature'], { cwd: remoteDir, okCodes: [0, 128] })
+    expect(feature.exitCode).toBe(0)
+  })
+
   it('pushes to and pulls from a remote', async () => {
     const remoteDir = join(dir, '..', 'remote.git')
     await git(['init', '-q', '--bare', '--initial-branch=main', remoteDir], { cwd: join(dir, '..') })
