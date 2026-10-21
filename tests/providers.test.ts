@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { apiBase, credentialArgs, noreplyEmail, tokenPageUrl, withoutAccount } from '../src/shared/providers'
+import {
+  apiBase,
+  credentialArgs,
+  hasRemoteOnHost,
+  noreplyEmail,
+  tokenPageUrl,
+  withoutAccount
+} from '../src/shared/providers'
 
 describe('provider helpers', () => {
   it('builds API base URLs, including self-hosted instances', () => {
@@ -30,10 +37,10 @@ describe('provider helpers', () => {
     expect(tokenPageUrl('other', 'h')).toBeNull()
   })
 
-  it('disables other credential helpers and pins the username for a bound repository', () => {
+  it('disables other credential helpers for the account host and pins the username', () => {
     expect(credentialArgs({ host: 'github.com', username: 'ana' })).toEqual([
       '-c',
-      'credential.helper=',
+      'credential.https://github.com.helper=',
       '-c',
       'credential.https://github.com.username=ana'
     ])
@@ -41,5 +48,18 @@ describe('provider helpers', () => {
 
   it('drops every binding to a removed account', () => {
     expect(withoutAccount({ a: '1', b: '2', c: '1' }, '1')).toEqual({ b: '2' })
+  })
+})
+
+describe('hasRemoteOnHost', () => {
+  const remote = (url: string) => ({ name: 'origin', fetchUrl: url, pushUrl: url })
+  it('matches HTTPS and SSH remotes on the host, ignoring case', () => {
+    expect(hasRemoteOnHost([remote('https://GitHub.com/ana/app.git')], 'github.com')).toBe(true)
+    expect(hasRemoteOnHost([remote('git@github.com:ana/app.git')], 'github.com')).toBe(true)
+  })
+  it('does not match other hosts or hosts that only share a suffix', () => {
+    expect(hasRemoteOnHost([remote('https://gitlab.com/ana/app.git')], 'github.com')).toBe(false)
+    expect(hasRemoteOnHost([remote('https://notgithub.com/ana/app.git')], 'github.com')).toBe(false)
+    expect(hasRemoteOnHost([], 'github.com')).toBe(false)
   })
 })

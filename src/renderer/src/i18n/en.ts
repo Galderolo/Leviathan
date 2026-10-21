@@ -249,6 +249,8 @@ const en = {
   'menu.repoAccount': 'Account for this repository…',
   'dlg.repoAccount': 'Account for {repo}',
   'dlg.repoAccountHint': 'Commits will use the account name and email, and push/pull will use its token.',
+  'toast.accountHostMismatch':
+    'No remote of this repository is on {host}, so the account is only used for the commit name and email.',
   'toast.repoAccountSet': 'This repository now uses {name}',
   'clone.account': 'Account',
   'clone.filterRepos': 'Filter repositories',

@@ -68,11 +68,11 @@ describe('repositories bound to an account', () => {
     const emptyConfig = join(dir, 'empty.gitconfig')
     writeFileSync(emptyConfig, '')
     const isolated = { GIT_CONFIG_GLOBAL: emptyConfig, GIT_CONFIG_NOSYSTEM: '1', GCM_INTERACTIVE: 'never' }
-    const fill = () =>
+    const fill = (host = 'example.com') =>
       git(['credential', 'fill'], {
         cwd: dir,
         env: { ...bridge!.env, ...isolated },
-        input: 'protocol=https\nhost=example.com\n\n'
+        input: `protocol=https\nhost=${host}\n\n`
       })
 
     expect((await fill()).stdout).toContain('password=WRONG')
@@ -81,5 +81,7 @@ describe('repositories bound to an account', () => {
     const { stdout } = await fill()
     expect(stdout).toContain('username=ana')
     expect(stdout).toContain('password=T0K')
+    // Other hosts (other remotes, submodules) keep their own credential helpers.
+    expect((await fill('unrelated.net')).stdout).toContain('password=WRONG')
   })
 })

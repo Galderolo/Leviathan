@@ -11,6 +11,7 @@ import type {
   Stash
 } from '../../shared/types'
 import { buildPartialPatch } from '../../shared/patch'
+import { hasRemoteOnHost } from '../../shared/providers'
 import { isFetchDue } from './autofetch'
 import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
@@ -229,6 +230,9 @@ export async function chooseRepoAccount(path: string): Promise<void> {
     const account = accounts.find((a) => a.id === id) ?? null
     patchRepo(path, { account })
     if (account) toast('success', t('toast.repoAccountSet', { name: `${account.username}@${account.host}` }))
+    if (account && !hasRemoteOnHost(getRepo(path)?.state?.remotes ?? [], account.host)) {
+      toast('info', t('toast.accountHostMismatch', { host: account.host }))
+    }
   } catch (err) {
     toast('error', errorMessage(err))
   }

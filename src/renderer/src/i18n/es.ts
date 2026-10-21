@@ -252,6 +252,8 @@ const es: Record<keyof typeof en, string> = {
   'menu.repoAccount': 'Cuenta de este repositorio…',
   'dlg.repoAccount': 'Cuenta para {repo}',
   'dlg.repoAccountHint': 'Los commits usarán el nombre y email de la cuenta, y push/pull usarán su token.',
+  'toast.accountHostMismatch':
+    'Ningún remoto de este repositorio está en {host}, así que la cuenta solo se usa para el nombre y email de los commits.',
   'toast.repoAccountSet': 'Este repositorio usa ahora {name}',
   'clone.account': 'Cuenta',
   'clone.filterRepos': 'Filtrar repositorios',
