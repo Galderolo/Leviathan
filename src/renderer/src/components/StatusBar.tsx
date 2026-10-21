@@ -21,10 +21,17 @@ export function StatusBar() {
             {view?.progress && <span className="dim ellipsis">{view.progress}</span>}
           </>
         ) : view ? (
-          <span className="dim">
-            {t('status.commits', { count: commits })}
-            {view.hasMore ? '+' : ''}
-          </span>
+          <>
+            <span className="dim">
+              {t('status.commits', { count: commits })}
+              {view.hasMore ? '+' : ''}
+            </span>
+            {view.lastFetchError && (
+              <span className="status-warning" title={view.lastFetchError}>
+                {t('status.fetchFailed')}
+              </span>
+            )}
+          </>
         ) : (
           <span className="dim">{t('status.ready')}</span>
         )}

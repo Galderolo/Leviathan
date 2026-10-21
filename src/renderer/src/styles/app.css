@@ -1860,6 +1860,11 @@ a:hover {
   min-width: 0;
 }
 
+.status-warning {
+  color: var(--yellow);
+  cursor: help;
+}
+
 .spinner {
   display: inline-block;
   flex-shrink: 0;

@@ -76,7 +76,8 @@ export interface LeviathanInvokeApi {
   stashDrop(repo: string, index: number, hash: string): Promise<void>
 
   // Remotes
-  fetch(repo: string): Promise<void>
+  /** `background` fetches never prompt for credentials. */
+  fetch(repo: string, background?: boolean): Promise<void>
   pull(repo: string, mode: PullMode): Promise<void>
   push(repo: string, opts: { force: boolean; branch?: string; remote?: string }): Promise<void>
   pushTag(repo: string, remote: string, tag: string): Promise<void>

@@ -212,6 +212,7 @@ const en = {
   'ssh.addGitlab': 'Add to GitLab',
 
   'status.ready': 'Ready',
+  'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',
   'status.commits_one': '1 commit loaded',
 
@@ -222,6 +223,10 @@ const en = {
   'settings.themeDark': 'Dark',
   'settings.themeLight': 'Light',
   'settings.auto': 'Automatic (system)',
+  'settings.autoFetch': 'Fetch remotes automatically',
+  'settings.autoFetchOff': 'Never',
+  'settings.autoFetchEvery': 'Every {count} minutes',
+  'settings.autoFetchEvery_one': 'Every minute',
   'settings.commitLimit': 'Commits loaded at a time',
   'settings.license': 'Free software under the MIT license. Contributions are welcome!'
 }

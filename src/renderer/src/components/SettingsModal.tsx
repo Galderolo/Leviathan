@@ -15,12 +15,14 @@ export function SettingsModal() {
   const [language, setLanguage] = useState<Settings['language']>(settings.language)
   const [limit, setLimit] = useState(String(settings.commitLimit))
   const [theme, setTheme] = useState<ThemeSetting>(settings.theme)
+  const [autoFetch, setAutoFetch] = useState(String(settings.autoFetchMinutes))
 
   useEffect(() => {
     if (open) {
       setLanguage(settings.language)
       setLimit(String(settings.commitLimit))
       setTheme(settings.theme)
+      setAutoFetch(String(settings.autoFetchMinutes))
     }
   }, [open, settings])
 
@@ -28,7 +30,7 @@ export function SettingsModal() {
   const close = () => useStore.setState({ settingsOpen: false })
   const save = async () => {
     const commitLimit = Math.max(100, Math.min(50000, Number(limit) || settings.commitLimit))
-    await saveSettings({ language, commitLimit, theme })
+    await saveSettings({ language, commitLimit, theme, autoFetchMinutes: Number(autoFetch) })
     close()
   }
 
@@ -72,6 +74,16 @@ export function SettingsModal() {
             value={limit}
             onChange={(e) => setLimit(e.target.value)}
           />
+        </label>
+        <label className="field">
+          <span>{t('settings.autoFetch')}</span>
+          <select value={autoFetch} onChange={(e) => setAutoFetch(e.target.value)}>
+            {[0, 1, 5, 10, 30].map((m) => (
+              <option key={m} value={String(m)}>
+                {m === 0 ? t('settings.autoFetchOff') : t('settings.autoFetchEvery', { count: m })}
+              </option>
+            ))}
+          </select>
         </label>
         <SshKeysSection />
         <div className="about">

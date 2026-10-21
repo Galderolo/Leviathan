@@ -52,6 +52,18 @@ const BASE_ENV: Record<string, string> = {
   GIT_EDITOR: 'true'
 }
 
+/**
+ * For background work (auto-fetch): never ask the user anything. Empty askpass
+ * variables disable the in-app bridge, and Git Credential Manager stays silent.
+ */
+export const NON_INTERACTIVE_ENV: Record<string, string> = {
+  GIT_ASKPASS: '',
+  SSH_ASKPASS: '',
+  SSH_ASKPASS_REQUIRE: 'never',
+  GCM_INTERACTIVE: 'never',
+  GIT_TERMINAL_PROMPT: '0'
+}
+
 let appEnv: Record<string, string> = {}
 
 /** Extra variables for every git invocation (e.g. the askpass bridge). */

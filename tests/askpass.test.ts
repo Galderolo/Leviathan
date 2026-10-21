@@ -2,7 +2,7 @@ import { request } from 'node:http'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { startAskpassServer, type AskpassBridge } from '../src/main/askpass/server'
-import { git } from '../src/main/git/runner'
+import { NON_INTERACTIVE_ENV, git } from '../src/main/git/runner'
 
 const SCRIPT_DIR = join(__dirname, '..', 'resources', 'askpass')
 let bridge: AskpassBridge | null = null
@@ -41,6 +41,19 @@ describe('askpass bridge', () => {
   it('fails the prompt when the user cancels', async () => {
     bridge = await startAskpassServer(async () => null, { scriptDir: SCRIPT_DIR, nodePath: process.execPath })
     await expect(credentialFill(bridge.env)).rejects.toThrow()
+  })
+
+  it('never prompts during background operations', async () => {
+    const prompts: string[] = []
+    bridge = await startAskpassServer(
+      async (prompt) => {
+        prompts.push(prompt)
+        return 'x'
+      },
+      { scriptDir: SCRIPT_DIR, nodePath: process.execPath }
+    )
+    await expect(credentialFill({ ...bridge.env, ...NON_INTERACTIVE_ENV })).rejects.toThrow()
+    expect(prompts).toEqual([])
   })
 
   it('rejects requests without the token', async () => {

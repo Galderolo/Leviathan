@@ -40,6 +40,9 @@ export interface RepoView {
   scrollNonce: number
   /** A hunk patch is being applied; the diff on screen is about to change. */
   applying: boolean
+  lastFetchAt: number | null
+  /** Error of the last background fetch, shown in the status bar. */
+  lastFetchError: string | null
 }
 
 export interface Tab {
@@ -136,7 +139,9 @@ export function newRepoView(path: string, limit: number): RepoView {
     filter: '',
     draft: { summary: '', body: '', amend: false },
     scrollNonce: 0,
-    applying: false
+    applying: false,
+    lastFetchAt: null,
+    lastFetchError: null
   }
 }
 

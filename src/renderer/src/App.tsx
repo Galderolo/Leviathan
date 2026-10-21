@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  autoFetchTick,
   closeDiff,
   closeTab,
   cycleTab,
@@ -46,6 +47,8 @@ export function App() {
     })
     const offProgress = api.onProgress((e) => handleProgress(e.repo, e.line))
     const offAskpass = api.onAskpass((e) => void handleAskpass(e))
+    const fetchTimer = window.setInterval(autoFetchTick, 30_000)
+    const firstFetch = window.setTimeout(autoFetchTick, 5_000)
     const onFocus = () => {
       const s = useStore.getState()
       const active = s.tabs.find((x) => x.id === s.activeTab)
@@ -56,6 +59,8 @@ export function App() {
       offChanged()
       offProgress()
       offAskpass()
+      window.clearInterval(fetchTimer)
+      window.clearTimeout(firstFetch)
       window.removeEventListener('focus', onFocus)
     }
   }, [])

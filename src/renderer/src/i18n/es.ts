@@ -216,6 +216,7 @@ const es: Record<keyof typeof en, string> = {
   'ssh.addGitlab': 'Añadir en GitLab',
 
   'status.ready': 'Listo',
+  'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',
   'status.commits_one': '1 commit cargado',
 
@@ -226,6 +227,10 @@ const es: Record<keyof typeof en, string> = {
   'settings.themeDark': 'Oscuro',
   'settings.themeLight': 'Claro',
   'settings.auto': 'Automático (sistema)',
+  'settings.autoFetch': 'Hacer fetch automático de los remotos',
+  'settings.autoFetchOff': 'Nunca',
+  'settings.autoFetchEvery': 'Cada {count} minutos',
+  'settings.autoFetchEvery_one': 'Cada minuto',
   'settings.commitLimit': 'Commits cargados cada vez',
   'settings.license': 'Software libre bajo licencia MIT. ¡Las contribuciones son bienvenidas!'
 }

@@ -144,6 +144,8 @@ export interface Settings {
   rightPanelWidth: number
   /** Last parent folder used for cloning. */
   cloneDir: string
+  /** Background fetch interval in minutes; 0 disables it. */
+  autoFetchMinutes: number
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
 }
 
@@ -157,7 +159,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   leftPanelWidth: 240,
   rightPanelWidth: 360,
-  cloneDir: ''
+  cloneDir: '',
+  autoFetchMinutes: 10
 }
 
 export interface SshKey {

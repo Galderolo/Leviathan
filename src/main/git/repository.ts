@@ -24,7 +24,7 @@ import type {
   RepoState,
   ResetMode
 } from '../../shared/types'
-import { GitError, git } from './runner'
+import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
 
 export type ProgressFn = (line: string) => void
 
@@ -491,8 +491,13 @@ export async function stashDrop(repo: string, index: number, hash: string): Prom
 // ---------------------------------------------------------------------------
 // Remotes
 
-export async function fetchAll(repo: string, onProgress: ProgressFn): Promise<void> {
-  await git(['fetch', '--all', '--prune', '--progress'], { cwd: repo, onProgress })
+/** `background`: never prompt for credentials (auto-fetch); fail instead. */
+export async function fetchAll(repo: string, onProgress: ProgressFn, background = false): Promise<void> {
+  await git(['fetch', '--all', '--prune', '--progress'], {
+    cwd: repo,
+    onProgress,
+    env: background ? NON_INTERACTIVE_ENV : undefined
+  })
 }
 
 export async function pull(repo: string, mode: PullMode, onProgress: ProgressFn): Promise<void> {

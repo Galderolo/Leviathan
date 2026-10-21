@@ -10,6 +10,7 @@ import type {
   Settings,
   Stash
 } from '../../shared/types'
+import { isFetchDue } from './autofetch'
 import { resolveLang, t } from './i18n'
 import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView, type Tab } from './store'
 import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
@@ -390,8 +391,34 @@ function defaultRemote(path: string): string | null {
   return remotes.find((r) => r.name === 'origin')?.name ?? remotes[0]?.name ?? null
 }
 
-export function fetchAll(path: string): Promise<boolean> {
-  return runOp(path, () => api.fetch(path), { busy: 'fetch', success: t('toast.fetched') })
+export async function fetchAll(path: string): Promise<boolean> {
+  const ok = await runOp(path, () => api.fetch(path), { busy: 'fetch', success: t('toast.fetched') })
+  if (ok) patchRepo(path, { lastFetchAt: Date.now(), lastFetchError: null })
+  return ok
+}
+
+/** Quiet fetch used by auto-fetch: no prompts, no toasts; errors go to the status bar. */
+export async function fetchInBackground(path: string): Promise<void> {
+  const view = getRepo(path)
+  if (!view?.state?.remotes.length || view.busy) return
+  patchRepo(path, { lastFetchAt: Date.now() })
+  try {
+    await api.fetch(path, true)
+    patchRepo(path, { lastFetchError: null })
+    await refreshRepo(path)
+  } catch (err) {
+    patchRepo(path, { lastFetchError: errorMessage(err) })
+  }
+}
+
+/** Runs due background fetches for every open repository. */
+export function autoFetchTick(): void {
+  const { tabs, repos, settings } = useStore.getState()
+  const now = Date.now()
+  for (const tab of tabs) {
+    const view = tab.path ? repos[tab.path] : undefined
+    if (view && isFetchDue(view.lastFetchAt, now, settings.autoFetchMinutes)) void fetchInBackground(view.path)
+  }
 }
 
 export async function pull(path: string, mode?: PullMode): Promise<boolean> {
