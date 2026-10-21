@@ -129,6 +129,7 @@ export type DiffSource =
   | { kind: 'commit'; hash: string; parent: string | null; path: string; oldPath?: string }
 
 export type PullMode = 'ff' | 'ff-only' | 'rebase'
+export type ThemeSetting = 'dark' | 'light' | 'system'
 export type ResetMode = 'soft' | 'mixed' | 'hard'
 
 export interface Settings {
@@ -138,6 +139,7 @@ export interface Settings {
   pullMode: PullMode
   commitLimit: number
   language: 'auto' | 'en' | 'es'
+  theme: ThemeSetting
   leftPanelWidth: number
   rightPanelWidth: number
   /** Last parent folder used for cloning. */
@@ -152,6 +154,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pullMode: 'ff',
   commitLimit: 2000,
   language: 'auto',
+  theme: 'system',
   leftPanelWidth: 240,
   rightPanelWidth: 360,
   cloneDir: ''

@@ -17,7 +17,52 @@
   --orange: #f2884b;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
   --mono: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+  --scroll-thumb: #3d434e;
+  --scroll-thumb-hover: #4b5260;
+  --tab-border: #23262d;
+  --tab-hover: #1d2026;
+  --hover-strong: #404754;
+  --row-hover: rgba(255, 255, 255, 0.035);
+  --ref-text: #fff;
+  --red-text: #f58f8d;
+  --green-text: #6fd37f;
+  --hunk-header: #8ab4f8;
+  --ln: #5d6572;
+  --ln-bg: rgba(0, 0, 0, 0.14);
+  --spinner-track: rgba(255, 255, 255, 0.18);
   color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg-tabs: #dde1e7;
+  --bg-0: #ffffff;
+  --bg-1: #f3f4f6;
+  --bg-2: #e9ebef;
+  --bg-3: #dcdfe5;
+  --border: #cdd2da;
+  --text: #1f2328;
+  --text-dim: #5c6470;
+  --accent: #0e8f84;
+  --accent-ink: #ffffff;
+  --green: #1f883d;
+  --red: #cf222e;
+  --yellow: #9a6700;
+  --blue: #0969da;
+  --orange: #bc4c00;
+  --scroll-thumb: #c4c9d1;
+  --scroll-thumb-hover: #aab0ba;
+  --tab-border: #cfd3da;
+  --tab-hover: #e6e9ee;
+  --hover-strong: #cdd2da;
+  --row-hover: rgba(0, 0, 0, 0.035);
+  --ref-text: #1f2328;
+  --red-text: #b42318;
+  --green-text: #1a7f37;
+  --hunk-header: #0550ae;
+  --ln: #8c959f;
+  --ln-bg: rgba(0, 0, 0, 0.04);
+  --spinner-track: rgba(0, 0, 0, 0.12);
+  color-scheme: light;
 }
 
 * {
@@ -94,14 +139,14 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3d434e;
+  background: var(--scroll-thumb);
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #4b5260;
+  background-color: var(--scroll-thumb-hover);
 }
 
 ::-webkit-scrollbar-corner {
@@ -214,14 +259,14 @@ a:hover {
   min-width: 120px;
   max-width: 220px;
   color: var(--text-dim);
-  border-right: 1px solid #23262d;
+  border-right: 1px solid var(--tab-border);
   border-top: 2px solid transparent;
   cursor: default;
 }
 
 .tab:hover {
   color: var(--text);
-  background: #1d2026;
+  background: var(--tab-hover);
 }
 
 .tab.active {
@@ -270,7 +315,7 @@ a:hover {
 
 .tab-new:hover {
   color: var(--text);
-  background: #1d2026;
+  background: var(--tab-hover);
 }
 
 /* ---------------------------------------------------------------- toolbar */
@@ -374,7 +419,7 @@ a:hover {
 }
 
 .tool-caret:hover {
-  background: #404754;
+  background: var(--hover-strong);
   color: var(--text);
 }
 
@@ -628,7 +673,7 @@ a:hover {
 }
 
 .graph-row:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--row-hover);
 }
 
 .graph-row.selected {
@@ -727,7 +772,7 @@ a:hover {
   border: 1px solid var(--lane);
   border-radius: 3px;
   background: color-mix(in srgb, var(--lane) 38%, var(--bg-1));
-  color: #fff;
+  color: var(--ref-text);
   font-size: 12px;
   cursor: pointer;
 }
@@ -1251,19 +1296,19 @@ a:hover {
 .btn-danger-ghost {
   background: transparent;
   border-color: rgba(240, 82, 79, 0.5);
-  color: #f58f8d;
+  color: var(--red-text);
 }
 
 .btn-stage {
   background: rgba(63, 185, 80, 0.14);
   border-color: rgba(63, 185, 80, 0.7);
-  color: #6fd37f;
+  color: var(--green-text);
 }
 
 .btn-unstage {
   background: rgba(240, 82, 79, 0.12);
   border-color: rgba(240, 82, 79, 0.6);
-  color: #f58f8d;
+  color: var(--red-text);
 }
 
 .btn-commit {
@@ -1374,7 +1419,7 @@ a:hover {
   gap: 12px;
   padding: 4px 6px 4px 10px;
   background: var(--bg-2);
-  color: #8ab4f8;
+  color: var(--hunk-header);
   font-size: 12px;
   user-select: none;
 }
@@ -1395,8 +1440,8 @@ a:hover {
 .diff-line .ln {
   padding-right: 8px;
   text-align: right;
-  color: #5d6572;
-  background: rgba(0, 0, 0, 0.14);
+  color: var(--ln);
+  background: var(--ln-bg);
   user-select: none;
 }
 
@@ -1733,7 +1778,7 @@ a:hover {
 }
 
 .menu-item.danger {
-  color: #f58f8d;
+  color: var(--red-text);
 }
 
 .menu-item:disabled {
@@ -1803,7 +1848,7 @@ a:hover {
   height: 24px;
   padding: 0 10px;
   background: var(--bg-tabs);
-  border-top: 1px solid #23262d;
+  border-top: 1px solid var(--tab-border);
   font-size: 11.5px;
   flex-shrink: 0;
 }
@@ -1818,7 +1863,7 @@ a:hover {
 .spinner {
   display: inline-block;
   flex-shrink: 0;
-  border: 2px solid rgba(255, 255, 255, 0.18);
+  border: 2px solid var(--spinner-track);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;

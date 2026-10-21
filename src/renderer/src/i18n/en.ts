@@ -217,6 +217,10 @@ const en = {
 
   'settings.title': 'Settings',
   'settings.language': 'Language',
+  'settings.theme': 'Theme',
+  'settings.themeSystem': 'Same as the system',
+  'settings.themeDark': 'Dark',
+  'settings.themeLight': 'Light',
   'settings.auto': 'Automatic (system)',
   'settings.commitLimit': 'Commits loaded at a time',
   'settings.license': 'Free software under the MIT license. Contributions are welcome!'

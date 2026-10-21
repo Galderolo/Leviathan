@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { openExternal, saveSettings } from '../actions'
 import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
-import type { Settings } from '../../../shared/types'
+import type { Settings, ThemeSetting } from '../../../shared/types'
 import { SshKeysSection } from './SshKeysSection'
 
 const REPO_URL = 'https://github.com/leviathan-git/leviathan'
@@ -14,11 +14,13 @@ export function SettingsModal() {
   const t = useT()
   const [language, setLanguage] = useState<Settings['language']>(settings.language)
   const [limit, setLimit] = useState(String(settings.commitLimit))
+  const [theme, setTheme] = useState<ThemeSetting>(settings.theme)
 
   useEffect(() => {
     if (open) {
       setLanguage(settings.language)
       setLimit(String(settings.commitLimit))
+      setTheme(settings.theme)
     }
   }, [open, settings])
 
@@ -26,7 +28,7 @@ export function SettingsModal() {
   const close = () => useStore.setState({ settingsOpen: false })
   const save = async () => {
     const commitLimit = Math.max(100, Math.min(50000, Number(limit) || settings.commitLimit))
-    await saveSettings({ language, commitLimit })
+    await saveSettings({ language, commitLimit, theme })
     close()
   }
 
@@ -41,6 +43,14 @@ export function SettingsModal() {
         onKeyDown={(e) => e.key === 'Escape' && close()}
       >
         <div className="modal-title">{t('settings.title')}</div>
+        <label className="field">
+          <span>{t('settings.theme')}</span>
+          <select value={theme} onChange={(e) => setTheme(e.target.value as ThemeSetting)}>
+            <option value="system">{t('settings.themeSystem')}</option>
+            <option value="dark">{t('settings.themeDark')}</option>
+            <option value="light">{t('settings.themeLight')}</option>
+          </select>
+        </label>
         <label className="field">
           <span>{t('settings.language')}</span>
           <select value={language} onChange={(e) => setLanguage(e.target.value as Settings['language'])}>

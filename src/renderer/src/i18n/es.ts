@@ -221,6 +221,10 @@ const es: Record<keyof typeof en, string> = {
 
   'settings.title': 'Ajustes',
   'settings.language': 'Idioma',
+  'settings.theme': 'Tema',
+  'settings.themeSystem': 'Igual que el sistema',
+  'settings.themeDark': 'Oscuro',
+  'settings.themeLight': 'Claro',
   'settings.auto': 'Automático (sistema)',
   'settings.commitLimit': 'Commits cargados cada vez',
   'settings.license': 'Software libre bajo licencia MIT. ¡Las contribuciones son bienvenidas!'

@@ -22,11 +22,21 @@ import { TabBar } from './components/TabBar'
 import { Toolbar } from './components/Toolbar'
 import { WelcomeView } from './components/WelcomeView'
 import { getRepo, useActiveTab, useStore } from './store'
+import { resolveTheme } from './theme'
 
 const api = window.leviathan
 
 export function App() {
   const ready = useStore((s) => s.ready)
+  const themeSetting = useStore((s) => s.settings.theme)
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => (document.documentElement.dataset.theme = resolveTheme(themeSetting ?? 'system', media.matches))
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
+  }, [themeSetting])
   const tab = useActiveTab()
 
   useEffect(() => {

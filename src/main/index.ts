@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow, Menu, app, screen, shell } from 'electron'
+import { BrowserWindow, Menu, app, nativeTheme, screen, shell } from 'electron'
 import { disposeAskpass, initAskpass } from './askpass'
 import { registerIpc } from './ipc'
 import { loadSettings, saveSettings } from './settings'
@@ -24,13 +24,18 @@ function restoreBounds(): Electron.Rectangle | { width: number; height: number }
   return { width: saved.width, height: saved.height }
 }
 
+function prefersDark(): boolean {
+  const theme = loadSettings().theme
+  return theme === 'dark' || (theme !== 'light' && nativeTheme.shouldUseDarkColors)
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     ...restoreBounds(),
     minWidth: 900,
     minHeight: 560,
     show: false,
-    backgroundColor: '#1b1e24',
+    backgroundColor: prefersDark() ? '#1b1e24' : '#ffffff',
     title: 'Leviathan',
     autoHideMenuBar: true,
     icon: join(__dirname, '../../resources/icon.png'),
