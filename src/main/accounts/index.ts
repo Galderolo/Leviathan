@@ -1,11 +1,13 @@
 import { join } from 'node:path'
 import { app, safeStorage } from 'electron'
 import { credentialArgs, noreplyEmail, withoutAccount } from '../../shared/providers'
-import type { Account, Provider, RemoteRepo } from '../../shared/types'
+import { pickProject } from '../../shared/forge'
+import { parseRemotes } from '../../shared/parsers'
+import type { Account, NewPullRequest, Provider, PullRequest, RemoteRepo } from '../../shared/types'
 import { setAccountSource } from '../askpass'
 import { git, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
-import { fetchIdentity, listRepos } from './providers'
+import { createPullRequest, defaultBranch, fetchIdentity, listPullRequests, listRepos } from './providers'
 import { AccountStore, type Cipher } from './store'
 
 const cipher: Cipher = {
@@ -138,6 +140,48 @@ export async function setRepoAccount(repo: string, accountId: string | null): Pr
     delete map[repo]
   }
   saveSettings({ repoAccounts: map })
+}
+
+/** The hosted project of a repository and the account (with its token) to reach it. */
+async function repoProject(repo: string) {
+  const { stdout } = await git(['remote', '-v'], { cwd: repo })
+  const project = pickProject(parseRemotes(stdout), accounts().list(), getRepoAccount(repo))
+  const token = project && accounts().token(project.account.id)
+  return project && token ? { ...project, token } : null
+}
+
+export async function getPullRequests(
+  repo: string
+): Promise<{ provider: Provider; remote: string; items: PullRequest[] } | null> {
+  const project = await repoProject(repo)
+  if (!project) return null
+  const { provider, host } = project.account
+  return {
+    provider,
+    remote: project.remote,
+    items: await listPullRequests(provider, host, project.path, project.token)
+  }
+}
+
+export async function createRepoPullRequest(repo: string, input: NewPullRequest): Promise<PullRequest> {
+  const valid =
+    typeof input?.title === 'string' &&
+    input.title.trim() !== '' &&
+    typeof input.body === 'string' &&
+    typeof input.source === 'string' &&
+    typeof input.target === 'string' &&
+    typeof input.draft === 'boolean'
+  if (!valid) throw new Error('Invalid pull request')
+  const project = await repoProject(repo)
+  if (!project) throw new Error("No account can reach this repository's remote")
+  const { provider, host } = project.account
+  return createPullRequest(provider, host, project.path, project.token, { ...input, title: input.title.trim() })
+}
+
+export async function getDefaultBranch(repo: string): Promise<string | null> {
+  const project = await repoProject(repo)
+  if (!project) return null
+  return defaultBranch(project.account.provider, project.account.host, project.path, project.token)
 }
 
 /** git `-c` arguments to clone with an account's credentials. */

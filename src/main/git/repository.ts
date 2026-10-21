@@ -19,6 +19,7 @@ import type {
   CommitDetails,
   DiffSource,
   FileDiff,
+  Provider,
   PullMode,
   RebaseCommit,
   RepoOperation,
@@ -583,6 +584,35 @@ export async function pull(repo: string, mode: PullMode, onProgress: ProgressFn)
 async function configValue(repo: string, key: string): Promise<string | null> {
   const { stdout, exitCode } = await git(['config', '--get', key], { cwd: repo, okCodes: [0, 1] })
   return exitCode === 0 ? stdout.trim() : null
+}
+
+/**
+ * Checks out a pull request: its branch (tracking the remote one) when it lives
+ * in this repository, or the provider's `pull/N/head` (GitLab:
+ * `merge-requests/N/head`) as a local `pr/N` branch when it comes from a fork.
+ */
+export async function checkoutPullRequest(
+  repo: string,
+  remote: string,
+  pr: { number: number; sourceBranch: string; fromFork: boolean },
+  provider: Provider
+): Promise<void> {
+  assertSafeArg(remote, 'remote')
+  if (!Number.isInteger(pr.number) || pr.number <= 0) throw new Error(`Invalid pull request number: ${pr.number}`)
+  if (pr.fromFork) {
+    const ref = provider === 'gitlab' ? `refs/merge-requests/${pr.number}/head` : `refs/pull/${pr.number}/head`
+    const branch = `pr/${pr.number}`
+    // No `+`: a local pr/N with commits of its own is never overwritten.
+    await git(['fetch', remote, `${ref}:refs/heads/${branch}`], { cwd: repo })
+    await run(repo, ['checkout', '-q', branch, '--'])
+    return
+  }
+  assertSafeArg(pr.sourceBranch, 'branch')
+  await git(['fetch', remote, `refs/heads/${pr.sourceBranch}:refs/remotes/${remote}/${pr.sourceBranch}`], {
+    cwd: repo
+  })
+  if (await refValue(repo, `refs/heads/${pr.sourceBranch}`)) await run(repo, ['checkout', '-q', pr.sourceBranch, '--'])
+  else await run(repo, ['checkout', '-q', '--track', `${remote}/${pr.sourceBranch}`])
 }
 
 /** Brings a branch that is not checked out up to date with its upstream; fast-forward only. */

@@ -132,6 +132,10 @@ const handlers: LeviathanInvokeApi = {
   listAccountRepos: (id) => accounts.listAccountRepos(id),
   getRepoAccount: async (path) => accounts.getRepoAccount(path),
   setRepoAccount: (path, id) => accounts.setRepoAccount(path, id),
+  getPullRequests: (path) => accounts.getPullRequests(path),
+  createPullRequest: (path, input) => accounts.createRepoPullRequest(path, input),
+  getDefaultBranch: (path) => accounts.getDefaultBranch(path),
+  checkoutPullRequest: (path, remote, pr, provider) => repo.checkoutPullRequest(path, remote, pr, provider),
   generateSshKey: (opts) => generateKey(opts),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')

@@ -5,8 +5,10 @@ import type {
   CommitDetails,
   DiffSource,
   FileDiff,
+  NewPullRequest,
   ProgressEvent,
   Provider,
+  PullRequest,
   PullMode,
   RebaseCommit,
   RemoteRepo,
@@ -140,6 +142,17 @@ export interface LeviathanInvokeApi {
   listAccountRepos(id: string): Promise<RemoteRepo[]>
   getRepoAccount(repo: string): Promise<string | null>
   setRepoAccount(repo: string, accountId: string | null): Promise<void>
+
+  // Pull requests, through the account for the repository's remote (null: no such account)
+  getPullRequests(repo: string): Promise<{ provider: Provider; remote: string; items: PullRequest[] } | null>
+  createPullRequest(repo: string, input: NewPullRequest): Promise<PullRequest>
+  getDefaultBranch(repo: string): Promise<string | null>
+  checkoutPullRequest(
+    repo: string,
+    remote: string,
+    pr: { number: number; sourceBranch: string; fromFork: boolean },
+    provider: Provider
+  ): Promise<void>
   /** Creates an ed25519 key in ~/.ssh; refuses to overwrite. */
   generateSshKey(opts: { email: string; passphrase: string; fileName: string }): Promise<SshKey>
 }
@@ -230,6 +243,10 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   listAccountRepos: true,
   getRepoAccount: true,
   setRepoAccount: true,
+  getPullRequests: true,
+  createPullRequest: true,
+  getDefaultBranch: true,
+  checkoutPullRequest: true,
   generateSshKey: true
 }
 
