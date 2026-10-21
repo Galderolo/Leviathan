@@ -146,6 +146,8 @@ export interface Settings {
   cloneDir: string
   /** Background fetch interval in minutes; 0 disables it. */
   autoFetchMinutes: number
+  /** Repository path -> id of the account it uses. */
+  repoAccounts: Record<string, string>
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
 }
 
@@ -160,7 +162,30 @@ export const DEFAULT_SETTINGS: Settings = {
   leftPanelWidth: 240,
   rightPanelWidth: 360,
   cloneDir: '',
-  autoFetchMinutes: 10
+  autoFetchMinutes: 10,
+  repoAccounts: {}
+}
+
+export type Provider = 'github' | 'gitlab' | 'gitea' | 'other'
+
+/** A hosting account. The token is never part of this object; it stays encrypted in the main process. */
+export interface Account {
+  id: string
+  provider: Provider
+  host: string
+  username: string
+  /** Commit author name used in repositories bound to this account. */
+  name: string
+  /** Commit email; the provider's no-reply address by default. */
+  email: string
+}
+
+export interface RemoteRepo {
+  fullName: string
+  cloneUrl: string
+  private: boolean
+  description: string
+  updatedAt: string
 }
 
 export interface SshKey {
