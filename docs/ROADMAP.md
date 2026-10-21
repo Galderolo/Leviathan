@@ -18,7 +18,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Side-by-side (split) diff view
 - [ ] Word-level highlighting inside changed lines
 - [ ] Syntax highlighting in diffs
-- [ ] Built-in merge conflict editor (ours / theirs / result)
+- [ ] Edit the result of a conflict by hand inside the conflict editor
 - [ ] Multi-select files to stage, unstage or discard together
 - [ ] Commit message templates — **good first issue**
 

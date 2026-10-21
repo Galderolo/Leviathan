@@ -6,6 +6,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- Conflict editor: current and incoming versions side by side, per-block choices, whole-file sides (including deletions).
+
 - Undo and redo (toolbar buttons, Ctrl+Z / Ctrl+Shift+Z) for commits, amends, checkouts, branch and tag changes, merges, rebases, cherry-picks, reverts, resets and pulls.
 
 ## [0.2.0] - 2026-10-21
