@@ -423,16 +423,18 @@ export async function stashChanges(path: string, askMessage = false): Promise<vo
   await runOp(path, () => api.stashSave(path, message))
 }
 
-export async function popStash(path: string, index = 0): Promise<void> {
-  if (!getRepo(path)?.state?.stashes.length) {
+/** Pops `stash`, or the most recent stash when none is given (toolbar Pop). */
+export async function popStash(path: string, stash?: Stash): Promise<void> {
+  const target = stash ?? getRepo(path)?.state?.stashes[0]
+  if (!target) {
     toast('info', t('toast.noStashes'))
     return
   }
-  await runOp(path, () => api.stashPop(path, index))
+  await runOp(path, () => api.stashPop(path, target.index, target.hash))
 }
 
-export function applyStash(path: string, index: number): Promise<boolean> {
-  return runOp(path, () => api.stashApply(path, index))
+export function applyStash(path: string, stash: Stash): Promise<boolean> {
+  return runOp(path, () => api.stashApply(path, stash.index, stash.hash))
 }
 
 export async function dropStash(path: string, stash: Stash): Promise<void> {
@@ -442,7 +444,7 @@ export async function dropStash(path: string, stash: Stash): Promise<void> {
     confirmText: t('dlg.delete'),
     danger: true
   })
-  if (ok) await runOp(path, () => api.stashDrop(path, stash.index))
+  if (ok) await runOp(path, () => api.stashDrop(path, stash.index, stash.hash))
 }
 
 export function checkoutRef(path: string, ref: GitRef): Promise<boolean> {

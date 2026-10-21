@@ -68,9 +68,10 @@ export interface LeviathanInvokeApi {
 
   // Stash
   stashSave(repo: string, message: string | null): Promise<void>
-  stashPop(repo: string, index: number): Promise<void>
-  stashApply(repo: string, index: number): Promise<void>
-  stashDrop(repo: string, index: number): Promise<void>
+  /** `hash` must match `stash@{index}`; guards against the list changing meanwhile. */
+  stashPop(repo: string, index: number, hash: string): Promise<void>
+  stashApply(repo: string, index: number, hash: string): Promise<void>
+  stashDrop(repo: string, index: number, hash: string): Promise<void>
 
   // Remotes
   fetch(repo: string): Promise<void>

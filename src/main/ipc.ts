@@ -75,9 +75,9 @@ const handlers: LeviathanInvokeApi = {
   deleteTag: (path, name) => repo.deleteTag(path, name),
 
   stashSave: (path, message) => repo.stashSave(path, message),
-  stashPop: (path, index) => repo.stashPop(path, index),
-  stashApply: (path, index) => repo.stashApply(path, index),
-  stashDrop: (path, index) => repo.stashDrop(path, index),
+  stashPop: (path, index, hash) => repo.stashPop(path, index, hash),
+  stashApply: (path, index, hash) => repo.stashApply(path, index, hash),
+  stashDrop: (path, index, hash) => repo.stashDrop(path, index, hash),
 
   fetch: (path) => repo.fetchAll(path, progress(path)),
   pull: (path, mode) => repo.pull(path, mode, progress(path)),

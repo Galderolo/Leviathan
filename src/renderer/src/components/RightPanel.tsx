@@ -281,10 +281,10 @@ function CommitPanel({ path, view }: { path: string; view: RepoView }) {
       <div className="commit-scroll">
         {stash && (
           <div className="stash-actions">
-            <button className="btn small" onClick={() => void applyStash(path, stash.index)}>
+            <button className="btn small" onClick={() => void applyStash(path, stash)}>
               {t('menu.stashApply')}
             </button>
-            <button className="btn small btn-primary" onClick={() => void popStash(path, stash.index)}>
+            <button className="btn small btn-primary" onClick={() => void popStash(path, stash)}>
               {t('menu.stashPop')}
             </button>
             <button className="btn small btn-danger" onClick={() => void dropStash(path, stash)}>

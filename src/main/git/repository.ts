@@ -462,16 +462,29 @@ function stashRef(index: number): string {
   return `stash@{${index}}`
 }
 
-export async function stashPop(repo: string, index: number): Promise<void> {
-  await run(repo, ['stash', 'pop', '-q', stashRef(index)])
+/**
+ * Resolves `stash@{index}` and checks it is still the stash the user picked:
+ * indexes shift whenever a stash is pushed or dropped elsewhere.
+ */
+async function verifiedStashRef(repo: string, index: number, hash: string): Promise<string> {
+  const ref = stashRef(index)
+  const { stdout, exitCode } = await git(['rev-parse', '-q', '--verify', ref], { cwd: repo, okCodes: [0, 1] })
+  if (exitCode !== 0 || stdout.trim() !== hash) {
+    throw new Error('The stash list changed. Refresh and try again.')
+  }
+  return ref
 }
 
-export async function stashApply(repo: string, index: number): Promise<void> {
-  await run(repo, ['stash', 'apply', '-q', stashRef(index)])
+export async function stashPop(repo: string, index: number, hash: string): Promise<void> {
+  await run(repo, ['stash', 'pop', '-q', await verifiedStashRef(repo, index, hash)])
 }
 
-export async function stashDrop(repo: string, index: number): Promise<void> {
-  await run(repo, ['stash', 'drop', '-q', stashRef(index)])
+export async function stashApply(repo: string, index: number, hash: string): Promise<void> {
+  await run(repo, ['stash', 'apply', '-q', await verifiedStashRef(repo, index, hash)])
+}
+
+export async function stashDrop(repo: string, index: number, hash: string): Promise<void> {
+  await run(repo, ['stash', 'drop', '-q', await verifiedStashRef(repo, index, hash)])
 }
 
 // ---------------------------------------------------------------------------

@@ -128,8 +128,8 @@ export function refMenu(path: string, ref: GitRef): MenuItem[] {
 
 export function stashMenu(path: string, stash: Stash): MenuItem[] {
   return [
-    { label: t('menu.stashApply'), onClick: () => void applyStash(path, stash.index) },
-    { label: t('menu.stashPop'), onClick: () => void popStash(path, stash.index) },
+    { label: t('menu.stashApply'), onClick: () => void applyStash(path, stash) },
+    { label: t('menu.stashPop'), onClick: () => void popStash(path, stash) },
     { separator: true },
     { label: t('menu.stashDrop'), danger: true, onClick: () => void dropStash(path, stash) }
   ]

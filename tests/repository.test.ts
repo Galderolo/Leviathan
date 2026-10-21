@@ -197,6 +197,20 @@ describe('repository', () => {
     expect((await repo.getState(dir)).operation).toBeNull()
   })
 
+  it('refuses to touch a stash that moved', async () => {
+    await commitFile('a.txt', 'a\n', 'base')
+    writeFileSync(join(dir, 'a.txt'), 'first\n')
+    await repo.stashSave(dir, 'first')
+    const first = (await repo.getState(dir)).stashes[0]
+    writeFileSync(join(dir, 'a.txt'), 'second\n')
+    await repo.stashSave(dir, 'second')
+
+    // The UI still believes "first" is stash@{0}.
+    await expect(repo.stashDrop(dir, 0, first.hash)).rejects.toThrow(/stash list changed/i)
+    await expect(repo.stashPop(dir, 0, first.hash)).rejects.toThrow(/stash list changed/i)
+    expect((await repo.getState(dir)).stashes.map((s) => s.message)).toEqual(['On main: second', 'On main: first'])
+  })
+
   it('saves, lists and pops stashes', async () => {
     await commitFile('a.txt', 'a\n', 'base')
     writeFileSync(join(dir, 'a.txt'), 'changed\n')
@@ -207,7 +221,7 @@ describe('repository', () => {
     expect(state.stashes[0].message).toContain('my stash')
     expect(state.status.unstaged).toEqual([])
 
-    await repo.stashPop(dir, 0)
+    await repo.stashPop(dir, 0, state.stashes[0].hash)
     state = await repo.getState(dir)
     expect(state.stashes).toHaveLength(0)
     expect(state.status.unstaged.map((f) => f.path).sort()).toEqual(['a.txt', 'untracked.txt'])
