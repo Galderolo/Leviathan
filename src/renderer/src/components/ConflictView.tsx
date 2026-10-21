@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import { conflictCount, parseConflicts, resolveConflicts, type Choice, type Segment } from '../../../shared/conflicts'
+import type { WorkingFile } from '../../../shared/types'
 import { closeDiff, openFile, resolveWithContent, resolveWithSide } from '../actions'
 import { useT } from '../i18n'
-import { errorMessage, toast } from '../ui'
+import { errorMessage } from '../ui'
 import { cx, splitPath } from '../utils'
 
 const api = window.leviathan
@@ -30,23 +31,45 @@ function Lines({ lines }: { lines: string[] }) {
 /** Resolves a conflicted file block by block, or by taking one side of the whole file. */
 export function ConflictView({ path, file }: { path: string; file: string }) {
   const t = useT()
+  const [read, setRead] = useState<WorkingFile | null>(null)
   const [segments, setSegments] = useState<Segment[] | null>(null)
   const [choices, setChoices] = useState<Choice[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  // Bumped to read the file again, e.g. after a save refused because it changed.
+  const [version, setVersion] = useState(0)
   const { dir, name } = splitPath(file)
 
   useEffect(() => {
+    let live = true
     setSegments(null)
     setError(null)
     api
       .readWorkingFile(path, file)
-      .then(({ text }) => {
-        const parsed = text === null ? [] : parseConflicts(text)
+      .then((result) => {
+        if (!live) return
+        const parsed = result.text === null ? [] : parseConflicts(result.text)
+        setRead(result)
         setSegments(parsed)
         setChoices(new Array(conflictCount(parsed)).fill(null))
       })
-      .catch((err) => setError(errorMessage(err)))
-  }, [path, file])
+      .catch((err) => live && setError(errorMessage(err)))
+    return () => {
+      live = false
+    }
+  }, [path, file, version])
+
+  const takeSide = async (side: 'ours' | 'theirs') => {
+    setBusy(true)
+    await resolveWithSide(path, file, side)
+    setBusy(false)
+  }
+
+  const save = async (content: string, original: string) => {
+    setBusy(true)
+    if (!(await resolveWithContent(path, file, content, original))) setVersion((v) => v + 1)
+    setBusy(false)
+  }
 
   const total = segments ? conflictCount(segments) : 0
   const done = choices.filter(Boolean).length
@@ -65,11 +88,11 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
           <span className="file-name">{name}</span>
         </div>
         <div className="diff-actions">
-          <button className="btn small" onClick={() => void resolveWithSide(path, file, 'ours')}>
+          <button className="btn small" disabled={busy} onClick={() => void takeSide('ours')}>
             {t('conflict.takeCurrent')}
             {oursLabel && <span className="dim"> ({oursLabel})</span>}
           </button>
-          <button className="btn small" onClick={() => void resolveWithSide(path, file, 'theirs')}>
+          <button className="btn small" disabled={busy} onClick={() => void takeSide('theirs')}>
             {t('conflict.takeIncoming')}
             {theirsLabel && <span className="dim"> ({theirsLabel})</span>}
           </button>
@@ -85,7 +108,17 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
       <div className="diff-body conflict-body">
         {error && <div className="empty-state error">{error}</div>}
         {!error && !segments && <div className="empty-state">{t('graph.loading')}</div>}
-        {segments && total === 0 && <div className="empty-state">{t('conflict.noMarkers')}</div>}
+        {segments && total === 0 && (
+          <div className="empty-state">
+            {t(
+              read?.reason === 'large'
+                ? 'conflict.tooLarge'
+                : read?.reason === 'encoding'
+                  ? 'conflict.encoding'
+                  : 'conflict.noMarkers'
+            )}
+          </div>
+        )}
         {segments &&
           total > 0 &&
           segments.map((segment, si) => {
@@ -137,10 +170,9 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
           <span className="dim">{t('conflict.progress', { done, count: total })}</span>
           <button
             className="btn btn-primary"
-            disabled={result === null}
+            disabled={result === null || busy}
             onClick={() => {
-              if (result === null) return
-              resolveWithContent(path, file, result).catch((err) => toast('error', errorMessage(err)))
+              if (result !== null && read?.text != null) void save(result, read.text)
             }}
           >
             {t('conflict.save')}

@@ -295,6 +295,10 @@ const es: Record<keyof typeof en, string> = {
   'conflict.save': 'Guardar y marcar resuelto',
   'conflict.noMarkers':
     'Este archivo no tiene marcadores de conflicto (es binario o se borró en un lado). Elige una de las dos versiones con los botones de arriba.',
+  'conflict.tooLarge':
+    'Este archivo es demasiado grande para editarlo aquí. Elige una de las dos versiones con los botones de arriba, o abre el archivo.',
+  'conflict.encoding':
+    'Este archivo no es texto UTF-8, así que editarlo aquí lo estropearía. Elige una de las dos versiones con los botones de arriba, o abre el archivo.',
   'toast.resolved': '{name} resuelto',
 
   'status.ready': 'Listo',

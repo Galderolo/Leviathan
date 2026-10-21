@@ -22,7 +22,8 @@ import type {
   PullMode,
   RepoOperation,
   RepoState,
-  ResetMode
+  ResetMode,
+  WorkingFile
 } from '../../shared/types'
 import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
@@ -699,14 +700,54 @@ export async function applyChange(repo: string, change: RepoChange): Promise<voi
 // ---------------------------------------------------------------------------
 // Conflict resolution
 
-/** Raw content of a working-tree file (null for binary files), for the conflict editor. */
-export async function readWorkingFile(repo: string, path: string): Promise<{ text: string | null; binary: boolean }> {
-  const { binary, content } = await readPreview(repo, path)
-  return binary ? { text: null, binary: true } : { text: content, binary: false }
+/**
+ * Whole content of a working-tree file for the conflict editor, or why it cannot
+ * be edited as text without damaging it.
+ */
+export async function readWorkingFile(repo: string, path: string): Promise<WorkingFile> {
+  const full = insideRepo(repo, path)
+  // lstat: never follow a symlink, its target may live outside the repository.
+  const stat = await fs.lstat(full)
+  if (!stat.isFile()) return { text: null, reason: 'binary' }
+  if (stat.size > MAX_FILE_PREVIEW) return { text: null, reason: 'large' }
+  const buffer = await fs.readFile(full)
+  if (buffer.subarray(0, 8000).includes(0)) return { text: null, reason: 'binary' }
+  try {
+    return { text: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buffer), reason: null }
+  } catch {
+    return { text: null, reason: 'encoding' }
+  }
 }
 
-/** Writes the resolved content and marks the file resolved. */
-export async function resolveConflictFile(repo: string, path: string, content: string): Promise<void> {
+/** Index stages of a conflicted path (1 base, 2 ours, 3 theirs); empty once resolved. */
+async function conflictStages(repo: string, path: string): Promise<{ mode: string; hash: string; stage: string }[]> {
+  insideRepo(repo, path)
+  const out = await run(repo, ['ls-files', '-u', '-z', '--', path], { env: LITERAL_PATHS })
+  const stages = out
+    .split('\0')
+    .filter(Boolean)
+    .map((entry) => {
+      const [mode, hash, stage] = entry.slice(0, entry.indexOf('\t')).split(' ')
+      return { mode, hash, stage }
+    })
+  if (!stages.length) throw new Error(`${path} is no longer in conflict.`)
+  return stages
+}
+
+/**
+ * Writes the resolved content and marks the file resolved. `original` is the text
+ * the resolution was made from; the save is refused if the file changed since.
+ */
+export async function resolveConflictFile(
+  repo: string,
+  path: string,
+  content: string,
+  original: string
+): Promise<void> {
+  await conflictStages(repo, path)
+  if ((await readWorkingFile(repo, path)).text !== original) {
+    throw new Error(`${path} changed since it was opened. Reopen it to see the latest version.`)
+  }
   await fs.writeFile(insideRepo(repo, path), content, 'utf8')
   await run(repo, ['add', '--', path], { env: LITERAL_PATHS })
 }
@@ -716,14 +757,14 @@ export async function resolveConflictFile(repo: string, path: string, content: s
  * the file (no index stage for it), the deletion is taken.
  */
 export async function resolveConflictWith(repo: string, path: string, side: 'ours' | 'theirs'): Promise<void> {
-  insideRepo(repo, path)
-  const stages = await run(repo, ['ls-files', '-u', '-z', '--', path], { env: LITERAL_PATHS })
-  const wanted = side === 'ours' ? '2' : '3'
-  const present = stages.split('\0').some((entry) => entry.split(/\s+/)[2] === wanted)
-  if (present) {
+  const wanted = (await conflictStages(repo, path)).find((s) => s.stage === (side === 'ours' ? '2' : '3'))
+  if (!wanted) {
+    await run(repo, ['rm', '-q', '--', path], { env: LITERAL_PATHS })
+  } else if (wanted.mode === '160000') {
+    // A submodule: checkout cannot pick its side, so record that side's commit directly.
+    await run(repo, ['update-index', '--cacheinfo', wanted.mode, wanted.hash, path])
+  } else {
     await run(repo, ['checkout', `--${side}`, '--', path], { env: LITERAL_PATHS })
     await run(repo, ['add', '--', path], { env: LITERAL_PATHS })
-  } else {
-    await run(repo, ['rm', '-q', '--', path], { env: LITERAL_PATHS })
   }
 }

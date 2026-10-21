@@ -27,7 +27,7 @@ export function DiffView({ path }: { path: string }) {
 
   if (!diff) return null
   if (diff.source.kind === 'unstaged' && diff.source.conflicted) {
-    return <ConflictView path={path} file={diff.source.path} />
+    return <ConflictView key={diff.source.path} path={path} file={diff.source.path} />
   }
   const { source, error } = diff
   const { dir, name } = splitPath(source.path)

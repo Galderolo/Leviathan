@@ -125,6 +125,9 @@ export interface FileDiff {
   hunks: DiffHunk[]
 }
 
+/** A working-tree file read whole as text, or why it cannot be edited as text. */
+export type WorkingFile = { text: string; reason: null } | { text: null; reason: 'binary' | 'large' | 'encoding' }
+
 export type DiffSource =
   | { kind: 'unstaged'; path: string; untracked?: boolean; conflicted?: boolean }
   | { kind: 'staged'; path: string }

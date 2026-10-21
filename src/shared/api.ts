@@ -13,7 +13,8 @@ import type {
   RepoState,
   ResetMode,
   Settings,
-  SshKey
+  SshKey,
+  WorkingFile
 } from './types'
 import type { RepoChange, Snapshot } from './undo'
 
@@ -45,8 +46,9 @@ export interface LeviathanInvokeApi {
   getSnapshot(repo: string): Promise<Snapshot>
 
   // Conflicts
-  readWorkingFile(repo: string, path: string): Promise<{ text: string | null; binary: boolean }>
-  resolveConflictFile(repo: string, path: string, content: string): Promise<void>
+  readWorkingFile(repo: string, path: string): Promise<WorkingFile>
+  /** Refused when the file no longer holds `original`, the text the resolution was made from. */
+  resolveConflictFile(repo: string, path: string, content: string, original: string): Promise<void>
   resolveConflictWith(repo: string, path: string, side: 'ours' | 'theirs'): Promise<void>
   /** Applies a recorded change; refuses when the repository no longer matches its starting state. */
   applyChange(repo: string, change: RepoChange): Promise<void>

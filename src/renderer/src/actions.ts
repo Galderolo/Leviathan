@@ -919,21 +919,28 @@ export async function commit(path: string): Promise<boolean> {
 // Conflicts
 
 /** Saves a resolved conflict and marks the file resolved. */
-export async function resolveWithContent(path: string, file: string, content: string): Promise<void> {
-  const ok = await runOp(path, () => api.resolveConflictFile(path, file, content), {
+export async function resolveWithContent(
+  path: string,
+  file: string,
+  content: string,
+  original: string
+): Promise<boolean> {
+  const ok = await runOp(path, () => api.resolveConflictFile(path, file, content, original), {
     log: false,
     success: t('toast.resolved', { name: file })
   })
   if (ok) closeDiff(path)
+  return ok
 }
 
 /** Resolves a conflict with one side of the whole file (or its deletion). */
-export async function resolveWithSide(path: string, file: string, side: 'ours' | 'theirs'): Promise<void> {
+export async function resolveWithSide(path: string, file: string, side: 'ours' | 'theirs'): Promise<boolean> {
   const ok = await runOp(path, () => api.resolveConflictWith(path, file, side), {
     log: false,
     success: t('toast.resolved', { name: file })
   })
   if (ok) closeDiff(path)
+  return ok
 }
 
 // ---------------------------------------------------------------------------

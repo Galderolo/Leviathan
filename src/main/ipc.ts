@@ -54,7 +54,7 @@ const handlers: LeviathanInvokeApi = {
   getDiff: (path, source) => repo.getDiff(path, source),
   getSnapshot: (path) => repo.getSnapshot(path),
   readWorkingFile: (path, file) => repo.readWorkingFile(path, file),
-  resolveConflictFile: (path, file, content) => repo.resolveConflictFile(path, file, content),
+  resolveConflictFile: (path, file, content, original) => repo.resolveConflictFile(path, file, content, original),
   resolveConflictWith: (path, file, side) => repo.resolveConflictWith(path, file, side),
   applyChange: (path, change) => repo.applyChange(path, change),
 

@@ -197,7 +197,7 @@ describe('applyChange edge cases', () => {
     await repo.checkout(dir, 'main')
     await commitFile('a.txt', 'main\n', 'main edit')
     await repo.merge(dir, 'side').catch(() => {})
-    await repo.resolveConflictFile(dir, 'a.txt', 'both\n')
+    await repo.resolveConflictFile(dir, 'a.txt', 'both\n', (await repo.readWorkingFile(dir, 'a.txt')).text!)
     const change = await track(() => repo.commit(dir, "Merge branch 'side'", false), 'soft')
 
     await repo.applyChange(dir, invertChange(change))

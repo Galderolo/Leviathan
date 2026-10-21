@@ -40,13 +40,14 @@ describe('conflict resolution', () => {
   it('reads the conflicted file with its markers', async () => {
     await conflictOnA()
     const file = await repo.readWorkingFile(dir, 'a.txt')
-    expect(file.binary).toBe(false)
+    expect(file.reason).toBeNull()
     expect(file.text).toContain('<<<<<<<')
   })
 
   it('writes a resolution and marks the file resolved', async () => {
     await conflictOnA()
-    await repo.resolveConflictFile(dir, 'a.txt', 'merged\n')
+    const { text } = await repo.readWorkingFile(dir, 'a.txt')
+    await repo.resolveConflictFile(dir, 'a.txt', 'merged\n', text!)
     expect(readFileSync(join(dir, 'a.txt'), 'utf8')).toBe('merged\n')
     const { status } = await repo.getState(dir)
     expect(status.conflicted).toEqual([])
@@ -75,5 +76,50 @@ describe('conflict resolution', () => {
     const { status } = await repo.getState(dir)
     expect(status.conflicted).toEqual([])
     expect(status.staged).toEqual([{ path: 'a.txt', status: 'D' }])
+  })
+})
+
+describe('conflict resolution safety', () => {
+  it('refuses to edit a file too large to read whole', async () => {
+    writeFileSync(join(dir, 'big.txt'), 'x'.repeat(3 * 1024 * 1024))
+    expect(await repo.readWorkingFile(dir, 'big.txt')).toEqual({ text: null, reason: 'large' })
+  })
+
+  it('refuses to edit a file that is not UTF-8', async () => {
+    writeFileSync(join(dir, 'latin1.txt'), Buffer.from('caf\xe9\n', 'latin1'))
+    expect(await repo.readWorkingFile(dir, 'latin1.txt')).toEqual({ text: null, reason: 'encoding' })
+  })
+
+  it('keeps a byte order mark', async () => {
+    writeFileSync(join(dir, 'bom.txt'), '﻿hello\n')
+    expect((await repo.readWorkingFile(dir, 'bom.txt')).text).toBe('﻿hello\n')
+  })
+
+  it('does not save over a file that changed since it was read', async () => {
+    await conflictOnA()
+    const { text } = await repo.readWorkingFile(dir, 'a.txt')
+    writeFileSync(join(dir, 'a.txt'), 'edited elsewhere\n')
+    await expect(repo.resolveConflictFile(dir, 'a.txt', 'merged\n', text!)).rejects.toThrow(/changed/)
+    expect(readFileSync(join(dir, 'a.txt'), 'utf8')).toBe('edited elsewhere\n')
+  })
+
+  it('does not touch a file that is no longer in conflict', async () => {
+    await conflictOnA()
+    await repo.resolveConflictWith(dir, 'a.txt', 'ours')
+    await expect(repo.resolveConflictWith(dir, 'a.txt', 'ours')).rejects.toThrow(/no longer in conflict/)
+    expect(readFileSync(join(dir, 'a.txt'), 'utf8')).toBe('ours\n')
+    // "ours" is HEAD's version, so nothing is left staged (and certainly no deletion).
+    expect((await repo.getState(dir)).status.staged).toEqual([])
+  })
+
+  it('stages the incoming commit of a conflicted submodule', async () => {
+    await commitFile('a.txt', 'base\n', 'base')
+    const [base, ours, theirs] = ['1', '2', '3'].map((c) => c.repeat(40))
+    await git(['update-index', '--index-info'], {
+      cwd: dir,
+      input: `160000 ${base} 1\tsub\n160000 ${ours} 2\tsub\n160000 ${theirs} 3\tsub\n`
+    })
+    await repo.resolveConflictWith(dir, 'sub', 'theirs')
+    expect((await git(['ls-files', '-s', 'sub'], { cwd: dir })).stdout.trim()).toBe(`160000 ${theirs} 0\tsub`)
   })
 })

@@ -292,6 +292,10 @@ const en = {
   'conflict.save': 'Save and mark resolved',
   'conflict.noMarkers':
     'This file has no conflict markers (a binary file, or deleted on one side). Take one of the two versions with the buttons above.',
+  'conflict.tooLarge':
+    'This file is too large to edit here. Take one of the two versions with the buttons above, or open the file.',
+  'conflict.encoding':
+    'This file is not UTF-8 text, so editing it here would damage it. Take one of the two versions with the buttons above, or open the file.',
   'toast.resolved': 'Resolved {name}',
 
   'status.ready': 'Ready',
