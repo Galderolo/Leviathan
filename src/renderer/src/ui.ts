@@ -38,23 +38,32 @@ export function closeMenu(): void {
   useStore.setState({ menu: null })
 }
 
-export function formDialog(opts: {
+type DialogOptions = {
   title: string
   message?: string
   fields: FormField[]
   confirmText: string
   danger?: boolean
-}): Promise<Record<string, string> | null> {
+}
+
+/** Dialogs waiting for the one on screen to close (e.g. a credential prompt during another dialog). */
+const pendingDialogs: (() => void)[] = []
+
+export function formDialog(opts: DialogOptions): Promise<Record<string, string> | null> {
   return new Promise((resolve) => {
-    useStore.setState({
-      dialog: {
-        ...opts,
-        resolve: (values) => {
-          useStore.setState({ dialog: null })
-          resolve(values)
+    const show = () =>
+      useStore.setState({
+        dialog: {
+          ...opts,
+          resolve: (values) => {
+            useStore.setState({ dialog: null })
+            resolve(values)
+            pendingDialogs.shift()?.()
+          }
         }
-      }
-    })
+      })
+    if (useStore.getState().dialog) pendingDialogs.push(show)
+    else show()
   })
 }
 
