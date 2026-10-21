@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Commit, CommitDetails, DiffSource, FileDiff, RepoState, Settings } from '../../shared/types'
+import type { Account, Commit, CommitDetails, DiffSource, FileDiff, RepoState, Settings } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import type { Lang } from './i18n'
 
@@ -43,6 +43,8 @@ export interface RepoView {
   lastFetchAt: number | null
   /** Error of the last background fetch, shown in the status bar. */
   lastFetchError: string | null
+  /** Account bound to this repository, if any. */
+  account: Account | null
 }
 
 export interface Tab {
@@ -141,7 +143,8 @@ export function newRepoView(path: string, limit: number): RepoView {
     scrollNonce: 0,
     applying: false,
     lastFetchAt: null,
-    lastFetchError: null
+    lastFetchError: null,
+    account: null
   }
 }
 

@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { ArrowLeft, Download, FolderOpen, FolderPlus, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowLeft, Download, FolderOpen, FolderPlus, Lock, X } from 'lucide-react'
+import type { Account, RemoteRepo } from '../../../shared/types'
 import { browseAndOpen, cloneRepository, initRepository, openRepository, removeRecent, saveSettings } from '../actions'
 import { useT } from '../i18n'
 import { useStore } from '../store'
 import { errorMessage, toast } from '../ui'
-import { basename } from '../utils'
+import { basename, cx } from '../utils'
 import { Spinner } from './common'
 
 type Mode = 'home' | 'clone' | 'init'
@@ -104,9 +105,39 @@ function CloneForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
   const [parent, setParent] = useState(cloneDir)
   const [name, setName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [accountId, setAccountId] = useState('')
+  const [repos, setRepos] = useState<RemoteRepo[] | null>(null)
+  const [repoFilter, setRepoFilter] = useState('')
   const folder = nameTouched ? name : folderFromUrl(url)
   const dest = parent && folder ? joinPath(parent, folder) : ''
   const busy = progress !== null
+
+  useEffect(() => {
+    api
+      .listAccounts()
+      .then(setAccounts)
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    setRepos(null)
+    if (!accountId) return
+    let alive = true
+    api
+      .listAccountRepos(accountId)
+      .then((list) => alive && setRepos(list))
+      .catch((err) => {
+        if (alive) setRepos([])
+        toast('error', errorMessage(err))
+      })
+    return () => {
+      alive = false
+    }
+  }, [accountId])
+
+  const f = repoFilter.trim().toLowerCase()
+  const shownRepos = (repos ?? []).filter((r) => !f || r.fullName.toLowerCase().includes(f)).slice(0, 200)
 
   return (
     <form
@@ -115,10 +146,53 @@ function CloneForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
         e.preventDefault()
         if (!url.trim() || !dest) return
         void saveSettings({ cloneDir: parent })
-        await cloneRepository(url.trim(), dest, tabId)
+        await cloneRepository(url.trim(), dest, tabId, accountId || null)
       }}
     >
       <FormTitle title={t('welcome.clone')} onBack={onBack} />
+      {accounts.length > 0 && (
+        <label className="field">
+          <span>{t('clone.account')}</span>
+          <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+            <option value="">{t('accounts.noneOption')}</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.username}@{a.host}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {accountId && (
+        <div className="field">
+          <input
+            placeholder={t('clone.filterRepos')}
+            value={repoFilter}
+            spellCheck={false}
+            onChange={(e) => setRepoFilter(e.target.value)}
+          />
+          <div className="repo-list">
+            {repos === null && <div className="file-empty dim">{t('clone.loadingRepos')}</div>}
+            {repos !== null && shownRepos.length === 0 && <div className="file-empty dim">{t('clone.noRepos')}</div>}
+            {shownRepos.map((r) => (
+              <div
+                key={r.fullName}
+                className={cx('repo-item', url === r.cloneUrl && 'active')}
+                onClick={() => {
+                  setUrl(r.cloneUrl)
+                  setNameTouched(false)
+                }}
+                title={r.description}
+              >
+                <span>
+                  {r.private && <Lock size={11} />} {r.fullName}
+                </span>
+                {r.description && <span className="dim small">{r.description}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <label className="field">
         <span>{t('clone.url')}</span>
         <input

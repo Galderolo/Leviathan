@@ -1721,6 +1721,61 @@ a:hover {
   width: 560px;
 }
 
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-1);
+}
+
+.account-form .input-row select {
+  flex: 0 0 120px;
+}
+
+.field-account {
+  font-size: 10.5px;
+  color: var(--accent);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-list {
+  max-height: 210px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-0);
+}
+
+.repo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.repo-item:last-child {
+  border-bottom: none;
+}
+
+.repo-item:hover,
+.repo-item.active {
+  background: rgba(31, 182, 166, 0.16);
+}
+
+.repo-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ssh-section {
   display: flex;
   flex-direction: column;

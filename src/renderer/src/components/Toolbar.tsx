@@ -25,7 +25,8 @@ import {
   selectCommit,
   setFilter,
   stashChanges,
-  checkoutRef
+  checkoutRef,
+  chooseRepoAccount
 } from '../actions'
 import { useT } from '../i18n'
 import { getRepo, useRepo, useStore, type MenuItem } from '../store'
@@ -113,6 +114,8 @@ export function Toolbar({ path }: { path: string }) {
 
   const repoMenu = (e: React.MouseEvent) =>
     openMenuBelow(e, [
+      { label: t('menu.repoAccount'), onClick: () => void chooseRepoAccount(path) },
+      { separator: true },
       { label: t('menu.openFolder'), onClick: () => openInFileManager(path) },
       { label: t('toolbar.terminal'), onClick: () => openTerminal(path) },
       { separator: true },
@@ -145,6 +148,11 @@ export function Toolbar({ path }: { path: string }) {
           <span className="field-value">
             {basename(path)} <ChevronDown size={12} />
           </span>
+          {view?.account && (
+            <span className="field-account" title={`${view.account.name} <${view.account.email}>`}>
+              {view.account.username}@{view.account.host}
+            </span>
+          )}
         </button>
         <ChevronRight size={14} className="dim" />
         <button className="toolbar-field" onClick={branchMenu}>

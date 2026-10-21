@@ -3,6 +3,7 @@ import { openExternal, saveSettings } from '../actions'
 import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import type { Settings, ThemeSetting } from '../../../shared/types'
+import { AccountsSection } from './AccountsSection'
 import { SshKeysSection } from './SshKeysSection'
 
 const REPO_URL = 'https://github.com/Galderolo/Leviathan'
@@ -25,6 +26,16 @@ export function SettingsModal() {
       setAutoFetch(String(settings.autoFetchMinutes))
     }
   }, [open, settings])
+
+  // Esc closes Settings wherever the focus is, unless a dialog is open on top of it.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !useStore.getState().dialog) useStore.setState({ settingsOpen: false })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
 
   if (!open) return null
   const close = () => useStore.setState({ settingsOpen: false })
@@ -85,6 +96,7 @@ export function SettingsModal() {
             ))}
           </select>
         </label>
+        <AccountsSection />
         <SshKeysSection />
         <div className="about">
           <div>

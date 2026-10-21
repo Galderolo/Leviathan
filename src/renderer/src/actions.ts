@@ -68,6 +68,7 @@ export async function initApp(): Promise<void> {
     if (!tab.path) continue
     void api.watchRepo(tab.path)
     void refreshRepo(tab.path)
+    void loadRepoAccount(tab.path)
   }
 }
 
@@ -157,6 +158,7 @@ export async function openRepository(input: string, tabId?: string): Promise<voi
   addRecent(path)
   persistTabs()
   void api.watchRepo(path)
+  void loadRepoAccount(path)
   await refreshRepo(path)
 }
 
@@ -170,10 +172,15 @@ export async function browseAndOpen(tabId?: string): Promise<void> {
   }
 }
 
-export async function cloneRepository(url: string, dest: string, tabId: string): Promise<boolean> {
+export async function cloneRepository(
+  url: string,
+  dest: string,
+  tabId: string,
+  accountId: string | null = null
+): Promise<boolean> {
   useStore.setState({ cloneProgress: t('clone.cloning') })
   try {
-    const path = await api.cloneRepo(url, dest)
+    const path = await api.cloneRepo(url, dest, accountId)
     toast('success', t('toast.cloned'))
     await openRepository(path, tabId)
     return true
@@ -182,6 +189,48 @@ export async function cloneRepository(url: string, dest: string, tabId: string):
     return false
   } finally {
     useStore.setState({ cloneProgress: null })
+  }
+}
+
+/** Loads which account the repository uses (shown in the toolbar). */
+export async function loadRepoAccount(path: string): Promise<void> {
+  try {
+    const [id, accounts] = await Promise.all([api.getRepoAccount(path), api.listAccounts()])
+    patchRepo(path, { account: accounts.find((a) => a.id === id) ?? null })
+  } catch {
+    // not critical: the toolbar just shows no account
+  }
+}
+
+/** Lets the user pick the account a repository uses for commits and push/pull. */
+export async function chooseRepoAccount(path: string): Promise<void> {
+  const [accounts, current] = await Promise.all([api.listAccounts(), api.getRepoAccount(path)])
+  const values = await formDialog({
+    title: t('dlg.repoAccount', { repo: basename(path) }),
+    message: accounts.length ? t('dlg.repoAccountHint') : t('accounts.none'),
+    confirmText: t('common.save'),
+    fields: [
+      {
+        key: 'account',
+        label: t('clone.account'),
+        type: 'select',
+        value: current ?? '',
+        options: [
+          { value: '', label: t('accounts.noneOption') },
+          ...accounts.map((a) => ({ value: a.id, label: `${a.username}@${a.host} — ${a.name} <${a.email}>` }))
+        ]
+      }
+    ]
+  })
+  if (!values) return
+  const id = values.account || null
+  try {
+    await api.setRepoAccount(path, id)
+    const account = accounts.find((a) => a.id === id) ?? null
+    patchRepo(path, { account })
+    if (account) toast('success', t('toast.repoAccountSet', { name: `${account.username}@${account.host}` }))
+  } catch (err) {
+    toast('error', errorMessage(err))
   }
 }
 
