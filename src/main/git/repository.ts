@@ -24,6 +24,7 @@ import type {
   RepoState,
   ResetMode
 } from '../../shared/types'
+import type { HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
 
 export type ProgressFn = (line: string) => void
@@ -567,4 +568,69 @@ export async function addRemote(repo: string, name: string, url: string): Promis
 export async function removeRemote(repo: string, name: string): Promise<void> {
   assertSafeArg(name, 'remote name')
   await run(repo, ['remote', 'remove', name])
+}
+
+// ---------------------------------------------------------------------------
+// Undo / redo
+
+async function currentHead(repo: string): Promise<HeadState> {
+  const sym = await git(['symbolic-ref', '-q', 'HEAD'], { cwd: repo, okCodes: [0, 1] })
+  const branch = sym.exitCode === 0 ? sym.stdout.trim().replace(/^refs\/heads\//, '') : null
+  return { branch, hash: await refValue(repo, 'HEAD') }
+}
+
+async function refValue(repo: string, ref: string): Promise<string | null> {
+  const { stdout, exitCode } = await git(['rev-parse', '-q', '--verify', ref], { cwd: repo, okCodes: [0, 1] })
+  return exitCode === 0 ? stdout.trim() : null
+}
+
+/** Every local branch and tag (unpeeled, so annotated tags can be restored) plus HEAD. */
+export async function getSnapshot(repo: string): Promise<Snapshot> {
+  const out = await run(repo, ['for-each-ref', '--format=%(refname)%1f%(objectname)', 'refs/heads', 'refs/tags'])
+  const refs: Record<string, string> = {}
+  for (const line of out.split('\n')) {
+    const [ref, hash] = line.replace(/\r$/, '').split('\x1f')
+    if (ref && hash) refs[ref] = hash
+  }
+  return { head: await currentHead(repo), refs }
+}
+
+async function moveRef(repo: string, move: RefMove): Promise<void> {
+  assertSafeArg(move.ref, 'ref')
+  if (move.to === null) await run(repo, ['update-ref', '-d', move.ref])
+  else await run(repo, ['update-ref', move.ref, move.to])
+}
+
+/**
+ * Applies a recorded change (forwards for redo, inverted for undo). Refuses when
+ * the repository is no longer in the state the change starts from, and moves the
+ * checked-out branch only with `reset --soft` / `reset --keep`, which never drop
+ * uncommitted work.
+ */
+export async function applyChange(repo: string, change: RepoChange): Promise<void> {
+  const changed = new Error('The repository changed since this action, so it can no longer be undone.')
+  const head = await currentHead(repo)
+  if (head.branch !== change.head.from.branch || head.hash !== change.head.from.hash) throw changed
+  for (const move of change.refs) {
+    if ((await refValue(repo, move.ref)) !== move.from) throw changed
+  }
+
+  const startRef = change.head.from.branch ? `refs/heads/${change.head.from.branch}` : null
+  const staysOnBranch = change.head.from.branch !== null && change.head.from.branch === change.head.to.branch
+  if (staysOnBranch) {
+    for (const move of change.refs) {
+      if (move.ref !== startRef) await moveRef(repo, move)
+      else if (move.to) await run(repo, ['reset', '-q', `--${change.mode}`, move.to])
+      else throw new Error('The checked-out branch cannot be deleted')
+    }
+    return
+  }
+
+  // HEAD moves: create/move the target refs, switch, then update the branch we left and delete refs.
+  const later = change.refs.filter((m) => m.ref === startRef || m.to === null)
+  for (const move of change.refs) if (!later.includes(move)) await moveRef(repo, move)
+  const target = change.head.to
+  if (target.branch) await run(repo, ['checkout', '-q', target.branch, '--'])
+  else if (target.hash) await run(repo, ['checkout', '-q', '--detach', target.hash])
+  for (const move of later) await moveRef(repo, move)
 }
