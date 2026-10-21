@@ -52,6 +52,8 @@ const handlers: LeviathanInvokeApi = {
   getLog: (path, limit) => repo.getLog(path, limit),
   getCommitDetails: (path, hash) => repo.getCommitDetails(path, hash),
   getDiff: (path, source) => repo.getDiff(path, source),
+  getSnapshot: (path) => repo.getSnapshot(path),
+  applyChange: (path, change) => repo.applyChange(path, change),
 
   stage: (path, paths) => repo.stage(path, paths),
   stageAll: (path) => repo.stageAll(path),

@@ -9,8 +9,10 @@ import {
   handleProgress,
   initApp,
   newTab,
+  redo,
   refreshRepo,
-  saveSettings
+  saveSettings,
+  undo
 } from './actions'
 import { CommitGraph } from './components/CommitGraph'
 import { ContextMenu, Dialog, Resizer, Toasts } from './components/common'
@@ -26,6 +28,12 @@ import { getRepo, useActiveTab, useStore } from './store'
 import { resolveTheme } from './theme'
 
 const api = window.leviathan
+
+/** Shortcuts like Ctrl+Z must not steal the text editing ones of inputs. */
+function isTyping(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  return !!el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable)
+}
 
 export function App() {
   const ready = useStore((s) => s.ready)
@@ -84,6 +92,10 @@ export function App() {
       } else if (mod && key === 'o') {
         e.preventDefault()
         void browseAndOpen(active?.path ? undefined : active?.id)
+      } else if (mod && (key === 'z' || key === 'y') && active?.path && !isTyping(e.target)) {
+        e.preventDefault()
+        if (key === 'y' || e.shiftKey) void redo(active.path)
+        else void undo(active.path)
       } else if (mod && key === 'f') {
         e.preventDefault()
         document.getElementById('graph-search')?.focus()

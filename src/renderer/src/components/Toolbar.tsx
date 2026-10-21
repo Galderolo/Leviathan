@@ -4,6 +4,8 @@ import {
   ArchiveRestore,
   ArrowDownToLine,
   RefreshCw,
+  Redo2,
+  Undo2,
   ArrowUpToLine,
   ChevronDown,
   ChevronRight,
@@ -26,7 +28,9 @@ import {
   setFilter,
   stashChanges,
   checkoutRef,
-  chooseRepoAccount
+  chooseRepoAccount,
+  redo,
+  undo
 } from '../actions'
 import { useT } from '../i18n'
 import { getRepo, useRepo, useStore, type MenuItem } from '../store'
@@ -88,6 +92,8 @@ export function Toolbar({ path }: { path: string }) {
   const head = state?.head
   const busy = view?.busy ?? null
   const remoteBusy = busy !== null
+  const lastUndo = view?.undo[view.undo.length - 1]
+  const lastRedo = view?.redo[view.redo.length - 1]
 
   const pullLabels: Record<PullMode, string> = {
     ff: t('pull.ff'),
@@ -164,6 +170,21 @@ export function Toolbar({ path }: { path: string }) {
       </div>
 
       <div className="toolbar-actions">
+        <ToolButton
+          icon={Undo2}
+          label={t('toolbar.undo')}
+          title={lastUndo ? t('toolbar.undoHint', { label: lastUndo.label }) : t('toast.nothingToUndo')}
+          onClick={() => void undo(path)}
+          disabled={!lastUndo || remoteBusy}
+        />
+        <ToolButton
+          icon={Redo2}
+          label={t('toolbar.redo')}
+          title={lastRedo ? t('toolbar.redoHint', { label: lastRedo.label }) : t('toast.nothingToRedo')}
+          onClick={() => void redo(path)}
+          disabled={!lastRedo || remoteBusy}
+        />
+        <div className="toolbar-sep" />
         <ToolButton
           icon={RefreshCw}
           label={t('toolbar.fetch')}

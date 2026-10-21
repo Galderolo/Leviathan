@@ -12,9 +12,11 @@ import type {
 } from '../../shared/types'
 import { buildPartialPatch } from '../../shared/patch'
 import { hasRemoteOnHost } from '../../shared/providers'
+import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import { isFetchDue } from './autofetch'
 import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
+import { popRedo, popUndo, pushEntry } from './undoStack'
 import { resolveLang, t } from './i18n'
 import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView, type Tab } from './store'
 import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
@@ -313,6 +315,12 @@ export async function refreshRepo(path: string, opts: { log?: boolean } = {}): P
         (log) => {
           if (logSeq[path] !== lSeq || !getRepo(path)) return
           patchRepo(path, { commits: log.commits, hasMore: log.hasMore })
+          // A commit that disappeared (undo, reset, amend...) must not stay selected.
+          const selection = getRepo(path)?.selection
+          if (selection?.kind === 'commit' && !log.commits.some((c) => c.hash === selection.hash)) {
+            patchRepo(path, { selection: null, details: null })
+            fixSelection(path)
+          }
         },
         (err) => {
           if (logSeq[path] !== lSeq) return
@@ -419,14 +427,28 @@ export function setFilter(path: string, filter: string): void {
 // ---------------------------------------------------------------------------
 // Running git operations
 
+/**
+ * Runs `fn` and records what it changed (refs and HEAD) so it can be undone.
+ * Errors propagate; nothing is recorded when nothing changed.
+ */
+async function recordUndo<T>(path: string, label: string, mode: RepoChange['mode'], fn: () => Promise<T>): Promise<T> {
+  const before = await api.getSnapshot(path).catch(() => null)
+  const result = await fn()
+  const after = before ? await api.getSnapshot(path).catch(() => null) : null
+  const change = before && after ? diffSnapshots(before, after, mode) : null
+  if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
+  return result
+}
+
 async function runOp(
   path: string,
   fn: () => Promise<unknown>,
-  opts: { busy?: BusyKind; success?: string; log?: boolean } = {}
+  opts: { busy?: BusyKind; success?: string; log?: boolean; undo?: { label: string; mode?: RepoChange['mode'] } } = {}
 ): Promise<boolean> {
   if (opts.busy) patchRepo(path, { busy: opts.busy, progress: null })
   try {
-    await fn()
+    if (opts.undo) await recordUndo(path, opts.undo.label, opts.undo.mode ?? 'keep', fn)
+    else await fn()
     if (opts.success) toast('success', opts.success)
     return true
   } catch (err) {
@@ -481,7 +503,11 @@ export async function pull(path: string, mode?: PullMode): Promise<boolean> {
   const settings = useStore.getState().settings
   const effective = mode ?? settings.pullMode
   if (mode && mode !== settings.pullMode) void saveSettings({ pullMode: mode })
-  return runOp(path, () => api.pull(path, effective), { busy: 'pull', success: t('toast.pulled') })
+  return runOp(path, () => api.pull(path, effective), {
+    busy: 'pull',
+    success: t('toast.pulled'),
+    undo: { label: t('undo.pull') }
+  })
 }
 
 export async function push(path: string, opts: { force?: boolean; branch?: string } = {}): Promise<boolean> {
@@ -541,7 +567,9 @@ export async function createBranch(path: string, startHash: string | null): Prom
   const name = values?.name?.trim()
   if (!name) return
   const startPoint = values!.start === 'HEAD' ? null : values!.start
-  await runOp(path, () => api.createBranch(path, name, startPoint, true))
+  await runOp(path, () => api.createBranch(path, name, startPoint, true), {
+    undo: { label: t('undo.createBranch', { name }) }
+  })
 }
 
 export async function stashChanges(path: string, askMessage = false): Promise<void> {
@@ -588,29 +616,36 @@ export async function dropStash(path: string, stash: Stash): Promise<void> {
 }
 
 export function checkoutRef(path: string, ref: GitRef): Promise<boolean> {
-  if (ref.type === 'head') return runOp(path, () => api.checkout(path, ref.name))
-  if (ref.type === 'remote') return runOp(path, () => api.checkoutRemote(path, ref.name))
-  return runOp(path, () => api.checkoutDetached(path, ref.name))
+  const undo = { label: t('undo.checkout', { name: ref.name }) }
+  if (ref.type === 'head') return runOp(path, () => api.checkout(path, ref.name), { undo })
+  if (ref.type === 'remote') return runOp(path, () => api.checkoutRemote(path, ref.name), { undo })
+  return runOp(path, () => api.checkoutDetached(path, ref.name), { undo })
 }
 
 export function checkoutCommit(path: string, hash: string): Promise<boolean> {
-  return runOp(path, () => api.checkoutDetached(path, hash))
+  return runOp(path, () => api.checkoutDetached(path, hash), {
+    undo: { label: t('undo.checkout', { name: hash.slice(0, 7) }) }
+  })
 }
 
 export function mergeRef(path: string, name: string): Promise<boolean> {
-  return runOp(path, () => api.merge(path, name))
+  return runOp(path, () => api.merge(path, name), { undo: { label: t('undo.merge', { name }) } })
 }
 
 /** Checks out the local branch `into` and merges `from` into it. */
 export function checkoutAndMerge(path: string, into: string, from: string): Promise<boolean> {
-  return runOp(path, async () => {
-    await api.checkout(path, into)
-    await api.merge(path, from)
-  })
+  return runOp(
+    path,
+    async () => {
+      await api.checkout(path, into)
+      await api.merge(path, from)
+    },
+    { undo: { label: t('undo.merge', { name: from }) } }
+  )
 }
 
 export function rebaseOnto(path: string, name: string): Promise<boolean> {
-  return runOp(path, () => api.rebase(path, name))
+  return runOp(path, () => api.rebase(path, name), { undo: { label: t('undo.rebase', { name }) } })
 }
 
 export async function deleteBranch(path: string, ref: GitRef): Promise<void> {
@@ -622,7 +657,9 @@ export async function deleteBranch(path: string, ref: GitRef): Promise<void> {
   })
   if (!ok) return
   try {
-    await api.deleteBranch(path, ref.name, false)
+    await recordUndo(path, t('undo.deleteBranch', { name: ref.name }), 'keep', () =>
+      api.deleteBranch(path, ref.name, false)
+    )
   } catch (err) {
     const msg = errorMessage(err)
     if (!/not fully merged/i.test(msg)) {
@@ -635,7 +672,11 @@ export async function deleteBranch(path: string, ref: GitRef): Promise<void> {
       confirmText: t('dlg.delete'),
       danger: true
     })
-    if (force) await runOp(path, () => api.deleteBranch(path, ref.name, true))
+    if (force) {
+      await runOp(path, () => api.deleteBranch(path, ref.name, true), {
+        undo: { label: t('undo.deleteBranch', { name: ref.name }) }
+      })
+    }
     return
   }
   await refreshRepo(path)
@@ -648,7 +689,11 @@ export async function renameBranch(path: string, ref: GitRef): Promise<void> {
     value: ref.name,
     confirmText: t('dlg.rename')
   })
-  if (name && name !== ref.name) await runOp(path, () => api.renameBranch(path, ref.name, name))
+  if (name && name !== ref.name) {
+    await runOp(path, () => api.renameBranch(path, ref.name, name), {
+      undo: { label: t('undo.renameBranch', { name: ref.name }) }
+    })
+  }
 }
 
 export async function deleteRemoteBranch(path: string, ref: GitRef): Promise<void> {
@@ -675,7 +720,9 @@ export async function createTag(path: string, hash: string): Promise<void> {
   })
   const name = values?.name?.trim()
   if (!name) return
-  await runOp(path, () => api.createTag(path, name, hash, values!.message || null))
+  await runOp(path, () => api.createTag(path, name, hash, values!.message || null), {
+    undo: { label: t('undo.createTag', { name }) }
+  })
 }
 
 export async function deleteTag(path: string, name: string): Promise<void> {
@@ -685,7 +732,7 @@ export async function deleteTag(path: string, name: string): Promise<void> {
     confirmText: t('dlg.delete'),
     danger: true
   })
-  if (ok) await runOp(path, () => api.deleteTag(path, name))
+  if (ok) await runOp(path, () => api.deleteTag(path, name), { undo: { label: t('undo.deleteTag', { name }) } })
 }
 
 export async function pushTag(path: string, name: string): Promise<void> {
@@ -701,11 +748,13 @@ export async function pushTag(path: string, name: string): Promise<void> {
 }
 
 export function cherryPick(path: string, hash: string): Promise<boolean> {
-  return runOp(path, () => api.cherryPick(path, hash))
+  return runOp(path, () => api.cherryPick(path, hash), {
+    undo: { label: t('undo.cherryPick', { name: hash.slice(0, 7) }) }
+  })
 }
 
 export function revertCommit(path: string, hash: string): Promise<boolean> {
-  return runOp(path, () => api.revert(path, hash))
+  return runOp(path, () => api.revert(path, hash), { undo: { label: t('undo.revert', { name: hash.slice(0, 7) }) } })
 }
 
 export async function resetTo(path: string, hash: string, mode: ResetMode): Promise<void> {
@@ -718,7 +767,7 @@ export async function resetTo(path: string, hash: string, mode: ResetMode): Prom
     })
     if (!ok) return
   }
-  await runOp(path, () => api.reset(path, hash, mode))
+  await runOp(path, () => api.reset(path, hash, mode), { undo: { label: t('undo.reset', { name: hash.slice(0, 7) }) } })
 }
 
 export function abortOperation(path: string): Promise<boolean> {
@@ -854,12 +903,49 @@ export async function commit(path: string): Promise<boolean> {
   if (!view) return false
   const { summary, body, amend } = view.draft
   const message = body.trim() ? `${summary.trim()}\n\n${body.trim()}\n` : `${summary.trim()}\n`
-  const ok = await runOp(path, () => api.commit(path, message, amend))
+  const ok = await runOp(path, () => api.commit(path, message, amend), {
+    undo: { label: t(amend ? 'undo.amend' : 'undo.commit', { name: summary.trim() }), mode: 'soft' }
+  })
   if (ok) {
     updateDraft(path, { summary: '', body: '', amend: false })
     patchRepo(path, { diff: null })
   }
   return ok
+}
+
+// ---------------------------------------------------------------------------
+// Undo / redo
+
+async function applyHistory(path: string, direction: 'undo' | 'redo'): Promise<void> {
+  const view = getRepo(path)
+  if (!view || view.busy) return
+  const popped = direction === 'undo' ? popUndo(view) : popRedo(view)
+  if (!popped) {
+    toast('info', t(direction === 'undo' ? 'toast.nothingToUndo' : 'toast.nothingToRedo'))
+    return
+  }
+  const { entry } = popped
+  try {
+    await api.applyChange(path, direction === 'undo' ? invertChange(entry.change) : entry.change)
+    patchRepo(path, popped.stacks)
+    toast('success', t(direction === 'undo' ? 'toast.undone' : 'toast.redone', { label: entry.label }))
+  } catch (err) {
+    // The repository moved on: this entry can no longer be applied, so drop it.
+    patchRepo(path, (r) =>
+      direction === 'undo' ? { undo: r.undo.filter((e) => e !== entry) } : { redo: r.redo.filter((e) => e !== entry) }
+    )
+    toast('error', errorMessage(err))
+  } finally {
+    await refreshRepo(path)
+  }
+}
+
+export function undo(path: string): Promise<void> {
+  return applyHistory(path, 'undo')
+}
+
+export function redo(path: string): Promise<void> {
+  return applyHistory(path, 'redo')
 }
 
 // ---------------------------------------------------------------------------

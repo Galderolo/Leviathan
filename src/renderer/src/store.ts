@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Account, Commit, CommitDetails, DiffSource, FileDiff, RepoState, Settings } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import type { Lang } from './i18n'
+import type { UndoEntry } from './undoStack'
 
 export type Selection =
   { kind: 'wip' } | { kind: 'commit'; hash: string } | { kind: 'stash'; hash: string; index: number } | null
@@ -45,6 +46,9 @@ export interface RepoView {
   lastFetchError: string | null
   /** Account bound to this repository, if any. */
   account: Account | null
+  /** Actions that can be undone (newest last) and undone actions that can be redone. */
+  undo: UndoEntry[]
+  redo: UndoEntry[]
 }
 
 export interface Tab {
@@ -144,7 +148,9 @@ export function newRepoView(path: string, limit: number): RepoView {
     applying: false,
     lastFetchAt: null,
     lastFetchError: null,
-    account: null
+    account: null,
+    undo: [],
+    redo: []
   }
 }
 

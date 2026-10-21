@@ -15,6 +15,7 @@ import type {
   Settings,
   SshKey
 } from './types'
+import type { RepoChange, Snapshot } from './undo'
 
 /**
  * Everything the renderer can ask the main process to do.
@@ -41,6 +42,9 @@ export interface LeviathanInvokeApi {
   getLog(repo: string, limit: number): Promise<{ commits: Commit[]; hasMore: boolean }>
   getCommitDetails(repo: string, hash: string): Promise<CommitDetails>
   getDiff(repo: string, source: DiffSource): Promise<FileDiff>
+  getSnapshot(repo: string): Promise<Snapshot>
+  /** Applies a recorded change; refuses when the repository no longer matches its starting state. */
+  applyChange(repo: string, change: RepoChange): Promise<void>
 
   // Working tree
   stage(repo: string, paths: string[]): Promise<void>
@@ -152,6 +156,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getLog: true,
   getCommitDetails: true,
   getDiff: true,
+  getSnapshot: true,
+  applyChange: true,
   stage: true,
   stageAll: true,
   unstage: true,
