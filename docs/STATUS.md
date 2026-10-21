@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-21, at `main` = `9b3965b` (CI green on Windows, macOS and Linux, 213 tests).
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-21, with 0.3.0 released (213 tests).
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -10,10 +10,11 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 |---|---|---|
 | 0.1.0 | 2026-10-21 | Graph, staging (files, hunks, lines), commit, branches, merge/rebase, pull/push, stash, tags, clone/init |
 | 0.2.0 | 2026-10-21 | Accounts (encrypted tokens, per-repo identity and HTTPS auth), fetch button, branch start point, branch dates |
+| 0.3.0 | 2026-10-21 | Undo/redo, conflict editor, interactive rebase, pull requests, pull without checkout, unpushed-commit marks, new icon |
 
-Both are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The release workflow is fixed (see below), but 0.2.0 itself was left as it is.
+All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The release workflow is fixed since 0.3.0: one draft for all builds, notes taken from the CHANGELOG, and the release is published only when the three builds succeed.
 
-## Done since 0.2.0 (on `main`, not released yet)
+## Done in 0.3.0
 
 All of these went through a final whole-branch review; Critical and Important findings were fixed with a failing test first.
 
@@ -24,28 +25,20 @@ All of these went through a final whole-branch review; Critical and Important fi
 - **Pull a branch that is not checked out** (branch menu → *Pull … (fast-forward)*); the toast after a pull names the branch and says when it was already up to date, and the graph scrolls to the new tip.
 - **Unpushed commits** show a small ↑ at the end of their message in the graph.
 - **New app icon** (`resources/icon.png`, `src/renderer/public/leviathan.png`).
-- **Release workflow**: a first job creates one draft release, and the three builds upload to it.
+- **Release workflow**: a first job creates one draft release (notes from the CHANGELOG), the three builds upload to it, and a last job publishes it.
 
 ## Next steps
 
-### 1. Try the unreleased work with a real account
+### 1. Keep an eye on 0.3.0
 
-Pull requests were tested against a mocked API only. With a GitHub account added in Settings, on a repository whose `origin` is on GitHub, check:
+Pull requests were tested for real on a private GitHub repository (create as draft, list, check out by double-click). Still untested with a real server: GitLab merge requests and Gitea. Note that deleting a pull request's branch does not close it on GitHub; there is no "close pull request" action in the app yet.
 
-- [ ] the "Pull requests" section lists the open PRs;
-- [ ] right-click a branch → *Create pull request…* creates it and opens it in the browser;
-- [ ] double-click a PR checks it out (a fork's PR becomes `pr/N`);
-- [ ] a GitLab account with an `api`-scope token does the same with merge requests.
+### 2. Releasing the next version
 
-Also worth a pass on a real repository: undo after commit/checkout/branch delete, a merge conflict resolved in the editor, an interactive rebase that is then undone.
-
-### 2. Release 0.3.0
-
-1. Set `"version": "0.3.0"` in `package.json`.
-2. Rename `## [Unreleased]` in `CHANGELOG.md` to `## [0.3.0] - <date>` and add an empty `[Unreleased]` above it.
-3. Commit, then tag and push: `git tag v0.3.0 && git push origin main v0.3.0`.
-4. Watch the Release workflow: this is the first run of the fixed workflow. There must be **one** draft release with the Windows (`setup.exe`, `portable.exe`), macOS (`dmg`, `zip`) and Linux (`AppImage`, `deb`) files and the three `latest*.yml`.
-5. Publish the draft on GitHub (keep or drop "pre-release").
+1. Set the version in `package.json` (and `package-lock.json`).
+2. Rename `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - <date>` and add an empty `[Unreleased]` above it.
+3. Commit, then tag and push: `git tag vx.y.z && git push origin main vx.y.z`.
+4. The Release workflow builds Windows, macOS and Linux, uploads everything to one draft and publishes it as a pre-release when all three succeed. If a build fails, the release stays a draft: fix, delete the draft and the tag, and tag again.
 
 ### 3. Sign in with the browser (OAuth device flow)
 
