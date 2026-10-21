@@ -4,6 +4,7 @@ import { supportsLineSelection } from '../../../shared/patch'
 import type { FileChange } from '../../../shared/types'
 import { applyHunk, applyLines, closeDiff, discardFiles, openFile, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
+import { ConflictView } from './ConflictView'
 import { useRepo } from '../store'
 import { cx, shortHash, splitPath } from '../utils'
 
@@ -25,6 +26,9 @@ export function DiffView({ path }: { path: string }) {
   }, [data])
 
   if (!diff) return null
+  if (diff.source.kind === 'unstaged' && diff.source.conflicted) {
+    return <ConflictView path={path} file={diff.source.path} />
+  }
   const { source, error } = diff
   const { dir, name } = splitPath(source.path)
 

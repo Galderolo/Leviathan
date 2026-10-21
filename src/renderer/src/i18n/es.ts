@@ -283,6 +283,20 @@ const es: Record<keyof typeof en, string> = {
   'toast.nothingToUndo': 'No hay nada que deshacer',
   'toast.nothingToRedo': 'No hay nada que rehacer',
 
+  'conflict.current': 'Actual',
+  'conflict.incoming': 'Entrante',
+  'conflict.useCurrent': 'Usar actual',
+  'conflict.useIncoming': 'Usar entrante',
+  'conflict.useBoth': 'Ambas (actual primero)',
+  'conflict.useBothReversed': 'Ambas (entrante primero)',
+  'conflict.takeCurrent': 'Tomar archivo actual',
+  'conflict.takeIncoming': 'Tomar archivo entrante',
+  'conflict.progress': '{done} de {count} conflictos resueltos',
+  'conflict.save': 'Guardar y marcar resuelto',
+  'conflict.noMarkers':
+    'Este archivo no tiene marcadores de conflicto (es binario o se borró en un lado). Elige una de las dos versiones con los botones de arriba.',
+  'toast.resolved': '{name} resuelto',
+
   'status.ready': 'Listo',
   'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',

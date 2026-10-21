@@ -280,6 +280,20 @@ const en = {
   'toast.nothingToUndo': 'Nothing to undo',
   'toast.nothingToRedo': 'Nothing to redo',
 
+  'conflict.current': 'Current',
+  'conflict.incoming': 'Incoming',
+  'conflict.useCurrent': 'Use current',
+  'conflict.useIncoming': 'Use incoming',
+  'conflict.useBoth': 'Both (current first)',
+  'conflict.useBothReversed': 'Both (incoming first)',
+  'conflict.takeCurrent': 'Take current file',
+  'conflict.takeIncoming': 'Take incoming file',
+  'conflict.progress': '{done} of {count} conflicts resolved',
+  'conflict.save': 'Save and mark resolved',
+  'conflict.noMarkers':
+    'This file has no conflict markers (a binary file, or deleted on one side). Take one of the two versions with the buttons above.',
+  'toast.resolved': 'Resolved {name}',
+
   'status.ready': 'Ready',
   'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',
