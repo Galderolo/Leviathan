@@ -66,6 +66,9 @@ const es: Record<keyof typeof en, string> = {
   'graph.empty': 'Aún no hay commits. ¡Prepara algunos archivos y haz tu primer commit!',
   'graph.loading': 'Cargando…',
 
+  'right.pending': '{count} cambios sin commit',
+  'right.pending_one': '1 cambio sin commit',
+  'right.reviewCommit': 'Revisar y hacer commit',
   'right.selectCommit': 'Selecciona un commit para ver sus detalles.',
 
   'wip.changes': '{count} cambios en {branch}',

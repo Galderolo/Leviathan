@@ -64,6 +64,9 @@ const en = {
   'graph.empty': 'No commits yet. Stage some files and make your first commit!',
   'graph.loading': 'Loading…',
 
+  'right.pending': '{count} uncommitted changes',
+  'right.pending_one': '1 uncommitted change',
+  'right.reviewCommit': 'Review and commit',
   'right.selectCommit': 'Select a commit to see its details.',
 
   'wip.changes': '{count} file changes on {branch}',

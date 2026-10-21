@@ -933,6 +933,43 @@ a:hover {
   min-height: 0;
 }
 
+.right-stack {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.right-stack > .right-content {
+  flex: 1;
+  height: auto;
+}
+
+.pending-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-1));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pending-bar:hover {
+  background: color-mix(in srgb, var(--accent) 24%, var(--bg-1));
+}
+
+.pending-action {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .right-empty {
   padding: 32px 20px;
   text-align: center;

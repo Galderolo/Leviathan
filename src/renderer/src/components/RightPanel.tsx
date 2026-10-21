@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { AlertTriangle, Copy } from 'lucide-react'
+import { AlertTriangle, Copy, PencilLine } from 'lucide-react'
 import type { DiffSource, FileChange } from '../../../shared/types'
 import {
   abortOperation,
@@ -10,6 +10,7 @@ import {
   openDiff,
   popStash,
   selectCommit,
+  selectWip,
   setAmend,
   stageAll,
   stageFiles,
@@ -29,8 +30,31 @@ export function RightPanel({ path }: { path: string }) {
   const t = useT()
   if (!view?.state) return <div className="right-empty dim">{t('graph.loading')}</div>
   if (view.selection?.kind === 'wip') return <WorkingPanel path={path} view={view} />
-  if (view.selection) return <CommitPanel path={path} view={view} />
-  return <div className="right-empty dim">{t('right.selectCommit')}</div>
+  return (
+    <div className="right-stack">
+      <PendingChanges path={path} view={view} />
+      {view.selection ? (
+        <CommitPanel path={path} view={view} />
+      ) : (
+        <div className="right-empty dim">{t('right.selectCommit')}</div>
+      )}
+    </div>
+  )
+}
+
+/** While another commit is shown, points the way back to uncommitted changes and the commit box. */
+function PendingChanges({ path, view }: { path: string; view: RepoView }) {
+  const t = useT()
+  const { staged, unstaged, conflicted } = view.state!.status
+  const count = staged.length + unstaged.length + conflicted.length
+  if (!count) return null
+  return (
+    <button className="pending-bar" onClick={() => selectWip(path)}>
+      <PencilLine size={14} />
+      <span>{t('right.pending', { count })}</span>
+      <span className="pending-action">{t('right.reviewCommit')} →</span>
+    </button>
+  )
 }
 
 function isActive(view: RepoView, source: Partial<DiffSource>): boolean {
