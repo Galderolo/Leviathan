@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/leviathan-git/leviathan/security/advisories/new
+    url: https://github.com/Galderolo/Leviathan/security/advisories/new
     about: Please report security issues privately (see SECURITY.md).

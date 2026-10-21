@@ -11,4 +11,4 @@ In short: we want Leviathan to be a welcoming project for everyone, whatever the
 
 Maintainers may remove comments, commits, issues and other contributions that do not follow this code, and may temporarily or permanently ban contributors who repeatedly break it.
 
-To report a problem, contact the maintainers privately at **[MAINTAINER_EMAIL]**. All reports are reviewed and kept confidential.
+To report a problem privately, open a [private report](https://github.com/Galderolo/Leviathan/security/advisories/new) (only the maintainers can see it), or use GitHub's *Report content* option for abusive comments. All reports are reviewed and kept confidential.

@@ -5,7 +5,7 @@ import { useStore } from '../store'
 import type { Settings, ThemeSetting } from '../../../shared/types'
 import { SshKeysSection } from './SshKeysSection'
 
-const REPO_URL = 'https://github.com/leviathan-git/leviathan'
+const REPO_URL = 'https://github.com/Galderolo/Leviathan'
 
 export function SettingsModal() {
   const open = useStore((s) => s.settingsOpen)

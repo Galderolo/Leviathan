@@ -5,7 +5,7 @@
   "description": "Free and open source Git GUI with a visual commit graph. No ads, no accounts, no paywalls.",
   "license": "MIT",
   "author": "Leviathan contributors",
-  "homepage": "https://github.com/leviathan-git/leviathan",
+  "homepage": "https://github.com/Galderolo/Leviathan",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev --watch",
@@ -43,10 +43,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/leviathan-git/leviathan.git"
+    "url": "https://github.com/Galderolo/Leviathan.git"
   },
   "bugs": {
-    "url": "https://github.com/leviathan-git/leviathan/issues"
+    "url": "https://github.com/Galderolo/Leviathan/issues"
   },
   "keywords": [
     "git",

@@ -46,7 +46,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 
 ## Download
 
-Installers for Windows, macOS and Linux are published on the [Releases page](https://github.com/leviathan-git/leviathan/releases).
+Installers for Windows, macOS and Linux are published on the [Releases page](https://github.com/Galderolo/Leviathan/releases).
 
 Leviathan needs [Git](https://git-scm.com/downloads) to be installed.
 
@@ -57,8 +57,8 @@ Leviathan needs [Git](https://git-scm.com/downloads) to be installed.
 You need [Node.js](https://nodejs.org) 22.12 or newer and Git.
 
 ```bash
-git clone https://github.com/leviathan-git/leviathan.git
-cd leviathan
+git clone https://github.com/Galderolo/Leviathan.git
+cd Leviathan
 npm install
 npm run dev      # start the app with hot reload
 npm test         # unit + integration tests
