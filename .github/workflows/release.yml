@@ -10,7 +10,20 @@ permissions:
   contents: write
 
 jobs:
+  # One draft release for every build to upload to. Left to each build, the
+  # parallel jobs can each create their own draft and split the installers.
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$GITHUB_REF_NAME" --notes ""
+
   build:
+    needs: draft
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
