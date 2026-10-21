@@ -86,6 +86,8 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   unwatchAll()
-  void disposeAskpass()
   if (process.platform !== 'darwin') app.quit()
 })
+
+// Not on window-all-closed: on macOS the app keeps running and windows can be reopened.
+app.on('will-quit', () => void disposeAskpass())

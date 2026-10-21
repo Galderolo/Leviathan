@@ -47,6 +47,7 @@ export async function initAskpass(): Promise<void> {
 
 export async function disposeAskpass(): Promise<void> {
   for (const id of [...pending.keys()]) answerAskpass(id, null)
+  setGitEnv({})
   await bridge?.close()
   bridge = null
 }
