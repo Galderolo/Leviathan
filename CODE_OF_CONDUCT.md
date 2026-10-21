@@ -1,8 +1,8 @@
 # Code of Conduct
 
-Calamar follows the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
+Leviathan follows the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 
-In short: we want Calamar to be a welcoming project for everyone, whatever their experience, background or identity.
+In short: we want Leviathan to be a welcoming project for everyone, whatever their experience, background or identity.
 
 - Be respectful and patient, especially with newcomers.
 - Give and accept constructive feedback gracefully.

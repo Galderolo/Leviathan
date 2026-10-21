@@ -9,7 +9,7 @@ import { Spinner } from './common'
 
 type Mode = 'home' | 'clone' | 'init'
 
-const api = window.calamar
+const api = window.leviathan
 
 function joinPath(parent: string, child: string): string {
   if (!parent) return child
@@ -39,9 +39,9 @@ export function WelcomeView({ tabId }: { tabId: string }) {
     <div className="welcome">
       <div className="welcome-inner">
         <div className="welcome-brand">
-          <img src="./calamar.svg" alt="" width={64} height={64} />
+          <img src="./leviathan.svg" alt="" width={64} height={64} />
           <div>
-            <h1>Calamar</h1>
+            <h1>Leviathan</h1>
             <p className="dim">{t('welcome.tagline')}</p>
           </div>
         </div>

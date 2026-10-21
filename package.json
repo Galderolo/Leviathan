@@ -1,11 +1,11 @@
 {
-  "name": "calamar",
-  "productName": "Calamar",
+  "name": "leviathan",
+  "productName": "Leviathan",
   "version": "0.1.0",
   "description": "Free and open source Git GUI with a visual commit graph. No ads, no accounts, no paywalls.",
   "license": "MIT",
-  "author": "Calamar contributors",
-  "homepage": "https://github.com/calamar-git/calamar",
+  "author": "Leviathan contributors",
+  "homepage": "https://github.com/leviathan-git/leviathan",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev --watch",
@@ -43,10 +43,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/calamar-git/calamar.git"
+    "url": "https://github.com/leviathan-git/leviathan.git"
   },
   "bugs": {
-    "url": "https://github.com/calamar-git/calamar/issues"
+    "url": "https://github.com/leviathan-git/leviathan/issues"
   },
   "keywords": [
     "git",

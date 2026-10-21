@@ -22,7 +22,7 @@ import { Toolbar } from './components/Toolbar'
 import { WelcomeView } from './components/WelcomeView'
 import { getRepo, useActiveTab, useStore } from './store'
 
-const api = window.calamar
+const api = window.leviathan
 
 export function App() {
   const ready = useStore((s) => s.ready)

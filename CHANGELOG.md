@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Calamar are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com), and the project uses [semantic versioning](https://semver.org).
+All notable changes to Leviathan are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com), and the project uses [semantic versioning](https://semver.org).
 
 ## [Unreleased]
 

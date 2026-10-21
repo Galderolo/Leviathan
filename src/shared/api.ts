@@ -15,7 +15,7 @@ import type {
  * Everything the renderer can ask the main process to do.
  * Every method is invoked over a single IPC channel (see `API_METHODS`).
  */
-export interface CalamarInvokeApi {
+export interface LeviathanInvokeApi {
   // App / settings
   getSettings(): Promise<Settings>
   saveSettings(patch: Partial<Settings>): Promise<Settings>
@@ -88,18 +88,18 @@ export interface CalamarInvokeApi {
 }
 
 /** Event subscriptions exposed next to the invoke methods. */
-export interface CalamarEventsApi {
+export interface LeviathanEventsApi {
   onRepoChanged(cb: (e: RepoChangedEvent) => void): () => void
   onProgress(cb: (e: ProgressEvent) => void): () => void
 }
 
-export type CalamarApi = CalamarInvokeApi & CalamarEventsApi
+export type LeviathanApi = LeviathanInvokeApi & LeviathanEventsApi
 
 /**
  * Exhaustive list of invokable methods. Typed as a Record so the compiler
- * fails if a method is added to `CalamarInvokeApi` but not listed here.
+ * fails if a method is added to `LeviathanInvokeApi` but not listed here.
  */
-const METHODS: Record<keyof CalamarInvokeApi, true> = {
+const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getSettings: true,
   saveSettings: true,
   pickFolder: true,
@@ -156,10 +156,10 @@ const METHODS: Record<keyof CalamarInvokeApi, true> = {
   openExternal: true
 }
 
-export const API_METHODS = Object.keys(METHODS) as (keyof CalamarInvokeApi)[]
+export const API_METHODS = Object.keys(METHODS) as (keyof LeviathanInvokeApi)[]
 
-export const IPC_INVOKE = 'calamar:invoke'
-export const IPC_REPO_CHANGED = 'calamar:repo-changed'
-export const IPC_PROGRESS = 'calamar:progress'
+export const IPC_INVOKE = 'leviathan:invoke'
+export const IPC_REPO_CHANGED = 'leviathan:repo-changed'
+export const IPC_PROGRESS = 'leviathan:progress'
 
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string }

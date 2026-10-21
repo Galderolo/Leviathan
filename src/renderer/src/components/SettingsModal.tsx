@@ -4,7 +4,7 @@ import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import type { Settings } from '../../../shared/types'
 
-const REPO_URL = 'https://github.com/calamar-git/calamar'
+const REPO_URL = 'https://github.com/leviathan-git/leviathan'
 
 export function SettingsModal() {
   const open = useStore((s) => s.settingsOpen)
@@ -64,7 +64,7 @@ export function SettingsModal() {
         </label>
         <div className="about">
           <div>
-            Calamar {versions.app} · git {versions.git}
+            Leviathan {versions.app} · git {versions.git}
           </div>
           <div className="dim">{t('settings.license')}</div>
           <a

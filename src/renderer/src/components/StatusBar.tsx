@@ -30,7 +30,7 @@ export function StatusBar() {
         )}
       </div>
       <div className="statusbar-right dim">
-        Calamar {versions.app} · git {versions.git}
+        Leviathan {versions.app} · git {versions.git}
       </div>
     </div>
   )

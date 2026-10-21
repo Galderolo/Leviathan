@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="resources/icon.png" width="96" alt="Calamar logo" />
+  <img src="resources/icon.png" width="96" alt="Leviathan logo" />
 </p>
 
-<h1 align="center">Calamar</h1>
+<h1 align="center">Leviathan</h1>
 
 <p align="center">
   A free and open source Git client with a beautiful commit graph.<br />
@@ -17,11 +17,11 @@
   <a href="#en-español">Español</a>
 </p>
 
-![Calamar showing a repository's commit graph, branches and staging area](docs/screenshot.png)
+![Leviathan showing a repository's commit graph, branches and staging area](docs/screenshot.png)
 
-## Why Calamar?
+## Why Leviathan?
 
-The most comfortable Git GUIs keep their best features behind subscriptions or require an account to work with private repositories. Calamar gives everyone the same visual workflow — tabs, a coloured branch graph, one-click staging — for free, and is built in the open by the people who use it.
+The most comfortable Git GUIs keep their best features behind subscriptions or require an account to work with private repositories. Leviathan gives everyone the same visual workflow — tabs, a coloured branch graph, one-click staging — for free, and is built in the open by the people who use it.
 
 ## Features
 
@@ -44,9 +44,9 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 
 ## Download
 
-Installers for Windows, macOS and Linux are published on the [Releases page](https://github.com/calamar-git/calamar/releases).
+Installers for Windows, macOS and Linux are published on the [Releases page](https://github.com/leviathan-git/leviathan/releases).
 
-Calamar needs [Git](https://git-scm.com/downloads) to be installed.
+Leviathan needs [Git](https://git-scm.com/downloads) to be installed.
 
 > The builds are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn the first time you open the app.
 
@@ -55,8 +55,8 @@ Calamar needs [Git](https://git-scm.com/downloads) to be installed.
 You need [Node.js](https://nodejs.org) 22.12 or newer and Git.
 
 ```bash
-git clone https://github.com/calamar-git/calamar.git
-cd calamar
+git clone https://github.com/leviathan-git/leviathan.git
+cd leviathan
 npm install
 npm run dev      # start the app with hot reload
 npm test         # unit + integration tests
@@ -82,7 +82,7 @@ On macOS use `Cmd` instead of `Ctrl`.
 
 ## Contributing
 
-Calamar is maintained by one person in their spare time. Issues and pull requests are welcome, but reviews may be slow and there is no guarantee that a given PR will be merged. Because Calamar is MIT-licensed, you are always free to fork it and take it in your own direction.
+Leviathan is maintained by one person in their spare time. Issues and pull requests are welcome, but reviews may be slow and there is no guarantee that a given PR will be merged. Because Leviathan is MIT-licensed, you are always free to fork it and take it in your own direction.
 
 If you want to contribute, start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/ROADMAP.md).
 
@@ -90,14 +90,14 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-[MIT](LICENSE). Calamar is free software and will stay that way.
+[MIT](LICENSE). Leviathan is free software and will stay that way.
 
 
 ---
 
 ## En español
 
-**Calamar** es un cliente Git gratuito y de código abierto, con un grafo de commits visual. Sin anuncios, sin cuentas y sin pagos.
+**Leviathan** es un cliente Git gratuito y de código abierto, con un grafo de commits visual. Sin anuncios, sin cuentas y sin pagos.
 
 - Grafo de commits a color con ramas, merges, tags, stashes y el nodo de trabajo en curso (WIP).
 - Pestañas con varios repositorios abiertos a la vez.

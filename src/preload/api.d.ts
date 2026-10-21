@@ -1,8 +1,8 @@
-import type { CalamarApi } from '../shared/api'
+import type { LeviathanApi } from '../shared/api'
 
 declare global {
   interface Window {
-    calamar: CalamarApi
+    leviathan: LeviathanApi
   }
 }
 

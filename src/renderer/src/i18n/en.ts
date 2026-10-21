@@ -186,7 +186,7 @@ const en = {
   'toast.nothingToStash': 'There are no changes to stash',
   'toast.noStashes': 'There are no stashes to pop',
 
-  'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Calamar.',
+  'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Leviathan.',
   'error.detachedPush': 'HEAD is detached. Check out a branch before pushing.',
   'error.noRemote': 'This repository has no remotes. Add one from the REMOTE section.',
 

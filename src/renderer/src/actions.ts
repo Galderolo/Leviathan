@@ -14,7 +14,7 @@ import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView
 import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
 import { basename } from './utils'
 
-const api = window.calamar
+const api = window.leviathan
 
 const MAX_RECENT = 15
 const stateSeq: Record<string, number> = {}

@@ -7,7 +7,7 @@ import { unwatchAll } from './watcher'
 const isDev = !app.isPackaged
 
 // Lets contributors and automated tests run with an isolated profile.
-if (process.env.CALAMAR_USER_DATA) app.setPath('userData', process.env.CALAMAR_USER_DATA)
+if (process.env.LEVIATHAN_USER_DATA) app.setPath('userData', process.env.LEVIATHAN_USER_DATA)
 
 function restoreBounds(): Electron.Rectangle | { width: number; height: number } {
   const saved = loadSettings().window
@@ -30,7 +30,7 @@ function createWindow(): void {
     minHeight: 560,
     show: false,
     backgroundColor: '#1b1e24',
-    title: 'Calamar',
+    title: 'Leviathan',
     autoHideMenuBar: true,
     icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {

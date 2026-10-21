@@ -189,7 +189,7 @@ const es: Record<keyof typeof en, string> = {
   'toast.nothingToStash': 'No hay cambios para guardar en stash',
   'toast.noStashes': 'No hay stashes',
 
-  'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Calamar.',
+  'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Leviathan.',
   'error.detachedPush': 'HEAD está desacoplado. Haz checkout de una rama antes del push.',
   'error.noRemote': 'Este repositorio no tiene remotos. Añade uno desde la sección REMOTO.',
 

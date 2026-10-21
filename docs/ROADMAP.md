@@ -1,6 +1,6 @@
 # Roadmap
 
-Calamar 0.1 covers the everyday workflow: clone, browse history, stage, commit, branch, merge, pull and push. This page lists ideas for what could come next. There are no dates: the project is maintained in spare time, and the order depends on what the maintainer needs and what contributors send. If you want to work on an item, open an issue first (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
+Leviathan 0.1 covers the everyday workflow: clone, browse history, stage, commit, branch, merge, pull and push. This page lists ideas for what could come next. There are no dates: the project is maintained in spare time, and the order depends on what the maintainer needs and what contributors send. If you want to work on an item, open an issue first (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 Items marked **good first issue** are self-contained and a nice way to learn the codebase.
 
@@ -42,7 +42,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 - [ ] Light theme and theme switcher — **good first issue** (all colours are CSS variables)
 - [ ] More languages (French, Portuguese, German, Italian...) — **good first issue**
-- [ ] Open the app with a repository path from the command line (`calamar .`)
+- [ ] Open the app with a repository path from the command line (`leviathan .`)
 - [ ] Configurable external editor, terminal and diff tool
 - [ ] Profiles: different author name/email per repository group
 - [ ] Code signing for Windows and macOS releases

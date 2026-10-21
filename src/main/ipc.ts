@@ -4,7 +4,7 @@ import {
   IPC_INVOKE,
   IPC_PROGRESS,
   IPC_REPO_CHANGED,
-  type CalamarInvokeApi,
+  type LeviathanInvokeApi,
   type IpcResult
 } from '../shared/api'
 import * as repo from './git/repository'
@@ -22,7 +22,7 @@ function progress(path: string) {
   return (line: string) => broadcast(IPC_PROGRESS, { repo: path, line })
 }
 
-const handlers: CalamarInvokeApi = {
+const handlers: LeviathanInvokeApi = {
   getSettings: async () => loadSettings(),
   saveSettings: async (patch) => saveSettings(patch),
   pickFolder: async (title) => {
@@ -102,7 +102,7 @@ export function registerIpc(): void {
   ipcMain.handle(IPC_INVOKE, async (_event, method: string, args: unknown[]): Promise<IpcResult<unknown>> => {
     if (!allowed.has(method)) return { ok: false, error: `Unknown method: ${method}` }
     try {
-      const fn = handlers[method as keyof CalamarInvokeApi] as (...a: unknown[]) => Promise<unknown>
+      const fn = handlers[method as keyof LeviathanInvokeApi] as (...a: unknown[]) => Promise<unknown>
       return { ok: true, value: await fn(...(Array.isArray(args) ? args : [])) }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }

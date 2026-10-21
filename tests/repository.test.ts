@@ -22,7 +22,7 @@ async function commitFile(name: string, content: string, message: string) {
 }
 
 beforeEach(async () => {
-  const base = mkdtempSync(join(tmpdir(), 'calamar-test-'))
+  const base = mkdtempSync(join(tmpdir(), 'leviathan-test-'))
   dir = await repo.initRepo(join(base, 'repo'), 'main')
   await setup(dir)
 })

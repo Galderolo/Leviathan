@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import { API_METHODS, IPC_INVOKE, IPC_PROGRESS, IPC_REPO_CHANGED, type CalamarApi, type IpcResult } from '../shared/api'
+import {
+  API_METHODS,
+  IPC_INVOKE,
+  IPC_PROGRESS,
+  IPC_REPO_CHANGED,
+  type LeviathanApi,
+  type IpcResult
+} from '../shared/api'
 import type { ProgressEvent, RepoChangedEvent } from '../shared/types'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -21,4 +28,4 @@ for (const method of API_METHODS) {
   }
 }
 
-contextBridge.exposeInMainWorld('calamar', api as unknown as CalamarApi)
+contextBridge.exposeInMainWorld('leviathan', api as unknown as LeviathanApi)

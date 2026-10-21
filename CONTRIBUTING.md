@@ -1,8 +1,8 @@
-# Contributing to Calamar
+# Contributing to Leviathan
 
-Thanks for your interest in Calamar!
+Thanks for your interest in Leviathan!
 
-**Please read this first:** Calamar is currently maintained by a single person in their spare time. Issues and pull requests are welcome, but:
+**Please read this first:** Leviathan is currently maintained by a single person in their spare time. Issues and pull requests are welcome, but:
 
 - reviews can take a long time, and some pull requests may never be reviewed or merged;
 - for anything bigger than a small fix, open an issue first so you do not spend time on something that will not fit;
@@ -42,7 +42,7 @@ src/
     graph.ts      Lane-assignment algorithm for the commit graph
   main/         Electron main process (Node.js)
     git/runner.ts      Spawns git safely (argument arrays, never a shell)
-    git/repository.ts  Every git operation Calamar performs
+    git/repository.ts  Every git operation Leviathan performs
     ipc.ts             Maps API methods to repository functions
     watcher.ts         Watches repositories for changes on disk
     settings.ts        Persists settings to the user data folder
@@ -56,13 +56,13 @@ src/
 tests/          Vitest unit and integration tests
 ```
 
-Calamar shells out to the user's own `git` executable instead of re-implementing Git. That keeps behaviour identical to the command line and makes user configuration, credential helpers and SSH keys work without extra effort.
+Leviathan shells out to the user's own `git` executable instead of re-implementing Git. That keeps behaviour identical to the command line and makes user configuration, credential helpers and SSH keys work without extra effort.
 
 ### Adding a new git operation
 
 1. Implement it in `src/main/git/repository.ts`. Validate user-provided values (see `assertSafeArg` and `assertBranchName`) and always pass arguments as an array.
 2. Add a test in `tests/repository.test.ts`. The tests run real git commands against temporary repositories.
-3. Add the method signature to `CalamarInvokeApi` in `src/shared/api.ts` **and** to the `METHODS` map below it (the compiler reminds you).
+3. Add the method signature to `LeviathanInvokeApi` in `src/shared/api.ts` **and** to the `METHODS` map below it (the compiler reminds you).
 4. Wire it in `src/main/ipc.ts`.
 5. Add an action in `src/renderer/src/actions.ts` (use `runOp` so errors become toasts and the repository refreshes), then call it from a button or a menu in `menus.ts`.
 
@@ -88,5 +88,5 @@ The interface uses plain CSS in `src/renderer/src/styles/app.css`. Colours are C
 ## Troubleshooting
 
 - **`TypeError: Cannot read properties of undefined (reading 'isPackaged')` when starting the app**: the environment variable `ELECTRON_RUN_AS_NODE` is set (some editors set it for their own processes), which makes Electron behave like plain Node. Unset it before running `npm run dev`.
-- **Use a separate profile while developing**: set `CALAMAR_USER_DATA` to any folder and Calamar stores its settings there instead of your real profile.
+- **Use a separate profile while developing**: set `LEVIATHAN_USER_DATA` to any folder and Leviathan stores its settings there instead of your real profile.
 - **Developer tools**: press `F12` or `Ctrl+Shift+I` in the app window.

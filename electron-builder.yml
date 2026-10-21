@@ -1,6 +1,6 @@
-appId: org.calamar.app
-productName: Calamar
-copyright: Copyright © 2026 Calamar contributors
+appId: org.leviathan.app
+productName: Leviathan
+copyright: Copyright © 2026 Leviathan contributors
 directories:
   buildResources: build
   output: dist
@@ -29,6 +29,6 @@ linux:
     - AppImage
     - deb
   category: Development
-  maintainer: Calamar contributors
+  maintainer: Leviathan contributors
 publish:
   provider: github

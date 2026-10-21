@@ -11,8 +11,8 @@ export function TabBar() {
 
   return (
     <div className="tabbar">
-      <div className="brand" title="Calamar">
-        <img src="./calamar.svg" alt="" width={18} height={18} />
+      <div className="brand" title="Leviathan">
+        <img src="./leviathan.svg" alt="" width={18} height={18} />
       </div>
       <div className="tabs">
         {tabs.map((tab) => (
