@@ -85,6 +85,23 @@ describe('repository', () => {
     expect((await repo.getState(dir)).status.staged).toEqual([])
   })
 
+  it('treats file names literally, not as globs', async () => {
+    writeFileSync(join(dir, '[id].tsx'), 'route\n')
+    writeFileSync(join(dir, 'i.tsx'), 'i\n')
+    writeFileSync(join(dir, 'd.tsx'), 'd\n')
+    await repo.stageAll(dir)
+    await repo.commit(dir, 'base', false)
+    for (const f of ['[id].tsx', 'i.tsx', 'd.tsx']) writeFileSync(join(dir, f), 'changed\n')
+
+    const diff = await repo.getDiff(dir, { kind: 'unstaged', path: '[id].tsx' })
+    expect(diff.hunks).toHaveLength(1)
+
+    await repo.discard(dir, ['[id].tsx'], [])
+    expect(readFileSync(join(dir, '[id].tsx'), 'utf8')).toBe('route\n')
+    expect(readFileSync(join(dir, 'i.tsx'), 'utf8')).toBe('changed\n')
+    expect(readFileSync(join(dir, 'd.tsx'), 'utf8')).toBe('changed\n')
+  })
+
   it('unstages both sides of a rename', async () => {
     await commitFile('old.txt', 'same content\n', 'base')
     await git(['mv', 'old.txt', 'new.txt'], { cwd: dir })

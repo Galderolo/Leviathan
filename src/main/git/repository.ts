@@ -35,9 +35,19 @@ async function run(repo: string, args: string[], extra: Partial<Parameters<typeo
   return stdout
 }
 
+/**
+ * File names are data, not patterns (`[id].tsx` must not match `i.tsx`). Only applied to
+ * commands that receive user paths: git's own porcelain (e.g. `stash -u`) relies on magic
+ * pathspecs internally and breaks if this is set globally.
+ */
+const LITERAL_PATHS = { GIT_LITERAL_PATHSPECS: '1' }
+
 /** Feeds paths through stdin so long selections never hit command-line length limits. */
 function pathspecInput(paths: string[]) {
-  return { args: ['--pathspec-from-file=-', '--pathspec-file-nul'], input: paths.join('\0') }
+  return {
+    args: ['--pathspec-from-file=-', '--pathspec-file-nul'],
+    opts: { input: paths.join('\0'), env: LITERAL_PATHS }
+  }
 }
 
 function assertSafeArg(value: string, what: string): void {
@@ -212,19 +222,19 @@ export async function getDiff(repo: string, source: DiffSource): Promise<FileDif
         if (binary) return { path: source.path, binary: true, header: '', hunks: [] }
         return source.untracked ? untrackedDiff(source.path, content) : contentDiff(source.path, content, 'ctx')
       }
-      const out = await run(repo, ['diff', ...diffArgs, '--', source.path])
+      const out = await run(repo, ['diff', ...diffArgs, '--', source.path], { env: LITERAL_PATHS })
       return parseDiff(out, source.path)
     }
     case 'staged': {
-      const out = await run(repo, ['diff', '--cached', ...diffArgs, '--', source.path])
+      const out = await run(repo, ['diff', '--cached', ...diffArgs, '--', source.path], { env: LITERAL_PATHS })
       return parseDiff(out, source.path)
     }
     case 'commit': {
       assertSafeArg(source.hash, 'commit')
       const paths = source.oldPath ? [source.oldPath, source.path] : [source.path]
       const out = source.parent
-        ? await run(repo, ['diff', ...diffArgs, source.parent, source.hash, '--', ...paths])
-        : await run(repo, ['show', '--format=', ...diffArgs, source.hash, '--', ...paths])
+        ? await run(repo, ['diff', ...diffArgs, source.parent, source.hash, '--', ...paths], { env: LITERAL_PATHS })
+        : await run(repo, ['show', '--format=', ...diffArgs, source.hash, '--', ...paths], { env: LITERAL_PATHS })
       return parseDiff(out, source.path)
     }
   }
@@ -241,7 +251,7 @@ async function hasHead(repo: string): Promise<boolean> {
 export async function stage(repo: string, paths: string[]): Promise<void> {
   if (!paths.length) return
   const ps = pathspecInput(paths)
-  await run(repo, ['add', '-A', ...ps.args], { input: ps.input })
+  await run(repo, ['add', '-A', ...ps.args], ps.opts)
 }
 
 export async function stageAll(repo: string): Promise<void> {
@@ -251,8 +261,8 @@ export async function stageAll(repo: string): Promise<void> {
 export async function unstage(repo: string, paths: string[]): Promise<void> {
   if (!paths.length) return
   const ps = pathspecInput(paths)
-  if (await hasHead(repo)) await run(repo, ['restore', '--staged', ...ps.args], { input: ps.input })
-  else await run(repo, ['rm', '--cached', '-r', '-q', ...ps.args], { input: ps.input })
+  if (await hasHead(repo)) await run(repo, ['restore', '--staged', ...ps.args], ps.opts)
+  else await run(repo, ['rm', '--cached', '-r', '-q', ...ps.args], ps.opts)
 }
 
 export async function unstageAll(repo: string): Promise<void> {
@@ -263,7 +273,7 @@ export async function unstageAll(repo: string): Promise<void> {
 export async function discard(repo: string, paths: string[], untracked: string[]): Promise<void> {
   if (paths.length) {
     const ps = pathspecInput(paths)
-    await run(repo, ['restore', '--worktree', ...ps.args], { input: ps.input })
+    await run(repo, ['restore', '--worktree', ...ps.args], ps.opts)
   }
   for (const file of untracked) {
     await fs.rm(insideRepo(repo, file), { recursive: true, force: true })
