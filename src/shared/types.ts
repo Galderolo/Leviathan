@@ -125,6 +125,31 @@ export interface FileDiff {
   hunks: DiffHunk[]
 }
 
+/** An open pull request (a merge request on GitLab). */
+export interface PullRequest {
+  number: number
+  title: string
+  author: string
+  sourceBranch: string
+  targetBranch: string
+  draft: boolean
+  /** Web page of the pull request. */
+  url: string
+  /** The source branch lives in another repository (a fork). */
+  fromFork: boolean
+  updatedAt: string
+}
+
+export interface NewPullRequest {
+  title: string
+  body: string
+  /** Branch with the changes. */
+  source: string
+  /** Branch to merge into. */
+  target: string
+  draft: boolean
+}
+
 /** A commit offered for an interactive rebase. */
 export interface RebaseCommit {
   hash: string

@@ -31,7 +31,7 @@ describe('provider helpers', () => {
       'https://github.com/settings/tokens/new?scopes=repo,read:user&description=Leviathan'
     )
     expect(tokenPageUrl('gitlab', 'gitlab.com')).toBe(
-      'https://gitlab.com/-/user_settings/personal_access_tokens?name=Leviathan&scopes=read_api,read_user,write_repository'
+      'https://gitlab.com/-/user_settings/personal_access_tokens?name=Leviathan&scopes=api,read_user,write_repository'
     )
     expect(tokenPageUrl('gitea', 'h')).toBe('https://h/user/settings/applications')
     expect(tokenPageUrl('other', 'h')).toBeNull()

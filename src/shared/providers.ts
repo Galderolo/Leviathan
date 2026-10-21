@@ -41,7 +41,7 @@ export function tokenPageUrl(provider: Provider, host: string): string | null {
     case 'github':
       return `https://${host}/settings/tokens/new?scopes=repo,read:user&description=Leviathan`
     case 'gitlab':
-      return `https://${host}/-/user_settings/personal_access_tokens?name=Leviathan&scopes=read_api,read_user,write_repository`
+      return `https://${host}/-/user_settings/personal_access_tokens?name=Leviathan&scopes=api,read_user,write_repository`
     case 'gitea':
       return `https://${host}/user/settings/applications`
     default:
