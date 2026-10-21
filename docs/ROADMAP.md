@@ -6,7 +6,6 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Graph and history
 
-- [ ] Drag a branch label onto another to merge or rebase (as in other visual clients)
 - [ ] Optional Gravatar avatars (off by default for privacy)
 - [ ] Show/hide branches in the graph; solo a branch
 - [ ] File history and blame view
@@ -16,13 +15,12 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Working tree
 
-- [ ] Stage and unstage individual lines, not only hunks
 - [ ] Side-by-side (split) diff view
 - [ ] Word-level highlighting inside changed lines
 - [ ] Syntax highlighting in diffs
 - [ ] Built-in merge conflict editor (ours / theirs / result)
 - [ ] Multi-select files to stage, unstage or discard together
-- [ ] Commit message templates and co-author trailers — **good first issue**
+- [ ] Commit message templates — **good first issue**
 
 ## History editing
 
@@ -32,15 +30,13 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Remotes and collaboration
 
-- [ ] Automatic background fetch at a configurable interval
+- [ ] Sign in with GitHub / GitLab accounts and list their repositories to clone
 - [ ] Pull request list for GitHub / GitLab / Gitea / Bitbucket via personal access tokens
 - [ ] Submodule support in the side panel
 - [ ] Git LFS status
-- [ ] Choose the remote when pushing a new branch and several remotes exist — **good first issue**
 
 ## Application
 
-- [ ] Light theme and theme switcher — **good first issue** (all colours are CSS variables)
 - [ ] More languages (French, Portuguese, German, Italian...) — **good first issue**
 - [ ] Open the app with a repository path from the command line (`leviathan .`)
 - [ ] Configurable external editor, terminal and diff tool

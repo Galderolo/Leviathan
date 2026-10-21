@@ -25,20 +25,22 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 
 ## Features
 
-- **Visual commit graph**: coloured lanes, merge curves, branch and tag labels, author avatars, the work-in-progress node and stashes drawn right in the graph. Smooth with thousands of commits.
+- **Visual commit graph**: coloured lanes with rounded elbows, lane-coloured row bands, branch and tag labels, author initials, the work-in-progress node and stashes drawn right in the graph. Smooth with thousands of commits.
 - **Tabs**: keep several repositories open; they are restored on the next start.
 - **Side panel**: local branches as a folder tree, remotes, stashes and tags, with ahead/behind counters and a filter.
-- **Staging**: stage or unstage whole files, or individual **hunks**; discard changes; add files to `.gitignore`.
+- **Staging**: stage or unstage whole files, individual **hunks** or single **lines**; discard changes; add files to `.gitignore`.
 - **Commits**: summary and description, amend the last commit, `Ctrl+Enter` to commit.
 - **Diff viewer** for the working tree, the index and any commit.
-- **Branches**: create, checkout (double-click), rename, delete, merge, rebase, push, delete from the remote.
+- **Branches**: create, checkout (double-click), rename, delete, merge, rebase, push, delete from the remote. **Drag a branch onto another** to merge or rebase.
 - **History**: cherry-pick, revert, reset (soft / mixed / hard), checkout a commit, create tags.
-- **Remotes**: fetch, pull (fast-forward, fast-forward only, rebase), push and force-push with lease, add and remove remotes.
+- **Remotes**: fetch, pull (fast-forward, fast-forward only, rebase), push and force-push with lease, add and remove remotes, choose the remote when publishing a branch, **automatic background fetch**.
+- **Private repositories**: HTTPS usernames/tokens, SSH key passphrases and unknown host keys are asked in the app; your credential helper (for example Git Credential Manager) keeps working. List, copy and generate **SSH keys** from Settings.
 - **Stash**: save (including untracked files), apply, pop, delete.
 - **Conflicts**: a banner during merge/rebase/cherry-pick with *Abort* and *Continue*, conflict markers highlighted.
 - **Clone, init and open** repositories; recent repositories list.
 - **Search** commits by message, author or SHA.
 - **Live refresh** when files change on disk.
+- **Dark and light themes**, or follow the system.
 - **English and Spanish** interface (more languages welcome!).
 - Uses **your installed Git**, so your config, credential helpers, SSH keys and hooks work as usual.
 
@@ -100,7 +102,10 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 - Grafo de commits a color con ramas, merges, tags, stashes y el nodo de trabajo en curso (WIP).
 - Pestañas con varios repositorios abiertos a la vez.
-- Preparar (stage) archivos completos o bloques sueltos, commit, amend, diff.
+- Preparar (stage) archivos completos, bloques o líneas sueltas, commit, amend, diff.
+- Arrastrar una rama sobre otra para hacer merge o rebase.
+- Repos privados: usuario/token HTTPS, passphrase SSH y huellas de host se piden en la app; gestión de claves SSH.
+- Fetch automático, tema claro y oscuro.
 - Ramas: crear, checkout con doble clic, renombrar, borrar, merge, rebase, push.
 - Cherry-pick, revert, reset, tags, stash, fetch/pull/push, clonar y crear repositorios.
 - Interfaz en español e inglés.
