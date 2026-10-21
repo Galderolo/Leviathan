@@ -1,0 +1,47 @@
+import type { Account, Remote } from './types'
+
+/**
+ * The host and project path a remote URL points at (`github.com` + `owner/repo`),
+ * for HTTPS, `ssh://` and SCP-style (`git@host:owner/repo.git`) URLs. The port is
+ * kept for HTTPS, where the API lives on the same port, and dropped for SSH.
+ */
+export function parseRemoteUrl(url: string): { host: string; path: string } | null {
+  const trimmed = url.trim()
+  let host: string
+  let path: string
+  const web = /^https?:\/\/(?:[^@/]+@)?([^/]+)\/(.*)$/i.exec(trimmed)
+  const ssh = /^ssh:\/\/(?:[^@/]+@)?([^/:]+)(?::\d+)?\/(.*)$/i.exec(trimmed)
+  // SCP form: no scheme, host of 2+ characters (so `C:/repo` is a Windows path), path not absolute.
+  const scp = /^(?:[^@/\s]+@)?([^:/\s]{2,}):(?!\/)(.+)$/.exec(trimmed)
+  if (web) [, host, path] = web
+  else if (ssh) [, host, path] = ssh
+  else if (scp && !/^[a-z][a-z+.-]*:\/\//i.test(trimmed)) [, host, path] = scp
+  else return null
+  path = path
+    .replace(/\/+$/, '')
+    .replace(/\.git$/, '')
+    .replace(/^\/+/, '')
+  if (!path.includes('/')) return null
+  return { host: host.toLowerCase(), path }
+}
+
+/**
+ * The hosted project to use for pull requests: the first remote (origin first)
+ * on a host with an account that has API support, with the account the
+ * repository is bound to when it is on that host.
+ */
+export function pickProject(
+  remotes: Remote[],
+  accounts: Account[],
+  boundId: string | null
+): { remote: string; account: Account; path: string } | null {
+  const ordered = [...remotes.filter((r) => r.name === 'origin'), ...remotes.filter((r) => r.name !== 'origin')]
+  for (const remote of ordered) {
+    const project = parseRemoteUrl(remote.fetchUrl)
+    if (!project) continue
+    const onHost = accounts.filter((a) => a.provider !== 'other' && a.host.toLowerCase() === project.host)
+    const account = onHost.find((a) => a.id === boundId) ?? onHost[0]
+    if (account) return { remote: remote.name, account, path: project.path }
+  }
+  return null
+}
