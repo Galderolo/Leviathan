@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTodo, rebaseProblem, shQuote, type RebaseItem } from '../src/shared/rebase'
+import { planRebase, rebaseProblem, shQuote, type RebaseItem } from '../src/shared/rebase'
 
 const item = (hash: string, action: RebaseItem['action'], message?: string): RebaseItem => ({ hash, action, message })
 
@@ -23,23 +23,50 @@ describe('rebaseProblem', () => {
   })
 })
 
-describe('buildTodo', () => {
-  it('writes one line per commit and an exec amend after each reword', () => {
-    const todo = buildTodo(
-      [item('a1', 'pick'), item('b2', 'reword', 'B'), item('c3', 'squash'), item('d4', 'fixup'), item('e5', 'drop')],
-      (i) => `/git/msg-${i}`
+describe('planRebase', () => {
+  const original: Record<string, string> = { a1: 'A', b2: 'B', c3: 'C', d4: 'D', e5: 'E', f6: 'F' }
+  const plan = (items: RebaseItem[]) =>
+    planRebase(
+      items,
+      (hash) => original[hash],
+      (name) => `/git/${name}`
     )
-    expect(todo).toBe(
-      [
-        'pick a1',
-        'pick b2',
-        "exec git commit --amend --allow-empty --no-verify -q -F '/git/msg-1'",
-        'squash c3',
-        'fixup d4',
-        'drop e5',
-        ''
-      ].join('\n')
-    )
+
+  it('keeps plain picks, fixups and drops as they are', () => {
+    expect(plan([item('a1', 'pick'), item('b2', 'fixup'), item('c3', 'drop')])).toEqual({
+      todo: 'pick a1\nfixup b2\ndrop c3\n',
+      files: {}
+    })
+  })
+
+  it('sets a group message with one amend, only if its own commit was made', () => {
+    const { todo, files } = plan([
+      item('a1', 'reword', 'New A'),
+      item('b2', 'squash'),
+      item('c3', 'drop'),
+      item('d4', 'fixup'),
+      item('e5', 'pick'),
+      item('f6', 'squash')
+    ])
+    const guard = (i: number) =>
+      `exec if [ "$(cat '/git/after-${i}')" != "$(cat '/git/before-${i}')" ]; then ` +
+      `git commit --amend --allow-empty --no-verify -q --cleanup=whitespace -F '/git/msg-${i}'; fi`
+    expect(todo.split('\n')).toEqual([
+      "exec git rev-parse HEAD > '/git/before-0'",
+      'pick a1',
+      "exec git rev-parse HEAD > '/git/after-0'",
+      'fixup b2',
+      'drop c3',
+      'fixup d4',
+      guard(0),
+      "exec git rev-parse HEAD > '/git/before-4'",
+      'pick e5',
+      "exec git rev-parse HEAD > '/git/after-4'",
+      'fixup f6',
+      guard(4),
+      ''
+    ])
+    expect(files).toEqual({ 'msg-0': 'New A\n\nB', 'msg-4': 'E\n\nF' })
   })
 })
 

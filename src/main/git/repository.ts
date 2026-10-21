@@ -26,7 +26,7 @@ import type {
   ResetMode,
   WorkingFile
 } from '../../shared/types'
-import { REBASE_ACTIONS, buildTodo, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
+import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
 import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
 
@@ -450,9 +450,12 @@ export async function interactiveRebase(repo: string, base: string, items: Rebas
   const problem = rebaseProblem(items)
   if (problem) throw new Error(`This rebase cannot run (${problem}).`)
   // The list was read earlier: it must still be exactly the commits to rewrite.
-  const current = (await getRebaseCommits(repo, base)).map((c) => c.hash).sort()
+  const commits = await getRebaseCommits(repo, base)
   if (
-    current.join() !==
+    commits
+      .map((c) => c.hash)
+      .sort()
+      .join() !==
     items
       .map((i) => i.hash)
       .sort()
@@ -466,15 +469,14 @@ export async function interactiveRebase(repo: string, base: string, items: Rebas
   await fs.rm(dir, { recursive: true, force: true })
   await fs.mkdir(dir, { recursive: true })
   const file = (name: string) => join(dir, name).replace(/\\/g, '/')
-  for (const [index, item] of items.entries()) {
-    if (item.action === 'reword') await fs.writeFile(file(`msg-${index}`), item.message ?? '', 'utf8')
-  }
-  await fs.writeFile(
-    file('todo'),
-    buildTodo(items, (index) => file(`msg-${index}`)),
-    'utf8'
-  )
-  await run(repo, ['rebase', '-i', base], { env: { GIT_SEQUENCE_EDITOR: `cp ${shQuote(file('todo'))}` } })
+  const messages = new Map(commits.map((c) => [c.hash, c.message]))
+  const plan = planRebase(items, (hash) => messages.get(hash) ?? '', file)
+  for (const [name, text] of Object.entries(plan.files)) await fs.writeFile(file(name), text, 'utf8')
+  await fs.writeFile(file('todo'), plan.todo, 'utf8')
+  // A failed step (a reword's amend, say) runs again on continue instead of being skipped.
+  await run(repo, ['rebase', '-i', '--reschedule-failed-exec', base], {
+    env: { GIT_SEQUENCE_EDITOR: `cp ${shQuote(file('todo'))}` }
+  })
 }
 
 export async function cherryPick(repo: string, hash: string): Promise<void> {

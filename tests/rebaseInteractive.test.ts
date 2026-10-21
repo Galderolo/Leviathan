@@ -113,6 +113,48 @@ describe('interactiveRebase', () => {
     expect(await messages()).toEqual(['three', 'two', 'one'])
   })
 
+  it('never moves a reword onto another commit when the reworded one ends up empty', async () => {
+    hashes.four = await commitFile('one.txt', 'four\n', 'four')
+    await expect(
+      repo.interactiveRebase(dir, base, [
+        pick('one', 'drop'),
+        pick('two'),
+        pick('three'),
+        pick('four', 'reword', 'Four, reworded')
+      ])
+    ).rejects.toThrow()
+    // Keep the current side: one.txt stays deleted, so "four" changes nothing and is dropped.
+    await git(['rm', '-q', 'one.txt'], { cwd: dir })
+    await repo.continueOperation(dir)
+    expect((await repo.getState(dir)).operation).toBeNull()
+    expect(await messages()).toEqual(['three', 'two'])
+  })
+
+  it('runs a reword that failed again when continuing', async () => {
+    // Signing fails, so the amend that rewords "three" fails once (the picks before it fast-forward,
+    // so nothing else needs signing; rebase remembers the signing setting for its own commits).
+    await git(['config', 'commit.gpgsign', 'true'], { cwd: dir })
+    await git(['config', 'gpg.program', 'leviathan-no-such-gpg'], { cwd: dir })
+    await expect(
+      repo.interactiveRebase(dir, base, [pick('one'), pick('two'), pick('three', 'reword', 'THREE')])
+    ).rejects.toThrow()
+    expect((await repo.getState(dir)).operation).toBe('rebase')
+    await git(['config', 'commit.gpgsign', 'false'], { cwd: dir })
+    await repo.continueOperation(dir)
+    expect(await messages()).toEqual(['THREE', 'two', 'one'])
+  })
+
+  it('keeps messages exactly whatever the commit cleanup and comment settings', async () => {
+    await git(['config', 'commit.cleanup', 'strip'], { cwd: dir })
+    await git(['config', 'core.commentChar', 'auto'], { cwd: dir })
+    await repo.interactiveRebase(dir, base, [
+      pick('one', 'reword', 'One\n\n# kept'),
+      pick('two', 'squash'),
+      pick('three')
+    ])
+    expect(await messages()).toEqual(['three', 'One\n\n# kept\n\ntwo'])
+  })
+
   it('stops on a conflict and applies the reword after continuing', async () => {
     hashes.four = await commitFile('one.txt', 'four\n', 'four')
     await expect(
