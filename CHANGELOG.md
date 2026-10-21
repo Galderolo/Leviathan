@@ -4,6 +4,16 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- Accounts: several GitHub, GitLab, Gitea or other accounts with encrypted personal access tokens. A repository bound to an account commits with its name and no-reply email and pushes/pulls with its token. Clone from an account's repository list.
+- Fetch button in the toolbar.
+- Choose the starting point when creating a branch.
+
+### Fixed
+
+- Esc closes Settings wherever the focus is.
+
 ## [0.1.0] - 2026-10-21
 
 First public version.

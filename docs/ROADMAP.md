@@ -30,7 +30,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Remotes and collaboration
 
-- [ ] Sign in with GitHub / GitLab accounts and list their repositories to clone
+- [ ] Sign in to accounts with the browser (OAuth device flow) instead of a personal access token
 - [ ] Pull request list for GitHub / GitLab / Gitea / Bitbucket via personal access tokens
 - [ ] Submodule support in the side panel
 - [ ] Git LFS status
