@@ -152,26 +152,29 @@ export async function getState(repo: string): Promise<RepoState> {
 }
 
 export async function getLog(repo: string, limit: number): Promise<{ commits: Commit[]; hasMore: boolean }> {
-  let out: string
-  try {
-    out = await run(repo, [
-      'log',
-      '--date-order',
-      `--max-count=${limit + 1}`,
-      `--format=${LOG_FORMAT}`,
-      '--branches',
-      '--remotes',
-      '--tags',
-      'HEAD',
-      '--'
+  // Decide what to log up front instead of parsing (localised) error messages:
+  // HEAD may be unborn (new repo, orphan branch) while other branches exist.
+  const revs = ['--branches', '--remotes', '--tags']
+  if (await hasHead(repo)) revs.push('HEAD')
+  else {
+    const anyRef = await run(repo, [
+      'for-each-ref',
+      '--count=1',
+      '--format=%(refname)',
+      'refs/heads',
+      'refs/remotes',
+      'refs/tags'
     ])
-  } catch (err) {
-    // Fresh repository without commits.
-    if (err instanceof GitError && /does not have any commits|unknown revision|bad revision/i.test(err.message)) {
-      return { commits: [], hasMore: false }
-    }
-    throw err
+    if (!anyRef.trim()) return { commits: [], hasMore: false }
   }
+  const out = await run(repo, [
+    'log',
+    '--date-order',
+    `--max-count=${limit + 1}`,
+    `--format=${LOG_FORMAT}`,
+    ...revs,
+    '--'
+  ])
   const commits = parseLog(out)
   return { commits: commits.slice(0, limit), hasMore: commits.length > limit }
 }
@@ -375,7 +378,8 @@ export async function renameBranch(repo: string, oldName: string, newName: strin
 
 export async function deleteBranch(repo: string, name: string, force: boolean): Promise<void> {
   assertSafeArg(name, 'branch name')
-  await run(repo, ['branch', force ? '-D' : '-d', name])
+  // The UI recognises "not fully merged" to offer a forced delete, so keep the message in English.
+  await run(repo, ['branch', force ? '-D' : '-d', name], { env: { LC_ALL: 'C', LANGUAGE: 'C' } })
 }
 
 export async function deleteRemoteBranch(

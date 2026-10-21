@@ -85,6 +85,31 @@ describe('repository', () => {
     expect((await repo.getState(dir)).status.staged).toEqual([])
   })
 
+  it('loads the log of an orphan branch next to other branches', async () => {
+    await commitFile('a.txt', 'a\n', 'on main')
+    await git(['checkout', '-q', '--orphan', 'nueva'], { cwd: dir })
+    const { commits } = await repo.getLog(dir, 10)
+    expect(commits.map((c) => c.subject)).toEqual(['on main'])
+  })
+
+  it('reports unmerged branches in English regardless of locale', async () => {
+    await commitFile('a.txt', 'a\n', 'base')
+    await repo.createBranch(dir, 'side', null, true)
+    await commitFile('b.txt', 'b\n', 'unmerged work')
+    await repo.checkout(dir, 'main')
+    const saved = { LANGUAGE: process.env.LANGUAGE, LANG: process.env.LANG }
+    process.env.LANGUAGE = 'es'
+    process.env.LANG = 'es_ES.UTF-8'
+    try {
+      await expect(repo.deleteBranch(dir, 'side', false)).rejects.toThrow(/not fully merged/)
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k]
+        else process.env[k] = v
+      }
+    }
+  })
+
   it('survives git exiting before reading stdin', async () => {
     const result = await git(['--version'], { cwd: dir, input: 'x'.repeat(8_000_000) })
     expect(result.stdout).toContain('git version')
