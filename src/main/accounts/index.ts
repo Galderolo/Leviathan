@@ -9,7 +9,10 @@ import { fetchIdentity, listRepos } from './providers'
 import { AccountStore, type Cipher } from './store'
 
 const cipher: Cipher = {
-  available: () => safeStorage.isEncryptionAvailable(),
+  // On Linux without a keyring Electron falls back to "basic_text", which only obfuscates: treat as unavailable.
+  available: () =>
+    safeStorage.isEncryptionAvailable() &&
+    !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text'),
   encrypt: (text) => safeStorage.encryptString(text),
   decrypt: (data) => safeStorage.decryptString(data)
 }
