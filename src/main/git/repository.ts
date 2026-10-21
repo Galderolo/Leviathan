@@ -20,11 +20,13 @@ import type {
   DiffSource,
   FileDiff,
   PullMode,
+  RebaseCommit,
   RepoOperation,
   RepoState,
   ResetMode,
   WorkingFile
 } from '../../shared/types'
+import { REBASE_ACTIONS, buildTodo, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
 import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
 
@@ -410,6 +412,69 @@ export async function merge(repo: string, ref: string): Promise<void> {
 export async function rebase(repo: string, onto: string): Promise<void> {
   assertSafeArg(onto, 'ref')
   await run(repo, ['rebase', onto])
+}
+
+/** The commits an interactive rebase onto `base` would rewrite (`base..HEAD`), oldest first. */
+export async function getRebaseCommits(repo: string, base: string): Promise<RebaseCommit[]> {
+  assertSafeArg(base, 'commit')
+  const ancestor = await git(['merge-base', '--is-ancestor', base, 'HEAD'], { cwd: repo, okCodes: [0, 1] })
+  if (ancestor.exitCode !== 0) throw new Error('That commit is not part of the current branch.')
+  if ((await run(repo, ['rev-list', '--merges', `${base}..HEAD`])).trim()) {
+    throw new Error('These commits include merges, which interactive rebase does not support.')
+  }
+  const out = await run(repo, ['log', '--reverse', '-z', '--format=%H%x1f%an%x1f%at%x1f%B', `${base}..HEAD`])
+  const commits = out
+    .split('\0')
+    .filter((entry) => entry.trim())
+    .map((entry) => {
+      const [hash, author, date, body = ''] = entry.replace(/^\n/, '').split('\x1f')
+      const message = body.trimEnd()
+      return { hash, author, date: Number(date), message, subject: message.split('\n')[0] }
+    })
+  if (!commits.length) throw new Error('There are no commits after that one.')
+  return commits
+}
+
+/**
+ * Rewrites `base..HEAD` as `items` says. No editor is opened: git copies a todo
+ * list written beforehand, and rewords read their message from a file. Stops,
+ * like any rebase, when a commit does not apply cleanly.
+ */
+export async function interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<void> {
+  const operation = await currentOperation(repo)
+  if (operation) throw new Error(`A ${operation} is in progress. Finish or abort it first.`)
+  if ((await run(repo, ['status', '--porcelain', '--untracked-files=no'])).trim()) {
+    throw new Error('Commit or stash your uncommitted changes before rebasing.')
+  }
+  if (items.some((i) => !REBASE_ACTIONS.includes(i.action))) throw new Error('Unknown rebase action')
+  const problem = rebaseProblem(items)
+  if (problem) throw new Error(`This rebase cannot run (${problem}).`)
+  // The list was read earlier: it must still be exactly the commits to rewrite.
+  const current = (await getRebaseCommits(repo, base)).map((c) => c.hash).sort()
+  if (
+    current.join() !==
+    items
+      .map((i) => i.hash)
+      .sort()
+      .join()
+  ) {
+    throw new Error('The branch changed since the list was read. Open it again.')
+  }
+
+  // Inside the git directory, so the files outlive a stop for a conflict.
+  const dir = join(await gitDir(repo), 'leviathan-rebase')
+  await fs.rm(dir, { recursive: true, force: true })
+  await fs.mkdir(dir, { recursive: true })
+  const file = (name: string) => join(dir, name).replace(/\\/g, '/')
+  for (const [index, item] of items.entries()) {
+    if (item.action === 'reword') await fs.writeFile(file(`msg-${index}`), item.message ?? '', 'utf8')
+  }
+  await fs.writeFile(
+    file('todo'),
+    buildTodo(items, (index) => file(`msg-${index}`)),
+    'utf8'
+  )
+  await run(repo, ['rebase', '-i', base], { env: { GIT_SEQUENCE_EDITOR: `cp ${shQuote(file('todo'))}` } })
 }
 
 export async function cherryPick(repo: string, hash: string): Promise<void> {

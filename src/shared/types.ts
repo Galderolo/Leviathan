@@ -125,6 +125,17 @@ export interface FileDiff {
   hunks: DiffHunk[]
 }
 
+/** A commit offered for an interactive rebase. */
+export interface RebaseCommit {
+  hash: string
+  subject: string
+  /** Full message, without trailing whitespace. */
+  message: string
+  author: string
+  /** Author date, unix seconds. */
+  date: number
+}
+
 /** A working-tree file read whole as text, or why it cannot be edited as text. */
 export type WorkingFile = { text: string; reason: null } | { text: null; reason: 'binary' | 'large' | 'encoding' }
 

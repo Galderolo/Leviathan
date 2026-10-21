@@ -1,4 +1,5 @@
-export type RebaseAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop'
+export const REBASE_ACTIONS = ['pick', 'reword', 'squash', 'fixup', 'drop'] as const
+export type RebaseAction = (typeof REBASE_ACTIONS)[number]
 
 /** One commit of an interactive rebase, in the order it is applied (oldest first). */
 export interface RebaseItem {

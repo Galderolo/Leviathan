@@ -8,6 +8,7 @@ import type {
   ProgressEvent,
   Provider,
   PullMode,
+  RebaseCommit,
   RemoteRepo,
   RepoChangedEvent,
   RepoState,
@@ -16,6 +17,7 @@ import type {
   SshKey,
   WorkingFile
 } from './types'
+import type { RebaseItem } from './rebase'
 import type { RepoChange, Snapshot } from './undo'
 
 /**
@@ -52,6 +54,11 @@ export interface LeviathanInvokeApi {
   resolveConflictWith(repo: string, path: string, side: 'ours' | 'theirs'): Promise<void>
   /** Applies a recorded change; refuses when the repository no longer matches its starting state. */
   applyChange(repo: string, change: RepoChange): Promise<void>
+
+  // Interactive rebase
+  getRebaseCommits(repo: string, base: string): Promise<RebaseCommit[]>
+  /** Refused when the branch no longer holds exactly the commits in `items`. */
+  interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<void>
 
   // Working tree
   stage(repo: string, paths: string[]): Promise<void>
@@ -168,6 +175,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   resolveConflictFile: true,
   resolveConflictWith: true,
   applyChange: true,
+  getRebaseCommits: true,
+  interactiveRebase: true,
   stage: true,
   stageAll: true,
   unstage: true,
