@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
+import { supportsLineSelection } from '../../../shared/patch'
 import type { FileChange } from '../../../shared/types'
 import { applyHunk, applyLines, closeDiff, discardFiles, openFile, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
@@ -48,7 +49,8 @@ export function DiffView({ path }: { path: string }) {
   /** Click on the gutter toggles a line; shift-click selects a range within the hunk. */
   const pickLine = (hunkIndex: number, lineIndex: number, range: boolean) => {
     const lines = data?.hunks[hunkIndex]?.lines
-    if (!hunkMode || !lines) return
+    const hunk = data?.hunks[hunkIndex]
+    if (!hunkMode || !lines || !hunk || !supportsLineSelection(hunk)) return
     const isChange = (i: number) => lines[i]?.type === 'add' || lines[i]?.type === 'del'
     if (!isChange(lineIndex)) return
     setPicked((prev) => {
@@ -171,7 +173,8 @@ export function DiffView({ path }: { path: string }) {
                 </div>
                 <div className="hunk-lines">
                   {lines.map((line, li) => {
-                    const selectable = !!hunkMode && (line.type === 'add' || line.type === 'del')
+                    const selectable =
+                      !!hunkMode && supportsLineSelection(hunk) && (line.type === 'add' || line.type === 'del')
                     return (
                       <div
                         key={li}

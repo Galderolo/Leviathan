@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseDiff } from '../src/shared/parsers'
-import { buildPartialPatch } from '../src/shared/patch'
+import { buildPartialPatch, supportsLineSelection } from '../src/shared/patch'
 
 const HEADER = 'diff --git a/f b/f\n--- a/f\n+++ b/f\n'
 
@@ -34,17 +34,32 @@ describe('buildPartialPatch', () => {
     )
   })
 
-  it('keeps "no newline" markers with the line they belong to', () => {
-    const { diff, hunk } = hunkOf([
-      '@@ -1 +1 @@',
-      '-x',
-      '\\ No newline at end of file',
-      '+y',
-      '\\ No newline at end of file'
-    ])
-    expect(buildPartialPatch(diff.header, hunk, new Set([0]), false)).toBe(
-      HEADER + ['@@ -1,1 +1,0 @@', '-x', '\\ No newline at end of file', ''].join('\n')
-    )
+  // Old last line "b" had no newline; the change adds one and appends "c".
+  const NO_NEWLINE = [
+    '@@ -1,2 +1,3 @@',
+    ' a',
+    '-b',
+    '\\ No newline at end of file',
+    '+b',
+    '+c',
+    '\\ No newline at end of file'
+  ]
+
+  it('refuses a partial selection in hunks that change the final newline', () => {
+    const { diff, hunk } = hunkOf(NO_NEWLINE)
+    expect(supportsLineSelection(hunk)).toBe(false)
+    // Staging only "+c" would turn "-b" into context without a newline: the index would become "a\nbc".
+    expect(buildPartialPatch(diff.header, hunk, new Set([4]), false)).toBeNull()
+    expect(buildPartialPatch(diff.header, hunk, new Set([4]), true)).toBeNull()
+  })
+
+  it('still stages such hunks when every changed line is selected', () => {
+    const { diff, hunk } = hunkOf(NO_NEWLINE)
+    expect(buildPartialPatch(diff.header, hunk, new Set([1, 3, 4]), false)).toBe(diff.header + hunk.patch)
+  })
+
+  it('allows line selection in ordinary hunks', () => {
+    expect(supportsLineSelection(hunkOf(SAMPLE).hunk)).toBe(true)
   })
 
   it('preserves carriage returns of CRLF files', () => {
