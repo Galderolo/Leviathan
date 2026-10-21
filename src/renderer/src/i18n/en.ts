@@ -29,6 +29,7 @@ const en = {
   'toolbar.repository': 'repository',
   'toolbar.branch': 'branch',
   'toolbar.detached': 'detached',
+  'toolbar.fetch': 'Fetch',
   'toolbar.pull': 'Pull',
   'toolbar.push': 'Push',
   'toolbar.branchBtn': 'Branch',

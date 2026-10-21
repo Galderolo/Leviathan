@@ -31,6 +31,7 @@ const es: Record<keyof typeof en, string> = {
   'toolbar.repository': 'repositorio',
   'toolbar.branch': 'rama',
   'toolbar.detached': 'desacoplado',
+  'toolbar.fetch': 'Fetch',
   'toolbar.pull': 'Pull',
   'toolbar.push': 'Push',
   'toolbar.branchBtn': 'Rama',

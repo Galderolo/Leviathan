@@ -3,6 +3,7 @@ import {
   Archive,
   ArchiveRestore,
   ArrowDownToLine,
+  RefreshCw,
   ArrowUpToLine,
   ChevronDown,
   ChevronRight,
@@ -156,12 +157,20 @@ export function Toolbar({ path }: { path: string }) {
 
       <div className="toolbar-actions">
         <ToolButton
+          icon={RefreshCw}
+          label={t('toolbar.fetch')}
+          title={t('pull.fetchAll')}
+          onClick={() => void fetchAll(path)}
+          busy={busy === 'fetch'}
+          disabled={remoteBusy}
+        />
+        <ToolButton
           icon={ArrowDownToLine}
           label={t('toolbar.pull')}
           title={pullLabels[pullMode]}
           onClick={() => void pull(path)}
           onCaret={pullMenu}
-          busy={busy === 'pull' || busy === 'fetch'}
+          busy={busy === 'pull'}
           disabled={remoteBusy}
           badge={head?.behind ? String(head.behind) : undefined}
         />
