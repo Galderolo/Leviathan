@@ -11,6 +11,7 @@ import type {
   Stash
 } from '../../shared/types'
 import { isFetchDue } from './autofetch'
+import { remotesToChooseFrom } from './pushTarget'
 import { resolveLang, t } from './i18n'
 import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView, type Tab } from './store'
 import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
@@ -443,7 +444,27 @@ export async function push(path: string, opts: { force?: boolean; branch?: strin
     })
     if (!ok) return false
   }
-  return runOp(path, () => api.push(path, { force: !!opts.force, branch: opts.branch }), {
+  const state = getRepo(path)?.state
+  const choices = state ? remotesToChooseFrom(branch, state.refs, state.remotes) : null
+  let remote: string | undefined
+  if (choices) {
+    const values = await formDialog({
+      title: t('dlg.publishBranch', { branch }),
+      confirmText: t('toolbar.push'),
+      fields: [
+        {
+          key: 'remote',
+          label: t('dlg.remote'),
+          type: 'select',
+          value: choices.includes('origin') ? 'origin' : choices[0],
+          options: choices.map((name) => ({ value: name, label: name }))
+        }
+      ]
+    })
+    if (!values) return false
+    remote = values.remote
+  }
+  return runOp(path, () => api.push(path, { force: !!opts.force, branch: opts.branch, remote }), {
     busy: 'push',
     success: t('toast.pushed', { branch })
   })

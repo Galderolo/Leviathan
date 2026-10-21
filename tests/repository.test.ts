@@ -258,6 +258,29 @@ describe('repository', () => {
     expect((await repo.getState(dir)).refs.some((r) => r.type === 'tag')).toBe(false)
   })
 
+  it('publishes a new branch to the chosen remote', async () => {
+    const parent = join(dir, '..')
+    for (const name of ['origin.git', 'fork.git']) {
+      await git(['init', '-q', '--bare', '--initial-branch=main', join(parent, name)], { cwd: parent })
+    }
+    await commitFile('a.txt', 'a\n', 'base')
+    await repo.addRemote(dir, 'origin', join(parent, 'origin.git'))
+    await repo.addRemote(dir, 'fork', join(parent, 'fork.git'))
+    await repo.createBranch(dir, 'topic', null, true)
+    await repo.push(dir, { force: false, remote: 'fork' }, () => {})
+
+    const inFork = await git(['rev-parse', '--verify', 'refs/heads/topic'], {
+      cwd: join(parent, 'fork.git'),
+      okCodes: [0, 128]
+    })
+    const inOrigin = await git(['rev-parse', '--verify', 'refs/heads/topic'], {
+      cwd: join(parent, 'origin.git'),
+      okCodes: [0, 128]
+    })
+    expect([inFork.exitCode, inOrigin.exitCode]).toEqual([0, 128])
+    expect((await repo.getState(dir)).head.upstream).toBe('fork/topic')
+  })
+
   it('never pushes a branch onto a differently named upstream', async () => {
     const remoteDir = join(dir, '..', 'remote.git')
     await git(['init', '-q', '--bare', '--initial-branch=main', remoteDir], { cwd: join(dir, '..') })

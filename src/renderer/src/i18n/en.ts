@@ -169,6 +169,8 @@ const en = {
   'dlg.stashMessage': 'Stash message (optional)',
   'dlg.forcePush': 'Force push "{branch}"? Commits on the remote that you do not have locally will be lost.',
   'dlg.addRemote': 'Add remote',
+  'dlg.remote': 'Remote',
+  'dlg.publishBranch': 'Publish {branch} to…',
   'dlg.remoteName': 'Name',
   'dlg.remoteUrl': 'URL',
   'dlg.removeRemote': 'Remove the remote "{name}"? Its remote-tracking branches will be deleted locally.',

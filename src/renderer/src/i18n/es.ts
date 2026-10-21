@@ -172,6 +172,8 @@ const es: Record<keyof typeof en, string> = {
   'dlg.stashMessage': 'Mensaje del stash (opcional)',
   'dlg.forcePush': '¿Push forzado de "{branch}"? Se perderán los commits del remoto que no tengas en local.',
   'dlg.addRemote': 'Añadir remoto',
+  'dlg.remote': 'Remoto',
+  'dlg.publishBranch': 'Publicar {branch} en…',
   'dlg.remoteName': 'Nombre',
   'dlg.remoteUrl': 'URL',
   'dlg.removeRemote': '¿Quitar el remoto "{name}"? Se borrarán localmente sus ramas remotas.',
