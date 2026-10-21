@@ -539,6 +539,14 @@ export function mergeRef(path: string, name: string): Promise<boolean> {
   return runOp(path, () => api.merge(path, name))
 }
 
+/** Checks out the local branch `into` and merges `from` into it. */
+export function checkoutAndMerge(path: string, into: string, from: string): Promise<boolean> {
+  return runOp(path, async () => {
+    await api.checkout(path, into)
+    await api.merge(path, from)
+  })
+}
+
 export function rebaseOnto(path: string, name: string): Promise<boolean> {
   return runOp(path, () => api.rebase(path, name))
 }

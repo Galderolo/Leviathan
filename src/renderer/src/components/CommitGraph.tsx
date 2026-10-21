@@ -9,6 +9,7 @@ import { useRepo, useStore } from '../store'
 import { openMenu } from '../ui'
 import { cx, formatDate, groupRefs, initials, laneColor, matchesFilter, shortHash, type RefLabel } from '../utils'
 import { Avatar } from './common'
+import { refDragProps, refDropProps } from './refDnd'
 
 const ROW_H = 30
 const LANE_W = 22
@@ -283,6 +284,8 @@ function RefPill({ path, label, color }: { path: string; label: RefLabel; color:
         e.stopPropagation()
         void checkoutRef(path, primary)
       }}
+      {...refDragProps(primary)}
+      {...refDropProps(path, primary)}
       onContextMenu={(e) => openMenu(e, refMenu(path, primary))}
     >
       {label.isHead && <Check size={12} strokeWidth={3} />}

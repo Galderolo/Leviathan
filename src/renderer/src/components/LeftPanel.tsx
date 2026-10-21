@@ -22,6 +22,7 @@ import { branchMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
 import { useRepo } from '../store'
 import { openMenu } from '../ui'
 import { buildTree, cx, type TreeNode } from '../utils'
+import { refDragProps, refDropProps } from './refDnd'
 
 type Collapsed = Record<string, boolean>
 
@@ -48,6 +49,8 @@ export function LeftPanel({ path }: { path: string }) {
       className={cx('side-row', ref.isHead && 'head', selectedHash === ref.hash && 'selected')}
       onClick={() => selectRef(path, ref)}
       onDoubleClick={() => void checkoutRef(path, ref)}
+      {...refDragProps(ref)}
+      {...refDropProps(path, ref)}
       onContextMenu={(e) => openMenu(e, ref.type === 'tag' ? tagMenu(path, ref) : branchMenu(path, ref))}
       title={ref.upstream ? `${ref.name} → ${ref.upstream}` : ref.name}
     >

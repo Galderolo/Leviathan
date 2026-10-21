@@ -1,6 +1,7 @@
 import type { FileChange, GitRef, Stash } from '../../shared/types'
 import {
   applyStash,
+  checkoutAndMerge,
   checkoutCommit,
   checkoutRef,
   cherryPick,
@@ -28,6 +29,7 @@ import {
   stashChanges,
   unstageFiles
 } from './actions'
+import { dropActions } from './dragDrop'
 import { t } from './i18n'
 import { getRepo, type MenuItem } from './store'
 import { copyText } from './ui'
@@ -110,6 +112,29 @@ export function branchMenu(path: string, ref: GitRef): MenuItem[] {
     { label: t('menu.copyName'), onClick: () => void copyText(ref.name, t('toast.copied')) }
   )
   return items
+}
+
+/** Menu shown when one ref is dropped onto another. */
+export function dropMenu(path: string, source: GitRef, target: GitRef): MenuItem[] {
+  return dropActions(source, target, current(path).branch).map((action): MenuItem => {
+    switch (action.kind) {
+      case 'merge':
+        return {
+          label: t('menu.merge', { name: action.from, current: action.into }),
+          onClick: () => void mergeRef(path, action.from)
+        }
+      case 'rebase':
+        return {
+          label: t('menu.rebase', { name: action.onto, current: action.branch }),
+          onClick: () => void rebaseOnto(path, action.onto)
+        }
+      case 'checkoutMerge':
+        return {
+          label: t('menu.checkoutMerge', { into: action.into, from: action.from }),
+          onClick: () => void checkoutAndMerge(path, action.into, action.from)
+        }
+    }
+  })
 }
 
 export function tagMenu(path: string, ref: GitRef): MenuItem[] {

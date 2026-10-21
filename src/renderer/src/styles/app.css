@@ -781,6 +781,11 @@ a:hover {
   flex-shrink: 0;
 }
 
+.drop-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 1px;
+}
+
 .ref-pill.head {
   font-weight: 700;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--lane) 50%, transparent);
