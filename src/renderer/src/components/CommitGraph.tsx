@@ -1,35 +1,20 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Archive, Check, Cloud, Laptop, Tag } from 'lucide-react'
-import {
-  buildGraphItems,
-  layoutItems,
-  WIP_HASH,
-  type GraphItem,
-  type GraphLine,
-  type GraphRow
-} from '../../../shared/graph'
+import { buildGraphItems, layoutItems, WIP_HASH, type GraphItem, type GraphRow } from '../../../shared/graph'
+import { laneX, linePath, type GraphGeometry } from '../../../shared/graphPaths'
 import { checkoutRef, loadMore, selectCommit, selectWip } from '../actions'
 import { useT } from '../i18n'
 import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
 import { useRepo, useStore } from '../store'
 import { openMenu } from '../ui'
-import {
-  cx,
-  formatDate,
-  groupRefs,
-  hashColor,
-  initials,
-  laneColor,
-  matchesFilter,
-  shortHash,
-  type RefLabel
-} from '../utils'
+import { cx, formatDate, groupRefs, initials, laneColor, matchesFilter, shortHash, type RefLabel } from '../utils'
 import { Avatar } from './common'
 
 const ROW_H = 30
-const LANE_W = 18
-const PAD = 12
-const NODE_R = 9
+const LANE_W = 22
+const PAD = 14
+const NODE_R = 10
+const GEOMETRY: GraphGeometry = { rowHeight: ROW_H, laneWidth: LANE_W, padding: PAD, radius: 8 }
 const MAX_LANES = 24
 const OVERSCAN = 12
 
@@ -55,7 +40,7 @@ export function CommitGraph({ path }: { path: string }) {
   const refMap = useMemo(() => groupRefs(state?.refs ?? []), [state?.refs])
   const lanes = Math.min(Math.max(layout.maxWidth, 1), MAX_LANES)
   const graphWidth = Math.max(PAD * 2 + (lanes - 1) * LANE_W, 64)
-  const columns = `200px ${graphWidth}px minmax(160px, 1fr) 150px 150px 70px`
+  const columns = `200px ${graphWidth}px minmax(140px, 1fr) minmax(90px, 150px) minmax(110px, 150px) 70px`
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -309,20 +294,6 @@ function RefPill({ path, label, color }: { path: string; label: RefLabel; color:
   )
 }
 
-function linePath(line: GraphLine, x: (col: number) => number): string {
-  const mid = ROW_H / 2
-  const x1 = x(line.from)
-  const x2 = x(line.to)
-  switch (line.kind) {
-    case 'full':
-      return `M ${x1} 0 V ${ROW_H}`
-    case 'top':
-      return x1 === x2 ? `M ${x1} 0 V ${mid}` : `M ${x1} 0 Q ${x1} ${mid} ${x2} ${mid}`
-    case 'bottom':
-      return x1 === x2 ? `M ${x1} ${mid} V ${ROW_H}` : `M ${x1} ${mid} Q ${x2} ${mid} ${x2} ${ROW_H}`
-  }
-}
-
 function GraphSvg({
   row,
   item,
@@ -334,9 +305,8 @@ function GraphSvg({
   width: number
   connector: boolean
 }) {
-  const x = (col: number) => PAD + col * LANE_W
   const mid = ROW_H / 2
-  const cx = x(row.column)
+  const cx = laneX(row.column, GEOMETRY)
   const color = laneColor(row.color)
 
   let node: React.ReactNode
@@ -345,15 +315,13 @@ function GraphSvg({
   } else if (item.kind === 'stash') {
     node = <rect x={cx - 7} y={mid - 7} width={14} height={14} rx={3} className="node-stash" stroke={color} />
   } else if (item.commit.parents.length > 1) {
-    node = <circle cx={cx} cy={mid} r={5} fill={color} className="node-merge" />
+    node = <circle cx={cx} cy={mid} r={6} fill={color} className="node-merge" />
   } else {
-    const c = item.commit
     node = (
       <g>
         <circle cx={cx} cy={mid} r={NODE_R} fill={color} />
-        <circle cx={cx} cy={mid} r={NODE_R - 2} fill={hashColor(c.authorEmail || c.authorName)} />
         <text x={cx} y={mid} className="node-initials">
-          {initials(c.authorName)}
+          {initials(item.commit.authorName)}
         </text>
       </g>
     )
@@ -361,11 +329,20 @@ function GraphSvg({
 
   return (
     <svg width={width} height={ROW_H} className="graph-svg">
+      {/* Translucent band from the node to the edge of the graph, in the lane colour. */}
+      <rect
+        x={cx}
+        y={mid - NODE_R}
+        width={Math.max(0, width - cx)}
+        height={NODE_R * 2}
+        fill={color}
+        className="row-band"
+      />
       {connector && <line x1={0} y1={mid} x2={cx} y2={mid} stroke={color} strokeWidth={1.5} />}
       {row.lines.map((line, i) => (
         <path
           key={i}
-          d={linePath(line, x)}
+          d={linePath(line, GEOMETRY)}
           stroke={laneColor(line.color)}
           strokeWidth={2}
           fill="none"
