@@ -6,6 +6,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- Interactive rebase: right-click a commit and reorder, reword, squash, fixup or drop the commits after it. A conflict stops the rebase with the usual banner and conflict editor; the result can be undone.
+
 - Conflict editor: current and incoming versions side by side, per-block choices, whole-file sides (including deletions).
 
 - Undo and redo (toolbar buttons, Ctrl+Z / Ctrl+Shift+Z) for commits, amends, checkouts, branch and tag changes, merges, rebases, cherry-picks, reverts, resets and pulls.

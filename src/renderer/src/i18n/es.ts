@@ -301,6 +301,25 @@ const es: Record<keyof typeof en, string> = {
     'Este archivo no es texto UTF-8, así que editarlo aquí lo estropearía. Elige una de las dos versiones con los botones de arriba, o abre el archivo.',
   'toast.resolved': '{name} resuelto',
 
+  'menu.interactiveRebase': 'Rebase interactivo desde aquí…',
+  'rebase.title': 'Rebase interactivo de {branch}',
+  'rebase.hint':
+    'Los commits posteriores a {base}, del más reciente al más antiguo. Unir funde un commit en el de debajo.',
+  'rebase.pick': 'Mantener',
+  'rebase.reword': 'Cambiar mensaje',
+  'rebase.squash': 'Unir',
+  'rebase.fixup': 'Unir sin mensaje',
+  'rebase.drop': 'Descartar',
+  'rebase.moveUp': 'Subir (Alt+↑)',
+  'rebase.moveDown': 'Bajar (Alt+↓)',
+  'rebase.start': 'Empezar rebase',
+  'rebase.problem.empty': 'Mantén al menos un commit.',
+  'rebase.problem.noBase':
+    'El commit más antiguo que mantienes no se puede unir: no hay nada debajo en lo que fundirlo.',
+  'rebase.problem.noMessage': 'Un commit con el mensaje cambiado necesita un mensaje.',
+  'undo.interactiveRebase': 'rebase interactivo',
+  'toast.rebased': 'Rebase terminado',
+
   'status.ready': 'Listo',
   'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',

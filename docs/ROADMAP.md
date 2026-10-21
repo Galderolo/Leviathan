@@ -24,8 +24,9 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## History editing
 
-- [ ] Interactive rebase (reorder, squash, reword, drop) with drag and drop
-- [ ] Edit the message of any commit (reword)
+- [ ] Drag and drop to reorder commits in the interactive rebase dialog
+- [ ] Interactive rebase of ranges with merge commits (`--rebase-merges`)
+- [ ] Stop at a commit to amend it (`edit`) during an interactive rebase
 
 ## Remotes and collaboration
 

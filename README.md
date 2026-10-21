@@ -32,7 +32,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Commits**: summary and description, amend the last commit, `Ctrl+Enter` to commit.
 - **Diff viewer** for the working tree, the index and any commit.
 - **Branches**: create, checkout (double-click), rename, delete, merge, rebase, push, delete from the remote. **Drag a branch onto another** to merge or rebase.
-- **History**: cherry-pick, revert, reset (soft / mixed / hard), checkout a commit, create tags.
+- **History**: cherry-pick, revert, reset (soft / mixed / hard), checkout a commit, create tags, and **interactive rebase** — reorder, reword, squash, fixup or drop the commits after any commit, from a dialog.
 - **Remotes**: fetch, pull (fast-forward, fast-forward only, rebase), push and force-push with lease, add and remove remotes, choose the remote when publishing a branch, **automatic background fetch**.
 - **Private repositories**: HTTPS usernames/tokens, SSH key passphrases and unknown host keys are asked in the app; your credential helper (for example Git Credential Manager) keeps working. List, copy and generate **SSH keys** from Settings.
 - **Stash**: save (including untracked files), apply, pop, delete.
@@ -113,6 +113,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Deshacer / rehacer (Ctrl+Z / Ctrl+Mayús+Z) commits, checkouts, ramas, tags, merges, rebases, resets y pulls.
 - Fetch automático, tema claro y oscuro.
 - Ramas: crear, checkout con doble clic, renombrar, borrar, merge, rebase, push.
+- Rebase interactivo desde cualquier commit: reordenar, cambiar mensajes, unir (squash/fixup) o descartar commits.
 - Cherry-pick, revert, reset, tags, stash, fetch/pull/push, clonar y crear repositorios.
 - Interfaz en español e inglés.
 

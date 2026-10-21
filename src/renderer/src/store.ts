@@ -1,5 +1,14 @@
 import { create } from 'zustand'
-import type { Account, Commit, CommitDetails, DiffSource, FileDiff, RepoState, Settings } from '../../shared/types'
+import type {
+  Account,
+  Commit,
+  CommitDetails,
+  DiffSource,
+  FileDiff,
+  RebaseCommit,
+  RepoState,
+  Settings
+} from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import type { Lang } from './i18n'
 import type { UndoEntry } from './undoStack'
@@ -109,6 +118,8 @@ export interface AppState {
   dialog: DialogState | null
   toasts: Toast[]
   settingsOpen: boolean
+  /** Interactive rebase dialog: the commits after `base` in repository `path`. */
+  rebase: { path: string; base: string; commits: RebaseCommit[] } | null
   cloneProgress: string | null
   versions: { app: string; git: string }
 }
@@ -124,6 +135,7 @@ export const useStore = create<AppState>(() => ({
   dialog: null,
   toasts: [],
   settingsOpen: false,
+  rebase: null,
   cloneProgress: null,
   versions: { app: '', git: '' }
 }))

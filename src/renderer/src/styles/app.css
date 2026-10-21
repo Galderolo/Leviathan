@@ -1842,6 +1842,88 @@ a:hover {
   margin-top: 4px;
 }
 
+.rebase-modal {
+  width: 760px;
+  max-height: calc(100vh - 80px);
+}
+
+.rebase-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-1);
+}
+
+.rebase-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rebase-row:last-child {
+  border-bottom: none;
+}
+
+.rebase-row.melded {
+  padding-left: 28px;
+}
+
+.rebase-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rebase-line select {
+  flex: 0 0 120px;
+}
+
+.rebase-hash {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.rebase-subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rebase-author {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.rebase-row.dropped .rebase-subject {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+.rebase-message {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12px;
+  resize: vertical;
+}
+
+.rebase-problem {
+  color: var(--orange);
+  font-size: 12px;
+}
+
 .modal.wide {
   width: 560px;
 }

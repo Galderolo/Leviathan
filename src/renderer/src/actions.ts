@@ -12,6 +12,7 @@ import type {
 } from '../../shared/types'
 import { buildPartialPatch } from '../../shared/patch'
 import { hasRemoteOnHost } from '../../shared/providers'
+import type { RebaseItem } from '../../shared/rebase'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import { isFetchDue } from './autofetch'
 import { branchStartOptions } from './branchStart'
@@ -646,6 +647,30 @@ export function checkoutAndMerge(path: string, into: string, from: string): Prom
 
 export function rebaseOnto(path: string, name: string): Promise<boolean> {
   return runOp(path, () => api.rebase(path, name), { undo: { label: t('undo.rebase', { name }) } })
+}
+
+/** Opens the interactive rebase dialog for the commits after `base`. */
+export async function openInteractiveRebase(path: string, base: string): Promise<void> {
+  try {
+    const commits = await api.getRebaseCommits(path, base)
+    useStore.setState({ rebase: { path, base, commits } })
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+}
+
+export function closeInteractiveRebase(): void {
+  useStore.setState({ rebase: null })
+}
+
+/** Runs the rebase; when it stops for a conflict, the operation banner takes over. */
+export async function startInteractiveRebase(path: string, base: string, items: RebaseItem[]): Promise<boolean> {
+  const ok = await runOp(path, () => api.interactiveRebase(path, base, items), {
+    success: t('toast.rebased'),
+    undo: { label: t('undo.interactiveRebase') }
+  })
+  closeInteractiveRebase()
+  return ok
 }
 
 export async function deleteBranch(path: string, ref: GitRef): Promise<void> {

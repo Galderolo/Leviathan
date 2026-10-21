@@ -16,6 +16,7 @@ import {
   ignorePattern,
   mergeRef,
   openFile,
+  openInteractiveRebase,
   popStash,
   push,
   pushTag,
@@ -50,6 +51,11 @@ export function commitMenu(path: string, hash: string): MenuItem[] {
     { separator: true },
     { label: t('menu.cherryPick'), disabled: isHead, onClick: () => void cherryPick(path, hash) },
     { label: t('menu.revert'), onClick: () => void revertCommit(path, hash) },
+    {
+      label: t('menu.interactiveRebase'),
+      disabled: isHead,
+      onClick: () => void openInteractiveRebase(path, hash)
+    },
     { separator: true },
     {
       label: t('menu.resetSoft', { branch: target }),

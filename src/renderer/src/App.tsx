@@ -19,6 +19,7 @@ import { ContextMenu, Dialog, Resizer, Toasts } from './components/common'
 import { DiffView } from './components/DiffView'
 import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
+import { RebaseDialog } from './components/RebaseDialog'
 import { SettingsModal } from './components/SettingsModal'
 import { StatusBar } from './components/StatusBar'
 import { TabBar } from './components/TabBar'
@@ -120,6 +121,7 @@ export function App() {
       <StatusBar />
       <ContextMenu />
       <SettingsModal />
+      <RebaseDialog />
       <Dialog />
       <Toasts />
     </div>
