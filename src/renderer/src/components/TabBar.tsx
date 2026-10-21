@@ -12,7 +12,7 @@ export function TabBar() {
   return (
     <div className="tabbar">
       <div className="brand" title="Leviathan">
-        <img src="./leviathan.svg" alt="" width={18} height={18} />
+        <img src="./leviathan.png" alt="" width={18} height={18} />
       </div>
       <div className="tabs">
         {tabs.map((tab) => (
