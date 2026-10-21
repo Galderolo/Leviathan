@@ -317,7 +317,7 @@ const en = {
   'undo.interactiveRebase': 'interactive rebase',
   'toast.rebased': 'Rebase finished',
 
-  'left.pullRequests': 'Pull requests',
+  'left.pullRequests': 'PULL REQUESTS',
   'left.noPullRequests': 'No open pull requests',
   'menu.createPr': 'Create pull request…',
   'menu.openPr': 'Open in browser',

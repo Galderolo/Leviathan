@@ -322,7 +322,7 @@ const es: Record<keyof typeof en, string> = {
   'undo.interactiveRebase': 'rebase interactivo',
   'toast.rebased': 'Rebase terminado',
 
-  'left.pullRequests': 'Pull requests',
+  'left.pullRequests': 'PULL REQUESTS',
   'left.noPullRequests': 'No hay pull requests abiertas',
   'menu.createPr': 'Crear pull request…',
   'menu.openPr': 'Abrir en el navegador',
