@@ -192,6 +192,8 @@ export interface LeviathanInvokeApi {
   lfsUntrack(repo: string, pattern: LfsPattern): Promise<void>
   /** Tracks the files' extensions and stages them again through LFS, with `.gitattributes`. */
   lfsMoveFiles(repo: string, paths: string[]): Promise<void>
+  /** Stages again through LFS files that should go through it but were staged whole. */
+  lfsRestage(repo: string, paths: string[]): Promise<void>
   /** Runs `git lfs install` and downloads the repository's LFS files. */
   setupLfs(repo: string): Promise<void>
 }
@@ -306,6 +308,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   lfsTrack: true,
   lfsUntrack: true,
   lfsMoveFiles: true,
+  lfsRestage: true,
   setupLfs: true
 }
 

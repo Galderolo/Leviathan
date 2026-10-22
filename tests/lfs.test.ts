@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { lfsPatternFor, parseAttributes, parseLocks, parseVerifiedLocks } from '../src/shared/lfs'
+import { SizeCache } from '../src/main/git/staged'
+import { lfsPatternFor, parseAttributes, parseLocks, parseMacros, parseVerifiedLocks } from '../src/shared/lfs'
 
 describe('parseAttributes', () => {
   it('keeps the patterns that go through LFS, and which of them are lockable', () => {
@@ -61,6 +62,46 @@ describe('locks', () => {
     expect(parseLocks('{}', true)).toEqual([])
     expect(parseVerifiedLocks('[]')).toEqual([])
     expect(parseLocks(JSON.stringify([{ id: 3 }]), null)).toEqual([])
+  })
+})
+
+describe('attribute macros', () => {
+  it('expands the macros of the root attributes file, in any attributes file', () => {
+    const root = [
+      '[attr]lfs filter=lfs diff=lfs merge=lfs -text',
+      '[attr]locked lfs lockable',
+      '*.psd lfs',
+      '*.uasset locked',
+      '*.txt -lfs'
+    ].join('\n')
+    const macros = parseMacros(root)
+    expect(parseAttributes(root, '.gitattributes', macros)).toEqual([
+      { pattern: '*.psd', lockable: false, source: '.gitattributes' },
+      { pattern: '*.uasset', lockable: true, source: '.gitattributes' }
+    ])
+    expect(parseAttributes('*.wav lfs\n', 'audio/.gitattributes', macros)).toEqual([
+      { pattern: '*.wav', lockable: false, source: 'audio/.gitattributes' }
+    ])
+  })
+
+  it('survives macros that refer to each other', () => {
+    const macros = parseMacros('[attr]a b\n[attr]b a filter=lfs\n')
+    expect(parseAttributes('*.x a\n', '.gitattributes', macros)).toEqual([
+      { pattern: '*.x', lockable: false, source: '.gitattributes' }
+    ])
+  })
+})
+
+describe('SizeCache', () => {
+  it('only asks for the sizes it does not know, and keeps a bounded number', () => {
+    const cache = new SizeCache(2)
+    expect(cache.missing(['a', 'b'])).toEqual(['a', 'b'])
+    cache.set('a', 1)
+    cache.set('b', 2)
+    expect(cache.missing(['a', 'b', 'c'])).toEqual(['c'])
+    cache.set('c', 3)
+    expect(cache.get('c')).toBe(3)
+    expect(cache.missing(['a', 'b', 'c']).length).toBe(1)
   })
 })
 

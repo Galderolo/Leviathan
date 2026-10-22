@@ -77,6 +77,8 @@ async function lockServer(opts: { verify: boolean }) {
   }
 }
 
+const pointer = /^version https:\/\/git-lfs\.github\.com\/spec\/v1/
+
 const hasLfs = await git(['lfs', 'version'], { cwd: process.cwd() }).then(
   () => true,
   () => false
@@ -178,6 +180,55 @@ describe.skipIf(!hasLfs)('LFS info and tracking', () => {
     await expect(
       lfs.lfsUntrack(work, { pattern: '*.psd', lockable: false, source: '../.gitattributes' })
     ).rejects.toThrow(/outside/)
+  })
+
+  it('reads patterns that go through LFS by an attribute macro', async () => {
+    writeFileSync(join(work, '.gitattributes'), '[attr]lfs filter=lfs diff=lfs merge=lfs -text\n*.psd lfs\n')
+    mkdirSync(join(work, 'sub'))
+    writeFileSync(join(work, 'sub', '.gitattributes'), '*.wav lfs\n')
+    await repo.stage(work, ['sub/.gitattributes'])
+    expect((await lfs.getLfsInfo(work)).patterns).toEqual([
+      { pattern: '*.psd', lockable: false, source: '.gitattributes' },
+      { pattern: '*.wav', lockable: false, source: 'sub/.gitattributes' }
+    ])
+  })
+
+  it('tracking a pattern stages already-staged matching files again through LFS, with .gitattributes', async () => {
+    writeFileSync(join(work, 'art.psd'), Buffer.alloc(4096, 1))
+    await repo.stage(work, ['art.psd'])
+    await lfs.lfsTrack(work, '*.psd', false)
+    expect((await git(['cat-file', '-p', ':art.psd'], { cwd: work })).stdout).toMatch(pointer)
+    const state = await repo.getState(work)
+    expect(state.status.staged.map((f) => f.path).sort()).toEqual(['.gitattributes', 'art.psd'])
+    expect(state.unconvertedLfs).toEqual([])
+  })
+
+  it('warns about staged files that should go through LFS, and stages them through it', async () => {
+    writeFileSync(join(work, 'art.psd'), Buffer.alloc(4096, 1))
+    await repo.stage(work, ['art.psd'])
+    writeFileSync(join(work, '.gitattributes'), '*.psd filter=lfs diff=lfs merge=lfs -text\n')
+    let state = await repo.getState(work)
+    expect(state.unconvertedLfs).toEqual([{ path: 'art.psd', size: 4096 }])
+    expect(state.largeFiles).toEqual([])
+
+    await lfs.lfsRestage(work, ['art.psd'])
+    state = await repo.getState(work)
+    expect(state.unconvertedLfs).toEqual([])
+    expect(state.status.staged.map((f) => f.path).sort()).toEqual(['.gitattributes', 'art.psd'])
+    expect((await git(['cat-file', '-p', ':art.psd'], { cwd: work })).stdout).toMatch(pointer)
+  })
+
+  it('never replaces a staged version with a different working copy', async () => {
+    writeFileSync(join(work, 'art.psd'), Buffer.alloc(4096, 1))
+    await repo.stage(work, ['art.psd'])
+    writeFileSync(join(work, '.gitattributes'), '*.psd filter=lfs diff=lfs merge=lfs -text\n')
+    writeFileSync(join(work, 'art.psd'), Buffer.alloc(4096, 2))
+    await expect(lfs.lfsRestage(work, ['art.psd'])).rejects.toThrow(/unstaged changes/)
+    await expect(lfs.lfsMoveFiles(work, ['art.psd'])).rejects.toThrow(/unstaged changes/)
+    await lfs.lfsTrack(work, '*.psd', false)
+    const staged = (await git(['cat-file', '-p', ':art.psd'], { cwd: work })).stdout
+    expect(staged).toBe('\x01'.repeat(4096))
+    expect((await repo.getState(work)).unconvertedLfs).toEqual([{ path: 'art.psd', size: 4096 }])
   })
 
   it('sets up LFS where it is missing: filters, hooks', async () => {

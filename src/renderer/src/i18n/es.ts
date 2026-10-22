@@ -389,6 +389,9 @@ const es: Record<keyof typeof en, string> = {
   'lfs.largeFiles_one':
     'Este archivo pasa de 50 MB y no se guarda con Git LFS. GitHub rechaza archivos de más de 100 MB.',
   'lfs.moveTo': 'Guardar {patterns} con Git LFS',
+  'lfs.plainFiles': '{count} archivos deberían guardarse con Git LFS, pero están preparados con todo su contenido.',
+  'lfs.plainFiles_one': 'Este archivo debería guardarse con Git LFS, pero está preparado con todo su contenido.',
+  'lfs.restage': 'Preparar con Git LFS',
   'lfs.lockedByOthers': '{count} archivos cambiados están bloqueados por otra persona: tu push puede ser rechazado.',
   'lfs.lockedByOthers_one': 'Un archivo cambiado está bloqueado por otra persona: tu push puede ser rechazado.',
   'dlg.lfsTrack':

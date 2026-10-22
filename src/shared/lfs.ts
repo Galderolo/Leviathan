@@ -51,8 +51,23 @@ function readQuoted(line: string): [string, string] {
   return [out, line.slice(i + 1)]
 }
 
+/** Attribute macros (`[attr]lfs filter=lfs diff=lfs …`): name → the attributes it stands for. */
+export type AttributeMacros = Map<string, string[]>
+
+/** Macros defined in an attributes file (git only honours those of the root `.gitattributes`). */
+export function parseMacros(text: string): AttributeMacros {
+  const macros: AttributeMacros = new Map()
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line.startsWith('[attr]')) continue
+    const [name, ...attrs] = line.slice('[attr]'.length).trim().split(/\s+/)
+    if (name) macros.set(name, attrs)
+  }
+  return macros
+}
+
 /** The LFS patterns of one `.gitattributes` file; later lines for the same pattern override earlier ones. */
-export function parseAttributes(text: string, source: string): LfsPattern[] {
+export function parseAttributes(text: string, source: string, macros: AttributeMacros = new Map()): LfsPattern[] {
   const seen = new Map<string, { lfs: boolean; lockable: boolean }>()
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim()
@@ -60,12 +75,18 @@ export function parseAttributes(text: string, source: string): LfsPattern[] {
     const [pattern, rest] = line.startsWith('"') ? readQuoted(line) : [line.split(/\s+/)[0], line.replace(/^\S+/, '')]
     if (!pattern) continue
     const entry = seen.get(pattern) ?? { lfs: false, lockable: false }
-    for (const attr of rest.split(/\s+/).filter(Boolean)) {
+    const apply = (attr: string, expanding: Set<string>): void => {
       const name = attr.replace(/^[-!]/, '').split('=')[0]
       const unset = attr.startsWith('-') || attr.startsWith('!')
-      if (name === 'filter') entry.lfs = !unset && attr === 'filter=lfs'
+      const macro = attr.includes('=') ? undefined : macros.get(name)
+      if (macro && !expanding.has(name)) {
+        // Unsetting a macro unsets what it stands for; a macro that refers back to itself stops there.
+        const inner = new Set(expanding).add(name)
+        for (const a of macro) apply(unset ? '-' + a.replace(/^[-!]/, '').split('=')[0] : a, inner)
+      } else if (name === 'filter') entry.lfs = !unset && attr === 'filter=lfs'
       else if (name === 'lockable') entry.lockable = !unset
     }
+    for (const attr of rest.split(/\s+/).filter(Boolean)) apply(attr, new Set())
     seen.set(pattern, entry)
   }
   return [...seen].filter(([, e]) => e.lfs).map(([pattern, e]) => ({ pattern, lockable: e.lockable, source }))

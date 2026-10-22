@@ -10,6 +10,7 @@ import {
   discardFiles,
   dropStash,
   moveToLfs,
+  restageLfs,
   openDiff,
   openExternal,
   popStash,
@@ -484,60 +485,84 @@ function CommitBox({ path, view }: { path: string; view: RepoView }) {
   )
 }
 
-/** Big files about to be committed outside LFS, and changed files someone else locked. */
+/** Files about to be committed outside LFS (too big, or meant for LFS), and changed files someone else locked. */
 function LfsWarnings({ path, view }: { path: string; view: RepoView }) {
   const t = useT()
+  const [running, setRunning] = useState(false)
   const state = view.state!
   const info = view.lfs?.info
   const large = state.largeFiles
+  const plain = state.unconvertedLfs
   const changed = [...state.status.staged, ...state.status.unstaged].map((f) => f.path)
   const locked = lockedByOthers(view.lfs?.locks ?? [], changed)
-  if (!large.length && !locked.length) return null
-  const patterns = [...new Set(large.map((f) => lfsPatternFor(f.path)))].join(', ')
-  let fix: ReactNode = null
-  if (info && !info.version) {
-    fix = (
-      <button className="btn small" onClick={() => openExternal(LFS_DOWNLOAD_URL)}>
-        {t('lfs.install')}
-      </button>
-    )
-  } else if (info && !info.filters) {
-    fix = (
-      <button className="btn small" disabled={!!view.busy} onClick={() => void setupLfs(path)}>
-        {t('lfs.setup')}
-      </button>
-    )
-  } else if (info) {
-    fix = (
+  if (!large.length && !plain.length && !locked.length) return null
+
+  const run = (action: () => Promise<void>) => {
+    setRunning(true)
+    void action().finally(() => setRunning(false))
+  }
+  // What fixes it: git-lfs first, then its setup, then the action itself.
+  const fix = (label: string, action: () => Promise<void>): ReactNode => {
+    if (!info) return null
+    if (!info.version) {
+      return (
+        <button className="btn small" onClick={() => openExternal(LFS_DOWNLOAD_URL)}>
+          {t('lfs.install')}
+        </button>
+      )
+    }
+    const setup = !info.filters
+    return (
       <button
-        className="btn small btn-primary"
-        onClick={() =>
-          void moveToLfs(
-            path,
-            large.map((f) => f.path)
-          )
-        }
+        className={cx('btn small', !setup && 'btn-primary')}
+        disabled={running || !!view.busy}
+        onClick={() => run(setup ? () => setupLfs(path) : action)}
       >
-        {t('lfs.moveTo', { patterns })}
+        {setup ? t('lfs.setup') : label}
       </button>
     )
   }
+  const fileList = (files: { path: string; size: number }[]) => (
+    <ul>
+      {files.slice(0, 4).map((f) => (
+        <li key={f.path} title={f.path}>
+          {f.path} <span className="dim">({formatSize(f.size)})</span>
+        </li>
+      ))}
+      {files.length > 4 && <li className="dim">…</li>}
+    </ul>
+  )
+  const patterns = [...new Set(large.map((f) => lfsPatternFor(f.path)))].join(', ')
+
   return (
     <>
+      {plain.length > 0 && (
+        <div className="commit-warning">
+          <AlertTriangle size={14} />
+          <div className="commit-warning-body">
+            <span>{t('lfs.plainFiles', { count: plain.length })}</span>
+            {fileList(plain)}
+            {fix(t('lfs.restage'), () =>
+              restageLfs(
+                path,
+                plain.map((f) => f.path)
+              )
+            )}
+          </div>
+        </div>
+      )}
       {large.length > 0 && (
         <div className="commit-warning">
           <AlertTriangle size={14} />
           <div className="commit-warning-body">
             <span>{t('lfs.largeFiles', { count: large.length })}</span>
-            <ul>
-              {large.slice(0, 4).map((f) => (
-                <li key={f.path} title={f.path}>
-                  {f.path} <span className="dim">({formatSize(f.size)})</span>
-                </li>
-              ))}
-              {large.length > 4 && <li className="dim">…</li>}
-            </ul>
-            {fix}
+            {fileList(large)}
+            {fix(t('lfs.moveTo', { patterns }), () =>
+              moveToLfs(
+                path,
+                large.map((f) => f.path)
+              )
+            )}
           </div>
         </div>
       )}

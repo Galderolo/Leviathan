@@ -1,9 +1,10 @@
 import { promises as fs } from 'node:fs'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
-import { lfsPatternFor, parseAttributes, parseLocks, parseVerifiedLocks } from '../../shared/lfs'
+import { lfsPatternFor, parseAttributes, parseLocks, parseMacros, parseVerifiedLocks } from '../../shared/lfs'
 import type { LfsInfo, LfsLock, LfsPattern } from '../../shared/lfs'
 import { insideRepo, type ProgressFn } from './repository'
 import { NON_INTERACTIVE_ENV, git, type RunOptions } from './runner'
+import { lfsFilesAmong, plainLfs, stagedBlobs, type StagedBlob } from './staged'
 
 async function run(cwd: string, args: string[], extra: Partial<RunOptions> = {}): Promise<string> {
   return (await git(args, { cwd, ...extra })).stdout
@@ -53,17 +54,20 @@ async function hooksInstalled(repo: string): Promise<boolean> {
 export async function getLfsInfo(repo: string): Promise<LfsInfo> {
   const listed = await run(repo, ['ls-files', '-z', '--cached', '--', ':(glob)**/.gitattributes'])
   const sources = [...new Set(['.gitattributes', ...listed.split('\0').filter(Boolean)])]
-  const patterns: LfsPattern[] = []
+  const texts: [string, string][] = []
   for (const source of sources) {
     try {
       const full = insideRepo(repo, source)
       // Like git, never follow a symlinked attributes file.
       if (!(await fs.lstat(full)).isFile()) continue
-      patterns.push(...parseAttributes(await fs.readFile(full, 'utf8'), source))
+      texts.push([source, await fs.readFile(full, 'utf8')])
     } catch {
       // deleted in the working tree
     }
   }
+  // Macros (`[attr]lfs filter=lfs …`) count only when defined in the root file, and apply everywhere.
+  const macros = parseMacros(texts.find(([source]) => source === '.gitattributes')?.[1] ?? '')
+  const patterns = texts.flatMap(([source, text]) => parseAttributes(text, source, macros))
   const installed = await lfsVersion()
   const [filters, hooks] = installed
     ? await Promise.all([filtersConfigured(repo), hooksInstalled(repo)])
@@ -125,10 +129,100 @@ export async function lfsUnlock(repo: string, lock: { id: string; path: string }
   }
 }
 
-/** Tracks a pattern in the root `.gitattributes` (git-lfs escapes it and installs the repository hooks). */
+const LITERAL = { GIT_LITERAL_PATHSPECS: '1' }
+
+/**
+ * Staged files whose working copy is not byte for byte what is staged. Compared without filters: once
+ * a file goes through LFS, git compares the staged content with the cleaned (pointer) working copy and
+ * always sees a change.
+ */
+async function changedSinceStaged(repo: string, blobs: StagedBlob[]): Promise<string[]> {
+  const comparable: StagedBlob[] = []
+  const changed: string[] = []
+  for (const blob of blobs) {
+    let file = false
+    try {
+      file = !blob.path.includes('\n') && (await fs.lstat(insideRepo(repo, blob.path))).isFile()
+    } catch {
+      // deleted since it was staged
+    }
+    if (file) comparable.push(blob)
+    else changed.push(blob.path)
+  }
+  if (comparable.length) {
+    const out = await run(repo, ['hash-object', '--no-filters', '--stdin-paths'], {
+      input: comparable.map((b) => b.path).join('\n') + '\n'
+    })
+    const hashes = out.split('\n')
+    comparable.forEach((b, i) => hashes[i]?.trim() !== b.hash && changed.push(b.path))
+  }
+  return changed
+}
+
+/** Stages the attributes files that changed, so pointers never get committed without the pattern that explains them. */
+async function stageAttributes(repo: string): Promise<void> {
+  const out = await run(repo, [
+    'status',
+    '--porcelain=v1',
+    '-z',
+    '--untracked-files=all',
+    '--',
+    ':(glob)**/.gitattributes'
+  ])
+  const entries = out.split('\0')
+  const paths: string[] = []
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
+    if (entry.length < 4) continue
+    if (entry[0] === 'R' || entry[0] === 'C') i++
+    if (entry[1] !== ' ') paths.push(entry.slice(3))
+  }
+  if (paths.length) await run(repo, ['add', '-A', '--', ...paths], { env: LITERAL })
+}
+
+/** Stages files again through the LFS filters (as pointers), with the attributes files. */
+async function renormalize(repo: string, files: string[]): Promise<void> {
+  if (!files.length) return
+  await run(repo, ['add', '--renormalize', '--pathspec-from-file=-', '--pathspec-file-nul'], {
+    input: files.join('\0'),
+    env: LITERAL
+  })
+  await stageAttributes(repo)
+}
+
+/** The staged entries of `paths`, refusing any whose working copy changed since: staging it again would replace the staged version. */
+async function stagedUnchanged(repo: string, paths: string[]): Promise<StagedBlob[]> {
+  const wanted = new Set(paths.map((p) => repoPath(repo, p)))
+  const staged = (await stagedBlobs(repo)).filter((b) => wanted.has(b.path))
+  const changed = await changedSinceStaged(repo, staged)
+  if (changed.length) {
+    throw new Error(
+      `${changed.join(', ')}: the working copy has unstaged changes. Stage it again to store it with Git LFS as it is now.`
+    )
+  }
+  return staged
+}
+
+/**
+ * Tracks a pattern in the root `.gitattributes` (git-lfs escapes it and installs the repository hooks).
+ * Files already staged that the pattern now covers are staged again through LFS, unless their working copy changed since.
+ */
 export async function lfsTrack(repo: string, pattern: string, lockable: boolean): Promise<void> {
   assertPattern(pattern)
   await run(repo, ['lfs', 'track', ...(lockable ? ['--lockable'] : []), '--', pattern])
+  const blobs = await stagedBlobs(repo)
+  const plain = plainLfs(
+    blobs,
+    await lfsFilesAmong(
+      repo,
+      blobs.map((b) => b.path)
+    )
+  )
+  const changed = new Set(await changedSinceStaged(repo, plain))
+  await renormalize(
+    repo,
+    plain.filter((b) => !changed.has(b.path)).map((b) => b.path)
+  )
 }
 
 /** Removes a pattern from the attributes file it was read from. */
@@ -141,15 +235,24 @@ export async function lfsUntrack(repo: string, pattern: LfsPattern): Promise<voi
 
 /** Sends staged files through LFS: tracks their extensions, stages them again as pointers, stages `.gitattributes`. */
 export async function lfsMoveFiles(repo: string, paths: string[]): Promise<void> {
-  const files = paths.map((p) => repoPath(repo, p))
-  if (!files.length) return
-  for (const pattern of new Set(files.map(lfsPatternFor))) await lfsTrack(repo, pattern, false)
-  const literal = { GIT_LITERAL_PATHSPECS: '1' }
-  await run(repo, ['add', '--renormalize', '--pathspec-from-file=-', '--pathspec-file-nul'], {
-    input: files.join('\0'),
-    env: literal
-  })
-  await run(repo, ['add', '--', '.gitattributes'], { env: literal })
+  const staged = await stagedUnchanged(repo, paths)
+  if (!staged.length) return
+  for (const pattern of new Set(staged.map((b) => lfsPatternFor(b.path)))) {
+    await run(repo, ['lfs', 'track', '--', pattern])
+  }
+  await renormalize(
+    repo,
+    staged.map((b) => b.path)
+  )
+}
+
+/** Stages again through LFS files that should go through it but were staged with their whole content. */
+export async function lfsRestage(repo: string, paths: string[]): Promise<void> {
+  const staged = await stagedUnchanged(repo, paths)
+  await renormalize(
+    repo,
+    staged.map((b) => b.path)
+  )
 }
 
 /** Configures git-lfs for the user and this repository, then downloads the repository's LFS files. */

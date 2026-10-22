@@ -157,6 +157,7 @@ const handlers: LeviathanInvokeApi = {
   lfsTrack: (path, pattern, lockable) => lfs.lfsTrack(path, pattern, lockable),
   lfsUntrack: (path, pattern) => lfs.lfsUntrack(path, pattern),
   lfsMoveFiles: (path, paths) => lfs.lfsMoveFiles(path, paths),
+  lfsRestage: (path, paths) => lfs.lfsRestage(path, paths),
   setupLfs: (path) => lfs.setupLfs(path, progress(path)),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')

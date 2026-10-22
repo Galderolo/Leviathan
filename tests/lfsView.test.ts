@@ -21,7 +21,8 @@ function state(hash: string, unstaged: FileChange[], staged: FileChange[] = []):
     operation: null,
     unpushed: [],
     lfsFiles: [],
-    largeFiles: []
+    largeFiles: [],
+    unconvertedLfs: []
   }
 }
 

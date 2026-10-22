@@ -264,16 +264,19 @@ function lfsFileItems(
 ): MenuItem[] {
   const view = getRepo(path)
   const lfs = view?.lfs
-  if (!lfs?.info.used || !lfs.info.version) return []
+  if (!lfs?.info.version) return []
   const items: MenuItem[] = []
-  const lock = lockFor(lfs.locks, file.path)
-  if (!lock) items.push({ label: t('lfs.lockFile'), onClick: () => void lockFiles(path, [file.path]) })
-  else items.push(...lockItems(path, lock))
+  // A repository that does not use LFS yet can start from here; locks only make sense once it does.
+  if (lfs.info.used) {
+    const lock = lockFor(lfs.locks, file.path)
+    if (!lock) items.push({ label: t('lfs.lockFile'), onClick: () => void lockFiles(path, [file.path]) })
+    else items.push(...lockItems(path, lock))
+  }
   if ((area === 'unstaged' || area === 'staged') && file.status !== 'D' && !view?.state?.lfsFiles.includes(file.path)) {
     const pattern = lfsPatternFor(file.path)
     items.push({ label: t('lfs.trackPattern', { pattern }), onClick: () => void trackLfsPattern(path, pattern) })
   }
-  items.push({ separator: true })
+  if (items.length) items.push({ separator: true })
   return items
 }
 

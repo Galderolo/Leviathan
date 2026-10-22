@@ -1500,6 +1500,11 @@ export async function moveToLfs(path: string, files: string[]): Promise<void> {
   await loadLfsInfo(path)
 }
 
+/** Stages again through LFS files that were staged with their whole content. */
+export async function restageLfs(path: string, files: string[]): Promise<void> {
+  await runOp(path, () => api.lfsRestage(path, files), { log: false, success: t('toast.lfsMoved') })
+}
+
 /** `git lfs install`, then downloads the repository's LFS files. */
 export async function setupLfs(path: string): Promise<void> {
   await runOp(path, () => api.setupLfs(path), { busy: 'lfs', success: t('toast.lfsReady') })

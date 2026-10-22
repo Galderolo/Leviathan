@@ -93,6 +93,8 @@ export interface RepoState {
   lfsFiles: string[]
   /** Staged files over `LARGE_FILE_BYTES` that do not go through Git LFS. */
   largeFiles: { path: string; size: number }[]
+  /** Staged files that should go through Git LFS but are staged with their whole content. */
+  unconvertedLfs: { path: string; size: number }[]
 }
 
 export interface CommitDetails {

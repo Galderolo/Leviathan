@@ -381,6 +381,9 @@ const en = {
   'lfs.largeFiles': '{count} files are over 50 MB and not stored with Git LFS. GitHub rejects files over 100 MB.',
   'lfs.largeFiles_one': 'This file is over 50 MB and not stored with Git LFS. GitHub rejects files over 100 MB.',
   'lfs.moveTo': 'Store {patterns} with Git LFS',
+  'lfs.plainFiles': '{count} files should be stored with Git LFS but are staged with their whole content.',
+  'lfs.plainFiles_one': 'This file should be stored with Git LFS but is staged with its whole content.',
+  'lfs.restage': 'Stage through Git LFS',
   'lfs.lockedByOthers': '{count} changed files are locked by someone else: your push may be refused.',
   'lfs.lockedByOthers_one': 'A changed file is locked by someone else: your push may be refused.',
   'dlg.lfsTrack':
