@@ -67,6 +67,7 @@ const es: Record<keyof typeof en, string> = {
 
   'graph.branchTag': 'RAMA / TAG',
   'graph.graph': 'GRAFO',
+  'graph.resize': 'Arrastra para cambiar el ancho; doble clic para restablecerlo',
   'graph.message': 'MENSAJE DEL COMMIT',
   'graph.author': 'AUTOR',
   'graph.date': 'FECHA / HORA',

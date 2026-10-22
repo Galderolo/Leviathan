@@ -65,6 +65,7 @@ const en = {
 
   'graph.branchTag': 'BRANCH / TAG',
   'graph.graph': 'GRAPH',
+  'graph.resize': 'Drag to resize, double-click to reset',
   'graph.message': 'COMMIT MESSAGE',
   'graph.author': 'AUTHOR',
   'graph.date': 'DATE / TIME',
