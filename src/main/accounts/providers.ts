@@ -36,15 +36,18 @@ async function request(
   path: string,
   token: string,
   fetchFn: FetchFn,
-  post?: Json
+  send?: { method: 'POST' | 'PATCH' | 'PUT'; body: Json }
 ): Promise<unknown> {
   const base = apiBase(provider, host)
   if (!base) throw new Error('This provider has no API support')
   const headers: Record<string, string> = { 'User-Agent': 'Leviathan', ...authHeaders(provider, token) }
-  if (post) headers['Content-Type'] = 'application/json'
+  if (send) headers['Content-Type'] = 'application/json'
   let res: Awaited<ReturnType<FetchFn>>
   try {
-    res = await fetchFn(base + path, post ? { headers, method: 'POST', body: JSON.stringify(post) } : { headers })
+    res = await fetchFn(
+      base + path,
+      send ? { headers, method: send.method, body: JSON.stringify(send.body) } : { headers }
+    )
   } catch (err) {
     // An invalid header value is quoted in the error: never let the token through.
     const detail = (err instanceof Error ? err.message : String(err)).split(token).join('…')
@@ -52,10 +55,10 @@ async function request(
   }
   if (res.status === 401 || res.status === 403) {
     const label = `${LABELS[provider]} rejected the token (${res.status})`
-    throw new Error(post ? `${label}. It needs permission to create pull requests (GitHub: repo, GitLab: api).` : label)
+    throw new Error(send ? `${label}. It needs permission to change pull requests (GitHub: repo, GitLab: api).` : label)
   }
   if (!res.ok) {
-    const why = post ? reason(await res.json().catch(() => null)) : null
+    const why = send ? reason(await res.json().catch(() => null)) : null
     throw new Error(`${LABELS[provider]} answered with an error (${res.status})${why ? `: ${why}` : ''}`)
   }
   return res.json()
@@ -141,8 +144,35 @@ export async function createPullRequest(
             { title: input.title, body: input.body, head: input.source, base: input.target, draft: input.draft }
           ]
         : ['/pulls', { title: draftTitle, body: input.body, head: input.source, base: input.target }]
-  const created = await request(provider, host, projectPath(provider, path) + endpoint, token, fetchFn, body)
+  const created = await request(provider, host, projectPath(provider, path) + endpoint, token, fetchFn, {
+    method: 'POST',
+    body
+  })
   return toPullRequest(provider, created as Json)
+}
+
+/** Closes a pull request without merging it. */
+export async function closePullRequest(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  number: number,
+  fetchFn: FetchFn = fetch
+): Promise<void> {
+  if (!Number.isInteger(number) || number <= 0) throw new Error(`Invalid pull request number: ${number}`)
+  const project = projectPath(provider, path)
+  if (provider === 'gitlab') {
+    await request(provider, host, `${project}/merge_requests/${number}`, token, fetchFn, {
+      method: 'PUT',
+      body: { state_event: 'close' }
+    })
+  } else {
+    await request(provider, host, `${project}/pulls/${number}`, token, fetchFn, {
+      method: 'PATCH',
+      body: { state: 'closed' }
+    })
+  }
 }
 
 /** The project's default branch (the usual target of a pull request). */

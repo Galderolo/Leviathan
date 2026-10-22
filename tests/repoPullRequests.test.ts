@@ -42,6 +42,7 @@ vi.stubGlobal(
     if (url.startsWith('https://api.github.com/repos/org/app/pulls?')) return json(200, [pr])
     if (url === 'https://api.github.com/repos/org/app/pulls') return json(201, pr)
     if (url === 'https://api.github.com/repos/org/app') return json(200, { default_branch: 'main' })
+  if (url === 'https://api.github.com/repos/org/app/pulls/12') return json(200, { ...pr, state: 'closed' })
     return json(404, {})
   }
 )
@@ -106,6 +107,17 @@ describe('pull requests of a repository', () => {
       .catch((e) => e)) as Error
     expect(error.message).toMatch(/token/i)
     expect(error.message).not.toContain('part_two')
+  })
+
+  it('closes one through the account', async () => {
+    await accounts.closeRepoPullRequest(work, 12)
+    expect(requests.at(-1)).toMatchObject({
+      url: 'https://api.github.com/repos/org/app/pulls/12',
+      method: 'PATCH',
+      body: { state: 'closed' },
+      auth: `Bearer ${TOKEN}`
+    })
+    await expect(accounts.closeRepoPullRequest(other, 12)).rejects.toThrow(/No account/)
   })
 
   it('never hands the token to the renderer', async () => {

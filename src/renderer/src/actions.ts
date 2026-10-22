@@ -232,6 +232,30 @@ export async function loadPullRequests(path: string): Promise<void> {
   }
 }
 
+/** Accounts were added or removed: every open repository may now see (or no longer see) its pull requests. */
+export function reloadAllPullRequests(): void {
+  for (const path of Object.keys(useStore.getState().repos)) void loadRepoAccount(path)
+}
+
+/** Closes a pull request on the server, without merging it, after asking. */
+export async function closePullRequest(path: string, pr: PullRequest): Promise<void> {
+  const ok = await confirmDialog({
+    title: t('menu.closePr'),
+    message: t('dlg.closePr', { number: pr.number, title: pr.title }),
+    confirmText: t('menu.closePr'),
+    danger: true
+  })
+  if (!ok) return
+  try {
+    await api.closePullRequest(path, pr.number)
+    toast('success', t('toast.prClosed', { number: pr.number }))
+  } catch (err) {
+    toast('error', errorMessage(err))
+  } finally {
+    void loadPullRequests(path)
+  }
+}
+
 export async function checkoutPullRequest(path: string, pr: PullRequest): Promise<boolean> {
   const info = getRepo(path)?.pullRequests
   if (!info?.provider || !info.remote) return false
@@ -1174,7 +1198,7 @@ export async function addRemote(path: string): Promise<void> {
   })
   const name = values?.name?.trim()
   const url = values?.url?.trim()
-  if (name && url) await runOp(path, () => api.addRemote(path, name, url))
+  if (name && url && (await runOp(path, () => api.addRemote(path, name, url)))) void loadPullRequests(path)
 }
 
 export async function removeRemote(path: string, name: string): Promise<void> {
@@ -1184,7 +1208,7 @@ export async function removeRemote(path: string, name: string): Promise<void> {
     confirmText: t('dlg.delete'),
     danger: true
   })
-  if (ok) await runOp(path, () => api.removeRemote(path, name))
+  if (ok && (await runOp(path, () => api.removeRemote(path, name)))) void loadPullRequests(path)
 }
 
 export function openTerminal(path: string): void {

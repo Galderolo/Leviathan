@@ -137,6 +137,7 @@ const handlers: LeviathanInvokeApi = {
   cancelGitHubLogin: async () => accounts.cancelGitHubLogin(),
   getPullRequests: (path) => accounts.getPullRequests(path),
   createPullRequest: (path, input) => accounts.createRepoPullRequest(path, input),
+  closePullRequest: (path, number) => accounts.closeRepoPullRequest(path, number),
   getDefaultBranch: (path) => accounts.getDefaultBranch(path),
   checkoutPullRequest: (path, remote, pr, provider) => repo.checkoutPullRequest(path, remote, pr, provider),
   generateSshKey: (opts) => generateKey(opts),

@@ -150,6 +150,8 @@ export interface LeviathanInvokeApi {
   // Pull requests, through the account for the repository's remote (null: no such account)
   getPullRequests(repo: string): Promise<{ provider: Provider; remote: string; items: PullRequest[] } | null>
   createPullRequest(repo: string, input: NewPullRequest): Promise<PullRequest>
+  /** Closes a pull request without merging it. */
+  closePullRequest(repo: string, number: number): Promise<void>
   getDefaultBranch(repo: string): Promise<string | null>
   checkoutPullRequest(
     repo: string,
@@ -252,6 +254,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   cancelGitHubLogin: true,
   getPullRequests: true,
   createPullRequest: true,
+  closePullRequest: true,
   getDefaultBranch: true,
   checkoutPullRequest: true,
   generateSshKey: true

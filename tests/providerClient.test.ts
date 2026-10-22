@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  closePullRequest,
   createPullRequest,
   defaultBranch,
   fetchIdentity,
@@ -252,5 +253,28 @@ describe('network errors', () => {
     const error = (await fetchIdentity('github', 'github.com', TOKEN, fn).catch((e) => e)) as Error
     expect(error.message).toMatch(/Could not reach github.com/)
     expect(error.message).not.toContain(TOKEN)
+  })
+})
+
+describe('closePullRequest', () => {
+  const glPath = encodeURIComponent('group/sub/app')
+
+  it('closes it with the method and body each provider expects', async () => {
+    const gh = fakeFetch({ 'https://api.github.com/repos/org/app/pulls/7': { body: {} } })
+    await closePullRequest('github', 'github.com', 'org/app', TOKEN, 7, gh.fn)
+    expect(gh.calls[0]).toMatchObject({ method: 'PATCH', body: { state: 'closed' } })
+
+    const gl = fakeFetch({ [`https://gitlab.com/api/v4/projects/${glPath}/merge_requests/3`]: { body: {} } })
+    await closePullRequest('gitlab', 'gitlab.com', 'group/sub/app', TOKEN, 3, gl.fn)
+    expect(gl.calls[0]).toMatchObject({ method: 'PUT', body: { state_event: 'close' } })
+
+    const gt = fakeFetch({ 'https://git.example.com/api/v1/repos/org/app/pulls/5': { body: {} } })
+    await closePullRequest('gitea', 'git.example.com', 'org/app', TOKEN, 5, gt.fn)
+    expect(gt.calls[0]).toMatchObject({ method: 'PATCH', body: { state: 'closed' } })
+  })
+
+  it('says when the token may not change pull requests', async () => {
+    const { fn } = fakeFetch({ 'https://api.github.com/repos/org/app/pulls/7': { status: 403, body: {} } })
+    await expect(closePullRequest('github', 'github.com', 'org/app', TOKEN, 7, fn)).rejects.toThrow(/permission/)
   })
 })

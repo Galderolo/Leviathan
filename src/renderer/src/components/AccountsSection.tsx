@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Pencil, Trash2, UserRound } from 'lucide-react'
 import { DEFAULT_HOSTS, PROVIDERS, tokenPageUrl } from '../../../shared/providers'
 import type { Account, Provider } from '../../../shared/types'
-import { openExternal } from '../actions'
+import { openExternal, reloadAllPullRequests } from '../actions'
 import { useT } from '../i18n'
 import { confirmDialog, errorMessage, formDialog, toast } from '../ui'
 
@@ -48,6 +48,11 @@ export function AccountsSection() {
       .listAccounts()
       .then(setAccounts)
       .catch((err) => toast('error', errorMessage(err)))
+  // After adding or removing an account: open repositories may now see (or lose) their pull requests.
+  const changed = async () => {
+    await load()
+    reloadAllPullRequests()
+  }
 
   useEffect(() => {
     void load()
@@ -72,7 +77,7 @@ export function AccountsSection() {
       setLogin(started)
       const account = await api.finishGitHubLogin()
       toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
-      await load()
+      await changed()
     } catch (err) {
       if (current() && !/cancelled/i.test(errorMessage(err))) toast('error', errorMessage(err))
     } finally {
@@ -102,7 +107,7 @@ export function AccountsSection() {
       })
       toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
       setDraft(null)
-      await load()
+      await changed()
     } catch (err) {
       toast('error', errorMessage(err))
     } finally {
@@ -135,7 +140,7 @@ export function AccountsSection() {
     })
     if (!ok) return
     await api.removeAccount(account.id).catch((err) => toast('error', errorMessage(err)))
-    await load()
+    await changed()
   }
 
   const tokenUrl = draft && draft.host ? tokenPageUrl(draft.provider, draft.host) : null

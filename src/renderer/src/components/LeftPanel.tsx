@@ -214,7 +214,9 @@ export function LeftPanel({ path }: { path: string }) {
                 )}
                 <span className="pr-number">#{pr.number}</span>
                 <span className="side-name">{pr.title}</span>
-                <span className="side-date">{pr.author}</span>
+                <span className="side-date">
+                  {pr.sourceBranch} → {pr.targetBranch}
+                </span>
               </div>
             ))}
           </Section>

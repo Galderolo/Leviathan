@@ -7,7 +7,14 @@ import type { Account, NewPullRequest, Provider, PullRequest, RemoteRepo } from 
 import { setAccountSource } from '../askpass'
 import { git, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
-import { createPullRequest, defaultBranch, fetchIdentity, listPullRequests, listRepos } from './providers'
+import {
+  closePullRequest,
+  createPullRequest,
+  defaultBranch,
+  fetchIdentity,
+  listPullRequests,
+  listRepos
+} from './providers'
 import { AccountStore, type Cipher } from './store'
 import { pollDeviceFlow, startDeviceFlow, type DeviceCode } from './oauth'
 
@@ -185,6 +192,13 @@ export async function createRepoPullRequest(repo: string, input: NewPullRequest)
   if (!project) throw new Error("No account can reach this repository's remote")
   const { provider, host } = project.account
   return createPullRequest(provider, host, project.path, project.token, { ...input, title: input.title.trim() })
+}
+
+export async function closeRepoPullRequest(repo: string, number: number): Promise<void> {
+  const project = await repoProject(repo)
+  if (!project) throw new Error("No account can reach this repository's remote")
+  const { provider, host } = project.account
+  await closePullRequest(provider, host, project.path, project.token, number)
 }
 
 export async function getDefaultBranch(repo: string): Promise<string | null> {

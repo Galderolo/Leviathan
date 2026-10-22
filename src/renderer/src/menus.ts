@@ -4,6 +4,7 @@ import {
   checkoutAndMerge,
   checkoutCommit,
   checkoutPullRequest,
+  closePullRequest,
   checkoutRef,
   cherryPick,
   createBranch,
@@ -82,7 +83,9 @@ export function pullRequestMenu(path: string, pr: PullRequest): MenuItem[] {
     { label: t('menu.openPr'), onClick: () => openExternal(pr.url) },
     { label: t('menu.checkoutPr'), onClick: () => void checkoutPullRequest(path, pr) },
     { separator: true },
-    { label: t('menu.copyPrLink'), onClick: () => void copyText(pr.url, t('toast.copied')) }
+    { label: t('menu.copyPrLink'), onClick: () => void copyText(pr.url, t('toast.copied')) },
+    { separator: true },
+    { label: t('menu.closePr'), danger: true, onClick: () => void closePullRequest(path, pr) }
   ]
 }
 
