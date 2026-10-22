@@ -170,7 +170,18 @@ export function LeftPanel({ path }: { path: string }) {
           value={filter}
           spellCheck={false}
           onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setFilter('')}
         />
+        {filter && (
+          <button
+            className="search-clear"
+            title={t('toolbar.clearSearch')}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setFilter('')}
+          >
+            <X size={12} />
+          </button>
+        )}
       </div>
       <div className="side-scroll">
         <Section
@@ -353,16 +364,18 @@ export function LeftPanel({ path }: { path: string }) {
             collapsed={collapsed}
             toggle={toggle}
             action={
-              <button
-                className="icon-btn small"
-                title={t('lfs.track')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void trackLfsPattern(path)
-                }}
-              >
-                <Plus size={14} />
-              </button>
+              lfs.info.version && (
+                <button
+                  className="icon-btn small"
+                  title={t('lfs.track')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void trackLfsPattern(path)
+                  }}
+                >
+                  <Plus size={14} />
+                </button>
+              )
             }
           >
             {!lfs.info.version ? (
@@ -394,38 +407,42 @@ export function LeftPanel({ path }: { path: string }) {
                 {p.lockable && <Lock size={11} className="dim" />}
               </div>
             ))}
-            <div className="side-subheader">
-              <span>{t('lfs.locks')}</span>
-              {lfs.info.version && (
-                <button
-                  className="icon-btn small"
-                  title={t('lfs.refreshLocks')}
-                  disabled={lfs.locksLoading}
-                  onClick={() => void loadLfsLocks(path, true)}
-                >
-                  <RefreshCw size={12} className={cx(lfs.locksLoading && 'spin')} />
-                </button>
-              )}
-            </div>
-            {lfs.locksError && <div className="side-note error">{lfs.locksError}</div>}
-            {!lfs.locksError && !lfs.locksLoading && !locks.length && (
-              <div className="side-note">{t('lfs.noLocks')}</div>
+            {lfs.info.version && (
+              <>
+                <div className="side-subheader">
+                  <span>{t('lfs.locks')}</span>
+                  {
+                    <button
+                      className="icon-btn small"
+                      title={t('lfs.refreshLocks')}
+                      disabled={lfs.locksLoading}
+                      onClick={() => void loadLfsLocks(path, true)}
+                    >
+                      <RefreshCw size={12} className={cx(lfs.locksLoading && 'spin')} />
+                    </button>
+                  }
+                </div>
+                {lfs.locksError && <div className="side-note error">{lfs.locksError}</div>}
+                {!lfs.locksError && !lfs.locksLoading && !locks.length && (
+                  <div className="side-note">{t('lfs.noLocks')}</div>
+                )}
+                {!lfs.locksError && locks.length > 0 && !lfs.verified && (
+                  <div className="side-note">{t('lfs.unverified')}</div>
+                )}
+                {locks.map((lock) => (
+                  <div
+                    key={lock.id}
+                    className="side-row lfs-row"
+                    onContextMenu={(e) => openMenu(e, lockMenu(path, lock))}
+                    title={lock.path + '\n' + (lock.lockedAt ? formatDate(Date.parse(lock.lockedAt) / 1000, lang) : '')}
+                  >
+                    <LockIcon lock={lock} />
+                    <span className="side-name">{lock.path}</span>
+                    <span className="lock-owner">{lock.mine ? t('lfs.you') : lock.owner}</span>
+                  </div>
+                ))}
+              </>
             )}
-            {!lfs.locksError && locks.length > 0 && !lfs.verified && (
-              <div className="side-note">{t('lfs.unverified')}</div>
-            )}
-            {locks.map((lock) => (
-              <div
-                key={lock.id}
-                className="side-row lfs-row"
-                onContextMenu={(e) => openMenu(e, lockMenu(path, lock))}
-                title={lock.path + '\n' + (lock.lockedAt ? formatDate(Date.parse(lock.lockedAt) / 1000, lang) : '')}
-              >
-                <LockIcon lock={lock} />
-                <span className="side-name">{lock.path}</span>
-                <span className="lock-owner">{lock.mine ? t('lfs.you') : lock.owner}</span>
-              </div>
-            ))}
           </Section>
         )}
 

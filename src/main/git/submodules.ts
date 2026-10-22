@@ -1,5 +1,5 @@
 import { existsSync, realpathSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { parseGitlinks, parseSubmoduleConfig } from '../../shared/submodules'
 import type { Submodule } from '../../shared/types'
 import { insideRepo, type ProgressFn } from './repository'
@@ -66,7 +66,10 @@ export async function getSubmodules(repo: string): Promise<Submodule[]> {
     cwd: repo,
     okCodes: [0, 1]
   })
-  const declared = parseSubmoduleConfig(config.stdout)
+  // An entry pointing outside the repository (absolute, or climbing out with ..) makes git refuse the whole list.
+  const declared = parseSubmoduleConfig(config.stdout).filter(
+    (s) => !isAbsolute(s.path) && !s.path.split(/[\\/]/).includes('..')
+  )
   if (!declared.length) return []
   const paths = declared.map((s) => s.path)
   const [links, dirty] = await Promise.all([

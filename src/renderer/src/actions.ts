@@ -1153,9 +1153,17 @@ export async function discardFiles(path: string, files: FileChange[]): Promise<b
   if (files.some((f) => f.status === '?')) message += '\n\n' + t('dlg.discardUntracked')
   const ok = await confirmDialog({ title: t('menu.discard'), message, confirmText: t('menu.discard'), danger: true })
   if (!ok) return false
-  const tracked = files.filter((f) => f.status !== '?').map((f) => f.path)
-  const untracked = files.filter((f) => f.status === '?').map((f) => f.path)
-  return runOp(path, () => api.discard(path, tracked, untracked), { log: false })
+  // `git restore` does not move submodules: those go back to the recorded commit instead.
+  const subs = (getRepo(path)?.submodules ?? []).filter((s) => files.some((f) => f.path === s.path))
+  const plain = files.filter((f) => !subs.some((s) => s.path === f.path))
+  const tracked = plain.filter((f) => f.status !== '?').map((f) => f.path)
+  const untracked = plain.filter((f) => f.status === '?').map((f) => f.path)
+  const discarded = plain.length ? await runOp(path, () => api.discard(path, tracked, untracked), { log: false }) : true
+  const moved = subs.filter((s) => s.state === 'outOfSync')
+  if (moved.length) await updateSubmodules(path, moved)
+  const inside = subs.filter((s) => s.state !== 'outOfSync' && s.dirty)
+  if (inside.length) toast('info', t('sub.discardInside', { path: inside.map((s) => s.path).join(', ') }))
+  return discarded
 }
 
 export async function discardAll(path: string): Promise<void> {
@@ -1509,6 +1517,12 @@ export async function trackLfsPattern(path: string, pattern = ''): Promise<void>
 }
 
 export async function makeLockable(path: string, pattern: LfsPattern): Promise<void> {
+  const ok = await confirmDialog({
+    title: t('lfs.makeLockable'),
+    message: t('dlg.makeLockable', { pattern: patternLabel(pattern) }),
+    confirmText: t('lfs.makeLockable')
+  })
+  if (!ok) return
   await runOp(path, () => api.lfsTrack(path, pattern.pattern, true), { log: false })
   await loadLfsInfo(path)
 }

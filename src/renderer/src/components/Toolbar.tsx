@@ -12,7 +12,8 @@ import {
   GitBranchPlus,
   Search,
   Settings,
-  SquareTerminal
+  SquareTerminal,
+  X
 } from 'lucide-react'
 import type { PullMode } from '../../../shared/types'
 import {
@@ -244,6 +245,17 @@ export function Toolbar({ path }: { path: string }) {
               }
             }}
           />
+          {view?.filter && (
+            <button
+              className="search-clear"
+              title={t('toolbar.clearSearch')}
+              // Keeps the focus in the box, ready for the next search.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setFilter(path, '')}
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
         <button
           className="icon-btn"

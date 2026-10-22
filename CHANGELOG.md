@@ -4,6 +4,19 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Changed
+
+- The SSH keys in Settings are folded away behind a *Show keys* button.
+- The commit search and the side panel filter have an × to clear them (Esc clears them too).
+- *Require locking before editing* (Git LFS) asks first: it makes matching files read-only at once.
+
+### Fixed
+
+- *Discard changes* on a submodule puts it back on the recorded commit (it did nothing); changes made inside a submodule are discarded from its own tab.
+- Without git-lfs installed, the LFS section no longer offers to track patterns or shows "No locked files".
+- One `.gitmodules` entry pointing outside the repository no longer hides every submodule.
+- "Lock 1 files" now reads "Lock file".
+
 ## [0.9.0] - 2026-10-22
 
 ### Added

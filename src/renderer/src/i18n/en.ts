@@ -45,6 +45,7 @@ const en = {
   'toolbar.pop': 'Pop',
   'toolbar.terminal': 'Terminal',
   'toolbar.search': 'Search commits (Enter: next)',
+  'toolbar.clearSearch': 'Clear',
 
   'pull.fetchAll': 'Fetch all',
   'pull.ff': 'Pull (fast-forward if possible)',
@@ -409,6 +410,13 @@ const en = {
   'lfs.makeLockable': 'Require locking before editing',
   'lfs.lockFile': 'Lock file',
   'lfs.lockFiles': 'Lock {count} files',
+  'lfs.lockFiles_one': 'Lock file',
+  'ssh.show': 'Show keys',
+  'ssh.hide': 'Hide',
+  'sub.discardInside':
+    '{path}: the changes are files edited inside the submodule. Open it (double-click it in the side panel) to discard them there.',
+  'dlg.makeLockable':
+    'Files matching "{pattern}" become read-only until someone locks them, including files open in an editor right now.',
   'lfs.unlockFile': 'Unlock file',
   'lfs.unlockOf': 'Unlock (locked by {owner})',
   'lfs.forceUnlock': 'Force unlock',
