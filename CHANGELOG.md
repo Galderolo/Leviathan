@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-22
+
 ### Added
 
 - Diffs highlight the words that changed inside each changed line, and can be shown side by side (old | new) with the switch in the diff header; the choice is remembered.
@@ -20,6 +22,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 - The open diff follows its file when it is staged or unstaged whole, and closes when the file has no changes left.
 - Undo/redo messages for an action that can no longer apply say which one, translated.
 - Adding an account that is already there (signing in again, or a new token) renews its token instead of adding it twice.
+- Signing in and the token page ask for the `workflow` permission, without which GitHub refuses pushes that change files in `.github/workflows`.
 
 ## [0.3.1] - 2026-10-22
 
