@@ -106,6 +106,24 @@ describe('createUpdater failures and guards', () => {
     expect(updater.quitAndInstall).toHaveBeenCalledWith(true, true)
   })
 
+  it('treats a release whose installers are still being uploaded as no update yet', async () => {
+    const updater = fakeUpdater()
+    const missing = new Error(
+      'Cannot find latest.yml in the latest release artifacts (https://github.com/Galderolo/Leviathan/releases/download/v0.9.1/latest.yml): HttpError: 404'
+    )
+    updater.checkForUpdates.mockImplementationOnce(async () => {
+      updater.emit('checking-for-update')
+      updater.emit('error', missing)
+      throw missing
+    })
+    const seen: UpdateState[] = []
+    const u = createUpdater({ updater, mode: 'install', broadcast: (s) => seen.push(s), openExternal: vi.fn() })
+    await u.check()
+    expect(u.state()).toMatchObject({ status: 'none' })
+    expect(u.state().error).toBeUndefined()
+    expect(seen.some((s) => s.status === 'error')).toBe(false)
+  })
+
   it('says when this copy cannot look for updates at all', async () => {
     const updater = fakeUpdater()
     updater.checkForUpdates.mockResolvedValueOnce(null)

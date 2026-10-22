@@ -29,6 +29,9 @@ export function createUpdater(opts: {
     opts.broadcast(state)
   }
   const message = (err: unknown) => (err instanceof Error ? err.message : String(err))
+  // A release is listed as soon as its tag is pushed, while its installers (and latest.yml) take minutes to
+  // build and upload: until then there is simply nothing to update to yet.
+  const stillPublishing = (err: unknown) => /latest(-\w+)?\.yml[\s\S]*404/.test(message(err))
 
   if (mode !== 'off') {
     // Download only when asked; releases are published as pre-releases.
@@ -43,6 +46,10 @@ export function createUpdater(opts: {
     )
     updater.on('update-downloaded', (info: { version: string }) => set({ status: 'ready', version: info.version }))
     updater.on('error', (err: unknown) => {
+      if (stillPublishing(err)) {
+        if (state.status === 'checking') set({ status: 'none' })
+        return
+      }
       // A failed check (or download) must not hide an update already found.
       if (state.status === 'ready') set({ error: message(err) })
       else if (state.version && (state.status === 'available' || state.status === 'downloading')) {
@@ -60,7 +67,9 @@ export function createUpdater(opts: {
         // electron-updater answers null, with no events, when it has no updater for this install.
         if ((await updater.checkForUpdates()) === null) set({ status: 'unsupported' })
       } catch (err) {
-        if (state.status !== 'available') set({ status: 'error', error: message(err) })
+        if (stillPublishing(err)) {
+          if (state.status === 'checking') set({ status: 'none' })
+        } else if (state.status !== 'available') set({ status: 'error', error: message(err) })
       }
       return state
     },
