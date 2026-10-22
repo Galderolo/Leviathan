@@ -298,6 +298,8 @@ const es: Record<keyof typeof en, string> = {
   'undo.createTag': 'crear tag {name}',
   'undo.deleteTag': 'borrar tag {name}',
   'toast.undone': 'Deshecho: {label}',
+  'toast.undoStale': 'El repositorio ha cambiado desde esa acción, así que ya no se puede deshacer.',
+  'toast.redoStale': 'El repositorio ha cambiado desde que se deshizo esa acción, así que ya no se puede rehacer.',
   'toast.redone': 'Rehecho: {label}',
   'toast.nothingToUndo': 'No hay nada que deshacer',
   'toast.nothingToRedo': 'No hay nada que rehacer',

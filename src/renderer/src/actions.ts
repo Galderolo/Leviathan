@@ -17,10 +17,11 @@ import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import { isFetchDue } from './autofetch'
+import { followDiff } from './diffFollow'
 import { listForDialog } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
-import { isStaleUndoError, popRedo, popUndo, pushEntry, undoModeForReset } from './undoStack'
+import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView, type Tab } from './store'
 import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
@@ -441,7 +442,13 @@ export async function refreshRepo(path: string, opts: { log?: boolean } = {}): P
       patchRepo(path, { state, error: null, loading: false })
       fixSelection(path)
       const v = getRepo(path)
-      if (v?.diff && v.diff.source.kind !== 'commit') void reloadDiff(path)
+      if (v?.diff && v.diff.source.kind !== 'commit') {
+        // The file may have been staged, unstaged or discarded meanwhile: follow it, or close the diff.
+        const next = followDiff(v.diff.source, state.status)
+        if (!next) closeDiff(path)
+        else if (next !== v.diff.source) void openDiff(path, next)
+        else void reloadDiff(path)
+      }
     },
     (err) => {
       if (stateSeq[path] !== sSeq) return
@@ -1188,12 +1195,13 @@ async function applyHistory(path: string, direction: 'undo' | 'redo'): Promise<v
   } catch (err) {
     // The repository moved on: this entry can never apply again, so drop it.
     // Other failures (local changes in the way, an operation in progress) may pass later.
-    if (isStaleUndoError(errorMessage(err))) {
+    const stale = isStaleUndoError(errorMessage(err))
+    if (stale) {
       patchRepo(path, (r) =>
         direction === 'undo' ? { undo: r.undo.filter((e) => e !== entry) } : { redo: r.redo.filter((e) => e !== entry) }
       )
     }
-    toast('error', errorMessage(err))
+    toast('error', stale ? t(staleHistoryKey(direction)) : errorMessage(err))
   } finally {
     await refreshRepo(path)
   }

@@ -40,3 +40,8 @@ export function undoModeForReset(mode: 'soft' | 'mixed' | 'hard'): RepoChange['m
 export function isStaleUndoError(message: string): boolean {
   return /can no longer be undone/.test(message)
 }
+
+/** Message for an entry that can no longer be applied, in the direction it was tried. */
+export function staleHistoryKey(direction: 'undo' | 'redo'): 'toast.undoStale' | 'toast.redoStale' {
+  return direction === 'undo' ? 'toast.undoStale' : 'toast.redoStale'
+}

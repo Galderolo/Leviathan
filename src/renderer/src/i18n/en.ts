@@ -295,6 +295,8 @@ const en = {
   'undo.createTag': 'create tag {name}',
   'undo.deleteTag': 'delete tag {name}',
   'toast.undone': 'Undone: {label}',
+  'toast.undoStale': 'The repository changed since this action, so it can no longer be undone.',
+  'toast.redoStale': 'The repository changed since this action was undone, so it can no longer be redone.',
   'toast.redone': 'Redone: {label}',
   'toast.nothingToUndo': 'Nothing to undo',
   'toast.nothingToRedo': 'Nothing to redo',

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MAX_UNDO,
   isStaleUndoError,
+  staleHistoryKey,
   popRedo,
   popUndo,
   pushEntry,
@@ -59,5 +60,12 @@ describe('undo helpers', () => {
     expect(isStaleUndoError('The repository changed since this action, so it can no longer be undone.')).toBe(true)
     expect(isStaleUndoError('Finish or abort the merge in progress first.')).toBe(false)
     expect(isStaleUndoError("error: Entry 'a.txt' not uptodate. Cannot merge.")).toBe(false)
+  })
+})
+
+describe('staleHistoryKey', () => {
+  it('names the direction that can no longer be applied', () => {
+    expect(staleHistoryKey('undo')).toBe('toast.undoStale')
+    expect(staleHistoryKey('redo')).toBe('toast.redoStale')
   })
 })
