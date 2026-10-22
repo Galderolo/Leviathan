@@ -356,6 +356,7 @@ const es: Record<keyof typeof en, string> = {
   'toast.rebased': 'Rebase terminado',
   'toast.rebaseStopped':
     'El rebase se ha parado antes de acabar, normalmente por conflictos: resuélvelos y pulsa Continuar en el aviso.',
+  'toast.stoppedForConflicts': 'Git se ha parado por conflictos: resuélvelos y pulsa Continuar en el aviso.',
 
   'left.pullRequests': 'PULL REQUESTS',
   'left.noPullRequests': 'No hay pull requests abiertas',

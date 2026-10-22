@@ -27,6 +27,7 @@ import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
 import { listForDialog } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom } from './pushTarget'
+import { stoppedOperation } from './operationStop'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
@@ -690,13 +691,20 @@ async function runOp(
   opts: { busy?: BusyKind; success?: string; log?: boolean; undo?: { label: string; mode?: RepoChange['mode'] } } = {}
 ): Promise<boolean> {
   if (opts.busy) patchRepo(path, { busy: opts.busy, progress: null })
+  const before = getRepo(path)?.state?.operation ?? null
   try {
     if (opts.undo) await recordUndo(path, opts.undo.label, opts.undo.mode ?? 'keep', fn)
     else await fn()
     if (opts.success) toast('success', opts.success)
     return true
   } catch (err) {
-    toast('error', errorMessage(err))
+    // A merge, rebase, cherry-pick or revert that stopped for conflicts has not failed: the banner takes over
+    // (git's own message mentions commands the app does not offer).
+    const stopped = stoppedOperation(before, await api.getState(path).catch(() => null))
+    if (stopped?.conflicts) toast('info', t('toast.stoppedForConflicts'))
+    else toast('error', errorMessage(err))
+    // Show the banner and the conflicted files.
+    if (stopped) selectWip(path)
     return false
   } finally {
     if (opts.busy) patchRepo(path, { busy: null, progress: null })
