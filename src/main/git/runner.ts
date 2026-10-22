@@ -91,13 +91,34 @@ export function setRepoGitArgs(repo: string, args: string[] | null): void {
   else repoArgs.delete(repoKey(repo))
 }
 
+function within(repo: string, key: string): boolean {
+  const rel = relative(repo, key)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
 function argsForCwd(cwd: string): string[] {
   const key = repoKey(cwd)
-  for (const [repo, args] of repoArgs) {
-    const rel = relative(repo, key)
-    if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return args
-  }
+  for (const [repo, args] of repoArgs) if (within(repo, key)) return args
   return []
+}
+
+/** Work that holds a repository's index lock (a stat refresh): other commands in that repository wait for it. */
+const indexHolders = new Map<string, Promise<unknown>>()
+
+/** Runs `work`, which holds `repo`'s index lock, making the app's other git commands in that repository wait for it. */
+export function holdingIndex<T>(repo: string, work: () => Promise<T>): Promise<T> {
+  const key = repoKey(repo)
+  const done: Promise<T> = work().finally(() => {
+    if (indexHolders.get(key) === done) indexHolders.delete(key)
+  })
+  indexHolders.set(key, done)
+  return done
+}
+
+function indexHolderFor(cwd: string): Promise<unknown> | undefined {
+  const key = repoKey(cwd)
+  for (const [repo, held] of indexHolders) if (within(repo, key)) return held
+  return undefined
 }
 
 /**
@@ -127,6 +148,7 @@ function indexLocked(err: unknown): boolean {
  * Runs git with an argument array (never through a shell) and collects output.
  */
 export async function git(args: string[], opts: RunOptions): Promise<RunResult> {
+  if (!opts.noLockWait) await indexHolderFor(opts.cwd)?.catch(() => {})
   const deadline = Date.now() + LOCK_WAIT_MS
   for (;;) {
     try {

@@ -33,7 +33,7 @@ import type {
 import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
 import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { listRefs } from './refs'
-import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
+import { GitError, NON_INTERACTIVE_ENV, git, holdingIndex } from './runner'
 import { lfsFilesAmong, plainLfs, stagedBlobs } from './staged'
 
 export type ProgressFn = (line: string) => void
@@ -156,18 +156,21 @@ export function shouldRefreshIndex(now: number, last: number | undefined, status
 /** Stores fresh stat info in the index, as `git status` in a terminal does; contents never change. Skipped when another git holds the index. */
 export async function refreshIndexStat(repo: string): Promise<void> {
   try {
-    await git(['update-index', '-q', '--refresh'], { cwd: repo, okCodes: [0, 1], noLockWait: true })
+    // The app's own commands in this repository wait for it rather than finding the index locked.
+    await holdingIndex(repo, () =>
+      git(['update-index', '-q', '--refresh'], { cwd: repo, okCodes: [0, 1], noLockWait: true })
+    )
   } catch {
     // another git holds the index: next time
   }
 }
 
-function maybeRefreshIndex(repo: string, statusMs: number): void {
+async function maybeRefreshIndex(repo: string, statusMs: number): Promise<void> {
   const key = process.platform === 'win32' ? resolve(repo).toLowerCase() : resolve(repo)
   const now = Date.now()
   if (!shouldRefreshIndex(now, lastIndexRefresh.get(key), statusMs)) return
   lastIndexRefresh.set(key, now)
-  void refreshIndexStat(repo)
+  await refreshIndexStat(repo)
 }
 
 export async function getState(repo: string): Promise<RepoState> {
@@ -197,7 +200,7 @@ export async function getState(repo: string): Promise<RepoState> {
   ])
   const lfs = new Set(lfsFiles)
   const size = ({ path, size }: { path: string; size: number }) => ({ path, size })
-  maybeRefreshIndex(repo, statusMs)
+  await maybeRefreshIndex(repo, statusMs)
   return {
     path: repo,
     head,

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { refreshIndexStat, shouldRefreshIndex } from '../src/main/git/repository'
-import { git } from '../src/main/git/runner'
+import { git, holdingIndex } from '../src/main/git/runner'
 
 let root: string
 let work: string
@@ -63,6 +63,20 @@ describe('index lock held by someone else', () => {
     setTimeout(() => unlinkSync(lock), 600)
     await repo.stage(work, ['c.txt'])
     expect((await repo.getState(work)).status.staged.map((f) => f.path)).toEqual(['c.txt'])
+  })
+
+  it("waits for the app's own index refresh instead of failing on its lock", async () => {
+    writeFileSync(join(work, 'a.txt'), 'changed\n')
+    const lock = join(work, '.git', 'index.lock')
+    // Held longer than the retries of locking commands last; stash is not even retried.
+    const held = holdingIndex(work, async () => {
+      writeFileSync(lock, '')
+      await new Promise((r) => setTimeout(r, 2500))
+      unlinkSync(lock)
+    })
+    await repo.stashSave(work, 'while refreshing')
+    await held
+    expect((await repo.getState(work)).stashes).toHaveLength(1)
   })
 
   it('still fails, with git’s message, when the lock never goes away', async () => {
