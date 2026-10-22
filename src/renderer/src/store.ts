@@ -12,6 +12,7 @@ import type {
   Settings
 } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
+import type { LfsInfo, LfsLock } from '../../shared/lfs'
 import type { UpdateState } from '../../shared/updates'
 import type { Lang } from './i18n'
 import type { UndoEntry } from './undoStack'
@@ -19,7 +20,7 @@ import type { UndoEntry } from './undoStack'
 export type Selection =
   { kind: 'wip' } | { kind: 'commit'; hash: string } | { kind: 'stash'; hash: string; index: number } | null
 
-export type BusyKind = 'fetch' | 'pull' | 'push'
+export type BusyKind = 'fetch' | 'pull' | 'push' | 'lfs'
 
 export interface DiffView {
   source: DiffSource
@@ -69,6 +70,17 @@ export interface RepoView {
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
   undo: UndoEntry[]
   redo: UndoEntry[]
+  /** Git LFS patterns and locks; null until read. */
+  lfs: LfsView | null
+}
+
+export interface LfsView {
+  info: LfsInfo
+  locks: LfsLock[]
+  /** The server told which locks are the user's. */
+  verified: boolean
+  locksError: string | null
+  locksLoading: boolean
 }
 
 export interface PullRequestsView {
@@ -233,7 +245,8 @@ export function newRepoView(path: string, limit: number): RepoView {
     graphScope: readGraphScope(path),
     highlight: null,
     undo: [],
-    redo: []
+    redo: [],
+    lfs: null
   }
 }
 

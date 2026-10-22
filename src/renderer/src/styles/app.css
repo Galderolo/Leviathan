@@ -2531,3 +2531,125 @@ a:hover {
     transform: rotate(360deg);
   }
 }
+
+/* Git LFS */
+.side-subheader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px 0 28px;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.side-subheader span {
+  flex: 1;
+}
+
+.side-note.warn {
+  color: var(--yellow);
+}
+
+.side-link {
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.side-link:hover {
+  text-decoration: underline;
+}
+
+.lfs-row {
+  cursor: default;
+}
+
+.lock-owner {
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.lfs-tag {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 14px;
+  color: var(--blue);
+  background: rgba(76, 157, 243, 0.15);
+}
+
+.lock-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.lock-icon.mine {
+  color: var(--green);
+}
+
+.lock-icon.theirs {
+  color: var(--red);
+}
+
+.lock-icon.unknown {
+  color: var(--yellow);
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.commit-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(229, 179, 58, 0.45);
+  background: rgba(229, 179, 58, 0.1);
+  color: var(--yellow);
+  font-size: 12px;
+}
+
+.commit-warning.danger {
+  border-color: rgba(240, 82, 79, 0.45);
+  background: rgba(240, 82, 79, 0.1);
+  color: var(--red);
+}
+
+.commit-warning > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.commit-warning-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text);
+}
+
+.commit-warning-body ul {
+  margin: 0;
+  padding-left: 16px;
+  max-width: 100%;
+}
+
+.commit-warning-body li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -7,10 +7,12 @@ import type {
   GitRef,
   PullRequest,
   PullMode,
+  RepoState,
   ResetMode,
   Settings,
   Stash
 } from '../../shared/types'
+import type { LfsLock, LfsPattern } from '../../shared/lfs'
 import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import { hasRemoteOnHost } from '../../shared/providers'
@@ -18,6 +20,7 @@ import type { RebaseItem } from '../../shared/rebase'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import { isFetchDue } from './autofetch'
 import { followDiff } from './diffFollow'
+import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
 import { listForDialog } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
@@ -31,6 +34,7 @@ import {
   writeGraphScope,
   type BusyKind,
   type GraphScope,
+  type LfsView,
   type RepoView,
   type Tab
 } from './store'
@@ -451,6 +455,7 @@ export async function refreshRepo(path: string, opts: { log?: boolean } = {}): P
       if (stateSeq[path] !== sSeq || !getRepo(path)) return
       patchRepo(path, { state, error: null, loading: false })
       fixSelection(path)
+      followLfs(path, state)
       const v = getRepo(path)
       if (v?.diff && v.diff.source.kind !== 'commit') {
         // The file may have been staged, unstaged or discarded meanwhile: follow it, or close the diff.
@@ -689,6 +694,7 @@ export async function fetchAll(path: string): Promise<boolean> {
   const ok = await runOp(path, () => api.fetch(path), { busy: 'fetch', success: t('toast.fetched') })
   if (ok) patchRepo(path, { lastFetchAt: Date.now(), lastFetchError: null })
   void loadPullRequests(path)
+  void loadLfsLocks(path, false)
   return ok
 }
 
@@ -702,6 +708,7 @@ export async function fetchInBackground(path: string): Promise<void> {
     patchRepo(path, { lastFetchError: null })
     await refreshRepo(path)
     void loadPullRequests(path)
+    void loadLfsLocks(path, false)
   } catch (err) {
     patchRepo(path, { lastFetchError: errorMessage(err) })
   }
@@ -1350,4 +1357,151 @@ function joinPath(repo: string, file: string): string {
 
 export function repoName(path: string): string {
   return basename(path)
+}
+
+// ---------------------------------------------------------------------------
+// Git LFS
+
+const lfsSeq: Record<string, number> = {}
+const lfsKeys: Record<string, string> = {}
+
+export const LFS_DOWNLOAD_URL = 'https://git-lfs.com'
+
+/** Reads the LFS patterns again when they may have changed (another commit, an edited attributes file). */
+function followLfs(path: string, state: RepoState): void {
+  const key = lfsInfoKey(state)
+  // A repository opened again starts without LFS info.
+  if (lfsKeys[path] === key && !attributesChanged(state) && getRepo(path)?.lfs) return
+  lfsKeys[path] = key
+  void loadLfsInfo(path)
+}
+
+export async function loadLfsInfo(path: string): Promise<void> {
+  try {
+    const info = await api.getLfsInfo(path)
+    const before = getRepo(path)?.lfs
+    if (!getRepo(path)) return
+    patchRepo(path, (r) => ({
+      lfs: { locks: [], verified: false, locksError: null, locksLoading: false, ...r.lfs, info }
+    }))
+    if (info.used && !before?.info.used) void loadLfsLocks(path, false)
+  } catch {
+    // not critical: the LFS section and badges stay hidden
+  }
+}
+
+/** Loads the locks from the LFS server; `interactive` may ask for credentials. */
+export async function loadLfsLocks(path: string, interactive: boolean): Promise<void> {
+  const view = getRepo(path)
+  if (!view?.lfs?.info.used || !view.lfs.info.version || !view.state?.remotes.length) return
+  const seq = (lfsSeq[path] = (lfsSeq[path] ?? 0) + 1)
+  const patchLfs = (patch: Partial<LfsView>) => patchRepo(path, (r) => (r.lfs ? { lfs: { ...r.lfs, ...patch } } : {}))
+  patchLfs({ locksLoading: true })
+  try {
+    const { locks, verified } = await api.getLfsLocks(path, !interactive)
+    if (lfsSeq[path] === seq) patchLfs({ locks, verified, locksError: null, locksLoading: false })
+  } catch (err) {
+    if (lfsSeq[path] === seq) patchLfs({ locksError: errorMessage(err), locksLoading: false })
+  }
+}
+
+export async function lockFiles(path: string, files: string[]): Promise<void> {
+  let locked = 0
+  try {
+    for (const file of files) {
+      await api.lfsLock(path, file)
+      locked++
+    }
+    toast(
+      'success',
+      files.length === 1 ? t('toast.locked', { path: files[0] }) : t('toast.lockedCount', { count: locked })
+    )
+  } catch (err) {
+    toast('error', errorMessage(err))
+  } finally {
+    await loadLfsLocks(path, true)
+  }
+}
+
+/** Releases a lock; someone else's only after confirming that it is forced open. */
+export async function unlockFile(path: string, lock: LfsLock): Promise<void> {
+  const forceIt = (message: string) =>
+    confirmDialog({ title: t('lfs.forceUnlock'), message, confirmText: t('lfs.forceUnlock'), danger: true })
+  let force = false
+  if (lock.mine === false) {
+    if (!(await forceIt(t('dlg.forceUnlock', { path: lock.path, owner: lock.owner })))) return
+    force = true
+  }
+  try {
+    try {
+      await api.lfsUnlock(path, lock, force)
+    } catch (err) {
+      // The server could not tell whose lock it is: it may be someone else's.
+      if (force || lock.mine !== null) throw err
+      const message = t('dlg.forceUnlockUnknown', { path: lock.path, owner: lock.owner, error: errorMessage(err) })
+      if (!(await forceIt(message))) return
+      await api.lfsUnlock(path, lock, true)
+    }
+    toast('success', t('toast.unlocked', { path: lock.path }))
+  } catch (err) {
+    toast('error', errorMessage(err))
+  } finally {
+    await loadLfsLocks(path, true)
+  }
+}
+
+/** Asks for a pattern (e.g. `*.psd`) and sends matching files through LFS from now on. */
+export async function trackLfsPattern(path: string, pattern = ''): Promise<void> {
+  const values = await formDialog({
+    title: t('lfs.track'),
+    message: t('dlg.lfsTrack'),
+    confirmText: t('lfs.trackBtn'),
+    fields: [
+      { key: 'pattern', label: t('lfs.pattern'), value: pattern, placeholder: '*.psd' },
+      {
+        key: 'lockable',
+        label: t('lfs.lockable'),
+        type: 'select',
+        value: 'no',
+        options: [
+          { value: 'no', label: t('lfs.lockableNo') },
+          { value: 'yes', label: t('lfs.lockableYes') }
+        ]
+      }
+    ]
+  })
+  const value = values?.pattern.trim()
+  if (!values || !value) return
+  if (await runOp(path, () => api.lfsTrack(path, value, values.lockable === 'yes'), { log: false })) {
+    toast('success', t('toast.lfsTracked', { pattern: value }))
+  }
+  await loadLfsInfo(path)
+}
+
+export async function makeLockable(path: string, pattern: LfsPattern): Promise<void> {
+  await runOp(path, () => api.lfsTrack(path, pattern.pattern, true), { log: false })
+  await loadLfsInfo(path)
+}
+
+export async function untrackLfsPattern(path: string, pattern: LfsPattern): Promise<void> {
+  const ok = await confirmDialog({
+    title: t('lfs.untrack'),
+    message: t('dlg.lfsUntrack', { pattern: patternLabel(pattern) }),
+    confirmText: t('lfs.untrack')
+  })
+  if (!ok) return
+  await runOp(path, () => api.lfsUntrack(path, pattern), { log: false })
+  await loadLfsInfo(path)
+}
+
+/** Sends staged files that are too big through LFS before they get committed. */
+export async function moveToLfs(path: string, files: string[]): Promise<void> {
+  await runOp(path, () => api.lfsMoveFiles(path, files), { log: false, success: t('toast.lfsMoved') })
+  await loadLfsInfo(path)
+}
+
+/** `git lfs install`, then downloads the repository's LFS files. */
+export async function setupLfs(path: string): Promise<void> {
+  await runOp(path, () => api.setupLfs(path), { busy: 'lfs', success: t('toast.lfsReady') })
+  await loadLfsInfo(path)
 }

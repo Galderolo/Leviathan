@@ -30,6 +30,17 @@ All of these went through a final whole-branch review; Critical and Important fi
 - **New app icon** (`resources/icon.png`, `src/renderer/public/leviathan.png`).
 - **Release workflow**: a first job creates a draft with the CHANGELOG notes, the three builds keep their installers as artifacts, and a last job uploads them and publishes the release (0.3.1).
 
+## Unreleased: Git LFS
+
+On `main`, not released yet. Code: `src/shared/lfs.ts` (attributes and lock parsing), `src/main/git/lfs.ts` (git-lfs commands), `lfsFiles` / `largeFiles` in `getState`, `src/renderer/src/lfsView.ts`, the LFS section in `LeftPanel.tsx`, `LfsWarnings` in `RightPanel.tsx`. Tests run against a fake LFS lock server (`tests/lfsRepo.test.ts`, `lfs.url` pointing at 127.0.0.1) and skip when git-lfs is missing.
+
+Things worth knowing about git-lfs (3.5):
+- `git lfs locks --json` hides errors: an unreachable server, or one without `/locks/verify`, lists nothing with exit code 0. `getLfsLocks` asks again without `--json` when the list is empty, and falls back to unverified locks (owner shown, mine/theirs unknown).
+- Unlocking a lockable file that does not exist locally fails after the server already released it (git-lfs cannot reset its permissions): `lfsUnlock` lists the locks again and treats a vanished lock as success.
+- The user's own locks are released by path, so git-lfs refuses while the file has uncommitted changes; someone else's are released by id with `--force`.
+- Patterns are read from the attributes files directly (works without git-lfs, never installs hooks as a side effect); `.git/info/attributes` is not read.
+- Locks load without prompts when a repository opens and after a fetch; the reload button in the section may ask for credentials.
+
 ## Next steps
 
 ### 1. Keep an eye on 0.3.0

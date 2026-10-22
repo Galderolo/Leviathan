@@ -13,19 +13,35 @@ import {
   GitBranch,
   GitPullRequest,
   GitPullRequestDraft,
+  HardDrive,
   Laptop,
+  Lock,
   Plus,
+  RefreshCw,
   Search,
   Tag,
   X
 } from 'lucide-react'
 import type { GitRef, Stash } from '../../../shared/types'
-import { addRemote, checkoutPullRequest, checkoutRef, selectRef, selectStash } from '../actions'
+import {
+  LFS_DOWNLOAD_URL,
+  addRemote,
+  checkoutPullRequest,
+  checkoutRef,
+  loadLfsLocks,
+  openExternal,
+  selectRef,
+  selectStash,
+  setupLfs,
+  trackLfsPattern
+} from '../actions'
 import { useT } from '../i18n'
-import { branchMenu, pullRequestMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
+import { patternLabel } from '../lfsView'
+import { branchMenu, lfsPatternMenu, lockMenu, pullRequestMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
 import { useRepo, useStore } from '../store'
 import { openMenu } from '../ui'
 import { buildTree, cx, formatDate, relativeDate, type TreeNode } from '../utils'
+import { LockIcon } from './common'
 import { refDragProps, refDropProps } from './refDnd'
 
 type Collapsed = Record<string, boolean>
@@ -50,6 +66,8 @@ export function LeftPanel({ path }: { path: string }) {
   const prs = view?.pullRequests
   const prItems = (prs?.items ?? []).filter((p) => match('#' + p.number + ' ' + p.title + ' ' + p.sourceBranch))
   const prByRef = useMemo(() => pullRequestsByRef(prs?.items ?? [], prs?.remote ?? null, refs), [prs, refs])
+  const lfs = view?.lfs?.info.used ? view.lfs : null
+  const locks = (lfs?.locks ?? []).filter((l) => match(l.path))
   const hiddenRefs = new Set(view?.graphScope.hidden ?? [])
   const selectedHash = view?.selection && view.selection.kind !== 'wip' ? view.selection.hash : null
 
@@ -228,6 +246,91 @@ export function LeftPanel({ path }: { path: string }) {
                 <span className="pr-branches">
                   {pr.sourceBranch} → {pr.targetBranch}
                 </span>
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {lfs && (
+          <Section
+            id="lfs"
+            icon={<HardDrive size={14} />}
+            title={t('left.lfs')}
+            count={locks.length}
+            collapsed={collapsed}
+            toggle={toggle}
+            action={
+              <button
+                className="icon-btn small"
+                title={t('lfs.track')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  void trackLfsPattern(path)
+                }}
+              >
+                <Plus size={14} />
+              </button>
+            }
+          >
+            {!lfs.info.version ? (
+              <div className="side-note error">
+                {t('lfs.notInstalled')}{' '}
+                <a className="side-link" onClick={() => openExternal(LFS_DOWNLOAD_URL)}>
+                  {t('lfs.install')}
+                </a>
+              </div>
+            ) : (
+              (!lfs.info.filters || !lfs.info.hooks) && (
+                <div className="side-note warn">
+                  {t('lfs.notSetUp')}{' '}
+                  <a className="side-link" onClick={() => !view?.busy && void setupLfs(path)}>
+                    {t('lfs.setup')}
+                  </a>
+                </div>
+              )
+            )}
+            <div className="side-subheader">{t('lfs.patterns')}</div>
+            {lfs.info.patterns.map((p) => (
+              <div
+                key={p.source + '\n' + p.pattern}
+                className="side-row lfs-row"
+                onContextMenu={(e) => openMenu(e, lfsPatternMenu(path, p))}
+                title={p.source}
+              >
+                <span className="side-name">{patternLabel(p)}</span>
+                {p.lockable && <Lock size={11} className="dim" />}
+              </div>
+            ))}
+            <div className="side-subheader">
+              <span>{t('lfs.locks')}</span>
+              {lfs.info.version && (
+                <button
+                  className="icon-btn small"
+                  title={t('lfs.refreshLocks')}
+                  disabled={lfs.locksLoading}
+                  onClick={() => void loadLfsLocks(path, true)}
+                >
+                  <RefreshCw size={12} className={cx(lfs.locksLoading && 'spin')} />
+                </button>
+              )}
+            </div>
+            {lfs.locksError && <div className="side-note error">{lfs.locksError}</div>}
+            {!lfs.locksError && !lfs.locksLoading && !locks.length && (
+              <div className="side-note">{t('lfs.noLocks')}</div>
+            )}
+            {!lfs.locksError && locks.length > 0 && !lfs.verified && (
+              <div className="side-note">{t('lfs.unverified')}</div>
+            )}
+            {locks.map((lock) => (
+              <div
+                key={lock.id}
+                className="side-row lfs-row"
+                onContextMenu={(e) => openMenu(e, lockMenu(path, lock))}
+                title={lock.path + '\n' + (lock.lockedAt ? formatDate(Date.parse(lock.lockedAt) / 1000, lang) : '')}
+              >
+                <LockIcon lock={lock} />
+                <span className="side-name">{lock.path}</span>
+                <span className="lock-owner">{lock.mine ? t('lfs.you') : lock.owner}</span>
               </div>
             ))}
           </Section>

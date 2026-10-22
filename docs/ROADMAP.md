@@ -30,7 +30,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Pull requests on Bitbucket
 - [ ] Review pull requests in the app (diff, comments, approve, merge)
 - [ ] Submodule support in the side panel
-- [ ] Git LFS status
+- [x] Git LFS: tracked files, locks, patterns, large-file warnings
 
 ## Application
 
