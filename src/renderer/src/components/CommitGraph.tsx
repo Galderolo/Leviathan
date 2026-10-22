@@ -1,6 +1,15 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Archive, ArrowUp, Check, Cloud, Laptop, Tag } from 'lucide-react'
-import { buildGraphItems, layoutItems, WIP_HASH, type GraphItem, type GraphRow } from '../../../shared/graph'
+import {
+  buildGraphItems,
+  GRAPH_PADDING,
+  graphColumnWidth,
+  LANE_WIDTH,
+  layoutItems,
+  WIP_HASH,
+  type GraphItem,
+  type GraphRow
+} from '../../../shared/graph'
 import { laneX, linePath, type GraphGeometry } from '../../../shared/graphPaths'
 import { checkoutRef, clearHighlight, loadMore, selectCommit, selectWip, showAllInGraph } from '../actions'
 import { ancestry, highlightTip, pullRequestsByRef } from '../graphFocus'
@@ -13,11 +22,8 @@ import { Avatar } from './common'
 import { refDragProps, refDropProps } from './refDnd'
 
 const ROW_H = 30
-const LANE_W = 22
-const PAD = 14
 const NODE_R = 10
-const GEOMETRY: GraphGeometry = { rowHeight: ROW_H, laneWidth: LANE_W, padding: PAD, radius: 8 }
-const MAX_LANES = 24
+const GEOMETRY: GraphGeometry = { rowHeight: ROW_H, laneWidth: LANE_WIDTH, padding: GRAPH_PADDING, radius: 8 }
 const OVERSCAN = 12
 
 export function CommitGraph({ path }: { path: string }) {
@@ -40,8 +46,7 @@ export function CommitGraph({ path }: { path: string }) {
   )
   const layout = useMemo(() => layoutItems(items), [items])
   const refMap = useMemo(() => groupRefs(state?.refs ?? []), [state?.refs])
-  const lanes = Math.min(Math.max(layout.maxWidth, 1), MAX_LANES)
-  const graphWidth = Math.max(PAD * 2 + (lanes - 1) * LANE_W, 64)
+  const graphWidth = graphColumnWidth(layout.maxWidth)
   const columns = `200px ${graphWidth}px minmax(140px, 1fr) minmax(90px, 150px) minmax(110px, 150px) 70px`
 
   const scrollRef = useRef<HTMLDivElement>(null)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGraphItems, computeGraph, WIP_HASH } from '../src/shared/graph'
+import { buildGraphItems, computeGraph, graphColumnWidth, WIP_HASH } from '../src/shared/graph'
 import type { Commit, Stash } from '../src/shared/types'
 
 const node = (hash: string, ...parents: string[]) => ({ hash, parents })
@@ -98,5 +98,14 @@ describe('buildGraphItems', () => {
   it('skips stashes whose base is not loaded', () => {
     const stash: Stash = { index: 0, ref: 'stash@{0}', hash: 's', baseHash: 'zzz', message: '', date: 1 }
     expect(buildGraphItems(commits, [stash], 'c3', false)).toHaveLength(3)
+  })
+})
+
+describe('graphColumnWidth', () => {
+  it('is never narrower than about six lanes, and grows with more', () => {
+    expect(graphColumnWidth(1)).toBe(graphColumnWidth(6))
+    expect(graphColumnWidth(1)).toBeGreaterThanOrEqual(130)
+    expect(graphColumnWidth(10)).toBeGreaterThan(graphColumnWidth(6))
+    expect(graphColumnWidth(500)).toBe(graphColumnWidth(24))
   })
 })
