@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-22
+
 ### Changed
 
 - The SSH keys in Settings are folded away behind a *Show keys* button.
