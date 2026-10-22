@@ -19,6 +19,7 @@ import type {
   ResetMode,
   Settings,
   SshKey,
+  Submodule,
   WorkingFile
 } from './types'
 import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
@@ -48,7 +49,7 @@ export interface LeviathanInvokeApi {
   openRepo(path: string): Promise<string>
   initRepo(path: string, branch: string): Promise<string>
   /** With `accountId`, clones with that account and binds the new repository to it. */
-  cloneRepo(url: string, dest: string, accountId?: string | null): Promise<string>
+  cloneRepo(url: string, dest: string, accountId?: string | null, recurseSubmodules?: boolean): Promise<string>
   watchRepo(repo: string): Promise<void>
   unwatchRepo(repo: string): Promise<void>
 
@@ -196,6 +197,11 @@ export interface LeviathanInvokeApi {
   lfsRestage(repo: string, paths: string[]): Promise<void>
   /** Runs `git lfs install` and downloads the repository's LFS files. */
   setupLfs(repo: string): Promise<void>
+
+  // Submodules
+  getSubmodules(repo: string): Promise<Submodule[]>
+  /** Initializes and checks out `paths` (or every submodule) at the recorded commits, recursively. */
+  updateSubmodules(repo: string, paths: string[] | null): Promise<void>
 }
 
 /** Event subscriptions exposed next to the invoke methods. */
@@ -309,7 +315,9 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   lfsUntrack: true,
   lfsMoveFiles: true,
   lfsRestage: true,
-  setupLfs: true
+  setupLfs: true,
+  getSubmodules: true,
+  updateSubmodules: true
 }
 
 export const API_METHODS = Object.keys(METHODS) as (keyof LeviathanInvokeApi)[]
