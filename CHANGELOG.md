@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Changed
+
+- The graph column keeps room for several lanes even when the history is a straight line, instead of shrinking to one.
+
 ### Fixed
 
 - No more "Cannot find latest.yml … 404" while a new version is still being published: until its installers are uploaded, there is simply no update yet.

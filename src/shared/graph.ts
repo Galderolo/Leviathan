@@ -155,3 +155,17 @@ function itemDate(item: GraphItem): number {
 export function layoutItems(items: GraphItem[]): GraphLayout {
   return computeGraph(items.map((it) => ({ hash: it.hash, parents: it.parents, dashed: it.kind !== 'commit' })))
 }
+
+/** Width of one lane and the margin around the graph, in px. */
+export const LANE_WIDTH = 22
+export const GRAPH_PADDING = 14
+/** Lanes drawn at most; more are clipped. */
+export const MAX_LANES = 24
+/** A straight history still gets room for this many lanes, so the graph does not look cramped. */
+const MIN_LANES = 6
+
+/** Width of the graph column for a history `lanes` wide. */
+export function graphColumnWidth(lanes: number): number {
+  const shown = Math.min(Math.max(lanes, MIN_LANES), MAX_LANES)
+  return GRAPH_PADDING * 2 + (shown - 1) * LANE_WIDTH
+}
