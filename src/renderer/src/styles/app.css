@@ -1600,6 +1600,104 @@ a:hover {
   color: var(--red);
 }
 
+/* Words that changed inside a changed line. */
+.diff-line.add .word-change,
+.split-cell.add .word-change {
+  background: rgba(63, 185, 80, 0.38);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.diff-line.del .word-change,
+.split-cell.del .word-change {
+  background: rgba(240, 82, 79, 0.38);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.hunk-lines.split {
+  display: flex;
+  flex-direction: column;
+}
+
+.split-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.split-cell {
+  display: grid;
+  grid-template-columns: 48px 20px 1fr;
+  min-width: 0;
+  line-height: 20px;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.split-cell + .split-cell {
+  border-left: 1px solid var(--border);
+}
+
+.split-cell .ln {
+  padding-right: 8px;
+  text-align: right;
+  color: var(--ln);
+  background: var(--ln-bg);
+  user-select: none;
+}
+
+.split-cell .sign {
+  text-align: center;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.split-cell .code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.split-cell.add {
+  background: rgba(63, 185, 80, 0.13);
+}
+
+.split-cell.add .sign {
+  color: var(--green);
+}
+
+.split-cell.del {
+  background: rgba(240, 82, 79, 0.13);
+}
+
+.split-cell.del .sign {
+  color: var(--red);
+}
+
+.split-cell.meta {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.split-cell.empty {
+  background: var(--bg-1);
+}
+
+.layout-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.layout-toggle .icon-btn {
+  border-radius: 0;
+}
+
+.layout-toggle .icon-btn.on {
+  background: var(--bg-3);
+  color: var(--accent);
+}
+
 .diff-line.meta {
   color: var(--text-dim);
   font-style: italic;

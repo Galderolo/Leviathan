@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- Diffs highlight the words that changed inside each changed line, and can be shown side by side (old | new) with the switch in the diff header; the choice is remembered.
 - File history and blame: right-click any file (unstaged, staged or in a commit). The history follows renames and shows the file's diff in each commit; blame shows who last changed each line, including lines not committed yet, and takes you to that commit in the graph.
 - Close a pull request from its menu in the side panel (GitHub, GitLab, Gitea).
 - Select several files in the unstaged or staged list (checkboxes, Ctrl+click, Shift+click for a range, or the header checkbox for all) and stage, unstage or discard them together; right-clicking a selection offers the same.

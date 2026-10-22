@@ -74,6 +74,17 @@ export interface PullRequestsView {
   error: string | null
 }
 
+export type DiffLayout = 'unified' | 'split'
+export const DIFF_LAYOUT_KEY = 'leviathan.diffLayout'
+
+function initialDiffLayout(): DiffLayout {
+  try {
+    return localStorage.getItem(DIFF_LAYOUT_KEY) === 'split' ? 'split' : 'unified'
+  } catch {
+    return 'unified'
+  }
+}
+
 export interface Tab {
   id: string
   /** null for a "new tab" (welcome screen). */
@@ -136,6 +147,8 @@ export interface AppState {
   rebase: { path: string; base: string; commits: RebaseCommit[] } | null
   cloneProgress: string | null
   versions: { app: string; git: string }
+  /** How diffs are shown: one column, or old and new side by side. */
+  diffLayout: DiffLayout
 }
 
 export const useStore = create<AppState>(() => ({
@@ -151,7 +164,8 @@ export const useStore = create<AppState>(() => ({
   settingsOpen: false,
   rebase: null,
   cloneProgress: null,
-  versions: { app: '', git: '' }
+  versions: { app: '', git: '' },
+  diffLayout: initialDiffLayout()
 }))
 
 export function newRepoView(path: string, limit: number): RepoView {

@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import { supportsLineSelection } from '../../../shared/patch'
 import type { FileChange } from '../../../shared/types'
 import { applyHunk, applyLines, closeDiff, discardFiles, openFile, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
 import { ConflictView } from './ConflictView'
-import { useRepo } from '../store'
+import { useRepo, useStore } from '../store'
+import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 import { cx, shortHash, splitPath } from '../utils'
 
 const LINE_LIMIT = 3000
@@ -19,6 +20,8 @@ export function DiffView({ path }: { path: string }) {
   const anchor = useRef<number | null>(null)
   const diff = view?.diff
   const data = diff?.data
+  const layout = useStore((s) => s.diffLayout)
+  const spansByHunk = useMemo(() => data?.hunks.map(wordSpans) ?? [], [data])
 
   useEffect(() => {
     setPicked(null)
@@ -102,6 +105,7 @@ export function DiffView({ path }: { path: string }) {
               {t('diff.unstageFile')}
             </button>
           )}
+          <DiffLayoutToggle />
           {source.kind !== 'commit' && (
             <button className="icon-btn" title={t('menu.openFile')} onClick={() => openFile(path, source.path)}>
               <ExternalLink size={15} />
@@ -175,36 +179,40 @@ export function DiffView({ path }: { path: string }) {
                     </span>
                   )}
                 </div>
-                <div className="hunk-lines">
-                  {lines.map((line, li) => {
-                    const selectable =
-                      !!hunkMode && supportsLineSelection(hunk) && (line.type === 'add' || line.type === 'del')
-                    return (
-                      <div
-                        key={li}
-                        className={cx(
-                          'diff-line',
-                          line.type,
-                          conflictMarker(line.text) && 'marker',
-                          selectable && 'selectable',
-                          picked?.hunk === hi && picked.lines.has(li) && 'picked'
-                        )}
-                      >
-                        <span
-                          className="gutter"
-                          title={selectable ? t('diff.pickLine') : undefined}
-                          onMouseDown={(e) => selectable && e.shiftKey && e.preventDefault()}
-                          onClick={(e) => pickLine(hi, li, e.shiftKey)}
+                {layout === 'split' ? (
+                  <SplitHunkLines hunk={hunk} limit={lines.length} />
+                ) : (
+                  <div className="hunk-lines">
+                    {lines.map((line, li) => {
+                      const selectable =
+                        !!hunkMode && supportsLineSelection(hunk) && (line.type === 'add' || line.type === 'del')
+                      return (
+                        <div
+                          key={li}
+                          className={cx(
+                            'diff-line',
+                            line.type,
+                            conflictMarker(line.text) && 'marker',
+                            selectable && 'selectable',
+                            picked?.hunk === hi && picked.lines.has(li) && 'picked'
+                          )}
                         >
-                          <span className="ln">{line.oldNo ?? ''}</span>
-                          <span className="ln">{line.newNo ?? ''}</span>
-                          <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
-                        </span>
-                        <span className="code">{line.text || ' '}</span>
-                      </div>
-                    )
-                  })}
-                </div>
+                          <span
+                            className="gutter"
+                            title={selectable ? t('diff.pickLine') : undefined}
+                            onMouseDown={(e) => selectable && e.shiftKey && e.preventDefault()}
+                            onClick={(e) => pickLine(hi, li, e.shiftKey)}
+                          >
+                            <span className="ln">{line.oldNo ?? ''}</span>
+                            <span className="ln">{line.newNo ?? ''}</span>
+                            <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
+                          </span>
+                          <LineText line={line} spans={spansByHunk[hi]?.get(li)} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}

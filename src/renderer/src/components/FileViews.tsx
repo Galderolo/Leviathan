@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { GitCommitHorizontal, X } from 'lucide-react'
 import type { BlameLine, FileCommit, FileDiff } from '../../../shared/types'
 import { closeFileView, showCommitInGraph } from '../actions'
@@ -7,6 +7,7 @@ import { useRepo, useStore } from '../store'
 import { errorMessage } from '../ui'
 import { cx, formatDate, relativeDate, shortHash, splitPath } from '../utils'
 import { Avatar } from './common'
+import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 
 const api = window.leviathan
 const LINE_LIMIT = 3000
@@ -88,6 +89,7 @@ function FileHistoryView({ path, file }: { path: string; file: string }) {
   return (
     <div className="diff-view file-view">
       <Header path={path} context={t('history.title')} file={file}>
+        <DiffLayoutToggle />
         {item && (
           <button className="btn small" onClick={() => void showCommitInGraph(path, item.commit.hash)}>
             <GitCommitHorizontal size={13} /> {t('history.showInGraph')}
@@ -135,6 +137,8 @@ function FileHistoryView({ path, file }: { path: string; file: string }) {
 export function ReadOnlyDiff({ data }: { data: FileDiff }) {
   const t = useT()
   const [showAll, setShowAll] = useState(false)
+  const layout = useStore((s) => s.diffLayout)
+  const spansByHunk = useMemo(() => data.hunks.map(wordSpans), [data])
   if (data.binary) return <div className="empty-state">{t('diff.binary')}</div>
   if (!data.hunks.length) return <div className="empty-state">{t('diff.noChanges')}</div>
   let budget = showAll ? Number.POSITIVE_INFINITY : LINE_LIMIT
@@ -150,18 +154,22 @@ export function ReadOnlyDiff({ data }: { data: FileDiff }) {
             <div className="hunk-header">
               <code>{hunk.header}</code>
             </div>
-            <div className="hunk-lines">
-              {lines.map((line, li) => (
-                <div key={li} className={cx('diff-line', line.type)}>
-                  <span className="gutter">
-                    <span className="ln">{line.oldNo ?? ''}</span>
-                    <span className="ln">{line.newNo ?? ''}</span>
-                    <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
-                  </span>
-                  <span className="code">{line.text || ' '}</span>
-                </div>
-              ))}
-            </div>
+            {layout === 'split' ? (
+              <SplitHunkLines hunk={hunk} limit={lines.length} />
+            ) : (
+              <div className="hunk-lines">
+                {lines.map((line, li) => (
+                  <div key={li} className={cx('diff-line', line.type)}>
+                    <span className="gutter">
+                      <span className="ln">{line.oldNo ?? ''}</span>
+                      <span className="ln">{line.newNo ?? ''}</span>
+                      <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
+                    </span>
+                    <LineText line={line} spans={spansByHunk[hi]?.get(li)} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )
       })}

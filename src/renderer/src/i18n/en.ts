@@ -371,6 +371,9 @@ const en = {
   'blame.at': 'at {hash}',
   'blame.notCommitted': 'Not committed yet',
 
+  'diff.unified': 'One column',
+  'diff.split': 'Side by side (old | new)',
+
   'status.ready': 'Ready',
   'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',

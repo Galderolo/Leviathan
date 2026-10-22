@@ -376,6 +376,9 @@ const es: Record<keyof typeof en, string> = {
   'blame.at': 'en {hash}',
   'blame.notCommitted': 'Sin confirmar',
 
+  'diff.unified': 'Una columna',
+  'diff.split': 'Lado a lado (antes | después)',
+
   'status.ready': 'Listo',
   'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',

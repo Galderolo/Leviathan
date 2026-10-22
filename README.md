@@ -30,7 +30,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Side panel**: local branches as a folder tree, remotes, stashes and tags, with ahead/behind counters and a filter.
 - **Staging**: stage or unstage whole files, individual **hunks** or single **lines**; select several files (checkboxes, Ctrl/Shift+click) to stage, unstage or discard them together; discard changes; add files to `.gitignore`.
 - **Commits**: summary and description, amend the last commit, `Ctrl+Enter` to commit.
-- **Diff viewer** for the working tree, the index and any commit.
+- **Diff viewer** for the working tree, the index and any commit, in one column or side by side, with the words that changed highlighted.
 - **File history and blame**: every commit that touched a file (following renames) with its diff, and who last changed each line.
 - **Branches**: create, checkout (double-click), rename, delete, merge, rebase, push, delete from the remote. **Drag a branch onto another** to merge or rebase.
 - **History**: cherry-pick, revert, reset (soft / mixed / hard), checkout a commit, create tags, and **interactive rebase** — reorder, reword, squash, fixup or drop the commits after any commit, from a dialog.
