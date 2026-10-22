@@ -127,6 +127,8 @@ export interface LeviathanInvokeApi {
   stashPop(repo: string, index: number, hash: string): Promise<void>
   stashApply(repo: string, index: number, hash: string): Promise<void>
   stashDrop(repo: string, index: number, hash: string): Promise<void>
+  /** Untracked files of the stash that already exist: applying it leaves them out. */
+  stashUntrackedClashes(repo: string, index: number, hash: string): Promise<string[]>
 
   // Remotes
   /** `background` fetches never prompt for credentials. */
@@ -287,6 +289,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   stashPop: true,
   stashApply: true,
   stashDrop: true,
+  stashUntrackedClashes: true,
   fetch: true,
   pull: true,
   pullBranch: true,
