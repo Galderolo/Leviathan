@@ -42,6 +42,7 @@ import {
   updateSubmodules
 } from '../actions'
 import { useT } from '../i18n'
+import { readCollapsed, writeCollapsed, type Collapsed } from '../sidePanelState'
 import { patternLabel } from '../lfsView'
 import {
   branchMenu,
@@ -58,8 +59,6 @@ import { openMenu } from '../ui'
 import { buildTree, cx, formatDate, relativeDate, shortHash, type TreeNode } from '../utils'
 import { LockIcon } from './common'
 import { refDragProps, refDropProps } from './refDnd'
-
-type Collapsed = Record<string, boolean>
 
 export function LeftPanel({ path }: { path: string }) {
   // Only what the panel shows: typing a commit message must not redraw thousands of branches.
@@ -80,8 +79,18 @@ export function LeftPanel({ path }: { path: string }) {
   const t = useT()
   const lang = useStore((s) => s.lang)
   const [filter, setFilter] = useState('')
-  const [collapsed, setCollapsed] = useState<Collapsed>({})
-  const toggle = (key: string) => setCollapsed((c) => ({ ...c, [key]: !c[key] }))
+  // Remembered per repository: switching tabs (or restarting) keeps folders as the user left them.
+  const [collapsed, setCollapsed] = useState<Collapsed>(() => readCollapsed(path))
+  const [collapsedFor, setCollapsedFor] = useState(path)
+  if (collapsedFor !== path) {
+    setCollapsedFor(path)
+    setCollapsed(readCollapsed(path))
+  }
+  const toggle = (key: string) => {
+    const next = { ...collapsed, [key]: !collapsed[key] }
+    setCollapsed(next)
+    writeCollapsed(path, next)
+  }
 
   const state = view?.state
   const f = filter.trim().toLowerCase()
