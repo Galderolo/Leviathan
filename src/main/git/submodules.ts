@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseGitlinks, parseSubmoduleConfig } from '../../shared/submodules'
 import type { Submodule } from '../../shared/types'
@@ -11,9 +11,18 @@ async function run(cwd: string, args: string[], extra: Partial<RunOptions> = {})
   return (await git(args, { cwd, ...extra })).stdout
 }
 
-function samePath(a: string, b: string): boolean {
+/**
+ * Whether two paths name the same folder. Git answers with the folder's real path (links resolved, long names on
+ * Windows), which may be spelled differently from ours: `/var/…` is `/private/var/…` on macOS, `RUNNER~1` a long name.
+ */
+export function samePath(a: string, b: string): boolean {
   const norm = (p: string) => {
-    const full = resolve(p)
+    let full = resolve(p)
+    try {
+      full = realpathSync.native(full)
+    } catch {
+      // gone: compare as written
+    }
     return process.platform === 'win32' ? full.toLowerCase() : full
   }
   return norm(a) === norm(b)

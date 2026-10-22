@@ -1,10 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { git } from '../src/main/git/runner'
-import { getSubmodules, initSubmodules, updateSubmodules } from '../src/main/git/submodules'
+import { getSubmodules, initSubmodules, samePath, updateSubmodules } from '../src/main/git/submodules'
 import { parseGitlinks, parseSubmoduleConfig } from '../src/shared/submodules'
 
 describe('parseSubmoduleConfig', () => {
@@ -22,6 +22,23 @@ describe('parseSubmoduleConfig', () => {
       { name: 'my lib.v2', path: 'third party/my lib', url: '../mylib.git' },
       { name: 'nourl', path: 'nourl', url: '' }
     ])
+  })
+})
+
+describe('samePath', () => {
+  it('sees through links and alternative spellings of a folder (macOS /var → /private/var, Windows short names)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'leviathan-same-'))
+    const real = join(dir, 'real')
+    mkdirSync(real)
+    const link = join(dir, 'link')
+    symlinkSync(real, link, 'junction')
+    try {
+      expect(samePath(link, real)).toBe(true)
+      expect(samePath(join(real, '.'), real)).toBe(true)
+      expect(samePath(dir, real)).toBe(false)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
 
