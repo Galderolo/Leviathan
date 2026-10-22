@@ -366,6 +366,8 @@ const en = {
   'sub.notInitialized': 'Initialize the submodule first (right-click it, or Update all).',
   'sub.tooltip': '{url}\nRecorded: {recorded} · checked out: {current}',
   'toast.submodulesUpdated': 'Submodules updated',
+  'toast.submodulesNotCloned':
+    'Cloned, but some submodules could not be fetched (they show as not initialized): {error}',
   'diff.submoduleMoved': 'Submodule: {from} → {to}',
   'diff.submoduleAdded': 'New submodule at {to}',
   'diff.submoduleRemoved': 'Submodule removed (it was at {from})',

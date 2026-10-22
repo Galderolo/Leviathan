@@ -36,7 +36,7 @@ async function checkedOut(repo: string, path: string): Promise<string | null> {
 async function dirtyPaths(repo: string, paths: string[]): Promise<Set<string>> {
   const out = await run(
     repo,
-    ['status', '--porcelain=v2', '-z', '--untracked-files=no', '--ignore-submodules=none', '--', ...paths],
+    ['status', '--porcelain=v2', '-z', '--untracked-files=no', '--ignore-submodules=untracked', '--', ...paths],
     { env: LITERAL }
   )
   const dirty = new Set<string>()
@@ -87,11 +87,49 @@ export async function getSubmodules(repo: string): Promise<Submodule[]> {
  * in turn. Git refuses where that would overwrite changes made inside a submodule.
  */
 export async function updateSubmodules(repo: string, paths: string[] | null, onProgress: ProgressFn): Promise<void> {
+  const all = await getSubmodules(repo)
   if (paths) {
-    const known = new Set((await getSubmodules(repo)).map((s) => s.path))
+    const known = new Set(all.map((s) => s.path))
     for (const p of paths) if (!known.has(p)) throw new Error(`Not a submodule: ${p}`)
+  }
+  if (!all.length) return
+  // After an update a submodule has no branch checked out, so commits made there belong to nothing: checking out
+  // another commit would leave them behind without a word from git.
+  const targets = paths ? all.filter((s) => paths.includes(s.path)) : all
+  const atRisk: string[] = []
+  for (const sub of targets) {
+    if (sub.state !== 'outOfSync') continue
+    const out = await run(insideRepo(repo, sub.path), [
+      'rev-list',
+      '-1',
+      'HEAD',
+      '--not',
+      '--branches',
+      '--tags',
+      '--remotes'
+    ])
+    if (out.trim()) atRisk.push(sub.path)
+  }
+  if (atRisk.length) {
+    throw new Error(
+      `${atRisk.join(', ')}: the commits checked out there are on no branch and would be left behind. ` +
+        'Open the submodule and create a branch for them, or stage the submodule here to record its new commit.'
+    )
   }
   await run(repo, ['submodule', 'update', '--init', '--recursive', '--progress', '--', ...(paths ?? [])], {
     onProgress
   })
+}
+
+/**
+ * Initializes the submodules of a fresh clone. A submodule that cannot be fetched (private, deleted, no SSH key)
+ * must not cost the whole clone: the error is returned for the user, and the clone stays usable.
+ */
+export async function initSubmodules(repo: string, onProgress: ProgressFn): Promise<string | null> {
+  try {
+    await updateSubmodules(repo, null, onProgress)
+    return null
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err)
+  }
 }

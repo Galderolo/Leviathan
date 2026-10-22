@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { git } from '../src/main/git/runner'
-import { getSubmodules, updateSubmodules } from '../src/main/git/submodules'
+import { getSubmodules, initSubmodules, updateSubmodules } from '../src/main/git/submodules'
 import { parseGitlinks, parseSubmoduleConfig } from '../src/shared/submodules'
 
 describe('parseSubmoduleConfig', () => {
@@ -122,13 +122,32 @@ describe('submodules', () => {
     expect((await getSubmodules(work))[0].dirty).toBe(true)
   })
 
-  it('puts a submodule back on the recorded commit, but not over local changes', async () => {
+  it('puts a submodule back on the recorded commit, keeping work saved on a branch', async () => {
     await updateSubmodules(work, null, () => {})
     const sub = join(work, 'libs', 'core')
     await configure(sub)
-    await commitFile(sub, 'more.txt', 'lib two')
+    await git(['checkout', '-q', '-b', 'local-work'], { cwd: sub })
+    const saved = await commitFile(sub, 'more.txt', 'lib two')
     await updateSubmodules(work, ['libs/core'], () => {})
     expect((await getSubmodules(work))[0].state).toBe('clean')
+    expect((await git(['rev-parse', 'local-work'], { cwd: sub })).stdout.trim()).toBe(saved)
+  })
+
+  it('never leaves behind commits that are on no branch', async () => {
+    await updateSubmodules(work, null, () => {})
+    const sub = join(work, 'libs', 'core')
+    await configure(sub)
+    // Right after an update a submodule has no branch checked out: commits made there belong to nothing.
+    const orphan = await commitFile(sub, 'more.txt', 'lib two')
+    await expect(updateSubmodules(work, ['libs/core'], () => {})).rejects.toThrow(/no branch/)
+    await expect(updateSubmodules(work, null, () => {})).rejects.toThrow(/libs\/core/)
+    expect((await git(['rev-parse', 'HEAD'], { cwd: sub })).stdout.trim()).toBe(orphan)
+  })
+
+  it('does not check out the recorded commit over local changes', async () => {
+    await updateSubmodules(work, null, () => {})
+    const sub = join(work, 'libs', 'core')
+    await configure(sub)
 
     await git(['checkout', '-q', '-b', 'topic'], { cwd: sub })
     await commitFile(sub, 'lib.txt', 'lib three')
@@ -165,10 +184,23 @@ describe('submodules', () => {
     expect(diff.submodule).toMatchObject({ from: null, missing: true, commits: [] })
   })
 
-  it('clones with the submodules when asked', async () => {
-    const dest = join(root, 'with-subs')
-    await repo.cloneRepo(join(root, 'main'), dest, () => {}, [], true)
-    const [sub] = await getSubmodules(dest)
-    expect(sub.state).toBe('clean')
+  it('initializes the submodules of a fresh clone', async () => {
+    const dest = await repo.cloneRepo(join(root, 'main'), join(root, 'with-subs'), () => {})
+    expect(await initSubmodules(dest, () => {})).toBeNull()
+    expect((await getSubmodules(dest))[0].state).toBe('clean')
+  })
+
+  it('keeps the clone usable when a submodule cannot be fetched', async () => {
+    const main = join(root, 'main')
+    await git(['submodule', 'add', '-q', lib, 'libs/other'], { cwd: main })
+    await git(['config', '-f', '.gitmodules', 'submodule.libs/other.url', join(root, 'gone')], { cwd: main })
+    await git(['add', '.gitmodules'], { cwd: main })
+    await git(['commit', '-q', '-m', 'a submodule nobody can fetch'], { cwd: main })
+
+    const dest = await repo.cloneRepo(main, join(root, 'with-subs'), () => {})
+    expect(await initSubmodules(dest, () => {})).toMatch(/libs\/other|gone/)
+    const subs = await getSubmodules(dest)
+    expect(subs.find((s) => s.path === 'libs/core')?.state).toBe('clean')
+    expect(subs.find((s) => s.path === 'libs/other')?.state).toBe('uninitialized')
   })
 })

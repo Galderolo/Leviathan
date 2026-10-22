@@ -105,8 +105,7 @@ export async function cloneRepo(
   url: string,
   dest: string,
   onProgress: ProgressFn,
-  extraArgs: string[] = [],
-  recurseSubmodules = false
+  extraArgs: string[] = []
 ): Promise<string> {
   assertSafeArg(url.trim(), 'URL')
   if (!isAbsolute(dest)) throw new Error('Destination must be an absolute path')
@@ -115,8 +114,7 @@ export async function cloneRepo(
   }
   const parent = dirname(dest)
   await fs.mkdir(parent, { recursive: true })
-  const submodules = recurseSubmodules ? ['--recurse-submodules'] : []
-  await git([...extraArgs, 'clone', '--progress', ...submodules, '--', url.trim(), dest], { cwd: parent, onProgress })
+  await git([...extraArgs, 'clone', '--progress', '--', url.trim(), dest], { cwd: parent, onProgress })
   return openRepo(dest)
 }
 

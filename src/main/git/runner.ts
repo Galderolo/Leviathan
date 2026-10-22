@@ -98,8 +98,12 @@ function within(repo: string, key: string): boolean {
 
 function argsForCwd(cwd: string): string[] {
   const key = repoKey(cwd)
-  for (const [repo, args] of repoArgs) if (within(repo, key)) return args
-  return []
+  // The innermost repository wins: a submodule opened in its own tab may use another account than its parent.
+  let best: { repo: string; args: string[] } | null = null
+  for (const [repo, args] of repoArgs) {
+    if (within(repo, key) && (!best || repo.length > best.repo.length)) best = { repo, args }
+  }
+  return best?.args ?? []
 }
 
 /** Work that holds a repository's index lock (a stat refresh): other commands in that repository wait for it. */

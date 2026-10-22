@@ -50,9 +50,11 @@ const handlers: LeviathanInvokeApi = {
   initRepo: (path, branch) => repo.initRepo(path, branch),
   cloneRepo: async (url, dest, accountId, recurseSubmodules) => {
     const args = accountId ? accounts.cloneArgsFor(accountId) : []
-    const path = await repo.cloneRepo(url, dest, progress(dest), args, !!recurseSubmodules)
+    const path = await repo.cloneRepo(url, dest, progress(dest), args)
+    // Bound first, so private submodules on the same host are fetched with that account too.
     if (accountId) await accounts.setRepoAccount(path, accountId)
-    return path
+    const submoduleError = recurseSubmodules ? await submodules.initSubmodules(path, progress(dest)) : null
+    return { path, submoduleError }
   },
   watchRepo: async (path) => watchRepo(path, (e) => broadcast(IPC_REPO_CHANGED, e)),
   unwatchRepo: async (path) => unwatchRepo(path),

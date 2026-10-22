@@ -371,6 +371,8 @@ const es: Record<keyof typeof en, string> = {
   'sub.notInitialized': 'Inicializa antes el submódulo (clic derecho sobre él, o Actualizar todos).',
   'sub.tooltip': '{url}\nRegistrado: {recorded} · en uso: {current}',
   'toast.submodulesUpdated': 'Submódulos actualizados',
+  'toast.submodulesNotCloned':
+    'Clonado, pero algunos submódulos no se pudieron descargar (aparecen sin inicializar): {error}',
   'diff.submoduleMoved': 'Submódulo: {from} → {to}',
   'diff.submoduleAdded': 'Submódulo nuevo en {to}',
   'diff.submoduleRemoved': 'Submódulo eliminado (estaba en {from})',

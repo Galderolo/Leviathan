@@ -73,8 +73,17 @@ Code: `src/shared/submodules.ts` (`.gitmodules` and gitlink parsing), `src/main/
 - A submodule counts as initialized only when its folder has its own `.git` and `rev-parse --show-toplevel` is that folder; otherwise git would answer for the parent.
 - Diffs always use `--submodule=short` (a user's `diff.submodule=log` would change the output); the commit list comes from `git log` inside the submodule, at most 100 each way.
 
+- Updating refuses when a submodule that is on another commit has commits on no branch, tag or remote (`rev-list -1 HEAD --not --branches --tags --remotes`): `submodule update` would leave them behind silently.
+- Cloning never uses `--recurse-submodules`: the clone is made, the account bound, then `initSubmodules` runs, so one submodule that cannot be fetched only produces a warning.
+- Per-repository git arguments (accounts) pick the innermost repository, so a submodule open in its own tab uses its own account.
+
 Known minor issues:
 - *Discard changes* on a submodule entry does nothing (`git restore` does not move submodules); *Check out the recorded commit* in its menu is the way.
+- A `.gitmodules` path that is absolute or contains `..` makes `getSubmodules` fail, and the section disappears.
+- The stale note counts submodules set to `update = none` and ones the user deinitialized on purpose; *Update all* re-initializes the latter.
+- The submodule list loads twice after an update; commit lists capped at 100 give no "and more" sign.
+- A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
+- `submodule update` paths are validated but not literal (`GIT_LITERAL_PATHSPECS`), and *Open in a new tab* on a submodule deinitialized outside the app focuses the parent instead.
 
 ## Next steps
 
