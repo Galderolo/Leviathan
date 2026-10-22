@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-22
+
 ### Changed
 
 - The graph column keeps room for several lanes even when the history is a straight line, instead of shrinking to one.
