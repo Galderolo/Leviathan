@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-22, with 0.9.1 released (373 tests). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-22, with 0.9.2 released (375 tests). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -20,6 +20,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.8.1 | 2026-10-22 | Fixes: branch highlight follows the branch after a pull; submodule folders compared by real path |
 | 0.9.0 | 2026-10-22 | What's new (release notes from GitHub or bundled), update checks every 30 min and on focus, no refresh while git holds the index |
 | 0.9.1 | 2026-10-22 | Polish: clear buttons on search boxes, SSH keys folded, discard on submodules, LFS without git-lfs, lockable confirmation |
+| 0.9.2 | 2026-10-22 | Graph column keeps room for six lanes; a release still being published is not an update error |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
