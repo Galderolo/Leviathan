@@ -4,6 +4,11 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Changed
+
+- *Set up Git LFS* asks first, and says that it adds the Git LFS settings to your user's Git configuration.
+- The README has a code signing policy and a privacy policy, linked from every release.
+
 ## [0.6.0] - 2026-10-22
 
 ### Added

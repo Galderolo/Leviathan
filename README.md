@@ -57,7 +57,9 @@ Installers for Windows, macOS and Linux are published on the [Releases page](htt
 
 Leviathan needs [Git](https://git-scm.com/downloads) to be installed.
 
-> The builds are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn the first time you open the app.
+> The builds are not code-signed yet (see the [code signing policy](#code-signing-policy)), so Windows SmartScreen and macOS Gatekeeper warn the first time you open the app. On Windows, click **More info** and then **Run anyway**; on macOS, right-click the app and choose **Open**. Updates installed from inside the app do not show the warning again.
+
+To uninstall, use *Settings → Apps* on Windows (installer build), delete the app on macOS, or remove the package on Linux; the portable Windows build is a single file you can delete. Your settings and accounts live in Leviathan's folder under the user data directory (`%APPDATA%\Leviathan` on Windows).
 
 ## Build from source
 
@@ -89,6 +91,24 @@ npm run dist     # build installers into dist/
 | `F12`                     | Developer tools                   |
 
 On macOS use `Cmd` instead of `Ctrl`.
+
+## Code signing policy
+
+Windows releases are going to be signed through [SignPath](https://signpath.io): free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). The application is pending; until it is approved, the installers are not signed.
+
+- **What is signed:** only the Windows installers and executables built from this repository by the [Release workflow](.github/workflows/release.yml) on GitHub Actions, from a version tag. Nothing built on a personal machine is ever signed.
+- **Committers and reviewers:** [Galderolo](https://github.com/Galderolo)
+- **Approvers** (every signing request is approved by hand): [Galderolo](https://github.com/Galderolo)
+- **Privacy:** see the [privacy policy](#privacy-policy) below.
+
+## Privacy policy
+
+Leviathan collects no telemetry or usage data, has no accounts of its own and shows no ads. It only connects to other systems for what you ask it to do, plus one automatic check:
+
+- **Your git remotes** (fetch, pull, push, clone), with the credentials you give it or your own credential helper.
+- **The hosting services of the accounts you add** (GitHub, GitLab, Gitea…), to list repositories and pull requests and to sign you in. Tokens are stored encrypted on your computer and are only sent to the service they belong to.
+- **The Git LFS servers of your repositories**, to list and change file locks.
+- **github.com, to look for new Leviathan releases**, shortly after start and every few hours. It sends nothing about you or your repositories, and can be turned off in *Settings → Updates*.
 
 ## Contributing
 
@@ -124,6 +144,8 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Rebase interactivo desde cualquier commit: reordenar, cambiar mensajes, unir (squash/fixup) o descartar commits.
 - Cherry-pick, revert, reset, tags, stash, fetch/pull/push, clonar y crear repositorios.
 - Interfaz en español e inglés.
+
+Los instaladores aún no están firmados: si Windows muestra "Windows protegió su PC", pulsa **Más información** y luego **Ejecutar de todas formas** (solo pasa al instalar; las actualizaciones desde la app no vuelven a avisar). Leviathan no recoge telemetría: solo se conecta a tus remotos, a los servicios de las cuentas que añadas, a los servidores LFS de tus repos y a github.com para buscar versiones nuevas (se puede desactivar en Ajustes).
 
 Para compilarlo necesitas Node.js 22.12+ y Git: `npm install` y después `npm run dev`.
 

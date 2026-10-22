@@ -394,6 +394,8 @@ const es: Record<keyof typeof en, string> = {
   'lfs.restage': 'Preparar con Git LFS',
   'lfs.lockedByOthers': '{count} archivos cambiados están bloqueados por otra persona: tu push puede ser rechazado.',
   'lfs.lockedByOthers_one': 'Un archivo cambiado está bloqueado por otra persona: tu push puede ser rechazado.',
+  'dlg.lfsSetup':
+    'Se ejecuta "git lfs install": añade la configuración de Git LFS a la configuración de Git de tu usuario (~/.gitconfig) y sus hooks a este repositorio, y después descarga los archivos LFS del repositorio.',
   'dlg.lfsTrack':
     'Los archivos que encajen con el patrón se guardarán con Git LFS a partir de ahora. El cambio va en .gitattributes, que se incluye en un commit como cualquier otro archivo.',
   'dlg.lfsUntrack': '¿Dejar de guardar los archivos «{pattern}» con Git LFS? Los que ya tienen commit siguen en LFS.',
