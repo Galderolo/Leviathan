@@ -2,7 +2,8 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSPr
 import { Archive, ArrowUp, Check, Cloud, Laptop, Tag } from 'lucide-react'
 import { buildGraphItems, layoutItems, WIP_HASH, type GraphItem, type GraphRow } from '../../../shared/graph'
 import { laneX, linePath, type GraphGeometry } from '../../../shared/graphPaths'
-import { checkoutRef, loadMore, selectCommit, selectWip } from '../actions'
+import { checkoutRef, clearHighlight, loadMore, selectCommit, selectWip, showAllInGraph } from '../actions'
+import { ancestry, pullRequestsByRef } from '../graphFocus'
 import { useT } from '../i18n'
 import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
 import { useRepo, useStore } from '../store'
@@ -92,8 +93,22 @@ export function CommitGraph({ path }: { path: string }) {
   }, [last, items.length, view?.hasMore, path])
 
   const filter = view?.filter ?? ''
+  const commitsList = view?.commits
+  const prList = view?.pullRequests
+  const refList = view?.state?.refs
+  const prs = useMemo(
+    () => pullRequestsByRef(prList?.items ?? [], prList?.remote ?? null, refList ?? []),
+    [prList, refList]
+  )
+  const scope = view?.graphScope
+  const highlight = view?.highlight ?? null
+  const inBranch = useMemo(
+    () => (highlight && commitsList ? ancestry(commitsList, highlight) : null),
+    [highlight, commitsList]
+  )
 
   const selectItem = (item: GraphItem) => {
+    clearHighlight(path)
     if (item.kind === 'wip') selectWip(path)
     else void selectCommit(path, item.hash)
   }
@@ -137,8 +152,12 @@ export function CommitGraph({ path }: { path: string }) {
         columns={columns}
         graphWidth={graphWidth}
         labels={refMap.get(item.hash)}
+        prs={prs}
         selected={i === selectedIndex}
-        dimmed={!!filter && item.kind === 'commit' && !matchesFilter(item.commit, filter)}
+        dimmed={
+          item.kind === 'commit' &&
+          ((!!filter && !matchesFilter(item.commit, filter)) || (!!inBranch && !inBranch.has(item.hash)))
+        }
         draft={item.kind === 'wip' ? (view?.draft.summary ?? '') : ''}
         changeCount={item.kind === 'wip' ? changeCount : 0}
         lang={lang}
@@ -152,6 +171,20 @@ export function CommitGraph({ path }: { path: string }) {
 
   return (
     <div className="graph-view">
+      {scope && (scope.solo || scope.hidden.length > 0) && (
+        <div className="graph-scope">
+          <span>
+            {scope.solo
+              ? t('graph.onlyBranch', { name: scope.solo.replace(/^refs\/(heads|remotes|tags)\//, '') })
+              : scope.hidden.length === 1
+                ? t('graph.hiddenBranch')
+                : t('graph.hiddenBranches', { count: scope.hidden.length })}
+          </span>
+          <button className="btn tiny" onClick={() => showAllInGraph(path)}>
+            {t('graph.showAll')}
+          </button>
+        </div>
+      )}
       <div className="graph-header" style={{ gridTemplateColumns: columns }}>
         <div>{t('graph.branchTag')}</div>
         <div>{t('graph.graph')}</div>
@@ -188,6 +221,8 @@ interface RowProps {
   columns: string
   graphWidth: number
   labels: RefLabel[] | undefined
+  /** Open pull requests by branch (full ref name). */
+  prs: Map<string, number[]>
   selected: boolean
   dimmed: boolean
   draft: string
@@ -246,7 +281,9 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
       onMouseDown={(e) => e.button === 0 && props.onSelect(item)}
       onContextMenu={(e) => props.onContext(e, item)}
     >
-      <div className="cell refs-cell">{labels && <RefLabels path={path} labels={labels} color={color} />}</div>
+      <div className="cell refs-cell">
+        {labels && <RefLabels path={path} labels={labels} color={color} prs={props.prs} />}
+      </div>
       <div className="cell graph-cell">
         <GraphSvg row={row} item={item} width={props.graphWidth} connector={!!labels} />
       </div>
@@ -265,17 +302,18 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
   )
 })
 
-function RefLabels({ path, labels, color }: { path: string; labels: RefLabel[]; color: string }) {
+function RefLabels(props: { path: string; labels: RefLabel[]; color: string; prs: Map<string, number[]> }) {
+  const { path, labels, color, prs } = props
   const [first, ...rest] = labels
   return (
     <div className="ref-labels">
-      <RefPill path={path} label={first} color={color} />
+      <RefPill path={path} label={first} color={color} prs={prs} />
       {rest.length > 0 && (
         <div className="ref-more">
           <span className="ref-count">+{rest.length}</span>
           <div className="ref-popover">
             {labels.map((l) => (
-              <RefPill key={l.key} path={path} label={l} color={color} />
+              <RefPill key={l.key} path={path} label={l} color={color} prs={prs} />
             ))}
           </div>
         </div>
@@ -285,7 +323,11 @@ function RefLabels({ path, labels, color }: { path: string; labels: RefLabel[]; 
   )
 }
 
-function RefPill({ path, label, color }: { path: string; label: RefLabel; color: string }) {
+function RefPill(props: { path: string; label: RefLabel; color: string; prs: Map<string, number[]> }) {
+  const { path, label, color } = props
+  const numbers = [
+    ...new Set([label.local, ...label.remotes].flatMap((r) => (r ? (props.prs.get(r.fullName) ?? []) : [])))
+  ]
   const primary = label.local ?? label.remotes[0] ?? label.tag!
   const title = [label.local?.name, ...label.remotes.map((r) => r.name), label.tag?.name].filter(Boolean).join('\n')
   return (
@@ -306,6 +348,7 @@ function RefPill({ path, label, color }: { path: string; label: RefLabel; color:
       {label.remotes.length > 0 && <Cloud size={12} />}
       {label.tag && <Tag size={12} />}
       <span className="ref-name">{label.name}</span>
+      {numbers.length > 0 && <span className="ref-pr">#{numbers.join(' #')}</span>}
     </span>
   )
 }

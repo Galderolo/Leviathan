@@ -16,6 +16,7 @@ import {
   discardAll,
   discardFiles,
   dropStash,
+  hideInGraph,
   ignorePattern,
   mergeRef,
   openExternal,
@@ -33,6 +34,8 @@ import {
   resetTo,
   revertCommit,
   showFileInFolder,
+  showInGraph,
+  soloInGraph,
   stageFiles,
   stashChanges,
   unstageFiles
@@ -136,7 +139,14 @@ export function branchMenu(path: string, ref: GitRef): MenuItem[] {
       onClick: () => void deleteRemoteBranch(path, ref)
     })
   }
+  const scope = getRepo(path)?.graphScope
+  const hidden = scope?.hidden.includes(ref.fullName)
   items.push(
+    { separator: true },
+    hidden
+      ? { label: t('menu.showInGraph'), onClick: () => showInGraph(path, ref) }
+      : { label: t('menu.hideInGraph'), disabled: ref.isHead, onClick: () => hideInGraph(path, ref) },
+    { label: t('menu.soloInGraph'), onClick: () => soloInGraph(path, ref) },
     { separator: true },
     { label: t('menu.createBranchHere'), onClick: () => void createBranch(path, ref.hash) },
     { label: t('menu.createTagHere'), onClick: () => void createTag(path, ref.hash) },

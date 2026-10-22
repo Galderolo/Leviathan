@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { pullRequestsByRef } from '../graphFocus'
 import {
   Archive,
   ArrowDown,
@@ -7,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Cloud,
+  EyeOff,
   Folder,
   GitBranch,
   GitPullRequest,
@@ -47,11 +49,18 @@ export function LeftPanel({ path }: { path: string }) {
   const remotes = state?.remotes ?? []
   const prs = view?.pullRequests
   const prItems = (prs?.items ?? []).filter((p) => match('#' + p.number + ' ' + p.title + ' ' + p.sourceBranch))
+  const prByRef = useMemo(() => pullRequestsByRef(prs?.items ?? [], prs?.remote ?? null, refs), [prs, refs])
+  const hiddenRefs = new Set(view?.graphScope.hidden ?? [])
   const selectedHash = view?.selection && view.selection.kind !== 'wip' ? view.selection.hash : null
 
   const branchRow = (ref: GitRef, name: string) => (
     <div
-      className={cx('side-row', ref.isHead && 'head', selectedHash === ref.hash && 'selected')}
+      className={cx(
+        'side-row',
+        ref.isHead && 'head',
+        selectedHash === ref.hash && 'selected',
+        hiddenRefs.has(ref.fullName) && 'hidden-in-graph'
+      )}
       onClick={() => selectRef(path, ref)}
       onDoubleClick={() => void checkoutRef(path, ref)}
       {...refDragProps(ref)}
@@ -67,6 +76,8 @@ export function LeftPanel({ path }: { path: string }) {
         <GitBranch size={13} className="dim" />
       )}
       <span className="side-name">{name}</span>
+      {prByRef.has(ref.fullName) && <span className="ref-pr">#{prByRef.get(ref.fullName)!.join(' #')}</span>}
+      {hiddenRefs.has(ref.fullName) && <EyeOff size={12} className="dim" />}
       {!!ref.behind && (
         <span className="ab-badge behind">
           <ArrowDown size={10} strokeWidth={3} />

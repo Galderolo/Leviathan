@@ -46,7 +46,12 @@ export interface LeviathanInvokeApi {
 
   // Reading
   getState(repo: string): Promise<RepoState>
-  getLog(repo: string, limit: number): Promise<{ commits: Commit[]; hasMore: boolean }>
+  /** `scope`: branches hidden from the graph, or the only one shown (full ref names). */
+  getLog(
+    repo: string,
+    limit: number,
+    scope?: { hidden?: string[]; solo?: string | null }
+  ): Promise<{ commits: Commit[]; hasMore: boolean }>
   getCommitDetails(repo: string, hash: string): Promise<CommitDetails>
   getDiff(repo: string, source: DiffSource): Promise<FileDiff>
   getSnapshot(repo: string): Promise<Snapshot>

@@ -382,6 +382,14 @@ const es: Record<keyof typeof en, string> = {
 
   'error.operationInProgress': '{operation}: termínalo o abórtalo antes.',
 
+  'menu.hideInGraph': 'Ocultar en el grafo',
+  'menu.showInGraph': 'Volver a mostrar en el grafo',
+  'menu.soloInGraph': 'Mostrar solo esta rama',
+  'graph.onlyBranch': 'Mostrando solo {name}',
+  'graph.hiddenBranches': '{count} ramas ocultas en el grafo',
+  'graph.hiddenBranch': '1 rama oculta en el grafo',
+  'graph.showAll': 'Mostrar todas',
+
   'status.ready': 'Listo',
   'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',

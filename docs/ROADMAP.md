@@ -7,12 +7,10 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 ## Graph and history
 
 - [ ] Optional Gravatar avatars (off by default for privacy)
-- [ ] Show/hide branches in the graph; solo a branch
 - [ ] Blame of an older version from a line ("blame before this commit")
 - [ ] File history for a folder
 - [ ] Column chooser for the graph (hide author, date or SHA) — **good first issue**
 - [ ] Resizable BRANCH / TAG column — **good first issue**
-- [ ] Highlight the commits of the selected branch
 
 ## Working tree
 
@@ -31,7 +29,6 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Sign in to GitLab and GitHub Enterprise from the browser (GitHub.com already works)
 - [ ] Pull requests on Bitbucket
 - [ ] Review pull requests in the app (diff, comments, approve, merge)
-- [ ] Show which branches have an open pull request in the graph
 - [ ] Submodule support in the side panel
 - [ ] Git LFS status
 

@@ -23,7 +23,17 @@ import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
-import { getRepo, newRepoView, patchRepo, useStore, type BusyKind, type RepoView, type Tab } from './store'
+import {
+  getRepo,
+  newRepoView,
+  patchRepo,
+  useStore,
+  writeGraphScope,
+  type BusyKind,
+  type GraphScope,
+  type RepoView,
+  type Tab
+} from './store'
 import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
 import { basename } from './utils'
 
@@ -456,7 +466,7 @@ export async function refreshRepo(path: string, opts: { log?: boolean } = {}): P
     }
   )
   const logPromise = withLog
-    ? api.getLog(path, view.limit).then(
+    ? api.getLog(path, view.limit, view.graphScope).then(
         (log) => {
           if (logSeq[path] !== lSeq || !getRepo(path)) return
           patchRepo(path, { commits: log.commits, hasMore: log.hasMore })
@@ -560,8 +570,40 @@ export function selectStash(path: string, stash: Stash): void {
   void selectCommit(path, stash.hash, true)
 }
 
+/** Selects a branch's tip; the graph then dims what is not in that branch's history. */
 export function selectRef(path: string, ref: GitRef): void {
   void selectCommit(path, ref.hash, true)
+  patchRepo(path, { highlight: ref.type === 'tag' ? null : ref.hash })
+}
+
+export function clearHighlight(path: string): void {
+  if (getRepo(path)?.highlight) patchRepo(path, { highlight: null })
+}
+
+function setGraphScope(path: string, scope: GraphScope): void {
+  writeGraphScope(path, scope)
+  patchRepo(path, { graphScope: scope })
+  void refreshRepo(path, { log: true })
+}
+
+/** Leaves a branch out of the graph (its commits stay if other branches have them). */
+export function hideInGraph(path: string, ref: GitRef): void {
+  const scope = getRepo(path)?.graphScope ?? { hidden: [], solo: null }
+  setGraphScope(path, { hidden: [...new Set([...scope.hidden, ref.fullName])], solo: null })
+}
+
+export function showInGraph(path: string, ref: GitRef): void {
+  const scope = getRepo(path)?.graphScope ?? { hidden: [], solo: null }
+  setGraphScope(path, { hidden: scope.hidden.filter((r) => r !== ref.fullName), solo: scope.solo })
+}
+
+/** Shows only this branch (and what it comes from). */
+export function soloInGraph(path: string, ref: GitRef): void {
+  setGraphScope(path, { hidden: [], solo: ref.fullName })
+}
+
+export function showAllInGraph(path: string): void {
+  setGraphScope(path, { hidden: [], solo: null })
 }
 
 function sameSource(a: DiffSource, b: DiffSource): boolean {

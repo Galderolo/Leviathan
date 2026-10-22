@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- Graph: hide branches or show only one (right-click a branch; a bar above the graph shows all again), dim the commits outside the history of the branch picked in the side panel, and see which branches have an open pull request (#N on their labels).
+
 ## [0.4.0] - 2026-10-22
 
 ### Added

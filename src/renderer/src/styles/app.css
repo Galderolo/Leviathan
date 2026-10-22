@@ -2127,6 +2127,31 @@ a:hover {
   white-space: pre;
 }
 
+.graph-scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 12px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-1));
+  border-bottom: 1px solid var(--border);
+}
+
+.ref-pr {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+
+.side-row.hidden-in-graph .side-name {
+  opacity: 0.55;
+}
+
 .rebase-modal {
   width: 760px;
   max-height: calc(100vh - 80px);
