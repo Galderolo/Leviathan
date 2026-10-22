@@ -4,6 +4,11 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- `Ctrl+P` pushes and `Ctrl+L` pulls the current branch.
+- "Push to origin/<branch> after committing" under the commit message: each commit is pushed right away (the choice is remembered).
+
 ### Changed
 
 - *Set up Git LFS* asks first, and says that it adds the Git LFS settings to your user's Git configuration.

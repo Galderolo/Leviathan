@@ -10,6 +10,8 @@ import {
   handleProgress,
   initApp,
   newTab,
+  pull,
+  push,
   redo,
   refreshRepo,
   saveSettings,
@@ -115,6 +117,12 @@ export function App() {
         e.preventDefault()
         if (key === 'y' || e.shiftKey) void redo(active.path)
         else void undo(active.path)
+      } else if (mod && (key === 'p' || key === 'l') && !e.shiftKey && active?.path) {
+        e.preventDefault()
+        // Like the toolbar buttons, which are disabled while a fetch, pull or push runs.
+        if (getRepo(active.path)?.busy) return
+        if (key === 'p') void push(active.path)
+        else void pull(active.path)
       } else if (mod && key === 'f') {
         e.preventDefault()
         document.getElementById('graph-search')?.focus()

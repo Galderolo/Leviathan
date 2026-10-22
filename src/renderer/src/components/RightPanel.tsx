@@ -12,6 +12,7 @@ import {
   dropStash,
   moveToLfs,
   restageLfs,
+  saveSettings,
   openDiff,
   openExternal,
   popStash,
@@ -37,6 +38,7 @@ import {
 } from '../fileSelection'
 import { useT } from '../i18n'
 import { formatSize, lockFor, lockedByOthers } from '../lfsView'
+import { pushAfterCommitTarget } from '../pushTarget'
 import { fileMenu, filesMenu } from '../menus'
 import { useRepo, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
@@ -459,6 +461,8 @@ function CommitBox({ path }: { path: string }) {
   const view = useRepo(path)!
   const { summary, body, amend } = view.draft
   const status = view.state!.status
+  const pushAfter = useStore((s) => s.settings.pushAfterCommit)
+  const pushTarget = pushAfterCommitTarget(view.state!.head, view.state!.remotes)
   const stagedCount = status.staged.length
   const blocked = status.conflicted.length > 0
   const canCommit = !!summary.trim() && (stagedCount > 0 || amend) && !blocked
@@ -504,6 +508,16 @@ function CommitBox({ path }: { path: string }) {
         onChange={(e) => updateDraft(path, { body: e.target.value })}
         onKeyDown={onKey}
       />
+      {pushTarget && (
+        <label className="checkbox push-after" title={t('wip.pushAfterCommitHint')}>
+          <input
+            type="checkbox"
+            checked={pushAfter}
+            onChange={(e) => void saveSettings({ pushAfterCommit: e.target.checked })}
+          />
+          {t('wip.pushAfterCommit', { target: pushTarget })}
+        </label>
+      )}
       <LfsWarnings path={path} view={view} />
       <button className="btn btn-commit" disabled={!canCommit} onClick={() => void commit(path)} title="Ctrl+Enter">
         {label}

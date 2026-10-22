@@ -220,6 +220,8 @@ export interface Settings {
   autoFetchMinutes: number
   /** Look for new Leviathan releases on GitHub. */
   autoUpdate: boolean
+  /** Push the branch right after each commit. */
+  pushAfterCommit: boolean
   /** Repository path -> id of the account it uses. */
   repoAccounts: Record<string, string>
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
@@ -238,6 +240,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cloneDir: '',
   autoFetchMinutes: 10,
   autoUpdate: true,
+  pushAfterCommit: false,
   repoAccounts: {}
 }
 

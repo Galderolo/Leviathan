@@ -2653,3 +2653,8 @@ a:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.checkbox.push-after {
+  font-size: 12px;
+  color: var(--text-dim);
+}
