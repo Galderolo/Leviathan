@@ -20,7 +20,6 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Word-level highlighting inside changed lines
 - [ ] Syntax highlighting in diffs
 - [ ] Edit the result of a conflict by hand inside the conflict editor
-- [ ] Multi-select files to stage, unstage or discard together
 - [ ] Commit message templates — **good first issue**
 
 ## History editing
@@ -31,7 +30,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Remotes and collaboration
 
-- [ ] Sign in to accounts with the browser (OAuth device flow) instead of a personal access token
+- [ ] Sign in to GitLab and GitHub Enterprise from the browser (GitHub.com already works)
 - [ ] Pull requests on Bitbucket
 - [ ] Review pull requests in the app (diff, comments, approve, merge)
 - [ ] Show which branches have an open pull request in the graph
