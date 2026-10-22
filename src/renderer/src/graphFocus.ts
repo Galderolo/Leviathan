@@ -34,3 +34,9 @@ export function ancestry(commits: Commit[], tip: string): Set<string> {
   }
   return seen
 }
+
+/** Where the highlighted branch (a full ref name) points now; null when nothing is highlighted or the branch is gone. */
+export function highlightTip(highlight: string | null, refs: GitRef[]): string | null {
+  if (!highlight) return null
+  return refs.find((r) => r.fullName === highlight)?.hash ?? null
+}

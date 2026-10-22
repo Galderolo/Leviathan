@@ -3,7 +3,7 @@ import { Archive, ArrowUp, Check, Cloud, Laptop, Tag } from 'lucide-react'
 import { buildGraphItems, layoutItems, WIP_HASH, type GraphItem, type GraphRow } from '../../../shared/graph'
 import { laneX, linePath, type GraphGeometry } from '../../../shared/graphPaths'
 import { checkoutRef, clearHighlight, loadMore, selectCommit, selectWip, showAllInGraph } from '../actions'
-import { ancestry, pullRequestsByRef } from '../graphFocus'
+import { ancestry, highlightTip, pullRequestsByRef } from '../graphFocus'
 import { useT } from '../i18n'
 import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
 import { useRepo, useStore } from '../store'
@@ -102,10 +102,8 @@ export function CommitGraph({ path }: { path: string }) {
   )
   const scope = view?.graphScope
   const highlight = view?.highlight ?? null
-  const inBranch = useMemo(
-    () => (highlight && commitsList ? ancestry(commitsList, highlight) : null),
-    [highlight, commitsList]
-  )
+  const tip = useMemo(() => highlightTip(highlight, refList ?? []), [highlight, refList])
+  const inBranch = useMemo(() => (tip && commitsList ? ancestry(commitsList, tip) : null), [tip, commitsList])
 
   const selectItem = (item: GraphItem) => {
     clearHighlight(path)
