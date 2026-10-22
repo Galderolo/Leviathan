@@ -140,9 +140,44 @@ async function currentOperation(repo: string): Promise<RepoOperation> {
   return null
 }
 
+const SLOW_STATUS_MS = 500
+const INDEX_REFRESH_EVERY_MS = 5 * 60_000
+const lastIndexRefresh = new Map<string, number>()
+
+/**
+ * A slow status usually means stale stat info in the index (files touched, copied or checked out by other tools
+ * without changing): git reads them all again on every status, LFS files through git-lfs. Statuses here never
+ * write the index (`GIT_OPTIONAL_LOCKS=0`), so it is refreshed now and then on purpose.
+ */
+export function shouldRefreshIndex(now: number, last: number | undefined, statusMs: number): boolean {
+  return statusMs >= SLOW_STATUS_MS && (last === undefined || now - last >= INDEX_REFRESH_EVERY_MS)
+}
+
+/** Stores fresh stat info in the index, as `git status` in a terminal does; contents never change. Skipped when another git holds the index. */
+export async function refreshIndexStat(repo: string): Promise<void> {
+  try {
+    await git(['update-index', '-q', '--refresh'], { cwd: repo, okCodes: [0, 1], noLockWait: true })
+  } catch {
+    // another git holds the index: next time
+  }
+}
+
+function maybeRefreshIndex(repo: string, statusMs: number): void {
+  const key = process.platform === 'win32' ? resolve(repo).toLowerCase() : resolve(repo)
+  const now = Date.now()
+  if (!shouldRefreshIndex(now, lastIndexRefresh.get(key), statusMs)) return
+  lastIndexRefresh.set(key, now)
+  void refreshIndexStat(repo)
+}
+
 export async function getState(repo: string): Promise<RepoState> {
+  const statusStart = Date.now()
+  let statusMs = 0
   const [statusOut, remotesOut, refsOut, stashOut, operation] = await Promise.all([
-    run(repo, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all']),
+    run(repo, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all']).then((out) => {
+      statusMs = Date.now() - statusStart
+      return out
+    }),
     run(repo, ['remote', '-v']),
     listRefs(repo),
     run(repo, ['stash', 'list', `--format=${STASH_FORMAT}`]),
@@ -162,6 +197,7 @@ export async function getState(repo: string): Promise<RepoState> {
   ])
   const lfs = new Set(lfsFiles)
   const size = ({ path, size }: { path: string; size: number }) => ({ path, size })
+  maybeRefreshIndex(repo, statusMs)
   return {
     path: repo,
     head,

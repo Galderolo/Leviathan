@@ -22,6 +22,8 @@ export interface RunOptions {
   okCodes?: number[]
   /** Receives each progress line git prints to stderr (`--progress`). */
   onProgress?: (line: string) => void
+  /** Fail at once when another git holds the index lock, instead of waiting a little for it. */
+  noLockWait?: boolean
 }
 
 export interface RunResult {
@@ -99,9 +101,44 @@ function argsForCwd(cwd: string): string[] {
 }
 
 /**
+ * Commands that take the index lock before changing anything. When another git (a terminal, an IDE, a background
+ * refresh) holds it, they fail without having done anything, so they are simply tried again for a moment.
+ */
+const LOCKING = new Set([
+  'add',
+  'commit',
+  'restore',
+  'reset',
+  'rm',
+  'mv',
+  'apply',
+  'update-index',
+  'checkout',
+  'switch'
+])
+const LOCK_WAIT_MS = 2000
+const LOCK_RETRY_MS = 150
+
+function indexLocked(err: unknown): boolean {
+  return err instanceof GitError && /index\.lock'?: File exists/.test(err.stderr)
+}
+
+/**
  * Runs git with an argument array (never through a shell) and collects output.
  */
-export function git(args: string[], opts: RunOptions): Promise<RunResult> {
+export async function git(args: string[], opts: RunOptions): Promise<RunResult> {
+  const deadline = Date.now() + LOCK_WAIT_MS
+  for (;;) {
+    try {
+      return await gitOnce(args, opts)
+    } catch (err) {
+      if (opts.noLockWait || !LOCKING.has(args[0]) || !indexLocked(err) || Date.now() > deadline) throw err
+      await new Promise((r) => setTimeout(r, LOCK_RETRY_MS))
+    }
+  }
+}
+
+function gitOnce(args: string[], opts: RunOptions): Promise<RunResult> {
   const fullArgs = [...BASE_ARGS, ...argsForCwd(opts.cwd), ...args]
   return new Promise((resolve, reject) => {
     const child = spawn('git', fullArgs, {
