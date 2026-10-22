@@ -8,7 +8,8 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 - [ ] Optional Gravatar avatars (off by default for privacy)
 - [ ] Show/hide branches in the graph; solo a branch
-- [ ] File history and blame view
+- [ ] Blame of an older version from a line ("blame before this commit")
+- [ ] File history for a folder
 - [ ] Column chooser for the graph (hide author, date or SHA) — **good first issue**
 - [ ] Resizable BRANCH / TAG column — **good first issue**
 - [ ] Highlight the commits of the selected branch

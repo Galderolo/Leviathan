@@ -59,6 +59,8 @@ export interface RepoView {
   account: Account | null
   /** Open pull requests; null when no account can reach the repository's remote. */
   pullRequests: PullRequestsView | null
+  /** File history or blame shown in place of the graph. */
+  fileView: { kind: 'history' | 'blame'; path: string; rev: string | null } | null
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
   undo: UndoEntry[]
   redo: UndoEntry[]
@@ -174,6 +176,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     lastFetchError: null,
     account: null,
     pullRequests: null,
+    fileView: null,
     undo: [],
     redo: []
   }

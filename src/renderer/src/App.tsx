@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   autoFetchTick,
   closeDiff,
+  closeFileView,
   closeTab,
   cycleTab,
   browseAndOpen,
@@ -20,6 +21,7 @@ import { DiffView } from './components/DiffView'
 import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import { RebaseDialog } from './components/RebaseDialog'
+import { FileView } from './components/FileViews'
 import { SettingsModal } from './components/SettingsModal'
 import { StatusBar } from './components/StatusBar'
 import { TabBar } from './components/TabBar'
@@ -104,6 +106,8 @@ export function App() {
       } else if (e.key === 'F5' && active?.path) {
         e.preventDefault()
         void refreshRepo(active.path)
+      } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.fileView) {
+        closeFileView(active.path)
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.diff) {
         const target = e.target as HTMLElement
         if (!['INPUT', 'TEXTAREA'].includes(target.tagName)) closeDiff(active.path)
@@ -132,6 +136,7 @@ export function App() {
 function RepoScreen({ path }: { path: string }) {
   const settings = useStore((s) => s.settings)
   const hasDiff = useStore((s) => !!s.repos[path]?.diff)
+  const hasFileView = useStore((s) => !!s.repos[path]?.fileView)
   const [left, setLeft] = useState(settings.leftPanelWidth)
   const [right, setRight] = useState(settings.rightPanelWidth)
 
@@ -149,7 +154,9 @@ function RepoScreen({ path }: { path: string }) {
           onChange={setLeft}
           onCommit={(v) => void saveSettings({ leftPanelWidth: v })}
         />
-        <div className="center-panel">{hasDiff ? <DiffView path={path} /> : <CommitGraph path={path} />}</div>
+        <div className="center-panel">
+          {hasFileView ? <FileView path={path} /> : hasDiff ? <DiffView path={path} /> : <CommitGraph path={path} />}
+        </div>
         <Resizer
           value={right}
           min={260}

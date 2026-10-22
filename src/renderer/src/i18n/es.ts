@@ -365,6 +365,17 @@ const es: Record<keyof typeof en, string> = {
 
   'graph.unpushed': 'Sin subir todavía',
 
+  'menu.fileHistory': 'Historial del archivo',
+  'menu.blame': 'Blame (quién cambió cada línea)',
+  'history.title': 'HISTORIAL',
+  'history.empty': 'Ningún commit ha tocado aún este archivo.',
+  'history.showInGraph': 'Ver en el grafo',
+  'history.renamedFrom': 'renombrado desde {path}',
+  'blame.title': 'BLAME',
+  'blame.working': 'archivo de trabajo',
+  'blame.at': 'en {hash}',
+  'blame.notCommitted': 'Sin confirmar',
+
   'status.ready': 'Listo',
   'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',

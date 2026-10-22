@@ -507,6 +507,25 @@ export function selectWip(path: string): void {
   }))
 }
 
+export function openFileHistory(path: string, file: string): void {
+  patchRepo(path, { fileView: { kind: 'history', path: file, rev: null } })
+}
+
+/** Blame of a file in the working tree (`rev` null) or as it was in a commit. */
+export function openBlame(path: string, file: string, rev: string | null): void {
+  patchRepo(path, { fileView: { kind: 'blame', path: file, rev } })
+}
+
+export function closeFileView(path: string): void {
+  patchRepo(path, { fileView: null })
+}
+
+/** Leaves the file view for the graph, with that commit selected and in sight. */
+export async function showCommitInGraph(path: string, hash: string): Promise<void> {
+  patchRepo(path, { fileView: null, diff: null })
+  await selectCommit(path, hash, true)
+}
+
 export async function selectCommit(path: string, hash: string, scroll = false): Promise<void> {
   const view = getRepo(path)
   if (!view) return

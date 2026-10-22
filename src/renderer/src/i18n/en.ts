@@ -360,6 +360,17 @@ const en = {
 
   'graph.unpushed': 'Not pushed yet',
 
+  'menu.fileHistory': 'File history',
+  'menu.blame': 'Blame (who changed each line)',
+  'history.title': 'HISTORY',
+  'history.empty': 'No commit touched this file yet.',
+  'history.showInGraph': 'Show in graph',
+  'history.renamedFrom': 'renamed from {path}',
+  'blame.title': 'BLAME',
+  'blame.working': 'working tree',
+  'blame.at': 'at {hash}',
+  'blame.notCommitted': 'Not committed yet',
+
   'status.ready': 'Ready',
   'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',

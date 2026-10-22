@@ -536,7 +536,7 @@ function CommitPanel({ path, view }: { path: string; view: RepoView }) {
               onOpen={() =>
                 void openDiff(path, { kind: 'commit', hash: c.hash, parent, path: file.path, oldPath: file.origPath })
               }
-              onContext={(e) => openMenu(e, fileMenu(path, file, 'commit'))}
+              onContext={(e) => openMenu(e, fileMenu(path, file, 'commit', c.hash))}
             />
           ))}
         </div>

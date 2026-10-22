@@ -19,7 +19,9 @@ import {
   ignorePattern,
   mergeRef,
   openExternal,
+  openBlame,
   openFile,
+  openFileHistory,
   openInteractiveRebase,
   popStash,
   pullBranch,
@@ -225,7 +227,9 @@ export function filesMenu(path: string, files: FileChange[], area: 'unstaged' | 
 export function fileMenu(
   path: string,
   file: FileChange,
-  area: 'unstaged' | 'staged' | 'conflicted' | 'commit'
+  area: 'unstaged' | 'staged' | 'conflicted' | 'commit',
+  /** For a file of a commit: that commit. */
+  hash?: string
 ): MenuItem[] {
   const items: MenuItem[] = []
   if (area === 'unstaged') {
@@ -255,6 +259,18 @@ export function fileMenu(
       { label: t('menu.showInFolder'), onClick: () => showFileInFolder(path, file.path) }
     )
   }
+  // A new file has no history yet; a deleted one has no lines left to blame.
+  const isNew = file.status === '?'
+  if (items.length) items.push({ separator: true })
+  items.push(
+    { label: t('menu.fileHistory'), disabled: isNew, onClick: () => openFileHistory(path, file.path) },
+    {
+      label: t('menu.blame'),
+      disabled: isNew || file.status === 'D',
+      onClick: () => openBlame(path, file.path, area === 'commit' ? (hash ?? null) : null)
+    },
+    { separator: true }
+  )
   items.push({ label: t('menu.copyPath'), onClick: () => void copyText(file.path, t('toast.copied')) })
   return items
 }
