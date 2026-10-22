@@ -28,6 +28,7 @@ import { listForDialog } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom } from './pushTarget'
 import { stoppedOperation } from './operationStop'
+import { viewAfterCheckout } from './checkoutView'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
@@ -286,7 +287,7 @@ export async function checkoutPullRequest(path: string, pr: PullRequest): Promis
   const info = getRepo(path)?.pullRequests
   if (!info?.provider || !info.remote) return false
   const { provider, remote } = info
-  return runOp(
+  const ok = await runOp(
     path,
     () =>
       api.checkoutPullRequest(
@@ -297,6 +298,8 @@ export async function checkoutPullRequest(path: string, pr: PullRequest): Promis
       ),
     { undo: { label: t('undo.checkout', { name: '#' + pr.number }) } }
   )
+  if (ok) showAfterCheckout(path)
+  return ok
 }
 
 /**
@@ -907,17 +910,32 @@ export async function dropStash(path: string, stash: Stash): Promise<void> {
   if (ok) await runOp(path, () => api.stashDrop(path, stash.index, stash.hash))
 }
 
-export function checkoutRef(path: string, ref: GitRef): Promise<boolean> {
-  const undo = { label: t('undo.checkout', { name: ref.name }) }
-  if (ref.type === 'head') return runOp(path, () => api.checkout(path, ref.name), { undo })
-  if (ref.type === 'remote') return runOp(path, () => api.checkoutRemote(path, ref.name), { undo })
-  return runOp(path, () => api.checkoutDetached(path, ref.name), { undo })
+/** After a checkout, show the uncommitted changes that came along, or else where HEAD is now. */
+function showAfterCheckout(path: string): void {
+  const next = viewAfterCheckout(getRepo(path)?.state ?? null)
+  if (next?.kind === 'wip') selectWip(path)
+  else if (next) void selectCommit(path, next.hash, true)
 }
 
-export function checkoutCommit(path: string, hash: string): Promise<boolean> {
-  return runOp(path, () => api.checkoutDetached(path, hash), {
+export async function checkoutRef(path: string, ref: GitRef): Promise<boolean> {
+  const undo = { label: t('undo.checkout', { name: ref.name }) }
+  const checkout =
+    ref.type === 'head'
+      ? () => api.checkout(path, ref.name)
+      : ref.type === 'remote'
+        ? () => api.checkoutRemote(path, ref.name)
+        : () => api.checkoutDetached(path, ref.name)
+  const ok = await runOp(path, checkout, { undo })
+  if (ok) showAfterCheckout(path)
+  return ok
+}
+
+export async function checkoutCommit(path: string, hash: string): Promise<boolean> {
+  const ok = await runOp(path, () => api.checkoutDetached(path, hash), {
     undo: { label: t('undo.checkout', { name: hash.slice(0, 7) }) }
   })
+  if (ok) showAfterCheckout(path)
+  return ok
 }
 
 export function mergeRef(path: string, name: string): Promise<boolean> {
