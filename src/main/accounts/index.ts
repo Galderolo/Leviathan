@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { app, safeStorage } from 'electron'
-import { credentialArgs, noreplyEmail, withoutAccount } from '../../shared/providers'
+import { GITHUB_CLIENT_ID, GITHUB_SCOPES, credentialArgs, noreplyEmail, withoutAccount } from '../../shared/providers'
 import { pickProject } from '../../shared/forge'
 import { parseRemotes } from '../../shared/parsers'
 import type { Account, NewPullRequest, Provider, PullRequest, RemoteRepo } from '../../shared/types'
@@ -9,6 +9,7 @@ import { git, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
 import { createPullRequest, defaultBranch, fetchIdentity, listPullRequests, listRepos } from './providers'
 import { AccountStore, type Cipher } from './store'
+import { pollDeviceFlow, startDeviceFlow, type DeviceCode } from './oauth'
 
 const cipher: Cipher = {
   // On Linux without a keyring Electron falls back to "basic_text", which only obfuscates: treat as unavailable.
@@ -190,4 +191,35 @@ export async function getDefaultBranch(repo: string): Promise<string | null> {
 /** git `-c` arguments to clone with an account's credentials. */
 export function cloneArgsFor(accountId: string): string[] {
   return credentialArgs(requireAccount(accountId))
+}
+
+// ---------------------------------------------------------------------------
+// Signing in to GitHub from the browser (device flow). The code being waited
+// for stays here, and the token goes straight into the account store.
+
+let login: { code: DeviceCode; controller: AbortController } | null = null
+
+/** Starts a sign-in (cancelling one still waiting): the code for the user to enter on GitHub. */
+export async function startGitHubLogin(): Promise<{ userCode: string; verificationUri: string; expiresIn: number }> {
+  cancelGitHubLogin()
+  const code = await startDeviceFlow(GITHUB_CLIENT_ID, GITHUB_SCOPES)
+  login = { code, controller: new AbortController() }
+  return { userCode: code.userCode, verificationUri: code.verificationUri, expiresIn: code.expiresIn }
+}
+
+/** Waits until the code is authorized in the browser, then adds the account. */
+export async function finishGitHubLogin(): Promise<Account> {
+  const current = login
+  if (!current) throw new Error('No sign-in in progress')
+  try {
+    const token = await pollDeviceFlow(GITHUB_CLIENT_ID, current.code, { signal: current.controller.signal })
+    return await addAccount({ provider: 'github', host: 'github.com', token })
+  } finally {
+    if (login === current) login = null
+  }
+}
+
+export function cancelGitHubLogin(): void {
+  login?.controller.abort()
+  login = null
 }

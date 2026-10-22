@@ -142,6 +142,10 @@ export interface LeviathanInvokeApi {
   listAccountRepos(id: string): Promise<RemoteRepo[]>
   getRepoAccount(repo: string): Promise<string | null>
   setRepoAccount(repo: string, accountId: string | null): Promise<void>
+  /** Sign in to GitHub from the browser: the code to enter there, then the account once authorized. */
+  startGitHubLogin(): Promise<{ userCode: string; verificationUri: string; expiresIn: number }>
+  finishGitHubLogin(): Promise<Account>
+  cancelGitHubLogin(): Promise<void>
 
   // Pull requests, through the account for the repository's remote (null: no such account)
   getPullRequests(repo: string): Promise<{ provider: Provider; remote: string; items: PullRequest[] } | null>
@@ -243,6 +247,9 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   listAccountRepos: true,
   getRepoAccount: true,
   setRepoAccount: true,
+  startGitHubLogin: true,
+  finishGitHubLogin: true,
+  cancelGitHubLogin: true,
   getPullRequests: true,
   createPullRequest: true,
   getDefaultBranch: true,
