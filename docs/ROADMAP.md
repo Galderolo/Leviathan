@@ -29,7 +29,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Sign in to GitLab and GitHub Enterprise from the browser (GitHub.com already works)
 - [ ] Pull requests on Bitbucket
 - [ ] Review pull requests in the app (diff, comments, approve, merge)
-- [ ] Submodule support in the side panel
+- [x] Submodule support in the side panel
 - [x] Git LFS: tracked files, locks, patterns, large-file warnings
 
 ## Application

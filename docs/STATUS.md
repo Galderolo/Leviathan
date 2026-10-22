@@ -66,6 +66,16 @@ Known minor issues left from the review (none loses work):
 
 Still slow-ish: with thousands of branches and tags expanded in the side panel (it is not virtualized), each state change costs around 50 ms per thousand rows; collapsing REMOTE / TAGS avoids it.
 
+## Submodules (unreleased)
+
+Code: `src/shared/submodules.ts` (`.gitmodules` and gitlink parsing), `src/main/git/submodules.ts` (`getSubmodules`, `updateSubmodules`), `submoduleChange` in `getDiff`, the SUBMODULES section in `LeftPanel.tsx`, `SubmoduleSummary` in `DiffView.tsx`. Tests need `protocol.file.allow=always` for local submodule URLs (git refuses the file protocol for submodules by default); they set it in a scratch global config.
+- Without `.gitmodules` nothing runs. The list loads on `git` refreshes, and on every refresh once a repository has submodules (edits inside them change their state).
+- A submodule counts as initialized only when its folder has its own `.git` and `rev-parse --show-toplevel` is that folder; otherwise git would answer for the parent.
+- Diffs always use `--submodule=short` (a user's `diff.submodule=log` would change the output); the commit list comes from `git log` inside the submodule, at most 100 each way.
+
+Known minor issues:
+- *Discard changes* on a submodule entry does nothing (`git restore` does not move submodules); *Check out the recorded commit* in its menu is the way.
+
 ## Next steps
 
 ### 1. Keep an eye on 0.3.0
