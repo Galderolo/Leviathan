@@ -45,6 +45,26 @@ Things worth knowing about git-lfs (3.5):
 - Staged blob sizes are cached by hash in the main process (`src/main/git/staged.ts`), so a refresh with thousands of staged files does not ask git for every size again.
 - Attribute macros (`[attr]lfs filter=lfs …`) are expanded when defined in the root `.gitattributes`, as git does.
 
+## Big repositories (unreleased)
+
+Measured on real Unity projects (read-only, fingerprinted before and after) and on a synthetic repository (30 000 commits, 20 000 files, 1 500 branches with upstreams, 1 500 tags; generator kept outside the repo). What changed and why:
+- **Virtual file lists** (`components/VirtualRows.tsx`, `virtualRows.ts`): only rows near the visible part of the scrolling container are rendered (rows are 25 px, `FILE_ROW_HEIGHT`). The side panel and the working-tree lists subscribe only to what they show (`useShallow`), so typing a commit message does not redraw them.
+- **Ahead/behind cache** (`src/main/git/refs.ts`): `%(upstream:track)` is only asked for branches whose tip or upstream moved; `%(upstream:short)` is never asked (git checks every short name against all refs, 0.6 s with 4 500 refs), the short name is derived from `%(upstream)`.
+- **Index stat refresh** (`shouldRefreshIndex` / `refreshIndexStat` in `repository.ts`): statuses never write the index (`GIT_OPTIONAL_LOCKS=0`), so stale stat info made every status re-read files (for LFS files, through `git-lfs filter-process`, about a second on Windows). After a status of 500 ms or more, at most every 5 minutes, `getState` runs `update-index -q --refresh`; the app's other commands in that repository wait for it (`holdingIndex` in `runner.ts`).
+- **Index lock**: `add`, `commit`, `restore`, `reset`, `rm`, `mv`, `apply`, `update-index`, `checkout` and `switch` are retried for up to 2 s when another git holds `index.lock` (they fail before changing anything).
+- **Watcher** (`watcher.ts`): working-tree changes are checked with `git check-ignore` before refreshing (all of them at once through stdin; folders not reported get a second try with a trailing slash so folder patterns match), and a refresh happens at least every 2 s while changes keep coming. When a burst overflows the OS change buffer, Windows reports changes without a path: those only refresh once things are quiet.
+- **Refresh coalescing** (`coalesce.ts`, `refreshRepo`): a refresh asked for while one runs becomes a single extra refresh after it; everyone waiting gets that one.
+
+Known minor issues left from the review (none loses work):
+- An upstream outside `refs/remotes` / `refs/heads` (custom fetch refspec) is cached as gone: its ahead/behind is not recomputed when only the upstream moves.
+- `VirtualRows` recomputes on scroll, resize and count changes only: if content above a commit's file list changes height by more than the overscan without any of those, part of the list stays blank until a scroll.
+- Up to 200 branch names go on one command line when recomputing ahead/behind; refnames averaging over ~160 characters would exceed Windows' limit.
+- The index-lock retry matches git's message in stderr, so a hook printing that same message would make a command run twice.
+- The 500 ms "slow status" trigger also fires when status is slow for other reasons (many untracked files): the refresh then holds the index for nothing, once every 5 minutes.
+- Caches per repository (ahead/behind, last index refresh) are not dropped when a tab closes.
+
+Still slow-ish: with thousands of branches and tags expanded in the side panel (it is not virtualized), each state change costs around 50 ms per thousand rows; collapsing REMOTE / TAGS avoids it.
+
 ## Next steps
 
 ### 1. Keep an eye on 0.3.0

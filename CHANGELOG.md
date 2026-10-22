@@ -8,6 +8,12 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 - *Set up Git LFS* asks first, and says that it adds the Git LFS settings to your user's Git configuration.
 - The README has a code signing policy and a privacy policy, linked from every release.
+- Much faster with big repositories (thousands of changed files, tens of thousands of files in a commit, thousands of branches):
+  - File lists only draw the rows on screen: a commit with 35 000 files opens in a quarter of a second instead of freezing for two, and typing a commit message with 13 000 changed files no longer lags.
+  - Ahead/behind counts are only worked out again for branches that moved (a refresh with 1 500 branches went from about a second to a tenth).
+  - When `git status` gets slow because the index's file timestamps are stale (files copied, touched by other tools, or LFS files), Leviathan refreshes them, as `git status` in a terminal does.
+  - Changes inside ignored folders (Unity's `Library/` and `Temp/`, build output…) no longer trigger refreshes, and changes that never stop still show up every two seconds.
+  - Staging, committing and similar actions wait a moment when another Git program holds the index, instead of failing with "index.lock exists".
 
 ## [0.6.0] - 2026-10-22
 

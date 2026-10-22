@@ -22,6 +22,8 @@ export interface RunOptions {
   okCodes?: number[]
   /** Receives each progress line git prints to stderr (`--progress`). */
   onProgress?: (line: string) => void
+  /** Fail at once when another git holds the index lock, instead of waiting a little for it. */
+  noLockWait?: boolean
 }
 
 export interface RunResult {
@@ -89,19 +91,93 @@ export function setRepoGitArgs(repo: string, args: string[] | null): void {
   else repoArgs.delete(repoKey(repo))
 }
 
+function within(repo: string, key: string): boolean {
+  const rel = relative(repo, key)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
 function argsForCwd(cwd: string): string[] {
   const key = repoKey(cwd)
-  for (const [repo, args] of repoArgs) {
-    const rel = relative(repo, key)
-    if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return args
-  }
+  for (const [repo, args] of repoArgs) if (within(repo, key)) return args
   return []
+}
+
+/** Work that holds a repository's index lock (a stat refresh): other commands in that repository wait for it. */
+const indexHolders = new Map<string, Promise<unknown>>()
+
+/** Runs `work`, which holds `repo`'s index lock, making the app's other git commands in that repository wait for it. */
+export function holdingIndex<T>(repo: string, work: () => Promise<T>): Promise<T> {
+  const key = repoKey(repo)
+  const done: Promise<T> = work().finally(() => {
+    if (indexHolders.get(key) === done) indexHolders.delete(key)
+  })
+  indexHolders.set(key, done)
+  return done
+}
+
+function indexHolderFor(cwd: string): Promise<unknown> | undefined {
+  const key = repoKey(cwd)
+  for (const [repo, held] of indexHolders) if (within(repo, key)) return held
+  return undefined
+}
+
+/** How long commands wait for the app's own index refresh before going ahead anyway (a filter may hang). */
+const INDEX_HOLD_WAIT_MS = 10_000
+
+function waitFor(held: Promise<unknown>): Promise<unknown> {
+  return Promise.race([held.catch(() => {}), new Promise((r) => setTimeout(r, INDEX_HOLD_WAIT_MS))])
+}
+
+/**
+ * Commands that take the index lock before changing anything. When another git (a terminal, an IDE, a background
+ * refresh) holds it, they fail without having done anything, so they are simply tried again for a moment.
+ */
+const LOCKING = new Set([
+  'add',
+  'commit',
+  'restore',
+  'reset',
+  'rm',
+  'mv',
+  'apply',
+  'update-index',
+  'checkout',
+  'switch'
+])
+const LOCK_WAIT_MS = 2000
+const LOCK_RETRY_MS = 150
+
+function indexLocked(err: unknown): boolean {
+  return err instanceof GitError && /index\.lock'?: File exists/.test(err.stderr)
 }
 
 /**
  * Runs git with an argument array (never through a shell) and collects output.
  */
-export function git(args: string[], opts: RunOptions): Promise<RunResult> {
+export async function git(args: string[], opts: RunOptions): Promise<RunResult> {
+  let waited = opts.noLockWait ? undefined : indexHolderFor(opts.cwd)
+  if (waited) await waitFor(waited)
+  let deadline = Date.now() + LOCK_WAIT_MS
+  for (;;) {
+    try {
+      return await gitOnce(args, opts)
+    } catch (err) {
+      if (opts.noLockWait || !LOCKING.has(args[0]) || !indexLocked(err)) throw err
+      // The app's own refresh may have taken the lock after this command started: wait for it, then try afresh.
+      const held = indexHolderFor(opts.cwd)
+      if (held && held !== waited) {
+        waited = held
+        await waitFor(held)
+        deadline = Date.now() + LOCK_WAIT_MS
+        continue
+      }
+      if (Date.now() > deadline) throw err
+      await new Promise((r) => setTimeout(r, LOCK_RETRY_MS))
+    }
+  }
+}
+
+function gitOnce(args: string[], opts: RunOptions): Promise<RunResult> {
   const fullArgs = [...BASE_ARGS, ...argsForCwd(opts.cwd), ...args]
   return new Promise((resolve, reject) => {
     const child = spawn('git', fullArgs, {

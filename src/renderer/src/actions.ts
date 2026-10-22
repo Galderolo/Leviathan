@@ -19,6 +19,7 @@ import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import { isFetchDue } from './autofetch'
+import { coalesce } from './coalesce'
 import { followDiff } from './diffFollow'
 import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
 import { listForDialog } from './fileSelection'
@@ -443,8 +444,18 @@ function changeCount(view: RepoView): number {
   return st ? st.staged.length + st.unstaged.length + st.conflicted.length : 0
 }
 
-export async function refreshRepo(path: string, opts: { log?: boolean } = {}): Promise<void> {
-  const withLog = opts.log ?? true
+// Refreshes requested while one runs (file changes that never stop, actions finishing) become one more refresh
+// after it, instead of piling up and throwing each other's results away.
+const refreshCoalesced = coalesce(
+  (path: string, opts: { log: boolean }) => refreshRepoNow(path, opts.log),
+  (a, b) => ({ log: a.log || b.log })
+)
+
+export function refreshRepo(path: string, opts: { log?: boolean } = {}): Promise<void> {
+  return refreshCoalesced(path, { log: opts.log ?? true })
+}
+
+async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
   const view = getRepo(path)
   if (!view) return
   const sSeq = (stateSeq[path] = (stateSeq[path] ?? 0) + 1)

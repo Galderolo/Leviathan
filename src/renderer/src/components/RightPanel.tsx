@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
+import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { AlertTriangle, Copy, Lock, PencilLine } from 'lucide-react'
 import { lfsPatternFor, type LfsLock } from '../../../shared/lfs'
 import type { DiffSource, FileChange } from '../../../shared/types'
@@ -41,12 +42,13 @@ import { useRepo, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
 import { cx, formatDate, shortHash, splitPath } from '../utils'
 import { Avatar, LockIcon, StatusBadge } from './common'
+import { FILE_ROW_HEIGHT, VirtualRows } from './VirtualRows'
 
 export function RightPanel({ path }: { path: string }) {
   const view = useRepo(path)
   const t = useT()
   if (!view?.state) return <div className="right-empty dim">{t('graph.loading')}</div>
-  if (view.selection?.kind === 'wip') return <WorkingPanel path={path} view={view} />
+  if (view.selection?.kind === 'wip') return <WorkingPanel path={path} />
   return (
     <div className="right-stack">
       <PendingChanges path={path} view={view} />
@@ -74,8 +76,8 @@ function PendingChanges({ path, view }: { path: string; view: RepoView }) {
   )
 }
 
-function isActive(view: RepoView, source: Partial<DiffSource>): boolean {
-  const d = view.diff?.source
+function isActive(diff: RepoView['diff'], source: Partial<DiffSource>): boolean {
+  const d = diff?.source
   if (!d) return false
   return (
     d.kind === source.kind &&
@@ -235,8 +237,18 @@ function readSplit(): number {
   }
 }
 
-function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
+/**
+ * The working tree lists. They hold thousands of entries after a big import, so they only subscribe to what they show:
+ * typing the commit message (in `CommitBox`) must not go through them on every key.
+ */
+const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
   const t = useT()
+  const view = useStore(
+    useShallow((s) => {
+      const r = s.repos[path]
+      return { state: r?.state ?? null, diff: r?.diff ?? null, lfs: r?.lfs ?? null }
+    })
+  )
   const state = view.state!
   const { staged, unstaged, conflicted } = state.status
   const total = staged.length + unstaged.length + conflicted.length
@@ -305,16 +317,20 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
             count={conflicted.length}
             className="conflicts"
           >
-            {conflicted.map((file) => (
-              <FileRow
-                key={file.path}
-                file={file}
-                active={isActive(view, { kind: 'unstaged', path: file.path })}
-                onOpen={() => void openDiff(path, { kind: 'unstaged', path: file.path, conflicted: true })}
-                onContext={(e) => openMenu(e, fileMenu(path, file, 'conflicted'))}
-                action={{ label: t('wip.markResolved'), run: () => void stageFiles(path, [file]) }}
-              />
-            ))}
+            <VirtualRows
+              items={conflicted}
+              rowHeight={FILE_ROW_HEIGHT}
+              render={(file) => (
+                <FileRow
+                  key={file.path}
+                  file={file}
+                  active={isActive(view.diff, { kind: 'unstaged', path: file.path })}
+                  onOpen={() => void openDiff(path, { kind: 'unstaged', path: file.path, conflicted: true })}
+                  onContext={(e) => openMenu(e, fileMenu(path, file, 'conflicted'))}
+                  action={{ label: t('wip.markResolved'), run: () => void stageFiles(path, [file]) }}
+                />
+              )}
+            />
           </FileSection>
         )}
         <FileSection
@@ -352,26 +368,32 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
           }
         >
           {unstaged.length === 0 && <div className="file-empty dim">{t('wip.noChanges')}</div>}
-          {unstaged.map((file) => (
-            <FileRow
-              key={file.path}
-              file={file}
-              active={isActive(view, { kind: 'unstaged', path: file.path })}
-              onOpen={() => void openDiff(path, { kind: 'unstaged', path: file.path, untracked: file.status === '?' })}
-              onContext={(e) =>
-                openMenu(
-                  e,
-                  unstagedSel.has(file) && unstagedSel.selected.length > 1
-                    ? filesMenu(path, unstagedSel.selected, 'unstaged')
-                    : fileMenu(path, file, 'unstaged')
-                )
-              }
-              action={{ label: t('wip.stage'), run: () => void stageFiles(path, [file]) }}
-              lfs={lfsFiles.has(file.path)}
-              lock={lockFor(locks, file.path)}
-              select={{ checked: unstagedSel.has(file), click: (e, box) => unstagedSel.click(file, e, box) }}
-            />
-          ))}
+          <VirtualRows
+            items={unstaged}
+            rowHeight={FILE_ROW_HEIGHT}
+            render={(file) => (
+              <FileRow
+                key={file.path}
+                file={file}
+                active={isActive(view.diff, { kind: 'unstaged', path: file.path })}
+                onOpen={() =>
+                  void openDiff(path, { kind: 'unstaged', path: file.path, untracked: file.status === '?' })
+                }
+                onContext={(e) =>
+                  openMenu(
+                    e,
+                    unstagedSel.has(file) && unstagedSel.selected.length > 1
+                      ? filesMenu(path, unstagedSel.selected, 'unstaged')
+                      : fileMenu(path, file, 'unstaged')
+                  )
+                }
+                action={{ label: t('wip.stage'), run: () => void stageFiles(path, [file]) }}
+                lfs={lfsFiles.has(file.path)}
+                lock={lockFor(locks, file.path)}
+                select={{ checked: unstagedSel.has(file), click: (e, box) => unstagedSel.click(file, e, box) }}
+              />
+            )}
+          />
         </FileSection>
         <div className="split-handle" onPointerDown={dragSplit} title={t('wip.resize')} />
         <FileSection
@@ -401,35 +423,40 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
           }
         >
           {staged.length === 0 && <div className="file-empty dim">{t('wip.noChanges')}</div>}
-          {staged.map((file) => (
-            <FileRow
-              key={file.path}
-              file={file}
-              active={isActive(view, { kind: 'staged', path: file.path })}
-              onOpen={() => void openDiff(path, { kind: 'staged', path: file.path })}
-              onContext={(e) =>
-                openMenu(
-                  e,
-                  stagedSel.has(file) && stagedSel.selected.length > 1
-                    ? filesMenu(path, stagedSel.selected, 'staged')
-                    : fileMenu(path, file, 'staged')
-                )
-              }
-              action={{ label: t('wip.unstage'), run: () => void unstageFiles(path, [file]) }}
-              lfs={lfsFiles.has(file.path)}
-              lock={lockFor(locks, file.path)}
-              select={{ checked: stagedSel.has(file), click: (e, box) => stagedSel.click(file, e, box) }}
-            />
-          ))}
+          <VirtualRows
+            items={staged}
+            rowHeight={FILE_ROW_HEIGHT}
+            render={(file) => (
+              <FileRow
+                key={file.path}
+                file={file}
+                active={isActive(view.diff, { kind: 'staged', path: file.path })}
+                onOpen={() => void openDiff(path, { kind: 'staged', path: file.path })}
+                onContext={(e) =>
+                  openMenu(
+                    e,
+                    stagedSel.has(file) && stagedSel.selected.length > 1
+                      ? filesMenu(path, stagedSel.selected, 'staged')
+                      : fileMenu(path, file, 'staged')
+                  )
+                }
+                action={{ label: t('wip.unstage'), run: () => void unstageFiles(path, [file]) }}
+                lfs={lfsFiles.has(file.path)}
+                lock={lockFor(locks, file.path)}
+                select={{ checked: stagedSel.has(file), click: (e, box) => stagedSel.click(file, e, box) }}
+              />
+            )}
+          />
         </FileSection>
       </div>
-      <CommitBox path={path} view={view} />
+      <CommitBox path={path} />
     </div>
   )
-}
+})
 
-function CommitBox({ path, view }: { path: string; view: RepoView }) {
+function CommitBox({ path }: { path: string }) {
   const t = useT()
+  const view = useRepo(path)!
   const { summary, body, amend } = view.draft
   const status = view.state!.status
   const stagedCount = status.staged.length
@@ -657,18 +684,22 @@ function CommitPanel({ path, view }: { path: string; view: RepoView }) {
           <span>{t('commit.files', { count: details.files.length })}</span>
         </div>
         <div className="file-list static">
-          {details.files.map((file) => (
-            <FileRow
-              key={file.path}
-              file={file}
-              active={isActive(view, { kind: 'commit', path: file.path, hash: c.hash } as Partial<DiffSource>)}
-              onOpen={() =>
-                void openDiff(path, { kind: 'commit', hash: c.hash, parent, path: file.path, oldPath: file.origPath })
-              }
-              onContext={(e) => openMenu(e, fileMenu(path, file, 'commit', c.hash))}
-              lock={lockFor(view.lfs?.locks, file.path)}
-            />
-          ))}
+          <VirtualRows
+            items={details.files}
+            rowHeight={FILE_ROW_HEIGHT}
+            render={(file) => (
+              <FileRow
+                key={file.path}
+                file={file}
+                active={isActive(view.diff, { kind: 'commit', path: file.path, hash: c.hash } as Partial<DiffSource>)}
+                onOpen={() =>
+                  void openDiff(path, { kind: 'commit', hash: c.hash, parent, path: file.path, oldPath: file.origPath })
+                }
+                onContext={(e) => openMenu(e, fileMenu(path, file, 'commit', c.hash))}
+                lock={lockFor(view.lfs?.locks, file.path)}
+              />
+            )}
+          />
         </div>
       </div>
     </div>

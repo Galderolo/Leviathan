@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { pullRequestsByRef } from '../graphFocus'
 import {
   Archive,
@@ -38,7 +39,7 @@ import {
 import { useT } from '../i18n'
 import { patternLabel } from '../lfsView'
 import { branchMenu, lfsPatternMenu, lockMenu, pullRequestMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
-import { useRepo, useStore } from '../store'
+import { useStore } from '../store'
 import { openMenu } from '../ui'
 import { buildTree, cx, formatDate, relativeDate, type TreeNode } from '../utils'
 import { LockIcon } from './common'
@@ -47,7 +48,20 @@ import { refDragProps, refDropProps } from './refDnd'
 type Collapsed = Record<string, boolean>
 
 export function LeftPanel({ path }: { path: string }) {
-  const view = useRepo(path)
+  // Only what the panel shows: typing a commit message must not redraw thousands of branches.
+  const view = useStore(
+    useShallow((s) => {
+      const r = s.repos[path]
+      return {
+        state: r?.state,
+        pullRequests: r?.pullRequests,
+        graphScope: r?.graphScope,
+        selection: r?.selection,
+        lfs: r?.lfs,
+        busy: r?.busy
+      }
+    })
+  )
   const t = useT()
   const lang = useStore((s) => s.lang)
   const [filter, setFilter] = useState('')
