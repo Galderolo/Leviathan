@@ -47,7 +47,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Git LFS**: see which files go through LFS, lock and unlock files (yours and, with a confirmation, other people's), track patterns, and get warned before committing a big binary outside LFS or a file someone else locked. Detects a missing or unconfigured git-lfs and sets it up.
 - **Submodules**: see their state in the side panel, initialize and update them, open them in a tab, see which commits a submodule change brings, and clone with them.
 - **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets and pulls — without ever losing uncommitted work.
-- **Automatic updates** from the GitHub releases: one click with the Windows installer and the Linux AppImage; the portable build, the .deb and macOS point to the download. The check contacts github.com every few hours and can be turned off in Settings.
+- **Automatic updates** from the GitHub releases: one click with the Windows installer and the Linux AppImage; the portable build, the .deb and macOS point to the download. The check contacts github.com every half hour (and when you come back to the app) and can be turned off in Settings.
 - **Dark and light themes**, or follow the system.
 - **English and Spanish** interface (more languages welcome!).
 - Uses **your installed Git**, so your config, credential helpers, SSH keys and hooks work as usual.
@@ -111,7 +111,7 @@ Leviathan collects no telemetry or usage data, has no accounts of its own and sh
 - **Your git remotes** (fetch, pull, push, clone), with the credentials you give it or your own credential helper.
 - **The hosting services of the accounts you add** (GitHub, GitLab, Gitea…), to list repositories and pull requests and to sign you in. Tokens are stored encrypted on your computer and are only sent to the service they belong to.
 - **The Git LFS servers of your repositories**, to list and change file locks.
-- **github.com, to look for new Leviathan releases**, shortly after start and every few hours. It sends nothing about you or your repositories, and can be turned off in *Settings → Updates*.
+- **github.com, to look for new Leviathan releases**, shortly after start, every half hour and when you come back to the app (at most every ten minutes). It sends nothing about you or your repositories, and can be turned off in *Settings → Updates*.
 
 ## Contributing
 

@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Changed
+
+- New versions are noticed sooner: Leviathan looks for them every half hour, and when you come back to the app (at most every ten minutes), instead of every six hours.
+
 ## [0.8.1] - 2026-10-22
 
 ### Fixed
