@@ -4,7 +4,8 @@ export type UpdateMode = 'install' | 'notify' | 'off'
 /** Where an update stands, as the window shows it. */
 export interface UpdateState {
   mode: UpdateMode
-  status: 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
+  /** `unsupported`: this copy cannot look for updates (no updater for how it was installed). */
+  status: 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error' | 'unsupported'
   /** The newer version, once one is found. */
   version?: string
   /** Download progress, 0-100. */

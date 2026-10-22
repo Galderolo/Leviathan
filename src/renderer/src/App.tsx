@@ -66,6 +66,10 @@ export function App() {
       if (update.status === 'available' && update.version && before?.version !== update.version) {
         toast('info', t('update.available', { version: update.version }))
       }
+      // Installing failed (the app is still here): say so once.
+      if (update.status === 'ready' && update.error && update.error !== before?.error) {
+        toast('error', t('update.installFailed', { error: update.error.split('\n')[0] }))
+      }
     })
     void api.getUpdateState().then((update) => useStore.setState({ update }))
     const fetchTimer = window.setInterval(autoFetchTick, 30_000)

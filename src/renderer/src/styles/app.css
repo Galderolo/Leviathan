@@ -2154,6 +2154,18 @@ a:hover {
   flex: 1;
 }
 
+.input-row .checkbox-row input {
+  flex: none;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.update-result {
+  overflow-wrap: anywhere;
+}
+
 .rebase-modal {
   width: 760px;
   max-height: calc(100vh - 80px);

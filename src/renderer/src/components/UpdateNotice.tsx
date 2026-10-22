@@ -3,7 +3,9 @@ import { Download, RefreshCw } from 'lucide-react'
 import type { UpdateState } from '../../../shared/updates'
 import { useT } from '../i18n'
 import { useStore } from '../store'
-import { errorMessage, toast } from '../ui'
+import { t } from '../i18n'
+import { confirmDialog, errorMessage, toast } from '../ui'
+import { basename } from '../utils'
 
 const api = window.leviathan
 
@@ -16,7 +18,14 @@ export function UpdateNotice() {
     return (
       <span className="update-notice">
         {t('update.available', { version: update.version })}
-        <button className="btn tiny btn-primary" onClick={() => void api.downloadUpdate().catch(report)}>
+        <button
+          className="btn tiny btn-primary"
+          onClick={() =>
+            void api
+              .downloadUpdate()
+              .catch((err) => toast('error', t('update.downloadFailed', { error: firstLine(err) })))
+          }
+        >
           <Download size={12} /> {t(update.mode === 'install' ? 'update.download' : 'update.openPage')}
         </button>
       </span>
@@ -29,7 +38,7 @@ export function UpdateNotice() {
     return (
       <span className="update-notice">
         {t('update.ready', { version: update.version ?? '' })}
-        <button className="btn tiny btn-primary" onClick={() => void api.installUpdate().catch(report)}>
+        <button className="btn tiny btn-primary" onClick={() => void restart()}>
           <RefreshCw size={12} /> {t('update.restart')}
         </button>
       </span>
@@ -39,7 +48,31 @@ export function UpdateNotice() {
 }
 
 function report(err: unknown): void {
-  toast('error', errorMessage(err))
+  toast('error', firstLine(err))
+}
+
+/** electron-updater's errors carry stack traces and response headers: the first line says enough. */
+export function firstLine(err: unknown): string {
+  return (typeof err === 'string' ? err : errorMessage(err)).split('\n')[0].slice(0, 200)
+}
+
+/** Restarts into the downloaded version, unless that would cut work short or lose a message being written. */
+async function restart(): Promise<void> {
+  const repos = Object.values(useStore.getState().repos)
+  if (repos.some((r) => r.busy || r.applying)) {
+    toast('info', t('update.waitForWork'))
+    return
+  }
+  const drafting = repos.filter((r) => r.draft.summary.trim() || r.draft.body.trim())
+  if (drafting.length) {
+    const ok = await confirmDialog({
+      title: t('update.restart'),
+      message: t('update.loseDraft', { repos: drafting.map((r) => basename(r.path)).join(', ') }),
+      confirmText: t('update.restart')
+    })
+    if (!ok) return
+  }
+  await api.installUpdate().catch(report)
 }
 
 /** Settings row: automatic checks on/off and a manual check with its result. */
@@ -58,10 +91,13 @@ export function UpdateSettings({ auto, onAuto }: { auto: boolean; onAuto: (value
     }
   }
   const result = (state: UpdateState | null): string | null => {
+    if (state?.mode === 'off') return t('update.devBuild')
     if (!state || state.status === 'idle' || state.status === 'checking') return null
-    if (state.mode === 'off') return t('update.devBuild')
+    if (state.status === 'unsupported') return t('update.unsupported')
     if (state.status === 'none') return t('update.latest')
-    if (state.status === 'error') return t('update.failed', { error: state.error ?? '' })
+    if (state.status === 'error') return t('update.failed', { error: firstLine(state.error ?? '') })
+    if (state.status === 'downloading') return t('update.downloading', { percent: state.percent ?? 0 })
+    if (state.status === 'ready') return t('update.ready', { version: state.version ?? '' })
     return t('update.available', { version: state.version ?? '' })
   }
   return (
@@ -76,7 +112,7 @@ export function UpdateSettings({ auto, onAuto }: { auto: boolean; onAuto: (value
           {t('update.checkNow')}
         </button>
       </div>
-      {result(update) && <div className="dim small">{result(update)}</div>}
+      {result(update) && <div className="dim small update-result">{result(update)}</div>}
     </div>
   )
 }

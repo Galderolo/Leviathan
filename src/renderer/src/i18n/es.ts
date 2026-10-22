@@ -383,6 +383,11 @@ const es: Record<keyof typeof en, string> = {
   'error.operationInProgress': '{operation}: termínalo o abórtalo antes.',
 
   'update.title': 'Actualizaciones',
+  'update.downloadFailed': 'No se pudo descargar la actualización: {error}',
+  'update.installFailed': 'No se pudo instalar la actualización: {error}',
+  'update.waitForWork': 'Espera a que termine lo que git está haciendo y reinicia después.',
+  'update.loseDraft': 'Se perderá el mensaje de commit que estás escribiendo en {repos}. ¿Reiniciar ahora?',
+  'update.unsupported': 'Esta copia no puede actualizarse sola; las versiones nuevas están en la página de releases.',
   'update.auto': 'Buscar versiones nuevas automáticamente',
   'update.checkNow': 'Buscar ahora',
   'update.available': 'Leviathan {version} está disponible',

@@ -378,6 +378,11 @@ const en = {
   'error.operationInProgress': '{operation}: finish or abort it first.',
 
   'update.title': 'Updates',
+  'update.downloadFailed': 'The update could not be downloaded: {error}',
+  'update.installFailed': 'The update could not be installed: {error}',
+  'update.waitForWork': 'Wait until the running git work finishes, then restart.',
+  'update.loseDraft': 'The commit message being written in {repos} will be lost. Restart now?',
+  'update.unsupported': 'This copy cannot update itself; new versions are on the releases page.',
   'update.auto': 'Check for new versions automatically',
   'update.checkNow': 'Check now',
   'update.available': 'Leviathan {version} is available',

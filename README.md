@@ -44,7 +44,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Accounts**: **sign in with GitHub** from the browser (enter a short code, no token to create; organizations that restrict OAuth apps must approve Leviathan first), or add as many GitHub, GitLab, Gitea or other accounts as you like with a personal access token (stored encrypted). Each repository can use an account: commits get its name and private no-reply email, and push/pull use its token without asking. Clone straight from an account's repository list.
 - **Pull requests**: see the open pull requests (merge requests on GitLab) of the repository in the side panel, check one out, or open a new one from a branch — on GitHub, GitLab and Gitea, through your account.
 - **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets and pulls — without ever losing uncommitted work.
-- **Automatic updates** from the GitHub releases (one click on Windows and the Linux AppImage).
+- **Automatic updates** from the GitHub releases: one click with the Windows installer and the Linux AppImage; the portable build, the .deb and macOS point to the download. The check contacts github.com every few hours and can be turned off in Settings.
 - **Dark and light themes**, or follow the system.
 - **English and Spanish** interface (more languages welcome!).
 - Uses **your installed Git**, so your config, credential helpers, SSH keys and hooks work as usual.

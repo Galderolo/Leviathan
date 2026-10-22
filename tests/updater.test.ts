@@ -9,9 +9,11 @@ function fakeUpdater() {
     autoDownload: true,
     autoInstallOnAppQuit: false,
     allowPrerelease: false,
-    checkForUpdates: vi.fn(async () => {
+    // Like electron-updater: events, then a result object (null only when it has no updater).
+    checkForUpdates: vi.fn(async (): Promise<unknown> => {
       emitter.emit('checking-for-update')
       emitter.emit('update-available', { version: '0.5.0' })
+      return {}
     }),
     downloadUpdate: vi.fn(async () => {
       emitter.emit('download-progress', { percent: 42.4 })
@@ -70,5 +72,45 @@ describe('createUpdater', () => {
     const v = createUpdater({ updater: failing, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
     await v.check()
     expect(v.state()).toMatchObject({ status: 'error', error: 'net::ERR_INTERNET_DISCONNECTED' })
+  })
+})
+
+describe('createUpdater failures and guards', () => {
+  it('reports a failed download and offers the download again', async () => {
+    const updater = fakeUpdater()
+    updater.downloadUpdate.mockRejectedValueOnce(new Error('ERR_CONNECTION_RESET'))
+    const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
+    await u.check()
+    await expect(u.download()).rejects.toThrow('ERR_CONNECTION_RESET')
+    expect(u.state()).toMatchObject({ status: 'available', version: '0.5.0', error: 'ERR_CONNECTION_RESET' })
+  })
+
+  it('keeps an update already found when a later check fails', async () => {
+    const updater = fakeUpdater()
+    const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
+    await u.check()
+    updater.emit('error', new Error('getaddrinfo ENOTFOUND github.com'))
+    expect(u.state()).toMatchObject({ status: 'available', version: '0.5.0' })
+  })
+
+  it('installs silently and starts the new version', async () => {
+    const updater = fakeUpdater()
+    const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
+    u.install()
+    expect(updater.quitAndInstall).not.toHaveBeenCalled()
+    await u.download()
+    expect(updater.downloadUpdate).not.toHaveBeenCalled()
+    await u.check()
+    await u.download()
+    u.install()
+    expect(updater.quitAndInstall).toHaveBeenCalledWith(true, true)
+  })
+
+  it('says when this copy cannot look for updates at all', async () => {
+    const updater = fakeUpdater()
+    updater.checkForUpdates.mockResolvedValueOnce(null)
+    const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
+    await u.check()
+    expect(u.state().status).toBe('unsupported')
   })
 })

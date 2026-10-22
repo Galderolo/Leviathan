@@ -7,7 +7,7 @@ export interface UpdaterLike {
   allowPrerelease: boolean
   checkForUpdates(): Promise<unknown>
   downloadUpdate(): Promise<unknown>
-  quitAndInstall(): void
+  quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void
   on(event: string, listener: (...args: never[]) => void): unknown
 }
 
@@ -42,7 +42,13 @@ export function createUpdater(opts: {
       set({ status: 'downloading', percent: Math.round(p.percent) })
     )
     updater.on('update-downloaded', (info: { version: string }) => set({ status: 'ready', version: info.version }))
-    updater.on('error', (err: unknown) => set({ status: 'error', error: message(err) }))
+    updater.on('error', (err: unknown) => {
+      // A failed check (or download) must not hide an update already found.
+      if (state.status === 'ready') set({ error: message(err) })
+      else if (state.version && (state.status === 'available' || state.status === 'downloading')) {
+        set({ status: 'available', error: message(err) })
+      } else set({ status: 'error', error: message(err) })
+    })
   }
 
   return {
@@ -51,9 +57,10 @@ export function createUpdater(opts: {
       // An update on its way or ready to install stays as it is.
       if (mode === 'off' || state.status === 'downloading' || state.status === 'ready') return state
       try {
-        await updater.checkForUpdates()
+        // electron-updater answers null, with no events, when it has no updater for this install.
+        if ((await updater.checkForUpdates()) === null) set({ status: 'unsupported' })
       } catch (err) {
-        set({ status: 'error', error: message(err) })
+        if (state.status !== 'available') set({ status: 'error', error: message(err) })
       }
       return state
     },
@@ -66,11 +73,14 @@ export function createUpdater(opts: {
       try {
         await updater.downloadUpdate()
       } catch (err) {
-        set({ status: 'error', error: message(err) })
+        // Back to "available", so the download can be tried again, and the caller hears about it.
+        set({ status: 'available', error: message(err) })
+        throw err
       }
     },
     install(): void {
-      if (state.status === 'ready') updater.quitAndInstall()
+      // Silent, then start the new version: the assisted installer would otherwise show its pages again.
+      if (state.status === 'ready') updater.quitAndInstall(true, true)
     }
   }
 }
