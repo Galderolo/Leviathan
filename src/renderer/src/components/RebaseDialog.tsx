@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { REBASE_ACTIONS, rebaseProblem, type RebaseAction, type RebaseItem } from '../../../shared/rebase'
 import type { RebaseCommit } from '../../../shared/types'
@@ -22,12 +22,14 @@ function RebaseForm({ path, base, commits }: { path: string; base: string; commi
   const branch = useStore((s) => s.repos[path]?.state?.head.branch) ?? 'HEAD'
   const [items, setItems] = useState<RebaseItem[]>(() => commits.map((c) => ({ hash: c.hash, action: 'pick' })))
   const [running, setRunning] = useState(false)
+  const runningRef = useRef(false)
+  runningRef.current = running
   const byHash = new Map(commits.map((c) => [c.hash, c]))
   const problem = rebaseProblem(items)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !useStore.getState().dialog) closeInteractiveRebase()
+      if (e.key === 'Escape' && !useStore.getState().dialog && !runningRef.current) closeInteractiveRebase()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -46,7 +48,7 @@ function RebaseForm({ path, base, commits }: { path: string; base: string; commi
     })
   const start = async () => {
     setRunning(true)
-    await startInteractiveRebase(path, base, items)
+    if ((await startInteractiveRebase(path, base, items)) === 'refused') setRunning(false)
   }
 
   const rows = items.map((item, index) => ({ item, index })).reverse()

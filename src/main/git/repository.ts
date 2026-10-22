@@ -504,6 +504,13 @@ export async function interactiveRebase(repo: string, base: string, items: Rebas
   await run(repo, ['rebase', '-i', '--reschedule-failed-exec', base], {
     env: { GIT_SEQUENCE_EDITOR: `cp ${shQuote(file('todo'))}` }
   })
+  await removeRebaseFiles(repo)
+}
+
+/** The todo list and messages of an interactive rebase, once no rebase needs them any more. */
+async function removeRebaseFiles(repo: string): Promise<void> {
+  if ((await currentOperation(repo)) === 'rebase') return
+  await fs.rm(join(await gitDir(repo), 'leviathan-rebase'), { recursive: true, force: true })
 }
 
 export async function cherryPick(repo: string, hash: string): Promise<void> {
@@ -526,12 +533,14 @@ export async function abortOperation(repo: string): Promise<void> {
   const op = await currentOperation(repo)
   if (!op) return
   await run(repo, [op, '--abort'])
+  await removeRebaseFiles(repo)
 }
 
 export async function continueOperation(repo: string): Promise<void> {
   const op = await currentOperation(repo)
   if (op === 'merge') await run(repo, ['commit', '--no-edit'])
   else if (op) await run(repo, [op, '--continue'])
+  await removeRebaseFiles(repo)
 }
 
 export async function createTag(repo: string, name: string, hash: string, message: string | null): Promise<void> {

@@ -42,7 +42,7 @@ vi.stubGlobal(
     if (url.startsWith('https://api.github.com/repos/org/app/pulls?')) return json(200, [pr])
     if (url === 'https://api.github.com/repos/org/app/pulls') return json(201, pr)
     if (url === 'https://api.github.com/repos/org/app') return json(200, { default_branch: 'main' })
-  if (url === 'https://api.github.com/repos/org/app/pulls/12') return json(200, { ...pr, state: 'closed' })
+    if (url === 'https://api.github.com/repos/org/app/pulls/12') return json(200, { ...pr, state: 'closed' })
     return json(404, {})
   }
 )

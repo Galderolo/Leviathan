@@ -77,7 +77,8 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState()
-      if (s.dialog || s.menu) return
+      // A modal on top (dialog, menu, Settings, rebase): shortcuts must not act on the repository behind it.
+      if (s.dialog || s.menu || s.settingsOpen || s.rebase) return
       const mod = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
       const active = s.tabs.find((x) => x.id === s.activeTab)

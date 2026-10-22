@@ -174,3 +174,28 @@ describe('interactiveRebase', () => {
     expect(await messages()).toEqual(['Four, reworded', 'three', 'two'])
   })
 })
+
+describe('leftover files', () => {
+  const leftovers = async () =>
+    existsSync(join((await git(['rev-parse', '--absolute-git-dir'], { cwd: dir })).stdout.trim(), 'leviathan-rebase'))
+
+  it('are removed when the rebase finishes', async () => {
+    await repo.interactiveRebase(dir, base, [pick('one', 'reword', 'One'), pick('two'), pick('three')])
+    expect(await leftovers()).toBe(false)
+  })
+
+  it('stay while the rebase is stopped, and go once it is continued or aborted', async () => {
+    hashes.four = await commitFile('one.txt', 'four\n', 'four')
+    const conflicting = [pick('one', 'drop'), pick('two'), pick('three'), pick('four', 'reword', 'Four!')]
+    await expect(repo.interactiveRebase(dir, base, conflicting)).rejects.toThrow()
+    expect(await leftovers()).toBe(true)
+    await repo.abortOperation(dir)
+    expect(await leftovers()).toBe(false)
+
+    await expect(repo.interactiveRebase(dir, base, conflicting)).rejects.toThrow()
+    writeFileSync(join(dir, 'one.txt'), 'four\n')
+    await repo.stage(dir, ['one.txt'])
+    await repo.continueOperation(dir)
+    expect(await leftovers()).toBe(false)
+  })
+})

@@ -333,6 +333,8 @@ const en = {
   'rebase.problem.noMessage': 'A reworded commit needs a message.',
   'undo.interactiveRebase': 'interactive rebase',
   'toast.rebased': 'Rebase finished',
+  'toast.rebaseStopped':
+    'The rebase stopped before the end, usually for conflicts: resolve them, then press Continue in the banner.',
 
   'left.pullRequests': 'PULL REQUESTS',
   'left.noPullRequests': 'No open pull requests',

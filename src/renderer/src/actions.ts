@@ -839,13 +839,36 @@ export function closeInteractiveRebase(): void {
 }
 
 /** Runs the rebase; when it stops for a conflict, the operation banner takes over. */
-export async function startInteractiveRebase(path: string, base: string, items: RebaseItem[]): Promise<boolean> {
-  const ok = await runOp(path, () => api.interactiveRebase(path, base, items), {
-    success: t('toast.rebased'),
-    undo: { label: t('undo.interactiveRebase') }
-  })
-  closeInteractiveRebase()
-  return ok
+/**
+ * Runs the rebase. The dialog closes once it finished, or stopped part-way
+ * (the operation banner takes over); when it was refused before starting
+ * (uncommitted changes, a stale list...), it stays open with what was typed.
+ */
+export async function startInteractiveRebase(
+  path: string,
+  base: string,
+  items: RebaseItem[]
+): Promise<'done' | 'stopped' | 'refused'> {
+  try {
+    await recordUndo(path, t('undo.interactiveRebase'), 'keep', () => api.interactiveRebase(path, base, items))
+    toast('success', t('toast.rebased'))
+    closeInteractiveRebase()
+    return 'done'
+  } catch (err) {
+    const state = await api.getState(path).catch(() => null)
+    if (state?.operation === 'rebase') {
+      // git's own output here is long and mentions commands the app does not offer.
+      toast('info', t('toast.rebaseStopped'))
+      closeInteractiveRebase()
+      // Show the banner and the conflicted files.
+      selectWip(path)
+      return 'stopped'
+    }
+    toast('error', errorMessage(err))
+    return 'refused'
+  } finally {
+    await refreshRepo(path)
+  }
 }
 
 export async function deleteBranch(path: string, ref: GitRef): Promise<void> {

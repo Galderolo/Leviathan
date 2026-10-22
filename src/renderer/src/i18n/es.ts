@@ -338,6 +338,8 @@ const es: Record<keyof typeof en, string> = {
   'rebase.problem.noMessage': 'Un commit con el mensaje cambiado necesita un mensaje.',
   'undo.interactiveRebase': 'rebase interactivo',
   'toast.rebased': 'Rebase terminado',
+  'toast.rebaseStopped':
+    'El rebase se ha parado antes de acabar, normalmente por conflictos: resuélvelos y pulsa Continuar en el aviso.',
 
   'left.pullRequests': 'PULL REQUESTS',
   'left.noPullRequests': 'No hay pull requests abiertas',
