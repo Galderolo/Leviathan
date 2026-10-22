@@ -47,6 +47,7 @@ const es: Record<keyof typeof en, string> = {
   'toolbar.pop': 'Pop',
   'toolbar.terminal': 'Terminal',
   'toolbar.search': 'Buscar commits (Enter: siguiente)',
+  'toolbar.clearSearch': 'Borrar',
 
   'pull.fetchAll': 'Fetch de todo',
   'pull.ff': 'Pull (fast-forward si es posible)',
@@ -415,6 +416,13 @@ const es: Record<keyof typeof en, string> = {
   'lfs.makeLockable': 'Exigir bloqueo antes de editar',
   'lfs.lockFile': 'Bloquear archivo',
   'lfs.lockFiles': 'Bloquear {count} archivos',
+  'lfs.lockFiles_one': 'Bloquear archivo',
+  'ssh.show': 'Mostrar claves',
+  'ssh.hide': 'Ocultar',
+  'sub.discardInside':
+    '{path}: los cambios son archivos editados dentro del submódulo. Ábrelo (doble clic en el panel lateral) para descartarlos allí.',
+  'dlg.makeLockable':
+    'Los archivos que encajen con «{pattern}» pasan a solo lectura hasta que alguien los bloquee, también los que tengas abiertos ahora en un editor.',
   'lfs.unlockFile': 'Desbloquear archivo',
   'lfs.unlockOf': 'Desbloquear (bloqueado por {owner})',
   'lfs.forceUnlock': 'Forzar desbloqueo',

@@ -173,6 +173,12 @@ describe('submodules', () => {
     expect((await getSubmodules(work))[0].dirty).toBe(true)
   })
 
+  it('skips .gitmodules entries pointing outside the repository instead of hiding every submodule', async () => {
+    await git(['config', '-f', '.gitmodules', 'submodule.up.path', '../outside'], { cwd: work })
+    await git(['config', '-f', '.gitmodules', 'submodule.abs.path', '/elsewhere'], { cwd: work })
+    expect((await getSubmodules(work)).map((s) => s.path)).toEqual(['libs/core'])
+  })
+
   it('refuses paths that are not submodules', async () => {
     await expect(updateSubmodules(work, ['readme.txt'], () => {})).rejects.toThrow(/submodule/i)
   })
