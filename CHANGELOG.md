@@ -4,11 +4,14 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-22
+
 ### Added
 
 - Submodules: a SUBMODULES section in the side panel shows each one's state (not initialized, other commit than the recorded one, changes inside), with *Update all*, *Initialize and update*, *Check out the recorded commit*, *Open in a new tab* (or double-click) and *Open folder*. A note says when submodules are not at the commits the branch records.
 - The diff of a submodule lists the commits it brings in or takes away, instead of two commit hashes.
-- Cloning includes submodules (an option in the clone form, on by default).
+- Cloning includes submodules (an option in the clone form, on by default). A submodule that cannot be fetched no longer fails the clone: the repository opens with a warning.
+- Updating a submodule refuses when the commits checked out in it are on no branch, instead of leaving them behind.
 
 ### Fixed
 
