@@ -2866,3 +2866,29 @@ a:hover {
   color: var(--text);
   background: var(--bg-2);
 }
+
+/* Resizable graph columns */
+.graph-header > div.resizable {
+  position: relative;
+}
+
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.col-resizer:hover,
+.col-resizer:active {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.graph-hscroll {
+  flex-shrink: 0;
+  height: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}

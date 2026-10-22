@@ -3,7 +3,7 @@ import { Archive, ArrowUp, Check, Cloud, Laptop, Tag } from 'lucide-react'
 import {
   buildGraphItems,
   GRAPH_PADDING,
-  graphColumnWidth,
+  graphContentWidth,
   LANE_WIDTH,
   layoutItems,
   WIP_HASH,
@@ -15,6 +15,14 @@ import { checkoutRef, clearHighlight, loadMore, selectCommit, selectWip, showAll
 import { ancestry, highlightTip, pullRequestsByRef } from '../graphFocus'
 import { useT } from '../i18n'
 import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
+import {
+  DEFAULT_COLUMNS,
+  clampGraphScroll,
+  clampWidth,
+  readGraphColumns,
+  writeGraphColumns,
+  type GraphColumns
+} from '../graphColumns'
 import { useRepo, useStore } from '../store'
 import { openMenu } from '../ui'
 import { cx, formatDate, groupRefs, initials, laneColor, matchesFilter, shortHash, type RefLabel } from '../utils'
@@ -46,8 +54,48 @@ export function CommitGraph({ path }: { path: string }) {
   )
   const layout = useMemo(() => layoutItems(items), [items])
   const refMap = useMemo(() => groupRefs(state?.refs ?? []), [state?.refs])
-  const graphWidth = graphColumnWidth(layout.maxWidth)
-  const columns = `200px ${graphWidth}px minmax(140px, 1fr) minmax(90px, 150px) minmax(110px, 150px) 70px`
+  // Column widths are the user's (dragged in the header, the same in every repository); a history wider than the
+  // graph column scrolls sideways instead of widening it.
+  const [cols, setCols] = useState<GraphColumns>(readGraphColumns)
+  const graphWidth = cols.graph
+  const content = graphContentWidth(layout.maxWidth)
+  const [graphScroll, setGraphScroll] = useState(0)
+  const graphOffset = clampGraphScroll(graphScroll, content, graphWidth)
+  const hbarRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (hbarRef.current && hbarRef.current.scrollLeft !== graphOffset) hbarRef.current.scrollLeft = graphOffset
+  }, [graphOffset])
+  const columns = `${cols.refs}px ${graphWidth}px minmax(140px, 1fr) minmax(90px, 150px) minmax(110px, 150px) 70px`
+
+  const resize = (kind: keyof GraphColumns) => (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const handle = e.currentTarget
+    handle.setPointerCapture(e.pointerId)
+    const startX = e.clientX
+    const startWidth = cols[kind]
+    let latest = cols
+    const move = (ev: PointerEvent) => {
+      latest = { ...latest, [kind]: clampWidth(kind, startWidth + ev.clientX - startX) }
+      setCols(latest)
+    }
+    const up = () => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', up)
+      writeGraphColumns(latest)
+    }
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', up)
+  }
+  const resetWidth = (kind: keyof GraphColumns) => {
+    const next = { ...cols, [kind]: DEFAULT_COLUMNS[kind] }
+    setCols(next)
+    writeGraphColumns(next)
+  }
+  // Sideways: a trackpad's horizontal swipe, or Shift + wheel.
+  const onWheel = (e: React.WheelEvent) => {
+    const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0)
+    if (dx && content > graphWidth) setGraphScroll((o) => clampGraphScroll(o + dx, content, graphWidth))
+  }
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -154,6 +202,7 @@ export function CommitGraph({ path }: { path: string }) {
         index={i}
         columns={columns}
         graphWidth={graphWidth}
+        graphOffset={graphOffset}
         labels={refMap.get(item.hash)}
         prs={prs}
         selected={i === selectedIndex}
@@ -189,8 +238,24 @@ export function CommitGraph({ path }: { path: string }) {
         </div>
       )}
       <div className="graph-header" style={{ gridTemplateColumns: columns }}>
-        <div>{t('graph.branchTag')}</div>
-        <div>{t('graph.graph')}</div>
+        <div className="resizable">
+          {t('graph.branchTag')}
+          <div
+            className="col-resizer"
+            title={t('graph.resize')}
+            onPointerDown={resize('refs')}
+            onDoubleClick={() => resetWidth('refs')}
+          />
+        </div>
+        <div className="resizable">
+          {t('graph.graph')}
+          <div
+            className="col-resizer"
+            title={t('graph.resize')}
+            onPointerDown={resize('graph')}
+            onDoubleClick={() => resetWidth('graph')}
+          />
+        </div>
         <div>{t('graph.message')}</div>
         <div>{t('graph.author')}</div>
         <div>{t('graph.date')}</div>
@@ -202,6 +267,7 @@ export function CommitGraph({ path }: { path: string }) {
         tabIndex={0}
         onKeyDown={onKeyDown}
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+        onWheel={onWheel}
       >
         <div className="graph-canvas" style={{ height: items.length * ROW_H }}>
           {rows}
@@ -212,6 +278,16 @@ export function CommitGraph({ path }: { path: string }) {
           </div>
         )}
       </div>
+      {content > graphWidth && (
+        <div
+          className="graph-hscroll"
+          ref={hbarRef}
+          style={{ marginLeft: cols.refs, width: graphWidth }}
+          onScroll={(e) => setGraphScroll(e.currentTarget.scrollLeft)}
+        >
+          <div style={{ width: content, height: 1 }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -223,6 +299,8 @@ interface RowProps {
   index: number
   columns: string
   graphWidth: number
+  /** How far the graph is scrolled sideways, in px. */
+  graphOffset: number
   labels: RefLabel[] | undefined
   /** Open pull requests by branch (full ref name). */
   prs: Map<string, number[]>
@@ -288,7 +366,7 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
         {labels && <RefLabels path={path} labels={labels} color={color} prs={props.prs} />}
       </div>
       <div className="cell graph-cell">
-        <GraphSvg row={row} item={item} width={props.graphWidth} connector={!!labels} />
+        <GraphSvg row={row} item={item} width={props.graphWidth} offset={props.graphOffset} connector={!!labels} />
       </div>
       <div className="cell msg-cell">
         {message}
@@ -360,15 +438,19 @@ function GraphSvg({
   row,
   item,
   width,
+  offset,
   connector
 }: {
   row: GraphRow
   item: GraphItem
   width: number
+  offset: number
   connector: boolean
 }) {
   const mid = ROW_H / 2
   const cx = laneX(row.column, GEOMETRY)
+  // Where the node is in the visible part of the column (it may be scrolled out on either side).
+  const shownX = cx - offset
   const color = laneColor(row.color)
 
   let node: React.ReactNode
@@ -393,25 +475,29 @@ function GraphSvg({
     <svg width={width} height={ROW_H} className="graph-svg">
       {/* Translucent band from the node to the edge of the graph, in the lane colour. */}
       <rect
-        x={cx}
+        x={Math.max(0, shownX)}
         y={mid - NODE_R}
-        width={Math.max(0, width - cx)}
+        width={Math.max(0, width - Math.max(0, shownX))}
         height={NODE_R * 2}
         fill={color}
         className="row-band"
       />
-      {connector && <line x1={0} y1={mid} x2={cx} y2={mid} stroke={color} strokeWidth={1.5} />}
-      {row.lines.map((line, i) => (
-        <path
-          key={i}
-          d={linePath(line, GEOMETRY)}
-          stroke={laneColor(line.color)}
-          strokeWidth={2}
-          fill="none"
-          strokeDasharray={line.dashed ? '4 3' : undefined}
-        />
-      ))}
-      {node}
+      {connector && shownX > 0 && (
+        <line x1={0} y1={mid} x2={Math.min(width, shownX)} y2={mid} stroke={color} strokeWidth={1.5} />
+      )}
+      <g transform={offset ? `translate(${-offset} 0)` : undefined}>
+        {row.lines.map((line, i) => (
+          <path
+            key={i}
+            d={linePath(line, GEOMETRY)}
+            stroke={laneColor(line.color)}
+            strokeWidth={2}
+            fill="none"
+            strokeDasharray={line.dashed ? '4 3' : undefined}
+          />
+        ))}
+        {node}
+      </g>
     </svg>
   )
 }

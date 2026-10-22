@@ -10,7 +10,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Blame of an older version from a line ("blame before this commit")
 - [ ] File history for a folder
 - [ ] Column chooser for the graph (hide author, date or SHA) — **good first issue**
-- [ ] Resizable BRANCH / TAG column — **good first issue**
+- [x] Resizable BRANCH / TAG and GRAPH columns, sideways scrolling of wide graphs
 
 ## Working tree
 
