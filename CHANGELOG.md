@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-22
+
 ### Added
 
 - Git LFS: in repositories that use it, an LFS section in the side panel lists the tracked patterns and the locked files (yours and other people's), and files that go through LFS carry an LFS tag. Lock and unlock files from their menu; someone else's lock can be forced open after a confirmation. Track new patterns (optionally lockable) from the section or a file's menu, also in a repository that does not use LFS yet; files already staged that the new pattern covers are staged again through LFS. A file you changed that someone else locked is flagged in red, with a warning above the commit button.
