@@ -89,6 +89,10 @@ export interface RepoState {
   operation: RepoOperation
   /** Commits of the checked-out branch that are not pushed yet, newest first. */
   unpushed: string[]
+  /** Changed files (staged, unstaged or conflicted) that go through Git LFS. */
+  lfsFiles: string[]
+  /** Staged files over `LARGE_FILE_BYTES` that do not go through Git LFS. */
+  largeFiles: { path: string; size: number }[]
 }
 
 export interface CommitDetails {

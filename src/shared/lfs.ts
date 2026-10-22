@@ -27,8 +27,10 @@ export interface LfsInfo {
   version: string | null
   /** Some attributes file sends files through LFS. */
   used: boolean
-  /** git-lfs is installed, its filters are configured and the repository has its hooks. */
-  ready: boolean
+  /** The LFS filters are configured: files are stored as pointers and downloaded on checkout. */
+  filters: boolean
+  /** The repository has the LFS hooks, which upload LFS files on push. */
+  hooks: boolean
   patterns: LfsPattern[]
 }
 

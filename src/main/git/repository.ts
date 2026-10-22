@@ -14,11 +14,13 @@ import {
   parseStatus,
   untrackedDiff
 } from '../../shared/parsers'
+import { LARGE_FILE_BYTES } from '../../shared/lfs'
 import type {
   Commit,
   BlameLine,
   CommitDetails,
   DiffSource,
+  FileChange,
   FileCommit,
   FileDiff,
   GitRef,
@@ -155,6 +157,12 @@ export async function getState(repo: string): Promise<RepoState> {
     refsOut,
     remotes.map((r) => r.name)
   )
+  const changed = [...new Set([...status.staged, ...status.unstaged, ...status.conflicted].map((f) => f.path))]
+  const [unpushed, lfsFiles, largeFiles] = await Promise.all([
+    unpushedCommits(repo, head, refs, remotes.length > 0),
+    lfsPaths(repo, changed),
+    largeStagedFiles(repo, status.staged)
+  ])
   return {
     path: repo,
     head,
@@ -163,8 +171,42 @@ export async function getState(repo: string): Promise<RepoState> {
     remotes,
     status,
     operation,
-    unpushed: await unpushedCommits(repo, head, refs, remotes.length > 0)
+    unpushed,
+    lfsFiles,
+    largeFiles
   }
+}
+
+/** The files among `paths` whose attributes send them through LFS. */
+async function lfsPaths(repo: string, paths: string[]): Promise<string[]> {
+  if (!paths.length) return []
+  const parts = (await run(repo, ['check-attr', '-z', '--stdin', 'filter'], { input: paths.join('\0') })).split('\0')
+  const out: string[] = []
+  for (let i = 0; i + 2 < parts.length; i += 3) if (parts[i + 2] === 'lfs') out.push(parts[i])
+  return out
+}
+
+/** Staged files too big for a git host; files that go through LFS are staged as small pointers and never show up. */
+async function largeStagedFiles(repo: string, staged: FileChange[]): Promise<RepoState['largeFiles']> {
+  if (!staged.some((f) => f.status !== 'D')) return []
+  const raw = (await run(repo, ['diff', '--cached', '--raw', '-z', '--no-abbrev', '--no-renames', '--diff-filter=AM']))
+    .split('\0')
+    .filter(Boolean)
+  const blobs: { path: string; hash: string }[] = []
+  for (let i = 0; i + 1 < raw.length; i += 2) {
+    const [, mode, , hash] = raw[i].slice(1).split(' ')
+    if (mode === '100644' || mode === '100755') blobs.push({ path: raw[i + 1], hash })
+  }
+  if (!blobs.length) return []
+  const sizes = new Map<string, number>()
+  const out = await run(repo, ['cat-file', '--batch-check=%(objectname) %(objectsize)'], {
+    input: blobs.map((b) => b.hash).join('\n') + '\n'
+  })
+  for (const line of out.split('\n')) {
+    const [hash, size] = line.split(' ')
+    if (hash && size) sizes.set(hash, Number(size))
+  }
+  return blobs.map((b) => ({ path: b.path, size: sizes.get(b.hash) ?? 0 })).filter((b) => b.size > LARGE_FILE_BYTES)
 }
 
 /**

@@ -11,6 +11,7 @@ import {
 } from '../shared/api'
 import * as accounts from './accounts'
 import { answerAskpass } from './askpass'
+import * as lfs from './git/lfs'
 import * as repo from './git/repository'
 import { loadSettings, saveSettings } from './settings'
 import { openAction, openTerminal } from './shell'
@@ -149,6 +150,14 @@ const handlers: LeviathanInvokeApi = {
   getDefaultBranch: (path) => accounts.getDefaultBranch(path),
   checkoutPullRequest: (path, remote, pr, provider) => repo.checkoutPullRequest(path, remote, pr, provider),
   generateSshKey: (opts) => generateKey(opts),
+  getLfsInfo: (path) => lfs.getLfsInfo(path),
+  getLfsLocks: (path, background) => lfs.getLfsLocks(path, !!background),
+  lfsLock: (path, file) => lfs.lfsLock(path, file),
+  lfsUnlock: (path, lock, force) => lfs.lfsUnlock(path, lock, force),
+  lfsTrack: (path, pattern, lockable) => lfs.lfsTrack(path, pattern, lockable),
+  lfsUntrack: (path, pattern) => lfs.lfsUntrack(path, pattern),
+  lfsMoveFiles: (path, paths) => lfs.lfsMoveFiles(path, paths),
+  setupLfs: (path) => lfs.setupLfs(path, progress(path)),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')
     await shell.openExternal(url)

@@ -21,6 +21,7 @@ import type {
   SshKey,
   WorkingFile
 } from './types'
+import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
 import type { RebaseItem } from './rebase'
 import type { RepoChange, Snapshot } from './undo'
 import type { UpdateState } from './updates'
@@ -179,6 +180,20 @@ export interface LeviathanInvokeApi {
   ): Promise<void>
   /** Creates an ed25519 key in ~/.ssh; refuses to overwrite. */
   generateSshKey(opts: { email: string; passphrase: string; fileName: string }): Promise<SshKey>
+
+  // Git LFS
+  getLfsInfo(repo: string): Promise<LfsInfo>
+  /** `background` never asks for credentials. `verified` is false when the server cannot tell whose locks they are. */
+  getLfsLocks(repo: string, background?: boolean): Promise<{ locks: LfsLock[]; verified: boolean }>
+  lfsLock(repo: string, path: string): Promise<LfsLock>
+  /** `force` releases someone else's lock. */
+  lfsUnlock(repo: string, lock: { id: string; path: string }, force: boolean): Promise<void>
+  lfsTrack(repo: string, pattern: string, lockable: boolean): Promise<void>
+  lfsUntrack(repo: string, pattern: LfsPattern): Promise<void>
+  /** Tracks the files' extensions and stages them again through LFS, with `.gitattributes`. */
+  lfsMoveFiles(repo: string, paths: string[]): Promise<void>
+  /** Runs `git lfs install` and downloads the repository's LFS files. */
+  setupLfs(repo: string): Promise<void>
 }
 
 /** Event subscriptions exposed next to the invoke methods. */
@@ -283,7 +298,15 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   closePullRequest: true,
   getDefaultBranch: true,
   checkoutPullRequest: true,
-  generateSshKey: true
+  generateSshKey: true,
+  getLfsInfo: true,
+  getLfsLocks: true,
+  lfsLock: true,
+  lfsUnlock: true,
+  lfsTrack: true,
+  lfsUntrack: true,
+  lfsMoveFiles: true,
+  setupLfs: true
 }
 
 export const API_METHODS = Object.keys(METHODS) as (keyof LeviathanInvokeApi)[]
