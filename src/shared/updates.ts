@@ -37,3 +37,13 @@ export function updateMode(
 export function releasePageUrl(version: string): string {
   return `${RELEASES}/tag/v${version}`
 }
+
+/** How often to look for a new release while the app runs, and the shortest gap when the user comes back to it. */
+const CHECK_EVERY_MS = 30 * 60_000
+const FOCUS_GAP_MS = 10 * 60_000
+
+/** Whether it is time to look for a new release again (`last`: when the previous check started). */
+export function updateCheckDue(now: number, last: number | null, reason: 'timer' | 'focus'): boolean {
+  if (last === null) return true
+  return now - last >= (reason === 'timer' ? CHECK_EVERY_MS : FOCUS_GAP_MS)
+}

@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { releasePageUrl, updateMode } from '../src/shared/updates'
+import { releasePageUrl, updateCheckDue, updateMode } from '../src/shared/updates'
+
+describe('updateCheckDue', () => {
+  const min = 60_000
+  it('checks every half hour, and on returning to the window at most every ten minutes', () => {
+    const now = 1_000_000_000
+    expect(updateCheckDue(now, null, 'timer')).toBe(true)
+    expect(updateCheckDue(now, now - 29 * min, 'timer')).toBe(false)
+    expect(updateCheckDue(now, now - 30 * min, 'timer')).toBe(true)
+    expect(updateCheckDue(now, now - 9 * min, 'focus')).toBe(false)
+    expect(updateCheckDue(now, now - 10 * min, 'focus')).toBe(true)
+  })
+})
 
 describe('updateMode', () => {
   it('installs updates in the Windows installer build and the Linux AppImage', () => {
