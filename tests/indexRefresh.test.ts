@@ -79,6 +79,29 @@ describe('index lock held by someone else', () => {
     expect((await repo.getState(work)).stashes).toHaveLength(1)
   })
 
+  it("waits for the app's refresh even when it took the lock after the command started", async () => {
+    writeFileSync(join(work, 'c.txt'), 'c\n')
+    const lock = join(work, '.git', 'index.lock')
+    writeFileSync(lock, '')
+    const staging = repo.stage(work, ['c.txt'])
+    await new Promise((r) => setTimeout(r, 100))
+    // Holds the lock longer than the retries of locking commands last.
+    const held = holdingIndex(work, async () => {
+      await new Promise((r) => setTimeout(r, 2500))
+      unlinkSync(lock)
+    })
+    await staging
+    await held
+    expect((await repo.getState(work)).status.staged.map((f) => f.path)).toEqual(['c.txt'])
+  })
+
+  it('stops waiting for a refresh that hangs', async () => {
+    void holdingIndex(work, () => new Promise(() => {}))
+    const start = Date.now()
+    await git(['rev-parse', 'HEAD'], { cwd: work })
+    expect(Date.now() - start).toBeLessThan(15_000)
+  })
+
   it('still fails, with git’s message, when the lock never goes away', async () => {
     writeFileSync(join(work, 'c.txt'), 'c\n')
     writeFileSync(join(work, '.git', 'index.lock'), '')

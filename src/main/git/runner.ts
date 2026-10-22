@@ -121,6 +121,13 @@ function indexHolderFor(cwd: string): Promise<unknown> | undefined {
   return undefined
 }
 
+/** How long commands wait for the app's own index refresh before going ahead anyway (a filter may hang). */
+const INDEX_HOLD_WAIT_MS = 10_000
+
+function waitFor(held: Promise<unknown>): Promise<unknown> {
+  return Promise.race([held.catch(() => {}), new Promise((r) => setTimeout(r, INDEX_HOLD_WAIT_MS))])
+}
+
 /**
  * Commands that take the index lock before changing anything. When another git (a terminal, an IDE, a background
  * refresh) holds it, they fail without having done anything, so they are simply tried again for a moment.
@@ -148,13 +155,23 @@ function indexLocked(err: unknown): boolean {
  * Runs git with an argument array (never through a shell) and collects output.
  */
 export async function git(args: string[], opts: RunOptions): Promise<RunResult> {
-  if (!opts.noLockWait) await indexHolderFor(opts.cwd)?.catch(() => {})
-  const deadline = Date.now() + LOCK_WAIT_MS
+  let waited = opts.noLockWait ? undefined : indexHolderFor(opts.cwd)
+  if (waited) await waitFor(waited)
+  let deadline = Date.now() + LOCK_WAIT_MS
   for (;;) {
     try {
       return await gitOnce(args, opts)
     } catch (err) {
-      if (opts.noLockWait || !LOCKING.has(args[0]) || !indexLocked(err) || Date.now() > deadline) throw err
+      if (opts.noLockWait || !LOCKING.has(args[0]) || !indexLocked(err)) throw err
+      // The app's own refresh may have taken the lock after this command started: wait for it, then try afresh.
+      const held = indexHolderFor(opts.cwd)
+      if (held && held !== waited) {
+        waited = held
+        await waitFor(held)
+        deadline = Date.now() + LOCK_WAIT_MS
+        continue
+      }
+      if (Date.now() > deadline) throw err
       await new Promise((r) => setTimeout(r, LOCK_RETRY_MS))
     }
   }

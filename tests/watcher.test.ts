@@ -44,6 +44,12 @@ describe('allIgnored', () => {
     expect(await allIgnored(work, ['Library/kept.txt'])).toBe(false)
     expect(await allIgnored(work, [])).toBe(false)
   })
+
+  it('checks thousands of paths at once (an editor rebuilding its cache)', async () => {
+    const many = Array.from({ length: 3000 }, (_, i) => `Temp/Cache/Folder${i % 50}/file${i}.bin`)
+    expect(await allIgnored(work, many)).toBe(true)
+    expect(await allIgnored(work, [...many, 'Assets/a.cs'])).toBe(false)
+  })
 })
 
 describe('watchRepo', () => {
@@ -69,5 +75,26 @@ describe('watchRepo', () => {
     writeFileSync(join(work, 'Assets', 'a.cs'), 'changed\n')
     expect(await waitFor(() => events.length > 0, 5000)).toBe(true)
     expect(events[0]).toEqual({ repo: work, kind: 'workdir' })
+  })
+
+  it('stays quiet through a long burst of thousands of ignored files', async () => {
+    await repo.getState(work)
+    await allIgnored(work, ['Temp/x'])
+    await new Promise((r) => setTimeout(r, 300))
+    events.length = 0
+    watchRepo(work, (e) => events.push(e))
+    await new Promise((r) => setTimeout(r, 300))
+    // Longer than the 2 s maximum wait, with more paths than the OS change buffer holds (Windows then reports
+    // "something changed" without a path).
+    const start = Date.now()
+    for (let round = 0; Date.now() - start < 4000; round++) {
+      mkdirSync(join(work, 'Temp', `Import${round}`))
+      for (let i = 0; i < 400; i++) writeFileSync(join(work, 'Temp', `Import${round}`, `asset${i}.bin`), String(i))
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    expect(events).toHaveLength(0)
+    // Afterwards at most one refresh, for the changes whose paths the OS dropped.
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(events.length).toBeLessThanOrEqual(1)
   })
 })

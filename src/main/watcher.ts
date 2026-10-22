@@ -11,14 +11,20 @@ interface Entry {
   paths: Set<string>
   /** When the first change of the current batch arrived. */
   since: number
+  /** The OS dropped paths (its change buffer overflowed during a burst): wait for quiet instead of reporting every 2 s. */
+  unknown: boolean
 }
 
 const DEBOUNCE_MS = 350
 /** Changes that never stop (an editor rebuilding its cache) still get reported this often. */
 const MAX_WAIT_MS = 2000
-/** Past this many changed paths, asking git which are ignored costs more than refreshing. */
-const MAX_CHECKED = 1000
 const entries = new Map<string, Entry>()
+
+/** The paths git ignores, of those given (paths go through stdin: 20 000 of them take under half a second). */
+async function ignoredAmong(repo: string, paths: string[]): Promise<Set<string>> {
+  const out = await git(['check-ignore', '-z', '--stdin'], { cwd: repo, input: paths.join('\0'), okCodes: [0, 1] })
+  return new Set(out.stdout.split('\0').filter(Boolean))
+}
 
 /** Classifies a changed path; `null` means "ignore". */
 export function classifyChange(filename: string | null): RepoChangedEvent['kind'] | null {
@@ -39,20 +45,23 @@ export function classifyChange(filename: string | null): RepoChangedEvent['kind'
  */
 export async function allIgnored(repo: string, paths: string[]): Promise<boolean> {
   if (!paths.length) return false
-  // Folder patterns (`/Library/`) only match a folder's own path when git is told it is one.
-  const wanted = await Promise.all(
-    [...new Set(paths)].map(async (p) => {
+  try {
+    const unique = [...new Set(paths)]
+    const ignored = await ignoredAmong(repo, unique)
+    const rest = unique.filter((p) => !ignored.has(p))
+    if (!rest.length) return true
+    // Folder patterns (`/Library/`) only match a folder's own path when git is told it is one.
+    const folders: string[] = []
+    for (const p of rest) {
       const isDir = await fs.lstat(join(repo, p)).then(
         (s) => s.isDirectory(),
         () => false
       )
-      return isDir ? `${p}/` : p
-    })
-  )
-  try {
-    const out = await git(['check-ignore', '-z', '--stdin'], { cwd: repo, input: wanted.join('\0'), okCodes: [0, 1] })
-    const ignored = new Set(out.stdout.split('\0').filter(Boolean))
-    return wanted.every((p) => ignored.has(p))
+      if (!isDir) return false
+      folders.push(`${p}/`)
+    }
+    const ignoredFolders = await ignoredAmong(repo, folders)
+    return folders.every((p) => ignoredFolders.has(p))
   } catch {
     return false
   }
@@ -66,7 +75,7 @@ export function watchRepo(repo: string, notify: (e: RepoChangedEvent) => void): 
   } catch {
     return // Watching is best-effort; the UI also refreshes on focus.
   }
-  const entry: Entry = { watcher, timer: null, kind: null, paths: new Set(), since: 0 }
+  const entry: Entry = { watcher, timer: null, kind: null, paths: new Set(), since: 0, unknown: false }
 
   const flush = async () => {
     const kind = entry.kind ?? 'workdir'
@@ -74,7 +83,8 @@ export function watchRepo(repo: string, notify: (e: RepoChangedEvent) => void): 
     entry.kind = null
     entry.timer = null
     entry.paths = new Set()
-    if (kind === 'workdir' && paths.length <= MAX_CHECKED && (await allIgnored(repo, paths))) return
+    entry.unknown = false
+    if (kind === 'workdir' && (await allIgnored(repo, paths))) return
     if (entries.get(repo) === entry) notify({ repo, kind })
   }
 
@@ -83,11 +93,13 @@ export function watchRepo(repo: string, notify: (e: RepoChangedEvent) => void): 
     const kind = classifyChange(name)
     if (!kind) return
     if (kind === 'workdir' && name) entry.paths.add(name.replace(/\\/g, '/'))
+    if (!name) entry.unknown = true
     entry.kind = entry.kind === 'git' || kind === 'git' ? 'git' : 'workdir'
     const now = Date.now()
     if (entry.timer) clearTimeout(entry.timer)
     else entry.since = now
-    entry.timer = setTimeout(() => void flush(), Math.max(0, Math.min(DEBOUNCE_MS, entry.since + MAX_WAIT_MS - now)))
+    const wait = entry.unknown ? DEBOUNCE_MS : Math.max(0, Math.min(DEBOUNCE_MS, entry.since + MAX_WAIT_MS - now))
+    entry.timer = setTimeout(() => void flush(), wait)
   })
   watcher.on('error', () => unwatchRepo(repo))
   entries.set(repo, entry)
