@@ -1,5 +1,5 @@
-import { type FSWatcher, promises as fs, watch } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, type FSWatcher, promises as fs, readFileSync, statSync, watch } from 'node:fs'
+import { join, resolve } from 'node:path'
 import type { RepoChangedEvent } from '../shared/types'
 import { git } from './git/runner'
 
@@ -19,6 +19,22 @@ const DEBOUNCE_MS = 350
 /** Changes that never stop (an editor rebuilding its cache) still get reported this often. */
 const MAX_WAIT_MS = 2000
 const entries = new Map<string, Entry>()
+const LOCK_POLL_MS = 250
+const MAX_LOCK_WAIT_MS = 60_000
+
+/** `.git/index.lock`, or that of the git folder a `.git` file points to (worktrees, submodules). */
+function indexLockPath(repo: string): string {
+  const dotGit = join(repo, '.git')
+  try {
+    if (statSync(dotGit).isFile()) {
+      const target = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, 'utf8'))?.[1]?.trim()
+      if (target) return join(resolve(repo, target), 'index.lock')
+    }
+  } catch {
+    // no .git yet: the plain layout
+  }
+  return join(dotGit, 'index.lock')
+}
 
 /** The paths git ignores, of those given (paths go through stdin: 20 000 of them take under half a second). */
 async function ignoredAmong(repo: string, paths: string[]): Promise<Set<string>> {
@@ -77,7 +93,20 @@ export function watchRepo(repo: string, notify: (e: RepoChangedEvent) => void): 
   }
   const entry: Entry = { watcher, timer: null, kind: null, paths: new Set(), since: 0, unknown: false }
 
+  const lock = indexLockPath(repo)
+  let lockSince: number | null = null
+
   const flush = async () => {
+    // While git writes files (a pull, a checkout, LFS downloads) it holds the index lock: a refresh now would show
+    // its half-done work as changes. Wait for it, unless the lock is so old a crashed git most likely left it.
+    if (existsSync(lock)) {
+      const now = Date.now()
+      lockSince ??= now
+      if (now - lockSince < MAX_LOCK_WAIT_MS) {
+        entry.timer = setTimeout(() => void flush(), LOCK_POLL_MS)
+        return
+      }
+    } else lockSince = null
     const kind = entry.kind ?? 'workdir'
     const paths = [...entry.paths]
     entry.kind = null
