@@ -20,18 +20,24 @@ const TOKEN = 'gho_from_device_flow'
 let currentToken = TOKEN
 let lastAuth: string | undefined
 let authorized = false
+// Holds the code request until released, to cancel while GitHub has not answered yet.
+let codeGate: Promise<void> | null = null
+let pollInterval = 0
+let polls = 0
 vi.stubGlobal('fetch', async (url: string, init?: { headers?: Record<string, string>; body?: string }) => {
   const json = (body: unknown) => ({ ok: true, status: 200, json: async () => body })
   if (url === 'https://github.com/login/device/code') {
+    if (codeGate) await codeGate
     return json({
       device_code: 'secret-device-code',
       user_code: 'WXYZ-9876',
       verification_uri: 'https://github.com/login/device',
       expires_in: 900,
-      interval: 0
+      interval: pollInterval
     })
   }
   if (url === 'https://github.com/login/oauth/access_token') {
+    polls++
     return json(authorized ? { access_token: currentToken } : { error: 'authorization_pending' })
   }
   lastAuth = init?.headers?.Authorization
@@ -46,6 +52,9 @@ const accounts = await import('../src/main/accounts')
 
 beforeEach(() => {
   authorized = false
+  codeGate = null
+  pollInterval = 0
+  polls = 0
   currentToken = TOKEN
   for (const a of accounts.listAccounts()) accounts.removeAccount(a.id)
 })
@@ -96,6 +105,29 @@ describe('signing in to GitHub from the browser', () => {
     expect(accounts.listAccounts()).toEqual([{ ...first, name: 'Ana (personal)' }])
     await accounts.listAccountRepos(first.id)
     expect(lastAuth).toBe('Bearer gho_renewed_token')
+  })
+
+  it('cancelling while the code is being requested stops the sign-in', async () => {
+    let release!: () => void
+    codeGate = new Promise((resolve) => (release = resolve))
+    const starting = accounts.startGitHubLogin()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    accounts.cancelGitHubLogin()
+    release()
+    await expect(starting).rejects.toThrow(/cancelled/i)
+    await expect(accounts.finishGitHubLogin()).rejects.toThrow(/no sign-in/i)
+    expect(polls).toBe(0)
+  })
+
+  it('stops waiting as soon as it is cancelled', async () => {
+    pollInterval = 5
+    await accounts.startGitHubLogin()
+    const finishing = accounts.finishGitHubLogin()
+    const cancelledAt = Date.now() + 20
+    setTimeout(() => accounts.cancelGitHubLogin(), 20)
+    await expect(finishing).rejects.toThrow(/cancelled/i)
+    expect(Date.now() - cancelledAt).toBeLessThan(500)
+    expect(polls).toBe(0)
   })
 
   it('cannot finish without starting', async () => {

@@ -8,7 +8,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 - Select several files in the unstaged or staged list (checkboxes, Ctrl+click, Shift+click for a range, or the header checkbox for all) and stage, unstage or discard them together; right-clicking a selection offers the same.
 - Drag the divider between the unstaged and staged lists to give one of them more room; the position is remembered.
-- Sign in with GitHub from Settings → Accounts: enter the code shown in the browser and the account is added, no token to create. Organizations that restrict OAuth apps must approve Leviathan before their repositories are reachable with it.
+- Sign in with GitHub from Settings → Accounts: Leviathan shows a code, you enter it on GitHub in the browser and the account is added, no token to create. Organizations that restrict OAuth apps must approve Leviathan before their repositories are reachable with it.
 
 ### Fixed
 

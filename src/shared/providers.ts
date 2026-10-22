@@ -39,7 +39,7 @@ export function noreplyEmail(provider: Provider, host: string, id: number, usern
 export function tokenPageUrl(provider: Provider, host: string): string | null {
   switch (provider) {
     case 'github':
-      return `https://${host}/settings/tokens/new?scopes=repo,read:user&description=Leviathan`
+      return `https://${host}/settings/tokens/new?scopes=repo,workflow,read:user&description=Leviathan`
     case 'gitlab':
       return `https://${host}/-/user_settings/personal_access_tokens?name=Leviathan&scopes=api,read_user,write_repository`
     case 'gitea':
@@ -77,5 +77,5 @@ export function hasRemoteOnHost(remotes: Remote[], host: string): boolean {
 
 /** Leviathan's OAuth App on GitHub, to sign in from the browser (device flow). Public by design. */
 export const GITHUB_CLIENT_ID = 'Ov23liIeu6UqggJLSdlI'
-/** The same permissions a token made from the token page gets. */
-export const GITHUB_SCOPES = 'repo read:user'
+/** The same permissions a token made from the token page gets (`workflow`: pushes that change CI files). */
+export const GITHUB_SCOPES = 'repo workflow read:user'

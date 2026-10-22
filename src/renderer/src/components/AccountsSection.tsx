@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pencil, Trash2, UserRound } from 'lucide-react'
 import { DEFAULT_HOSTS, PROVIDERS, tokenPageUrl } from '../../../shared/providers'
 import type { Account, Provider } from '../../../shared/types'
@@ -38,8 +38,10 @@ export function AccountsSection() {
   const [accounts, setAccounts] = useState<Account[] | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [saving, setSaving] = useState(false)
-  // GitHub sign-in in progress: the code to enter in the browser (null while it is being requested).
+  // GitHub sign-in in progress: the code to enter in the browser ('starting' while it is requested).
   const [login, setLogin] = useState<{ userCode: string; verificationUri: string } | null | 'starting'>(null)
+  // Each sign-in (and each cancel) gets a new number: a cancelled one must not touch the next one's box.
+  const attempt = useRef(0)
 
   const load = () =>
     api
@@ -52,24 +54,34 @@ export function AccountsSection() {
   }, [])
 
   // Closing Settings while waiting abandons the sign-in.
-  useEffect(() => () => void api.cancelGitHubLogin(), [])
+  useEffect(
+    () => () => {
+      attempt.current++
+      void api.cancelGitHubLogin()
+    },
+    []
+  )
 
   const signIn = async () => {
+    const mine = ++attempt.current
+    const current = () => attempt.current === mine
     setLogin('starting')
     try {
       const started = await api.startGitHubLogin()
+      if (!current()) return
       setLogin(started)
       const account = await api.finishGitHubLogin()
       toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
       await load()
     } catch (err) {
-      if (!/cancelled/i.test(errorMessage(err))) toast('error', errorMessage(err))
+      if (current() && !/cancelled/i.test(errorMessage(err))) toast('error', errorMessage(err))
     } finally {
-      setLogin(null)
+      if (current()) setLogin(null)
     }
   }
 
   const cancelSignIn = () => {
+    attempt.current++
     void api.cancelGitHubLogin()
     setLogin(null)
   }

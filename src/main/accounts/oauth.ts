@@ -58,8 +58,22 @@ export async function pollDeviceFlow(
   opts: { fetchFn?: FetchFn; sleep?: (ms: number) => Promise<void>; signal?: AbortSignal } = {}
 ): Promise<string> {
   const fetchFn = opts.fetchFn ?? fetch
-  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
   const cancelled = () => new Error('Sign-in cancelled')
+  // Waits between polls, cut short by a cancel.
+  const sleep =
+    opts.sleep ??
+    ((ms: number) =>
+      new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(resolve, ms)
+        opts.signal?.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer)
+            reject(cancelled())
+          },
+          { once: true }
+        )
+      }))
   let interval = code.interval
   for (;;) {
     await sleep(interval * 1000)

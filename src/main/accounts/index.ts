@@ -202,20 +202,28 @@ export function cloneArgsFor(accountId: string): string[] {
 // Signing in to GitHub from the browser (device flow). The code being waited
 // for stays here, and the token goes straight into the account store.
 
-let login: { code: DeviceCode; controller: AbortController } | null = null
+/** The sign-in in progress; `code` is null while GitHub has not answered yet. */
+let login: { code: DeviceCode | null; controller: AbortController } | null = null
 
 /** Starts a sign-in (cancelling one still waiting): the code for the user to enter on GitHub. */
 export async function startGitHubLogin(): Promise<{ userCode: string; verificationUri: string; expiresIn: number }> {
   cancelGitHubLogin()
+  // Registered before asking GitHub, so a cancel while the code is on its way stops it too.
+  const pending: { code: DeviceCode | null; controller: AbortController } = {
+    code: null,
+    controller: new AbortController()
+  }
+  login = pending
   const code = await startDeviceFlow(GITHUB_CLIENT_ID, GITHUB_SCOPES)
-  login = { code, controller: new AbortController() }
+  if (login !== pending) throw new Error('Sign-in cancelled')
+  pending.code = code
   return { userCode: code.userCode, verificationUri: code.verificationUri, expiresIn: code.expiresIn }
 }
 
 /** Waits until the code is authorized in the browser, then adds the account. */
 export async function finishGitHubLogin(): Promise<Account> {
   const current = login
-  if (!current) throw new Error('No sign-in in progress')
+  if (!current?.code) throw new Error('No sign-in in progress')
   try {
     const token = await pollDeviceFlow(GITHUB_CLIENT_ID, current.code, { signal: current.controller.signal })
     return await addAccount({ provider: 'github', host: 'github.com', token })

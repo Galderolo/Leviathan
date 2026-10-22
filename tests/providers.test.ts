@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  GITHUB_SCOPES,
   apiBase,
   credentialArgs,
   hasRemoteOnHost,
@@ -28,7 +29,7 @@ describe('provider helpers', () => {
 
   it('links to the page where a token is created', () => {
     expect(tokenPageUrl('github', 'github.com')).toBe(
-      'https://github.com/settings/tokens/new?scopes=repo,read:user&description=Leviathan'
+      'https://github.com/settings/tokens/new?scopes=repo,workflow,read:user&description=Leviathan'
     )
     expect(tokenPageUrl('gitlab', 'gitlab.com')).toBe(
       'https://gitlab.com/-/user_settings/personal_access_tokens?name=Leviathan&scopes=api,read_user,write_repository'
@@ -61,5 +62,11 @@ describe('hasRemoteOnHost', () => {
     expect(hasRemoteOnHost([remote('https://gitlab.com/ana/app.git')], 'github.com')).toBe(false)
     expect(hasRemoteOnHost([remote('https://notgithub.com/ana/app.git')], 'github.com')).toBe(false)
     expect(hasRemoteOnHost([], 'github.com')).toBe(false)
+  })
+})
+
+describe('GitHub sign-in permissions', () => {
+  it('match the token page, including pushes that change workflows', () => {
+    expect(GITHUB_SCOPES.split(' ').sort()).toEqual(['read:user', 'repo', 'workflow'])
   })
 })
