@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-22, with 0.4.0 released (267 tests). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-22, with 0.5.0 released (288 tests). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -13,6 +13,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.3.0 | 2026-10-21 | Undo/redo, conflict editor, interactive rebase, pull requests, pull without checkout, unpushed-commit marks, new icon (no macOS installers) |
 | 0.3.1 | 2026-10-22 | Same app as 0.3.0, with the macOS installers |
 | 0.4.0 | 2026-10-22 | Sign in with GitHub, multi-file selection, close pull requests, file history and blame, word highlights and side-by-side diffs |
+| 0.5.0 | 2026-10-22 | Automatic updates from the GitHub releases, graph focus (hide/solo branches, branch highlight, PR badges) |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
