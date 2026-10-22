@@ -6,12 +6,17 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- Close a pull request from its menu in the side panel (GitHub, GitLab, Gitea).
 - Select several files in the unstaged or staged list (checkboxes, Ctrl+click, Shift+click for a range, or the header checkbox for all) and stage, unstage or discard them together; right-clicking a selection offers the same.
 - Drag the divider between the unstaged and staged lists to give one of them more room; the position is remembered.
 - Sign in with GitHub from Settings → Accounts: Leviathan shows a code, you enter it on GitHub in the browser and the account is added, no token to create. Organizations that restrict OAuth apps must approve Leviathan before their repositories are reachable with it.
 
 ### Fixed
 
+- The pull request list reloads when accounts or remotes change; rows show source → target.
+- Interactive rebase: a refused rebase keeps the dialog and what was typed; a stopped one shows a short message and the conflicted files; no shortcuts act behind the dialog or Settings; its temporary files are removed at the end.
+- The open diff follows its file when it is staged or unstaged whole, and closes when the file has no changes left.
+- Undo/redo messages for an action that can no longer apply say which one, translated.
 - Adding an account that is already there (signing in again, or a new token) renews its token instead of adding it twice.
 
 ## [0.3.1] - 2026-10-22

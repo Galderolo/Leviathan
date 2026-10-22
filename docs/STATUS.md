@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-22, with 0.3.1 released (213 tests).
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-22, with 0.3.1 released and more on `main` (see the CHANGELOG, 248 tests).
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -59,7 +59,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **Undo / redo**
 - Applying a change is not atomic (could use `update-ref --stdin`), and there is no guard against two undos at once.
 - Tags fetched in the background end up in the next recorded change.
-- The redo error message says "undone" and is not translated.
 - The first commit of an empty repository cannot be undone.
 - Some actions are not recorded (stash, discard…).
 - Undoing a branch rename restarts its reflog; undoing a merge commit does not restore `MERGE_MODE` (`--no-ff`).
@@ -71,18 +70,12 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - No line limit: up to 2 MB is rendered as one element per line.
 
 **Interactive rebase**
-- The dialog closes when the rebase is refused (for example, uncommitted changes) and typed messages are lost.
-- Esc closes the dialog while it runs, and app shortcuts (Ctrl+W, Ctrl+Z, Ctrl+Tab) act behind it.
-- The conflict toast shows git's raw output, including the internal `exec` line.
 - A rebase that stopped for a conflict and was continued is not undoable.
-- `.git/leviathan-rebase/` stays after success.
 - If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
 
 **Pull requests**
-- The list is not reloaded after adding or removing accounts or remotes until the next fetch.
 - A token that can no longer be decrypted hides the section without a hint.
 - 401/403 messages are generic (no Gitea scope; expired token vs. missing scope).
-- Rows show `#N title author`; `source → target` is only in the tooltip.
 - More than 50 open PRs are not paginated; fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 - A local branch named `pr` blocks `pr/N`.
 
