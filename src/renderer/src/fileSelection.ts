@@ -20,11 +20,10 @@ export function clickSelection(
   if (mods.shift) {
     const from = selection.anchor ? order.indexOf(selection.anchor) : -1
     const to = order.indexOf(clicked)
-    const start = Math.min(from < 0 ? 0 : from, to)
-    const end = Math.max(from < 0 ? 0 : from, to)
-    const range = order.slice(start, end + 1)
+    // No file to start from (none clicked yet, or it left the list): just this one, never a jump to the top.
+    const range = from < 0 ? [clicked] : order.slice(Math.min(from, to), Math.max(from, to) + 1)
     const paths = new Set(mods.toggle ? [...selection.paths, ...range] : range)
-    return { paths, anchor: selection.anchor && from >= 0 ? selection.anchor : order[0] }
+    return { paths, anchor: from < 0 ? clicked : selection.anchor }
   }
   if (mods.toggle) {
     const paths = new Set(selection.paths)
@@ -59,4 +58,9 @@ export function pruneSelection(selection: FileSelection, order: string[]): FileS
 export function splitRatio(ratio: number): number {
   if (!Number.isFinite(ratio)) return 0.5
   return Math.min(0.85, Math.max(0.15, ratio))
+}
+
+/** The files a confirmation names (the first `max`) and how many more there are. */
+export function listForDialog(paths: string[], max = 10): { shown: string[]; more: number } {
+  return { shown: paths.slice(0, max), more: Math.max(0, paths.length - max) }
 }

@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { AlertTriangle, Copy, PencilLine } from 'lucide-react'
 import type { DiffSource, FileChange } from '../../../shared/types'
 import {
@@ -105,7 +105,10 @@ function FileRow(props: {
         <input
           type="checkbox"
           className="file-check"
+          tabIndex={-1}
+          aria-label={props.file.path}
           checked={select.checked}
+          onMouseDown={(e) => e.preventDefault()}
           onChange={() => {}}
           onClick={(e) => {
             e.stopPropagation()
@@ -176,6 +179,10 @@ function useFileSelection(files: FileChange[]) {
   const order = files.map((f) => f.path)
   const [state, setState] = useState<FileSelection>(emptySelection)
   const selection = pruneSelection(state, order)
+  // Files that left the list (staged, discarded...) are forgotten for good: if they come back, unchecked.
+  useEffect(() => {
+    if (selection !== state) setState(selection)
+  }, [selection, state])
   const selected = files.filter((f) => selection.paths.has(f.path))
   return {
     selected,
@@ -303,13 +310,13 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
               <>
                 <button
                   className="btn small btn-danger-ghost"
-                  onClick={() => void discardFiles(path, unstagedSel.selected)}
+                  onClick={() => void discardFiles(path, unstagedSel.selected).then((ok) => ok && unstagedSel.clear())}
                 >
-                  {t('wip.discardSelected')}
+                  {t('wip.discardSelected', { count: unstagedSel.selected.length })}
                 </button>
                 <button
                   className="btn small btn-stage"
-                  onClick={() => void stageFiles(path, unstagedSel.selected).then(unstagedSel.clear)}
+                  onClick={() => void stageFiles(path, unstagedSel.selected).then((ok) => ok && unstagedSel.clear())}
                 >
                   {t('wip.stageSelected', { count: unstagedSel.selected.length })}
                 </button>
@@ -357,7 +364,7 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
             stagedSel.some ? (
               <button
                 className="btn small btn-unstage"
-                onClick={() => void unstageFiles(path, stagedSel.selected).then(stagedSel.clear)}
+                onClick={() => void unstageFiles(path, stagedSel.selected).then((ok) => ok && stagedSel.clear())}
               >
                 {t('wip.unstageSelected', { count: stagedSel.selected.length })}
               </button>

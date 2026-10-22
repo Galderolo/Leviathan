@@ -3,6 +3,7 @@ import {
   clickSelection,
   emptySelection,
   focusSelection,
+  listForDialog,
   pruneSelection,
   splitRatio,
   toggleAll,
@@ -43,8 +44,16 @@ describe('clickSelection', () => {
     expect(paths(clickSelection(sel(['a', 'd'], 'd'), order, 'e', both))).toEqual(['a', 'd', 'e'])
   })
 
-  it('Shift without a previous click selects from the top', () => {
-    expect(paths(clickSelection(emptySelection(), order, 'c', shift))).toEqual(['a', 'b', 'c'])
+  it('Shift without a previous click selects only that file, and starts there', () => {
+    const next = clickSelection(emptySelection(), order, 'c', shift)
+    expect(paths(next)).toEqual(['c'])
+    expect(next.anchor).toBe('c')
+  })
+
+  it('Shift after the last clicked file left the list does not reach back to the top', () => {
+    const next = clickSelection(sel([], 'gone'), order, 'd', shift)
+    expect(paths(next)).toEqual(['d'])
+    expect(next.anchor).toBe('d')
   })
 })
 
@@ -82,5 +91,13 @@ describe('splitRatio', () => {
     expect(splitRatio(0.01)).toBe(0.15)
     expect(splitRatio(0.99)).toBe(0.85)
     expect(splitRatio(Number.NaN)).toBe(0.5)
+  })
+})
+
+describe('listForDialog', () => {
+  it('names up to ten files and counts the rest', () => {
+    const many = Array.from({ length: 13 }, (_, i) => `f${i}.txt`)
+    expect(listForDialog(many)).toEqual({ shown: many.slice(0, 10), more: 3 })
+    expect(listForDialog(['a', 'b'])).toEqual({ shown: ['a', 'b'], more: 0 })
   })
 })

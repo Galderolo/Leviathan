@@ -17,6 +17,7 @@ import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import { isFetchDue } from './autofetch'
+import { listForDialog } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { remotesToChooseFrom } from './pushTarget'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, undoModeForReset } from './undoStack'
@@ -979,20 +980,20 @@ export function unstageAll(path: string): Promise<boolean> {
   return runOp(path, () => api.unstageAll(path), { log: false })
 }
 
-export async function discardFiles(path: string, files: FileChange[]): Promise<void> {
-  const ok = await confirmDialog({
-    title: t('menu.discard'),
-    message:
-      files.length === 1
-        ? t('dlg.discardFile', { name: files[0].path })
-        : t('dlg.discardFiles', { count: files.length }),
-    confirmText: t('menu.discard'),
-    danger: true
-  })
-  if (!ok) return
+/** Discards changes after a confirmation that names the files. True when they were discarded. */
+export async function discardFiles(path: string, files: FileChange[]): Promise<boolean> {
+  let message = t('dlg.discardFile', { name: files[0]?.path ?? '' })
+  if (files.length > 1) {
+    const { shown, more } = listForDialog(files.map((f) => f.path))
+    const list = shown.map((p) => '• ' + p).join('\n') + (more ? '\n' + t('dlg.andMore', { count: more }) : '')
+    message = t('dlg.discardFiles', { count: files.length }) + '\n\n' + list
+  }
+  if (files.some((f) => f.status === '?')) message += '\n\n' + t('dlg.discardUntracked')
+  const ok = await confirmDialog({ title: t('menu.discard'), message, confirmText: t('menu.discard'), danger: true })
+  if (!ok) return false
   const tracked = files.filter((f) => f.status !== '?').map((f) => f.path)
   const untracked = files.filter((f) => f.status === '?').map((f) => f.path)
-  await runOp(path, () => api.discard(path, tracked, untracked), { log: false })
+  return runOp(path, () => api.discard(path, tracked, untracked), { log: false })
 }
 
 export async function discardAll(path: string): Promise<void> {
