@@ -2,7 +2,6 @@ import { existsSync, promises as fs } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import {
   LOG_FORMAT,
-  REF_FORMAT,
   STASH_FORMAT,
   contentDiff,
   parseDiff,
@@ -33,6 +32,7 @@ import type {
 } from '../../shared/types'
 import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
 import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
+import { listRefs } from './refs'
 import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
 import { lfsFilesAmong, plainLfs, stagedBlobs } from './staged'
 
@@ -144,10 +144,7 @@ export async function getState(repo: string): Promise<RepoState> {
   const [statusOut, remotesOut, refsOut, stashOut, operation] = await Promise.all([
     run(repo, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all']),
     run(repo, ['remote', '-v']),
-    // `upstream:track` is localised; force the C locale so it can be parsed.
-    run(repo, ['for-each-ref', `--format=${REF_FORMAT}`, 'refs/heads', 'refs/remotes', 'refs/tags'], {
-      env: { LC_ALL: 'C' }
-    }),
+    listRefs(repo),
     run(repo, ['stash', 'list', `--format=${STASH_FORMAT}`]),
     currentOperation(repo)
   ])
