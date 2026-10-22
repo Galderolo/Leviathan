@@ -34,6 +34,7 @@ import {
   undo
 } from '../actions'
 import { useT } from '../i18n'
+import { pushCount } from '../pushTarget'
 import { getRepo, useRepo, useStore, type MenuItem } from '../store'
 import { openMenuBelow } from '../ui'
 import { basename, cx, matchesFilter, shortHash } from '../utils'
@@ -91,6 +92,7 @@ export function Toolbar({ path }: { path: string }) {
   const pullMode = useStore((s) => s.settings.pullMode)
   const state = view?.state
   const head = state?.head
+  const toPush = state ? pushCount(state) : 0
   const busy = view?.busy ?? null
   const remoteBusy = busy !== null
   const lastUndo = view?.undo[view.undo.length - 1]
@@ -211,7 +213,7 @@ export function Toolbar({ path }: { path: string }) {
           onCaret={pushMenu}
           busy={busy === 'push'}
           disabled={remoteBusy}
-          badge={head?.ahead ? String(head.ahead) : undefined}
+          badge={toPush ? String(toPush) : undefined}
         />
         <div className="toolbar-sep" />
         <ToolButton icon={GitBranchPlus} label={t('toolbar.branchBtn')} onClick={() => void createBranch(path, null)} />
