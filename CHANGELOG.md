@@ -10,6 +10,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- The Push button counts the commits of a branch that was never pushed (the ones marked ↑ in the graph); it only showed a number once the branch had an upstream.
 - A cherry-pick, revert, merge, rebase or pull that stops for conflicts no longer shows git's output as an error: a short note says what to do, and the changes view opens with the banner and the conflicted files.
 
 ## [0.9.3] - 2026-10-22

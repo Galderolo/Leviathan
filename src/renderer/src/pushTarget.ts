@@ -1,4 +1,13 @@
-import type { GitRef, HeadInfo, Remote } from '../../shared/types'
+import type { GitRef, HeadInfo, Remote, RepoState } from '../../shared/types'
+
+/**
+ * How many commits a push would send, as the graph marks them: those ahead of
+ * the upstream, or, for a branch without one (never pushed, or its remote
+ * branch deleted), those on no remote. git only counts "ahead" against an upstream.
+ */
+export function pushCount(state: Pick<RepoState, 'head' | 'unpushed'>): number {
+  return state.head.ahead || state.unpushed.length
+}
 
 /**
  * Remotes the user must pick from before pushing `branch`, or null when there

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { git } from '../src/main/git/runner'
+import { pushCount } from '../src/renderer/src/pushTarget'
 
 let root: string
 let work: string
@@ -74,5 +75,33 @@ describe('unpushed commits', () => {
   it('is empty without remotes', async () => {
     await commitFile('b.txt', 'one')
     expect((await repo.getState(work)).unpushed).toEqual([])
+  })
+})
+
+describe('pushCount', () => {
+  it('counts the commits ahead of the upstream', async () => {
+    await git(['remote', 'add', 'origin', join(root, 'origin.git')], { cwd: work })
+    await git(['push', '-q', '-u', 'origin', 'main'], { cwd: work })
+    await commitFile('b.txt', 'one')
+    await commitFile('c.txt', 'two')
+    expect(pushCount(await repo.getState(work))).toBe(2)
+  })
+
+  it('counts the commits on no remote for a branch that was never pushed', async () => {
+    await git(['remote', 'add', 'origin', join(root, 'origin.git')], { cwd: work })
+    await git(['push', '-q', 'origin', 'main'], { cwd: work })
+    await repo.createBranch(work, 'feature/test-1', null, true)
+    await commitFile('t1.txt', 'one')
+    await commitFile('t2.txt', 'two')
+    const state = await repo.getState(work)
+    // git only counts "ahead" against an upstream: the toolbar used to show nothing here.
+    expect(state.head.ahead).toBe(0)
+    expect(pushCount(state)).toBe(2)
+  })
+
+  it('is zero when everything is pushed', async () => {
+    await git(['remote', 'add', 'origin', join(root, 'origin.git')], { cwd: work })
+    await git(['push', '-q', '-u', 'origin', 'main'], { cwd: work })
+    expect(pushCount(await repo.getState(work))).toBe(0)
   })
 })
