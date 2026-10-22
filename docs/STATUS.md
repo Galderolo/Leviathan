@@ -30,6 +30,20 @@ All of these went through a final whole-branch review; Critical and Important fi
 - **New app icon** (`resources/icon.png`, `src/renderer/public/leviathan.png`).
 - **Release workflow**: a first job creates a draft with the CHANGELOG notes, the three builds keep their installers as artifacts, and a last job uploads them and publishes the release (0.3.1).
 
+## Unreleased: Git LFS
+
+On `main`, not released yet. Code: `src/shared/lfs.ts` (attributes and lock parsing), `src/main/git/lfs.ts` (git-lfs commands), `lfsFiles` / `largeFiles` in `getState`, `src/renderer/src/lfsView.ts`, the LFS section in `LeftPanel.tsx`, `LfsWarnings` in `RightPanel.tsx`. Tests run against a fake LFS lock server (`tests/lfsRepo.test.ts`, `lfs.url` pointing at 127.0.0.1) and skip when git-lfs is missing.
+
+Things worth knowing about git-lfs (3.5):
+- `git lfs locks --json` hides errors: an unreachable server, or one without `/locks/verify`, lists nothing with exit code 0. `getLfsLocks` asks again without `--json` when the list is empty, and falls back to unverified locks (owner shown, mine/theirs unknown).
+- Unlocking a lockable file that does not exist locally fails after the server already released it (git-lfs cannot reset its permissions): `lfsUnlock` lists the locks again and treats a vanished lock as success.
+- The user's own locks are released by path, so git-lfs refuses while the file has uncommitted changes; someone else's are released by id with `--force`.
+- Patterns are read from the attributes files directly (works without git-lfs, never installs hooks as a side effect); `.git/info/attributes` is not read.
+- Locks load without prompts when a repository opens and after a fetch; the reload button in the section may ask for credentials.
+- Once a file goes through LFS, git compares its staged content with the cleaned (pointer) working copy and always reports a change. Before staging a file again through LFS, `changedSinceStaged` compares raw bytes (`hash-object --no-filters`) so a staged version is never replaced by a different working copy.
+- Staged blob sizes are cached by hash in the main process (`src/main/git/staged.ts`), so a refresh with thousands of staged files does not ask git for every size again.
+- Attribute macros (`[attr]lfs filter=lfs …`) are expanded when defined in the root `.gitattributes`, as git does.
+
 ## Next steps
 
 ### 1. Keep an eye on 0.3.0
@@ -75,6 +89,17 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - When a rebase stops for something other than conflicts (an untracked file in the way, a failed step), the message still says "usually for conflicts" and drops git's reason.
 - A rebase that stopped for a conflict and was continued is not undoable.
 - If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
+
+**Git LFS**
+- Pattern info has no sequence counter: two quick checkouts can leave the older patterns on screen until the next change.
+- "No locked files" shows when git-lfs is missing (nothing was asked), and locks are not loaded when git-lfs is installed while the app runs, until the next checkout or reopening the tab.
+- Loading locks can take up to four git-lfs runs (verify, then without it); a host without the locks API shows a red error after every open or fetch, and an interactive reload without a credential helper may ask several times.
+- An own lock on a file deleted locally (deletion not committed) is released by id, skipping git-lfs's uncommitted-changes check.
+- "Require locking before editing" has no confirmation, and makes matching files read-only at once (also files open in an editor).
+- Lock lookups per file row are linear in the number of locks (fine for hundreds).
+- A pre-push hook from another tool (husky…) stops git-lfs from installing its own: the section says "not set up" and *Set up* fails with "Hook already exists" (`git lfs update --manual` is the way out).
+- The "+" (track a pattern) button shows even when git-lfs is missing, and fails with "'lfs' is not a git command".
+- "Lock 1 files" when only one of the selected files can be locked.
 
 **Pull requests**
 - A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.

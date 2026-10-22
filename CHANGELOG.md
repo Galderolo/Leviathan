@@ -4,6 +4,13 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- Git LFS: in repositories that use it, an LFS section in the side panel lists the tracked patterns and the locked files (yours and other people's), and files that go through LFS carry an LFS tag. Lock and unlock files from their menu; someone else's lock can be forced open after a confirmation. Track new patterns (optionally lockable) from the section or a file's menu, also in a repository that does not use LFS yet; files already staged that the new pattern covers are staged again through LFS. A file you changed that someone else locked is flagged in red, with a warning above the commit button.
+- A staged file over 50 MB that is not in Git LFS gets a warning above the commit button (GitHub rejects files over 100 MB), with a button that tracks its extension with LFS and stages it again through LFS.
+- Files that should go through Git LFS but were staged with their whole content (staged before their pattern existed, or without git-lfs) get a warning above the commit button, with a button that stages them through LFS. A file whose working copy changed since it was staged is never replaced: you are asked to stage it again instead.
+- When a repository uses Git LFS but git-lfs is missing or not set up, the side panel says so, with a link to download it or a button that sets it up (`git lfs install`) and downloads the LFS files.
+
 ## [0.5.0] - 2026-10-22
 
 ### Added

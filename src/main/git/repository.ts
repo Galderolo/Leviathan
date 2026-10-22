@@ -14,6 +14,7 @@ import {
   parseStatus,
   untrackedDiff
 } from '../../shared/parsers'
+import { LARGE_FILE_BYTES } from '../../shared/lfs'
 import type {
   Commit,
   BlameLine,
@@ -33,6 +34,7 @@ import type {
 import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
 import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { GitError, NON_INTERACTIVE_ENV, git } from './runner'
+import { lfsFilesAmong, plainLfs, stagedBlobs } from './staged'
 
 export type ProgressFn = (line: string) => void
 
@@ -155,6 +157,14 @@ export async function getState(repo: string): Promise<RepoState> {
     refsOut,
     remotes.map((r) => r.name)
   )
+  const changed = [...new Set([...status.staged, ...status.unstaged, ...status.conflicted].map((f) => f.path))]
+  const [unpushed, lfsFiles, blobs] = await Promise.all([
+    unpushedCommits(repo, head, refs, remotes.length > 0),
+    lfsFilesAmong(repo, changed),
+    status.staged.some((f) => f.status !== 'D') ? stagedBlobs(repo) : Promise.resolve([])
+  ])
+  const lfs = new Set(lfsFiles)
+  const size = ({ path, size }: { path: string; size: number }) => ({ path, size })
   return {
     path: repo,
     head,
@@ -163,7 +173,11 @@ export async function getState(repo: string): Promise<RepoState> {
     remotes,
     status,
     operation,
-    unpushed: await unpushedCommits(repo, head, refs, remotes.length > 0)
+    unpushed,
+    lfsFiles,
+    // Files that go through LFS are staged as small pointers: big ones are only those outside LFS.
+    largeFiles: blobs.filter((b) => !lfs.has(b.path) && b.size > LARGE_FILE_BYTES).map(size),
+    unconvertedLfs: plainLfs(blobs, lfsFiles).map(size)
   }
 }
 

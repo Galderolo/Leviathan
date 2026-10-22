@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Lock, X } from 'lucide-react'
+import type { LfsLock } from '../../../shared/lfs'
 import type { FileStatus } from '../../../shared/types'
 import { useT } from '../i18n'
 import { useStore } from '../store'
@@ -31,6 +32,16 @@ const STATUS_CLASS: Record<FileStatus, string> = {
 export function StatusBadge({ status }: { status: FileStatus }) {
   const label = status === '?' ? '+' : status === 'A' ? '+' : status === 'D' ? '−' : status === 'M' ? '•' : status
   return <span className={cx('status-badge', STATUS_CLASS[status])}>{label}</span>
+}
+
+export function LockIcon({ lock }: { lock: LfsLock }) {
+  const t = useT()
+  const owner = lock.mine ? t('lfs.lockedByYou') : t('lfs.lockedBy', { owner: lock.owner })
+  return (
+    <span className={cx('lock-icon', lock.mine ? 'mine' : lock.mine === false ? 'theirs' : 'unknown')} title={owner}>
+      <Lock size={12} />
+    </span>
+  )
 }
 
 export function ContextMenu() {

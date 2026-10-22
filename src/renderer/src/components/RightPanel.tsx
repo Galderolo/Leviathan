@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
-import { AlertTriangle, Copy, PencilLine } from 'lucide-react'
+import { AlertTriangle, Copy, Lock, PencilLine } from 'lucide-react'
+import { lfsPatternFor, type LfsLock } from '../../../shared/lfs'
 import type { DiffSource, FileChange } from '../../../shared/types'
 import {
   abortOperation,
@@ -8,16 +9,21 @@ import {
   continueOperation,
   discardFiles,
   dropStash,
+  moveToLfs,
+  restageLfs,
   openDiff,
+  openExternal,
   popStash,
   selectCommit,
   selectWip,
   setAmend,
+  setupLfs,
   stageAll,
   stageFiles,
   unstageAll,
   unstageFiles,
-  updateDraft
+  updateDraft,
+  LFS_DOWNLOAD_URL
 } from '../actions'
 import {
   clickSelection,
@@ -29,11 +35,12 @@ import {
   type FileSelection
 } from '../fileSelection'
 import { useT } from '../i18n'
+import { formatSize, lockFor, lockedByOthers } from '../lfsView'
 import { fileMenu, filesMenu } from '../menus'
 import { useRepo, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
 import { cx, formatDate, shortHash, splitPath } from '../utils'
-import { Avatar, StatusBadge } from './common'
+import { Avatar, LockIcon, StatusBadge } from './common'
 
 export function RightPanel({ path }: { path: string }) {
   const view = useRepo(path)
@@ -85,6 +92,9 @@ function FileRow(props: {
   action?: { label: string; run: () => void }
   /** In a list where several files can be selected: Ctrl/Shift clicks and the checkbox change the selection. */
   select?: { checked: boolean; click: (e: React.MouseEvent, fromCheckbox: boolean) => void }
+  /** The file goes through Git LFS. */
+  lfs?: boolean
+  lock?: LfsLock | null
 }) {
   const { dir, name } = splitPath(props.file.path)
   const select = props.select
@@ -122,6 +132,8 @@ function FileRow(props: {
         <span className="file-name">{name}</span>
         {props.file.origPath && <span className="file-orig"> ← {props.file.origPath}</span>}
       </span>
+      {props.lfs && <LfsTag />}
+      {props.lock && <LockIcon lock={props.lock} />}
       {props.action && (
         <button
           className="file-action"
@@ -134,6 +146,15 @@ function FileRow(props: {
         </button>
       )}
     </div>
+  )
+}
+
+function LfsTag() {
+  const t = useT()
+  return (
+    <span className="lfs-tag" title={t('lfs.tag')}>
+      LFS
+    </span>
   )
 }
 
@@ -222,6 +243,8 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
   const branch = state.head.branch ?? (state.head.hash ? shortHash(state.head.hash) : 'HEAD')
   const unstagedSel = useFileSelection(unstaged)
   const stagedSel = useFileSelection(staged)
+  const lfsFiles = new Set(state.lfsFiles)
+  const locks = view.lfs?.locks
 
   // Draggable divider between the unstaged and staged lists; the share is remembered.
   const [split, setSplit] = useState(readSplit)
@@ -344,6 +367,8 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
                 )
               }
               action={{ label: t('wip.stage'), run: () => void stageFiles(path, [file]) }}
+              lfs={lfsFiles.has(file.path)}
+              lock={lockFor(locks, file.path)}
               select={{ checked: unstagedSel.has(file), click: (e, box) => unstagedSel.click(file, e, box) }}
             />
           ))}
@@ -391,6 +416,8 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
                 )
               }
               action={{ label: t('wip.unstage'), run: () => void unstageFiles(path, [file]) }}
+              lfs={lfsFiles.has(file.path)}
+              lock={lockFor(locks, file.path)}
               select={{ checked: stagedSel.has(file), click: (e, box) => stagedSel.click(file, e, box) }}
             />
           ))}
@@ -450,10 +477,112 @@ function CommitBox({ path, view }: { path: string; view: RepoView }) {
         onChange={(e) => updateDraft(path, { body: e.target.value })}
         onKeyDown={onKey}
       />
+      <LfsWarnings path={path} view={view} />
       <button className="btn btn-commit" disabled={!canCommit} onClick={() => void commit(path)} title="Ctrl+Enter">
         {label}
       </button>
     </div>
+  )
+}
+
+/** Files about to be committed outside LFS (too big, or meant for LFS), and changed files someone else locked. */
+function LfsWarnings({ path, view }: { path: string; view: RepoView }) {
+  const t = useT()
+  const [running, setRunning] = useState(false)
+  const state = view.state!
+  const info = view.lfs?.info
+  const large = state.largeFiles
+  const plain = state.unconvertedLfs
+  const changed = [...state.status.staged, ...state.status.unstaged].map((f) => f.path)
+  const locked = lockedByOthers(view.lfs?.locks ?? [], changed)
+  if (!large.length && !plain.length && !locked.length) return null
+
+  const run = (action: () => Promise<void>) => {
+    setRunning(true)
+    void action().finally(() => setRunning(false))
+  }
+  // What fixes it: git-lfs first, then its setup, then the action itself.
+  const fix = (label: string, action: () => Promise<void>): ReactNode => {
+    if (!info) return null
+    if (!info.version) {
+      return (
+        <button className="btn small" onClick={() => openExternal(LFS_DOWNLOAD_URL)}>
+          {t('lfs.install')}
+        </button>
+      )
+    }
+    const setup = !info.filters
+    return (
+      <button
+        className={cx('btn small', !setup && 'btn-primary')}
+        disabled={running || !!view.busy}
+        onClick={() => run(setup ? () => setupLfs(path) : action)}
+      >
+        {setup ? t('lfs.setup') : label}
+      </button>
+    )
+  }
+  const fileList = (files: { path: string; size: number }[]) => (
+    <ul>
+      {files.slice(0, 4).map((f) => (
+        <li key={f.path} title={f.path}>
+          {f.path} <span className="dim">({formatSize(f.size)})</span>
+        </li>
+      ))}
+      {files.length > 4 && <li className="dim">…</li>}
+    </ul>
+  )
+  const patterns = [...new Set(large.map((f) => lfsPatternFor(f.path)))].join(', ')
+
+  return (
+    <>
+      {plain.length > 0 && (
+        <div className="commit-warning">
+          <AlertTriangle size={14} />
+          <div className="commit-warning-body">
+            <span>{t('lfs.plainFiles', { count: plain.length })}</span>
+            {fileList(plain)}
+            {fix(t('lfs.restage'), () =>
+              restageLfs(
+                path,
+                plain.map((f) => f.path)
+              )
+            )}
+          </div>
+        </div>
+      )}
+      {large.length > 0 && (
+        <div className="commit-warning">
+          <AlertTriangle size={14} />
+          <div className="commit-warning-body">
+            <span>{t('lfs.largeFiles', { count: large.length })}</span>
+            {fileList(large)}
+            {fix(t('lfs.moveTo', { patterns }), () =>
+              moveToLfs(
+                path,
+                large.map((f) => f.path)
+              )
+            )}
+          </div>
+        </div>
+      )}
+      {locked.length > 0 && (
+        <div className="commit-warning danger">
+          <Lock size={14} />
+          <div className="commit-warning-body">
+            <span>{t('lfs.lockedByOthers', { count: locked.length })}</span>
+            <ul>
+              {locked.slice(0, 4).map((l) => (
+                <li key={l.path} title={l.path}>
+                  {l.path} <span className="dim">— {l.owner}</span>
+                </li>
+              ))}
+              {locked.length > 4 && <li className="dim">…</li>}
+            </ul>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -537,6 +666,7 @@ function CommitPanel({ path, view }: { path: string; view: RepoView }) {
                 void openDiff(path, { kind: 'commit', hash: c.hash, parent, path: file.path, oldPath: file.origPath })
               }
               onContext={(e) => openMenu(e, fileMenu(path, file, 'commit', c.hash))}
+              lock={lockFor(view.lfs?.locks, file.path)}
             />
           ))}
         </div>

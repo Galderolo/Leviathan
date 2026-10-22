@@ -1,3 +1,4 @@
+import { lfsPatternFor, type LfsLock, type LfsPattern } from '../../shared/lfs'
 import type { FileChange, GitRef, PullRequest, Stash } from '../../shared/types'
 import {
   applyStash,
@@ -18,6 +19,8 @@ import {
   dropStash,
   hideInGraph,
   ignorePattern,
+  lockFiles,
+  makeLockable,
   mergeRef,
   openExternal,
   openBlame,
@@ -38,10 +41,14 @@ import {
   soloInGraph,
   stageFiles,
   stashChanges,
-  unstageFiles
+  trackLfsPattern,
+  unlockFile,
+  unstageFiles,
+  untrackLfsPattern
 } from './actions'
 import { dropActions } from './dragDrop'
 import { t } from './i18n'
+import { lockFor } from './lfsView'
 import { getRepo, type MenuItem } from './store'
 import { copyText } from './ui'
 
@@ -219,10 +226,24 @@ export function filesMenu(path: string, files: FileChange[], area: 'unstaged' | 
     label: t('menu.copyPaths'),
     onClick: () => void copyText(files.map((f) => f.path).join('\n'), t('toast.copied'))
   }
+  const lfs = getRepo(path)?.lfs
+  const unlocked = files.filter((f) => !lockFor(lfs?.locks, f.path)).map((f) => f.path)
+  const lock: MenuItem[] =
+    lfs?.info.used && lfs.info.version
+      ? [
+          {
+            label: t('lfs.lockFiles', { count: unlocked.length }),
+            disabled: !unlocked.length,
+            onClick: () => void lockFiles(path, unlocked)
+          },
+          { separator: true }
+        ]
+      : []
   if (area === 'staged') {
     return [
       { label: t('menu.unstageCount', { count }), onClick: () => void unstageFiles(path, files) },
       { separator: true },
+      ...lock,
       copy
     ]
   }
@@ -230,8 +251,62 @@ export function filesMenu(path: string, files: FileChange[], area: 'unstaged' | 
     { label: t('menu.stageCount', { count }), onClick: () => void stageFiles(path, files) },
     { label: t('menu.discardCount', { count }), danger: true, onClick: () => void discardFiles(path, files) },
     { separator: true },
+    ...lock,
     copy
   ]
+}
+
+/** Lock, unlock and track items for a file, in a repository that uses Git LFS. */
+function lfsFileItems(
+  path: string,
+  file: FileChange,
+  area: 'unstaged' | 'staged' | 'conflicted' | 'commit'
+): MenuItem[] {
+  const view = getRepo(path)
+  const lfs = view?.lfs
+  if (!lfs?.info.version) return []
+  const items: MenuItem[] = []
+  // A repository that does not use LFS yet can start from here; locks only make sense once it does.
+  if (lfs.info.used) {
+    const lock = lockFor(lfs.locks, file.path)
+    if (!lock) items.push({ label: t('lfs.lockFile'), onClick: () => void lockFiles(path, [file.path]) })
+    else items.push(...lockItems(path, lock))
+  }
+  if ((area === 'unstaged' || area === 'staged') && file.status !== 'D' && !view?.state?.lfsFiles.includes(file.path)) {
+    const pattern = lfsPatternFor(file.path)
+    items.push({ label: t('lfs.trackPattern', { pattern }), onClick: () => void trackLfsPattern(path, pattern) })
+  }
+  if (items.length) items.push({ separator: true })
+  return items
+}
+
+function lockItems(path: string, lock: LfsLock): MenuItem[] {
+  if (lock.mine) return [{ label: t('lfs.unlockFile'), onClick: () => void unlockFile(path, lock) }]
+  return [
+    {
+      label: t(lock.mine === false ? 'lfs.forceUnlockOf' : 'lfs.unlockOf', { owner: lock.owner }),
+      danger: lock.mine === false,
+      onClick: () => void unlockFile(path, lock)
+    }
+  ]
+}
+
+export function lockMenu(path: string, lock: LfsLock): MenuItem[] {
+  return [
+    ...lockItems(path, lock),
+    { separator: true },
+    { label: t('menu.copyPath'), onClick: () => void copyText(lock.path, t('toast.copied')) }
+  ]
+}
+
+export function lfsPatternMenu(path: string, pattern: LfsPattern): MenuItem[] {
+  const items: MenuItem[] = []
+  // git-lfs writes to the root attributes file: a pattern of a nested one would be duplicated there.
+  if (!pattern.lockable && pattern.source === '.gitattributes') {
+    items.push({ label: t('lfs.makeLockable'), onClick: () => void makeLockable(path, pattern) })
+  }
+  items.push({ label: t('lfs.untrack'), danger: true, onClick: () => void untrackLfsPattern(path, pattern) })
+  return items
 }
 
 export function fileMenu(
@@ -285,6 +360,7 @@ export function fileMenu(
     },
     { separator: true }
   )
+  items.push(...lfsFileItems(path, file, area))
   items.push({ label: t('menu.copyPath'), onClick: () => void copyText(file.path, t('toast.copied')) })
   return items
 }
