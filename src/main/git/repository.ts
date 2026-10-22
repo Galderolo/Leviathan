@@ -16,8 +16,10 @@ import {
 } from '../../shared/parsers'
 import type {
   Commit,
+  BlameLine,
   CommitDetails,
   DiffSource,
+  FileCommit,
   FileDiff,
   GitRef,
   Provider,
@@ -687,6 +689,98 @@ export async function checkoutPullRequest(
       `${branch} has commits of its own that the pull request does not have. Rename or delete ${branch} to check out its latest version.`
     )
   await run(repo, ['checkout', '-q', branch, '--'])
+}
+
+const HISTORY_FORMAT = '%x1e%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%cn%x1f%ce%x1f%ct%x1f%s%x1f'
+
+/** Commits that touched a file, newest first, following renames (`git log --follow`). */
+export async function getFileHistory(repo: string, path: string, limit = 300): Promise<FileCommit[]> {
+  insideRepo(repo, path)
+  const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 5000) : 300
+  const out = await run(
+    repo,
+    ['log', '--follow', `-n${count}`, `--format=${HISTORY_FORMAT}`, '--name-status', '--', path],
+    {
+      env: LITERAL_PATHS
+    }
+  )
+  const history: FileCommit[] = []
+  // Walking back in time: the path the file had in the next (older) commit.
+  let current = path.replace(/\\/g, '/')
+  for (const record of out.split('\x1e').slice(1)) {
+    const f = record.split('\x1f')
+    if (f.length < 10) continue
+    const commit: Commit = {
+      hash: f[0],
+      parents: f[1] ? f[1].split(' ') : [],
+      authorName: f[2],
+      authorEmail: f[3],
+      authorDate: Number(f[4]),
+      committerName: f[5],
+      committerEmail: f[6],
+      commitDate: Number(f[7]),
+      subject: f[8]
+    }
+    const change = f[9]
+      .split('\n')
+      .map((l) => l.replace(/\r$/, ''))
+      .find((l) => l.includes('\t'))
+    if (!change) {
+      history.push({ commit, path: current, status: '' })
+      continue
+    }
+    const [code, first, second] = change.split('\t')
+    const status = code[0]
+    if ((status === 'R' || status === 'C') && second) {
+      history.push({ commit, path: second, oldPath: first, status })
+    } else {
+      history.push({ commit, path: first, status })
+    }
+    current = first
+  }
+  return history
+}
+
+const BLAME_MAX_LINES = 20000
+
+/**
+ * Who last changed each line of a file: as it is in the working tree (`rev`
+ * null; lines not committed yet have an all-zeros hash) or in a commit.
+ */
+export async function getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]> {
+  insideRepo(repo, path)
+  if (rev !== null) assertSafeArg(rev, 'commit')
+  const out = await run(repo, ['blame', '--porcelain', ...(rev ? [rev] : []), '--', path])
+  if (out.includes('\0')) throw new Error('This is a binary file: it has no lines to blame.')
+  const info = new Map<string, { author: string; date: number; summary: string }>()
+  const lines: BlameLine[] = []
+  let current: { hash: string; line: number } | null = null
+  for (const raw of out.split('\n')) {
+    if (raw.startsWith('\t')) {
+      if (current) {
+        const meta = info.get(current.hash)!
+        lines.push({ ...current, ...meta, text: raw.slice(1).replace(/\r$/, '') })
+        if (lines.length >= BLAME_MAX_LINES) break
+      }
+      current = null
+      continue
+    }
+    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)/.exec(raw)
+    if (!current && header) {
+      current = { hash: header[1], line: Number(header[2]) }
+      if (!info.has(current.hash)) info.set(current.hash, { author: '', date: 0, summary: '' })
+      continue
+    }
+    if (!current) continue
+    const space = raw.indexOf(' ')
+    const key = space < 0 ? raw : raw.slice(0, space)
+    const value = space < 0 ? '' : raw.slice(space + 1)
+    const meta = info.get(current.hash)!
+    if (key === 'author') meta.author = value
+    else if (key === 'author-time') meta.date = Number(value)
+    else if (key === 'summary') meta.summary = value
+  }
+  return lines
 }
 
 /** Brings a branch that is not checked out up to date with its upstream; fast-forward only. */

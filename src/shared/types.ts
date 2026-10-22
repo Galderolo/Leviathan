@@ -127,6 +127,29 @@ export interface FileDiff {
   hunks: DiffHunk[]
 }
 
+/** A commit that touched a file, with the file's path in that commit. */
+export interface FileCommit {
+  commit: Commit
+  path: string
+  /** The path before, when this commit renamed or copied the file. */
+  oldPath?: string
+  /** A, M, D, R, C... (empty for a merge that did not change it against its first parent). */
+  status: string
+}
+
+/** One line of a blamed file, and the commit that last changed it. */
+export interface BlameLine {
+  /** All zeros for a line not committed yet. */
+  hash: string
+  author: string
+  /** Unix seconds. */
+  date: number
+  summary: string
+  /** 1-based line number in the file. */
+  line: number
+  text: string
+}
+
 /** An open pull request (a merge request on GitLab). */
 export interface PullRequest {
   number: number
