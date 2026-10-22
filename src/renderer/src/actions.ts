@@ -691,7 +691,14 @@ async function recordUndo<T>(path: string, label: string, mode: RepoChange['mode
 async function runOp(
   path: string,
   fn: () => Promise<unknown>,
-  opts: { busy?: BusyKind; success?: string; log?: boolean; undo?: { label: string; mode?: RepoChange['mode'] } } = {}
+  opts: {
+    busy?: BusyKind
+    success?: string
+    log?: boolean
+    undo?: { label: string; mode?: RepoChange['mode'] }
+    /** Shown instead of git's message when the command fails. */
+    errorText?: string
+  } = {}
 ): Promise<boolean> {
   if (opts.busy) patchRepo(path, { busy: opts.busy, progress: null })
   const before = getRepo(path)?.state?.operation ?? null
@@ -705,7 +712,7 @@ async function runOp(
     // (git's own message mentions commands the app does not offer).
     const stopped = stoppedOperation(before, await api.getState(path).catch(() => null))
     if (stopped?.conflicts) toast('info', t('toast.stoppedForConflicts'))
-    else toast('error', errorMessage(err))
+    else toast('error', opts.errorText ?? errorMessage(err))
     // Show the banner and the conflicted files.
     if (stopped) selectWip(path)
     return false
@@ -893,11 +900,24 @@ export async function popStash(path: string, stash?: Stash): Promise<void> {
     toast('info', t('toast.noStashes'))
     return
   }
-  await runOp(path, () => api.stashPop(path, target.index, target.hash))
+  await restoreStash(path, target, true)
 }
 
 export function applyStash(path: string, stash: Stash): Promise<boolean> {
-  return runOp(path, () => api.stashApply(path, stash.index, stash.hash))
+  return restoreStash(path, stash, false)
+}
+
+/**
+ * Applies (or pops) a stash. Its untracked files that already exist are left
+ * as they are and git fails after applying the rest: that is said plainly
+ * instead of git's file-by-file list.
+ */
+async function restoreStash(path: string, stash: Stash, pop: boolean): Promise<boolean> {
+  const clashes = await api.stashUntrackedClashes(path, stash.index, stash.hash).catch(() => [])
+  const restore = pop ? api.stashPop : api.stashApply
+  return runOp(path, () => restore(path, stash.index, stash.hash), {
+    errorText: clashes.length ? t('error.stashUntrackedExist', { count: clashes.length }) : undefined
+  })
 }
 
 export async function dropStash(path: string, stash: Stash): Promise<void> {

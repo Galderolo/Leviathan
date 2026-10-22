@@ -227,7 +227,15 @@ export type WorkingFile = { text: string; reason: null } | { text: null; reason:
 export type DiffSource =
   | { kind: 'unstaged'; path: string; untracked?: boolean; conflicted?: boolean }
   | { kind: 'staged'; path: string }
-  | { kind: 'commit'; hash: string; parent: string | null; path: string; oldPath?: string }
+  | {
+      kind: 'commit'
+      hash: string
+      parent: string | null
+      path: string
+      oldPath?: string
+      /** An untracked file of a stash, kept in the stash's third parent. */
+      untracked?: boolean
+    }
 
 export type PullMode = 'ff' | 'ff-only' | 'rebase'
 export type ThemeSetting = 'dark' | 'light' | 'system'

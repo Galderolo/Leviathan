@@ -477,6 +477,10 @@ const en = {
   'diff.split': 'Side by side (old | new)',
 
   'error.operationInProgress': '{operation}: finish or abort it first.',
+  'error.stashUntrackedExist':
+    '{count} untracked files of the stash already existed in the folder and were left as they are (git never overwrites a file); the rest of the stash was applied. The stash is kept.',
+  'error.stashUntrackedExist_one':
+    '1 untracked file of the stash already existed in the folder and was left as it is (git never overwrites a file); the rest of the stash was applied. The stash is kept.',
 
   'menu.hideInGraph': 'Hide in graph',
   'menu.showInGraph': 'Show in graph again',

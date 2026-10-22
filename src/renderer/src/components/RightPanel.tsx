@@ -707,7 +707,15 @@ function CommitPanel({ path, view }: { path: string; view: RepoView }) {
                 file={file}
                 active={isActive(view.diff, { kind: 'commit', path: file.path, hash: c.hash } as Partial<DiffSource>)}
                 onOpen={() =>
-                  void openDiff(path, { kind: 'commit', hash: c.hash, parent, path: file.path, oldPath: file.origPath })
+                  void openDiff(path, {
+                    kind: 'commit',
+                    hash: c.hash,
+                    parent,
+                    path: file.path,
+                    oldPath: file.origPath,
+                    // Only a stash lists untracked files: they come from its third parent.
+                    untracked: file.status === '?' || undefined
+                  })
                 }
                 onContext={(e) => openMenu(e, fileMenu(path, file, 'commit', c.hash))}
                 lock={lockFor(view.lfs?.locks, file.path)}

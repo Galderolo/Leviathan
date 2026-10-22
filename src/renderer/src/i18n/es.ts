@@ -485,6 +485,10 @@ const es: Record<keyof typeof en, string> = {
   'diff.split': 'Lado a lado (antes | después)',
 
   'error.operationInProgress': '{operation}: termínalo o abórtalo antes.',
+  'error.stashUntrackedExist':
+    '{count} archivos sin seguimiento del stash ya existían en la carpeta y se han dejado como estaban (git nunca sobrescribe un archivo); el resto del stash sí se ha aplicado. El stash se conserva.',
+  'error.stashUntrackedExist_one':
+    '1 archivo sin seguimiento del stash ya existía en la carpeta y se ha dejado como estaba (git nunca sobrescribe un archivo); el resto del stash sí se ha aplicado. El stash se conserva.',
 
   'menu.hideInGraph': 'Ocultar en el grafo',
   'menu.showInGraph': 'Volver a mostrar en el grafo',

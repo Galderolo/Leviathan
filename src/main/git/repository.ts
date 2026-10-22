@@ -309,7 +309,18 @@ export async function getCommitDetails(repo: string, hash: string): Promise<Comm
   const filesOut = commit.parents.length
     ? await run(repo, ['diff', '--name-status', '-z', '-M', commit.parents[0], hash, '--'])
     : await run(repo, ['diff-tree', '--no-commit-id', '-r', '--name-status', '-z', '--root', '-M', hash, '--'])
-  return { commit, message: message.trimEnd(), files: parseNameStatus(filesOut) }
+  const files = parseNameStatus(filesOut)
+  // A stash keeps its untracked files in a third parent, a commit of their own.
+  if (commit.parents.length === 3 && (await isStash(repo, hash))) {
+    const untracked = await run(repo, ['ls-tree', '-r', '-z', '--name-only', commit.parents[2], '--'])
+    for (const path of untracked.split('\0').filter(Boolean)) files.push({ path, status: '?' })
+  }
+  return { commit, message: message.trimEnd(), files }
+}
+
+async function isStash(repo: string, hash: string): Promise<boolean> {
+  const { stdout } = await git(['log', '-g', '--format=%H', 'refs/stash', '--'], { cwd: repo, okCodes: [0, 128] })
+  return stdout.split('\n').includes(hash)
 }
 
 /** Resolves `file` inside `repo`, refusing paths that escape it. */
@@ -390,9 +401,14 @@ async function getFileDiff(repo: string, source: DiffSource): Promise<FileDiff> 
     case 'commit': {
       assertSafeArg(source.hash, 'commit')
       const paths = source.oldPath ? [source.oldPath, source.path] : [source.path]
-      const out = source.parent
-        ? await run(repo, ['diff', ...diffArgs, source.parent, source.hash, '--', ...paths], { env: LITERAL_PATHS })
-        : await run(repo, ['show', '--format=', ...diffArgs, source.hash, '--', ...paths], { env: LITERAL_PATHS })
+      // A stash's untracked files are a commit of their own, with no parent: every file shows as added.
+      const out = source.untracked
+        ? await run(repo, ['show', '--format=', ...diffArgs, `${source.hash}^3`, '--', source.path], {
+            env: LITERAL_PATHS
+          })
+        : source.parent
+          ? await run(repo, ['diff', ...diffArgs, source.parent, source.hash, '--', ...paths], { env: LITERAL_PATHS })
+          : await run(repo, ['show', '--format=', ...diffArgs, source.hash, '--', ...paths], { env: LITERAL_PATHS })
       return parseDiff(out, source.path)
     }
   }
@@ -712,6 +728,31 @@ export async function stashPop(repo: string, index: number, hash: string): Promi
 
 export async function stashApply(repo: string, index: number, hash: string): Promise<void> {
   await run(repo, ['stash', 'apply', '-q', await verifiedStashRef(repo, index, hash)])
+}
+
+/**
+ * Untracked files saved in a stash that already exist in the working tree.
+ * Applying the stash leaves them as they are (git never overwrites a file),
+ * applies the rest, fails, and keeps the stash.
+ */
+export async function stashUntrackedClashes(repo: string, index: number, hash: string): Promise<string[]> {
+  const ref = await verifiedStashRef(repo, index, hash)
+  // No third parent (a stash without untracked files): nothing to restore, nothing to clash.
+  const { stdout, exitCode } = await git(['ls-tree', '-r', '-z', '--name-only', `${ref}^3`, '--'], {
+    cwd: repo,
+    okCodes: [0, 128]
+  })
+  if (exitCode !== 0) return []
+  const files = stdout.split('\0').filter(Boolean)
+  const exists = await Promise.all(
+    files.map((file) =>
+      fs.lstat(insideRepo(repo, file)).then(
+        () => true,
+        () => false
+      )
+    )
+  )
+  return files.filter((_, i) => exists[i])
 }
 
 export async function stashDrop(repo: string, index: number, hash: string): Promise<void> {
