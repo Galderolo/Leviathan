@@ -190,30 +190,59 @@ async function unpushedCommits(
   return out.exitCode === 0 ? out.stdout.split('\n').filter(Boolean) : []
 }
 
-export async function getLog(repo: string, limit: number): Promise<{ commits: Commit[]; hasMore: boolean }> {
-  // Decide what to log up front instead of parsing (localised) error messages:
-  // HEAD may be unborn (new repo, orphan branch) while other branches exist.
-  const revs = ['--branches', '--remotes', '--tags']
-  if (await hasHead(repo)) revs.push('HEAD')
-  else {
-    const anyRef = await run(repo, [
-      'for-each-ref',
-      '--count=1',
-      '--format=%(refname)',
-      'refs/heads',
-      'refs/remotes',
-      'refs/tags'
-    ])
-    if (!anyRef.trim()) return { commits: [], hasMore: false }
+/** Which branches the graph shows: all but `hidden`, or only `solo` (full ref names). */
+export interface LogScope {
+  hidden?: string[]
+  solo?: string | null
+}
+
+export async function getLog(
+  repo: string,
+  limit: number,
+  scope: LogScope = {}
+): Promise<{ commits: Commit[]; hasMore: boolean }> {
+  const isRef = (r: unknown): r is string => typeof r === 'string' && r.startsWith('refs/') && !/\s/.test(r)
+  const hidden = new Set((scope.hidden ?? []).filter(isRef))
+  const solo = isRef(scope.solo) && (await refValue(repo, scope.solo)) ? scope.solo : null
+  let revs: string[]
+  let input: string | undefined
+  if (solo) {
+    revs = [solo]
+  } else if (hidden.size) {
+    // Every ref but the hidden ones, through stdin: there can be thousands.
+    const all = (await run(repo, ['for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes', 'refs/tags']))
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r && !hidden.has(r))
+    const head = await currentHead(repo)
+    if (head.hash && !(head.branch && hidden.has(`refs/heads/${head.branch}`))) all.push('HEAD')
+    if (!all.length) return { commits: [], hasMore: false }
+    revs = ['--stdin']
+    input = all.join('\n') + '\n'
+  } else {
+    // Decide what to log up front instead of parsing (localised) error messages:
+    // HEAD may be unborn (new repo, orphan branch) while other branches exist.
+    revs = ['--branches', '--remotes', '--tags']
+    if (await hasHead(repo)) revs.push('HEAD')
+    else {
+      const anyRef = await run(repo, [
+        'for-each-ref',
+        '--count=1',
+        '--format=%(refname)',
+        'refs/heads',
+        'refs/remotes',
+        'refs/tags'
+      ])
+      if (!anyRef.trim()) return { commits: [], hasMore: false }
+    }
   }
-  const out = await run(repo, [
-    'log',
-    '--date-order',
-    `--max-count=${limit + 1}`,
-    `--format=${LOG_FORMAT}`,
-    ...revs,
-    '--'
-  ])
+  const out = await run(
+    repo,
+    ['log', '--date-order', `--max-count=${limit + 1}`, `--format=${LOG_FORMAT}`, ...revs, '--'],
+    {
+      input
+    }
+  )
   const commits = parseLog(out)
   return { commits: commits.slice(0, limit), hasMore: commits.length > limit }
 }

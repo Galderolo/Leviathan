@@ -377,6 +377,14 @@ const en = {
 
   'error.operationInProgress': '{operation}: finish or abort it first.',
 
+  'menu.hideInGraph': 'Hide in graph',
+  'menu.showInGraph': 'Show in graph again',
+  'menu.soloInGraph': 'Show only this branch',
+  'graph.onlyBranch': 'Showing only {name}',
+  'graph.hiddenBranches': '{count} branches hidden from the graph',
+  'graph.hiddenBranch': '1 branch hidden from the graph',
+  'graph.showAll': 'Show all',
+
   'status.ready': 'Ready',
   'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',

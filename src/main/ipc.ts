@@ -49,7 +49,7 @@ const handlers: LeviathanInvokeApi = {
   unwatchRepo: async (path) => unwatchRepo(path),
 
   getState: (path) => repo.getState(path),
-  getLog: (path, limit) => repo.getLog(path, limit),
+  getLog: (path, limit, scope) => repo.getLog(path, limit, scope),
   getCommitDetails: (path, hash) => repo.getCommitDetails(path, hash),
   getDiff: (path, source) => repo.getDiff(path, source),
   getSnapshot: (path) => repo.getSnapshot(path),

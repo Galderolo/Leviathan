@@ -59,6 +59,10 @@ export interface RepoView {
   account: Account | null
   /** Open pull requests; null when no account can reach the repository's remote. */
   pullRequests: PullRequestsView | null
+  /** Branches left out of the graph, or the only one shown (full ref names). */
+  graphScope: GraphScope
+  /** Tip of the branch picked in the side panel: the graph dims commits outside its history. */
+  highlight: string | null
   /** File history or blame shown in place of the graph. */
   fileView: { kind: 'history' | 'blame'; path: string; rev: string | null } | null
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
@@ -72,6 +76,37 @@ export interface PullRequestsView {
   remote: string | null
   items: PullRequest[]
   error: string | null
+}
+
+export interface GraphScope {
+  hidden: string[]
+  solo: string | null
+}
+
+const SCOPE_KEY = 'leviathan.graphScope:'
+
+/** What the graph showed last time for this repository (kept per repository, on this computer). */
+export function readGraphScope(path: string): GraphScope {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SCOPE_KEY + path) ?? 'null')
+    if (saved && Array.isArray(saved.hidden))
+      return {
+        hidden: saved.hidden.filter((r: unknown) => typeof r === 'string'),
+        solo: typeof saved.solo === 'string' ? saved.solo : null
+      }
+  } catch {
+    // ignore: show everything
+  }
+  return { hidden: [], solo: null }
+}
+
+export function writeGraphScope(path: string, scope: GraphScope): void {
+  try {
+    if (!scope.hidden.length && !scope.solo) localStorage.removeItem(SCOPE_KEY + path)
+    else localStorage.setItem(SCOPE_KEY + path, JSON.stringify(scope))
+  } catch {
+    // not critical: the next start shows every branch
+  }
 }
 
 export type DiffLayout = 'unified' | 'split'
@@ -191,6 +226,8 @@ export function newRepoView(path: string, limit: number): RepoView {
     account: null,
     pullRequests: null,
     fileView: null,
+    graphScope: readGraphScope(path),
+    highlight: null,
     undo: [],
     redo: []
   }
