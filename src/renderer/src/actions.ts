@@ -14,6 +14,7 @@ import type {
   Submodule
 } from '../../shared/types'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
+import type { ReleaseNote } from '../../shared/releaseNotes'
 import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import { hasRemoteOnHost } from '../../shared/providers'
@@ -70,6 +71,11 @@ export async function initApp(): Promise<void> {
     versions: { app: appVersion, git: gitVersion.replace(/^git version /, '') }
   })
   if (!gitVersion) toast('error', t('error.noGit'))
+  // First start of a new version (not of the app itself): show what changed, once.
+  if (settings.lastSeenVersion !== appVersion) {
+    if (settings.lastSeenVersion) useStore.setState({ whatsNewOpen: true })
+    void saveSettings({ lastSeenVersion: appVersion })
+  }
 
   const tabs: Tab[] = []
   const repos: Record<string, RepoView> = {}
@@ -1577,4 +1583,16 @@ export async function openSubmodule(path: string, sub: Submodule): Promise<void>
 
 export function openSubmoduleFolder(path: string, sub: Submodule): void {
   api.openPath(joinPath(path, sub.path)).catch((err) => toast('error', errorMessage(err)))
+}
+
+// ---------------------------------------------------------------------------
+// What's new
+
+export function openWhatsNew(): void {
+  useStore.setState({ whatsNewOpen: true })
+}
+
+/** Notes of every published release from GitHub; throws when it cannot be reached (the app then shows its own). */
+export function loadReleaseNotes(): Promise<ReleaseNote[]> {
+  return api.getReleaseNotes()
 }

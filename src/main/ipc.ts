@@ -19,6 +19,7 @@ import { openAction, openTerminal } from './shell'
 import { generateKey, listKeys } from './ssh'
 import { watchRepo, unwatchRepo } from './watcher'
 import { getUpdater, initUpdates } from './autoUpdate'
+import { fetchReleaseNotes } from './releaseNotes'
 
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -45,6 +46,7 @@ const handlers: LeviathanInvokeApi = {
   checkForUpdates: () => getUpdater().check(),
   downloadUpdate: () => getUpdater().download(),
   installUpdate: async () => getUpdater().install(),
+  getReleaseNotes: () => fetchReleaseNotes(),
 
   openRepo: (path) => repo.openRepo(path),
   initRepo: (path, branch) => repo.initRepo(path, branch),

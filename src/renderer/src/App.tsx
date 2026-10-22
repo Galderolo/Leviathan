@@ -25,6 +25,7 @@ import { RightPanel } from './components/RightPanel'
 import { RebaseDialog } from './components/RebaseDialog'
 import { FileView } from './components/FileViews'
 import { SettingsModal } from './components/SettingsModal'
+import { WhatsNew } from './components/WhatsNew'
 import { StatusBar } from './components/StatusBar'
 import { TabBar } from './components/TabBar'
 import { Toolbar } from './components/Toolbar'
@@ -97,7 +98,7 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState()
       // A modal on top (dialog, menu, Settings, rebase): shortcuts must not act on the repository behind it.
-      if (s.dialog || s.menu || s.settingsOpen || s.rebase) return
+      if (s.dialog || s.menu || s.settingsOpen || s.whatsNewOpen || s.rebase) return
       const mod = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
       const active = s.tabs.find((x) => x.id === s.activeTab)
@@ -149,6 +150,7 @@ export function App() {
       <StatusBar />
       <ContextMenu />
       <SettingsModal />
+      <WhatsNew />
       <RebaseDialog />
       <Dialog />
       <Toasts />

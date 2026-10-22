@@ -23,6 +23,14 @@ const en = {
   'init.submit': 'Create repository',
 
   'common.cancel': 'Cancel',
+  'common.close': 'Close',
+  'whatsNew.title': "What's new",
+  'whatsNew.installed': 'installed',
+  'whatsNew.newer': 'new',
+  'whatsNew.prerelease': 'pre-release',
+  'whatsNew.offline': 'GitHub could not be reached: these are the notes that came with this version.',
+  'whatsNew.empty': 'No release notes yet.',
+  'whatsNew.onGitHub': 'On GitHub',
   'common.save': 'Save',
   'common.back': 'Back',
 

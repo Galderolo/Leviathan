@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { openExternal, saveSettings } from '../actions'
+import { openExternal, openWhatsNew, saveSettings } from '../actions'
 import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import type { Settings, ThemeSetting } from '../../../shared/types'
@@ -107,6 +107,15 @@ export function SettingsModal() {
             Leviathan {versions.app} · git {versions.git}
           </div>
           <div className="dim">{t('settings.license')}</div>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              openWhatsNew()
+            }}
+          >
+            {t('whatsNew.title')}
+          </a>
           <a
             href={REPO_URL}
             onClick={(e) => {

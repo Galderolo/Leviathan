@@ -24,6 +24,7 @@ import type {
 } from './types'
 import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
 import type { RebaseItem } from './rebase'
+import type { ReleaseNote } from './releaseNotes'
 import type { RepoChange, Snapshot } from './undo'
 import type { UpdateState } from './updates'
 
@@ -44,6 +45,8 @@ export interface LeviathanInvokeApi {
   downloadUpdate(): Promise<void>
   /** Quits and installs a downloaded update. */
   installUpdate(): Promise<void>
+  /** Notes of every published release, newest first; throws when GitHub cannot be reached. */
+  getReleaseNotes(): Promise<ReleaseNote[]>
 
   // Repository lifecycle
   openRepo(path: string): Promise<string>
@@ -235,6 +238,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   checkForUpdates: true,
   downloadUpdate: true,
   installUpdate: true,
+  getReleaseNotes: true,
   openRepo: true,
   initRepo: true,
   cloneRepo: true,

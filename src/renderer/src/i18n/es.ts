@@ -25,6 +25,14 @@ const es: Record<keyof typeof en, string> = {
   'init.submit': 'Crear repositorio',
 
   'common.cancel': 'Cancelar',
+  'common.close': 'Cerrar',
+  'whatsNew.title': 'Novedades',
+  'whatsNew.installed': 'instalada',
+  'whatsNew.newer': 'nueva',
+  'whatsNew.prerelease': 'pre-release',
+  'whatsNew.offline': 'No se pudo conectar con GitHub: estas son las notas que venían con esta versión.',
+  'whatsNew.empty': 'Todavía no hay notas.',
+  'whatsNew.onGitHub': 'En GitHub',
   'common.save': 'Guardar',
   'common.back': 'Volver',
 
