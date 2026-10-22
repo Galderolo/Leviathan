@@ -10,7 +10,8 @@ import type {
   RepoState,
   ResetMode,
   Settings,
-  Stash
+  Stash,
+  Submodule
 } from '../../shared/types'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
 import { buildPartialPatch } from '../../shared/patch'
@@ -199,11 +200,12 @@ export async function cloneRepository(
   url: string,
   dest: string,
   tabId: string,
-  accountId: string | null = null
+  accountId: string | null = null,
+  recurseSubmodules = true
 ): Promise<boolean> {
   useStore.setState({ cloneProgress: t('clone.cloning') })
   try {
-    const path = await api.cloneRepo(url, dest, accountId)
+    const path = await api.cloneRepo(url, dest, accountId, recurseSubmodules)
     toast('success', t('toast.cloned'))
     await openRepository(path, tabId)
     return true
@@ -467,6 +469,8 @@ async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
       patchRepo(path, { state, error: null, loading: false })
       fixSelection(path)
       followLfs(path, state)
+      // Submodules change with commits and checkouts; once known, edits inside them count too.
+      if (withLog || getRepo(path)?.submodules.length) void loadSubmodules(path)
       const v = getRepo(path)
       if (v?.diff && v.diff.source.kind !== 'commit') {
         // The file may have been staged, unstaged or discarded meanwhile: follow it, or close the diff.
@@ -1530,4 +1534,45 @@ export async function setupLfs(path: string): Promise<void> {
   if (!ok) return
   await runOp(path, () => api.setupLfs(path), { busy: 'lfs', success: t('toast.lfsReady') })
   await loadLfsInfo(path)
+}
+
+// ---------------------------------------------------------------------------
+// Submodules
+
+const subSeq: Record<string, number> = {}
+
+export async function loadSubmodules(path: string): Promise<void> {
+  const seq = (subSeq[path] = (subSeq[path] ?? 0) + 1)
+  try {
+    const submodules = await api.getSubmodules(path)
+    if (subSeq[path] === seq && getRepo(path)) patchRepo(path, { submodules })
+  } catch {
+    // not critical: the section keeps what it showed
+  }
+}
+
+/** Initializes and checks out submodules (all of them when `subs` is null) at the commits this branch records. */
+export async function updateSubmodules(path: string, subs: Submodule[] | null): Promise<void> {
+  await runOp(path, () => api.updateSubmodules(path, subs ? subs.map((s) => s.path) : null), {
+    busy: 'submodules',
+    success: t('toast.submodulesUpdated'),
+    log: false
+  })
+  await loadSubmodules(path)
+}
+
+export async function openSubmodule(path: string, sub: Submodule): Promise<void> {
+  if (sub.state === 'uninitialized') {
+    toast('info', t('sub.notInitialized'))
+    return
+  }
+  try {
+    await openRepository(joinPath(path, sub.path))
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+}
+
+export function openSubmoduleFolder(path: string, sub: Submodule): void {
+  api.openPath(joinPath(path, sub.path)).catch((err) => toast('error', errorMessage(err)))
 }

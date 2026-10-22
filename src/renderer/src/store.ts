@@ -9,7 +9,8 @@ import type {
   PullRequest,
   RebaseCommit,
   RepoState,
-  Settings
+  Settings,
+  Submodule
 } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import type { LfsInfo, LfsLock } from '../../shared/lfs'
@@ -20,7 +21,7 @@ import type { UndoEntry } from './undoStack'
 export type Selection =
   { kind: 'wip' } | { kind: 'commit'; hash: string } | { kind: 'stash'; hash: string; index: number } | null
 
-export type BusyKind = 'fetch' | 'pull' | 'push' | 'lfs'
+export type BusyKind = 'fetch' | 'pull' | 'push' | 'lfs' | 'submodules'
 
 export interface DiffView {
   source: DiffSource
@@ -72,6 +73,7 @@ export interface RepoView {
   redo: UndoEntry[]
   /** Git LFS patterns and locks; null until read. */
   lfs: LfsView | null
+  submodules: Submodule[]
 }
 
 export interface LfsView {
@@ -246,7 +248,8 @@ export function newRepoView(path: string, limit: number): RepoView {
     highlight: null,
     undo: [],
     redo: [],
-    lfs: null
+    lfs: null,
+    submodules: []
   }
 }
 

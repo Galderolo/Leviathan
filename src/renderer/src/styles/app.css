@@ -2658,3 +2658,79 @@ a:hover {
   font-size: 12px;
   color: var(--text-dim);
 }
+
+/* Submodules */
+.sub-row {
+  cursor: default;
+}
+
+.sub-tag {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  line-height: 15px;
+  color: var(--text-dim);
+  background: var(--bg-2);
+}
+
+.sub-tag.outOfSync {
+  color: var(--yellow);
+  background: rgba(229, 179, 58, 0.15);
+}
+
+.sub-tag.conflict,
+.sub-tag.dirty {
+  color: var(--orange);
+  background: rgba(242, 136, 75, 0.14);
+}
+
+.submodule-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  font-size: 13px;
+}
+
+.submodule-diff-title {
+  font-weight: 600;
+}
+
+.submodule-commits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+
+.submodule-commits li {
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submodule-commits code {
+  margin-right: 6px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+
+.submodule-commits li.removed {
+  color: var(--text-dim);
+}
+
+.sub-sign {
+  display: inline-block;
+  width: 14px;
+  font-weight: 700;
+}
+
+.submodule-commits li.added .sub-sign {
+  color: var(--green);
+}
+
+.submodule-commits li.removed .sub-sign {
+  color: var(--red);
+}

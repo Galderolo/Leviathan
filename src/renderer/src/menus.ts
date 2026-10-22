@@ -1,5 +1,5 @@
 import { lfsPatternFor, type LfsLock, type LfsPattern } from '../../shared/lfs'
-import type { FileChange, GitRef, PullRequest, Stash } from '../../shared/types'
+import type { FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
 import {
   applyStash,
   checkoutAndMerge,
@@ -27,6 +27,8 @@ import {
   openFile,
   openFileHistory,
   openInteractiveRebase,
+  openSubmodule,
+  openSubmoduleFolder,
   popStash,
   pullBranch,
   push,
@@ -44,6 +46,7 @@ import {
   trackLfsPattern,
   unlockFile,
   unstageFiles,
+  updateSubmodules,
   untrackLfsPattern
 } from './actions'
 import { dropActions } from './dragDrop'
@@ -363,4 +366,19 @@ export function fileMenu(
   items.push(...lfsFileItems(path, file, area))
   items.push({ label: t('menu.copyPath'), onClick: () => void copyText(file.path, t('toast.copied')) })
   return items
+}
+
+export function submoduleMenu(path: string, sub: Submodule): MenuItem[] {
+  return [
+    {
+      label: t(sub.state === 'uninitialized' ? 'sub.init' : 'sub.update'),
+      disabled: sub.state === 'clean' || sub.state === 'conflict',
+      onClick: () => void updateSubmodules(path, [sub])
+    },
+    { separator: true },
+    { label: t('sub.open'), disabled: sub.state === 'uninitialized', onClick: () => void openSubmodule(path, sub) },
+    { label: t('sub.openFolder'), onClick: () => openSubmoduleFolder(path, sub) },
+    { separator: true },
+    { label: t('menu.copyPath'), onClick: () => void copyText(sub.path, t('toast.copied')) }
+  ]
 }
