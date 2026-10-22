@@ -386,6 +386,8 @@ const en = {
   'lfs.restage': 'Stage through Git LFS',
   'lfs.lockedByOthers': '{count} changed files are locked by someone else: your push may be refused.',
   'lfs.lockedByOthers_one': 'A changed file is locked by someone else: your push may be refused.',
+  'dlg.lfsSetup':
+    'This runs "git lfs install": it adds the Git LFS settings to your user\'s Git configuration (~/.gitconfig) and its hooks to this repository, then downloads the repository\'s LFS files.',
   'dlg.lfsTrack':
     'Files matching the pattern are stored with Git LFS from now on. The change goes into .gitattributes, which you commit like any other file.',
   'dlg.lfsUntrack': 'Stop storing "{pattern}" files with Git LFS? Files already committed stay in LFS.',

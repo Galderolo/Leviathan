@@ -1507,6 +1507,9 @@ export async function restageLfs(path: string, files: string[]): Promise<void> {
 
 /** `git lfs install`, then downloads the repository's LFS files. */
 export async function setupLfs(path: string): Promise<void> {
+  // It changes the user's own Git configuration, not just this repository: say so first.
+  const ok = await confirmDialog({ title: t('lfs.setup'), message: t('dlg.lfsSetup'), confirmText: t('lfs.setup') })
+  if (!ok) return
   await runOp(path, () => api.setupLfs(path), { busy: 'lfs', success: t('toast.lfsReady') })
   await loadLfsInfo(path)
 }

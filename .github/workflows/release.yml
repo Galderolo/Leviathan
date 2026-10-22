@@ -24,6 +24,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           # The lines under "## [<version>]" in CHANGELOG.md, up to the next version.
           awk -v v="$version" 'index($0, "## [" v "]") == 1 { on = 1; next } on && /^## \[/ { exit } on { print }' CHANGELOG.md > notes.md
+          printf '\n---\n\n[Code signing policy](https://github.com/%s#code-signing-policy) · [Privacy policy](https://github.com/%s#privacy-policy)\n' "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" >> notes.md
           gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
             gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
 
