@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -75,6 +75,22 @@ describe('watchRepo', () => {
     writeFileSync(join(work, 'Assets', 'a.cs'), 'changed\n')
     expect(await waitFor(() => events.length > 0, 5000)).toBe(true)
     expect(events[0]).toEqual({ repo: work, kind: 'workdir' })
+  })
+
+  it('waits while git holds the index (a pull or checkout writing files) and refreshes once it is done', async () => {
+    await repo.getState(work)
+    await allIgnored(work, ['Temp/x'])
+    await new Promise((r) => setTimeout(r, 300))
+    events.length = 0
+    watchRepo(work, (e) => events.push(e))
+    await new Promise((r) => setTimeout(r, 300))
+    const lock = join(work, '.git', 'index.lock')
+    writeFileSync(lock, '')
+    writeFileSync(join(work, 'Assets', 'a.cs'), 'half way through a checkout\n')
+    // Longer than the 2 s maximum wait.
+    expect(await waitFor(() => events.length > 0, 2600)).toBe(false)
+    unlinkSync(lock)
+    expect(await waitFor(() => events.length > 0, 3000)).toBe(true)
   })
 
   it('stays quiet through a long burst of thousands of ignored files', async () => {
