@@ -92,6 +92,8 @@ const en = {
   'wip.noChanges': 'No changes',
   'wip.commitTitle': 'Commit',
   'wip.amend': 'Amend previous commit',
+  'wip.pushAfterCommit': 'Push to {target} after committing',
+  'wip.pushAfterCommitHint': 'Each commit is pushed right away. The choice is remembered.',
   'wip.summary': 'Summary',
   'wip.description': 'Description',
   'wip.commitBtn': 'Commit changes to {count} files',
@@ -207,6 +209,8 @@ const en = {
 
   'toast.cloned': 'Repository cloned',
   'toast.fetched': 'Fetch complete',
+  'toast.amendNotPushed':
+    'The amended commit was already pushed, so it was not pushed again: use Force push if you want to replace it on the remote.',
   'toast.pulledInto': 'Pulled into {branch}',
   'toast.upToDate': '{branch} is already up to date',
   'toast.pushed': 'Pushed {branch}',

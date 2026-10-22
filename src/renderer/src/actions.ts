@@ -24,7 +24,7 @@ import { followDiff } from './diffFollow'
 import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
 import { listForDialog } from './fileSelection'
 import { branchStartOptions } from './branchStart'
-import { remotesToChooseFrom } from './pushTarget'
+import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom } from './pushTarget'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
@@ -1234,12 +1234,19 @@ export async function commit(path: string): Promise<boolean> {
   if (!view) return false
   const { summary, body, amend } = view.draft
   const message = body.trim() ? `${summary.trim()}\n\n${body.trim()}\n` : `${summary.trim()}\n`
+  const rewritesPushed = !!view.state && amendsPushedCommit(amend, view.state)
   const ok = await runOp(path, () => api.commit(path, message, amend), {
     undo: { label: t(amend ? 'undo.amend' : 'undo.commit', { name: summary.trim() }), mode: 'soft' }
   })
   if (ok) {
     updateDraft(path, { summary: '', body: '', amend: false })
     patchRepo(path, { diff: null })
+    const state = getRepo(path)?.state
+    if (useStore.getState().settings.pushAfterCommit && state && pushAfterCommitTarget(state.head, state.remotes)) {
+      // Never force-push on its own: say what is needed instead.
+      if (rewritesPushed) toast('info', t('toast.amendNotPushed'))
+      else await push(path)
+    }
   }
   return ok
 }

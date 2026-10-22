@@ -86,6 +86,8 @@ npm run dist     # build installers into dist/
 | `↑` / `↓`, `PgUp` / `PgDn` | Move through the graph           |
 | `Ctrl+Enter`              | Commit                            |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo                       |
+| `Ctrl+P`                  | Push                              |
+| `Ctrl+L`                  | Pull                              |
 | `Esc`                     | Close the diff                    |
 | `F5`                      | Refresh                           |
 | `F12`                     | Developer tools                   |

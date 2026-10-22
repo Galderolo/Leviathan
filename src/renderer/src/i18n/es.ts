@@ -94,6 +94,8 @@ const es: Record<keyof typeof en, string> = {
   'wip.noChanges': 'Sin cambios',
   'wip.commitTitle': 'Commit',
   'wip.amend': 'Modificar el commit anterior',
+  'wip.pushAfterCommit': 'Hacer push a {target} al hacer commit',
+  'wip.pushAfterCommitHint': 'Cada commit se sube en cuanto se hace. La opción se recuerda.',
   'wip.summary': 'Resumen',
   'wip.description': 'Descripción',
   'wip.commitBtn': 'Hacer commit de {count} archivos',
@@ -210,6 +212,8 @@ const es: Record<keyof typeof en, string> = {
 
   'toast.cloned': 'Repositorio clonado',
   'toast.fetched': 'Fetch completado',
+  'toast.amendNotPushed':
+    'El commit modificado ya estaba subido, así que no se ha vuelto a subir: usa Force push si quieres reemplazarlo en el remoto.',
   'toast.pulledInto': 'Pull hecho en {branch}',
   'toast.upToDate': '{branch} ya está al día',
   'toast.pushed': 'Push de {branch} completado',
