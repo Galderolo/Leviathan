@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-22
+
 ### Added
 
 - What's new: the notes of every version, pre-releases included, from the GitHub releases (or the notes that came with the app when offline). Click the version in the status bar, or open it from Settings; it also opens once after an update.
