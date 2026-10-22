@@ -4,7 +4,9 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
-### Added
+## [0.9.3] - 2026-10-22
+
+### Changed
 
 - Drag the borders of the BRANCH / TAG and GRAPH column headers to resize them; the widths are remembered (the same in every repository) and a double-click on a border resets it.
 - A graph wider than its column scrolls sideways instead of widening the column: a bar under it, Shift + wheel, or a trackpad's horizontal swipe.
