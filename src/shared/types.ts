@@ -251,6 +251,8 @@ export interface Settings {
   autoUpdate: boolean
   /** Push the branch right after each commit. */
   pushAfterCommit: boolean
+  /** Version that ran last: a newer one opens "What's new" once. */
+  lastSeenVersion: string
   /** Repository path -> id of the account it uses. */
   repoAccounts: Record<string, string>
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
@@ -270,6 +272,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoFetchMinutes: 10,
   autoUpdate: true,
   pushAfterCommit: false,
+  lastSeenVersion: '',
   repoAccounts: {}
 }
 

@@ -193,6 +193,7 @@ export interface AppState {
   dialog: DialogState | null
   toasts: Toast[]
   settingsOpen: boolean
+  whatsNewOpen: boolean
   /** Interactive rebase dialog: the commits after `base` in repository `path`. */
   rebase: { path: string; base: string; commits: RebaseCommit[] } | null
   cloneProgress: string | null
@@ -214,6 +215,7 @@ export const useStore = create<AppState>(() => ({
   dialog: null,
   toasts: [],
   settingsOpen: false,
+  whatsNewOpen: false,
   rebase: null,
   cloneProgress: null,
   versions: { app: '', git: '' },

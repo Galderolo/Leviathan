@@ -1,3 +1,4 @@
+import { openWhatsNew } from '../actions'
 import { useT } from '../i18n'
 import { useActiveTab, useStore } from '../store'
 import { Spinner } from './common'
@@ -39,9 +40,9 @@ export function StatusBar() {
       </div>
       <div className="statusbar-right">
         <UpdateNotice />
-        <span className="dim">
+        <button className="statusbar-version" title={t('whatsNew.title')} onClick={openWhatsNew}>
           Leviathan {versions.app} · git {versions.git}
-        </span>
+        </button>
       </div>
     </div>
   )

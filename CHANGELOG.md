@@ -4,6 +4,14 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- What's new: the notes of every version, pre-releases included, from the GitHub releases (or the notes that came with the app when offline). Click the version in the status bar, or open it from Settings; it also opens once after an update.
+
+### Fixed
+
+- While a pull or a checkout writes files (LFS downloads included), they no longer show up as changes for a moment: refreshes wait until git releases the index.
+
 ### Changed
 
 - New versions are noticed sooner: Leviathan looks for them every half hour, and when you come back to the app (at most every ten minutes), instead of every six hours.
