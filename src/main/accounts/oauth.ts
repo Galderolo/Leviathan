@@ -1,0 +1,88 @@
+import type { FetchFn } from './providers'
+
+/** What the user needs to authorize the app, and what the app polls with. */
+export interface DeviceCode {
+  deviceCode: string
+  /** Short code the user types at `verificationUri`. */
+  userCode: string
+  verificationUri: string
+  /** Seconds the code stays valid. */
+  expiresIn: number
+  /** Seconds to wait between polls. */
+  interval: number
+}
+
+const GITHUB = 'https://github.com'
+
+async function post(path: string, form: Record<string, string>, fetchFn: FetchFn): Promise<Record<string, unknown>> {
+  let res: Awaited<ReturnType<FetchFn>>
+  try {
+    res = await fetchFn(GITHUB + path, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Leviathan'
+      },
+      body: new URLSearchParams(form).toString()
+    })
+  } catch (err) {
+    throw new Error(`Could not reach GitHub: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  if (!res.ok) throw new Error(`GitHub answered with an error (${res.status})`)
+  return (await res.json()) as Record<string, unknown>
+}
+
+/** Starts GitHub's device flow: a code for the user to enter on github.com. */
+export async function startDeviceFlow(clientId: string, scope: string, fetchFn: FetchFn = fetch): Promise<DeviceCode> {
+  const body = await post('/login/device/code', { client_id: clientId, scope }, fetchFn)
+  if (!body.device_code || !body.user_code)
+    throw new Error(`GitHub did not start the sign-in (${body.error ?? 'no code'})`)
+  return {
+    deviceCode: String(body.device_code),
+    userCode: String(body.user_code),
+    verificationUri: String(body.verification_uri ?? `${GITHUB}/login/device`),
+    expiresIn: Number(body.expires_in ?? 900),
+    interval: Number(body.interval ?? 5)
+  }
+}
+
+/**
+ * Waits for the user to authorize the code in the browser and returns the
+ * access token. Polls at GitHub's pace (slower when it says so) until the code
+ * is authorized, denied or expired, or `signal` aborts.
+ */
+export async function pollDeviceFlow(
+  clientId: string,
+  code: DeviceCode,
+  opts: { fetchFn?: FetchFn; sleep?: (ms: number) => Promise<void>; signal?: AbortSignal } = {}
+): Promise<string> {
+  const fetchFn = opts.fetchFn ?? fetch
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+  const cancelled = () => new Error('Sign-in cancelled')
+  let interval = code.interval
+  for (;;) {
+    await sleep(interval * 1000)
+    if (opts.signal?.aborted) throw cancelled()
+    const body = await post(
+      '/login/oauth/access_token',
+      { client_id: clientId, device_code: code.deviceCode, grant_type: 'urn:ietf:params:oauth:grant-type:device_code' },
+      fetchFn
+    )
+    if (opts.signal?.aborted) throw cancelled()
+    if (typeof body.access_token === 'string' && body.access_token) return body.access_token
+    switch (body.error) {
+      case 'authorization_pending':
+        continue
+      case 'slow_down':
+        interval = Number(body.interval) || interval + 5
+        continue
+      case 'access_denied':
+        throw new Error('The sign-in was denied on GitHub')
+      case 'expired_token':
+        throw new Error('The code expired before it was entered. Start the sign-in again.')
+      default:
+        throw new Error(`GitHub refused the sign-in (${String(body.error ?? 'unknown error')})`)
+    }
+  }
+}

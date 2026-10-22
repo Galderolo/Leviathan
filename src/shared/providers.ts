@@ -74,3 +74,8 @@ export function hasRemoteOnHost(remotes: Remote[], host: string): boolean {
   }
   return remotes.some((r) => hostOf(r.fetchUrl) === h || hostOf(r.pushUrl) === h)
 }
+
+/** Leviathan's OAuth App on GitHub, to sign in from the browser (device flow). Public by design. */
+export const GITHUB_CLIENT_ID = 'Ov23liIeu6UqggJLSdlI'
+/** The same permissions a token made from the token page gets. */
+export const GITHUB_SCOPES = 'repo read:user'
