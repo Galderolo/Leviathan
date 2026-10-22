@@ -108,6 +108,11 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - A global `blame.ignoreRevsFile` pointing to a missing file makes every blame fail with git's message.
 - Rendering 20 000 blame rows ("Show all") is slow; closing the view does not stop a long `log --follow` or blame.
 
+**Automatic updates**
+- Nothing proves an installer is ours beyond HTTPS and the GitHub account: set `publisherName` once Windows builds are signed. Each check sends electron-updater's random staging id to github.com.
+- AppImage updates replace `Leviathan-x.y.z.AppImage` with a file of the new name, which breaks launchers pointing at the old path.
+- The Linux release builds AppImage and .deb from the same folder; a CI check that the AppImage has no `package-type` file would guard the updater choice.
+
 **Older items**
 - Background fetch does not mark the repository busy, so a manual pull at the same moment can hit "cannot lock ref".
 - Checkout-and-merge from drag and drop has no confirmation.

@@ -55,5 +55,8 @@
     "electron",
     "commit-graph",
     "open-source"
-  ]
+  ],
+  "dependencies": {
+    "electron-updater": "^6.8.10"
+  }
 }

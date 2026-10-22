@@ -7,6 +7,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Added
 
 - Graph: hide branches or show only one (right-click a branch; a bar above the graph shows all again), dim the commits outside the history of the branch picked in the side panel, and see which branches have an open pull request (#N on their labels).
+- Automatic updates from the GitHub releases: shortly after start and every few hours Leviathan looks for a newer version and says so in the status bar. The Windows installer build and the Linux AppImage download and install it with one click (then restart); the portable .exe, the .deb package and macOS open the release page instead. Settings → Updates turns the checks off or runs one now.
 
 ## [0.4.0] - 2026-10-22
 

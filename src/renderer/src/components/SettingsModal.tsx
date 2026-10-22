@@ -5,6 +5,7 @@ import { useStore } from '../store'
 import type { Settings, ThemeSetting } from '../../../shared/types'
 import { AccountsSection } from './AccountsSection'
 import { SshKeysSection } from './SshKeysSection'
+import { UpdateSettings } from './UpdateNotice'
 
 const REPO_URL = 'https://github.com/Galderolo/Leviathan'
 
@@ -17,6 +18,7 @@ export function SettingsModal() {
   const [limit, setLimit] = useState(String(settings.commitLimit))
   const [theme, setTheme] = useState<ThemeSetting>(settings.theme)
   const [autoFetch, setAutoFetch] = useState(String(settings.autoFetchMinutes))
+  const [autoUpdate, setAutoUpdate] = useState(settings.autoUpdate)
 
   useEffect(() => {
     if (open) {
@@ -24,6 +26,7 @@ export function SettingsModal() {
       setLimit(String(settings.commitLimit))
       setTheme(settings.theme)
       setAutoFetch(String(settings.autoFetchMinutes))
+      setAutoUpdate(settings.autoUpdate)
     }
   }, [open, settings])
 
@@ -41,7 +44,7 @@ export function SettingsModal() {
   const close = () => useStore.setState({ settingsOpen: false })
   const save = async () => {
     const commitLimit = Math.max(100, Math.min(50000, Number(limit) || settings.commitLimit))
-    await saveSettings({ language, commitLimit, theme, autoFetchMinutes: Number(autoFetch) })
+    await saveSettings({ language, commitLimit, theme, autoFetchMinutes: Number(autoFetch), autoUpdate })
     close()
   }
 
@@ -96,6 +99,7 @@ export function SettingsModal() {
             ))}
           </select>
         </label>
+        <UpdateSettings auto={autoUpdate} onAuto={setAutoUpdate} />
         <AccountsSection />
         <SshKeysSection />
         <div className="about">

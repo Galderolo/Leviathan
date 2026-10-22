@@ -2152,6 +2152,45 @@ a:hover {
   opacity: 0.55;
 }
 
+.statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.update-notice .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.input-row .checkbox-row input {
+  flex: none;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.update-result {
+  overflow-wrap: anywhere;
+}
+
 .rebase-modal {
   width: 760px;
   max-height: calc(100vh - 80px);

@@ -1,6 +1,7 @@
 import { useT } from '../i18n'
 import { useActiveTab, useStore } from '../store'
 import { Spinner } from './common'
+import { UpdateNotice } from './UpdateNotice'
 
 export function StatusBar() {
   const tab = useActiveTab()
@@ -36,8 +37,11 @@ export function StatusBar() {
           <span className="dim">{t('status.ready')}</span>
         )}
       </div>
-      <div className="statusbar-right dim">
-        Leviathan {versions.app} · git {versions.git}
+      <div className="statusbar-right">
+        <UpdateNotice />
+        <span className="dim">
+          Leviathan {versions.app} · git {versions.git}
+        </span>
       </div>
     </div>
   )

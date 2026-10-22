@@ -212,6 +212,8 @@ export interface Settings {
   cloneDir: string
   /** Background fetch interval in minutes; 0 disables it. */
   autoFetchMinutes: number
+  /** Look for new Leviathan releases on GitHub. */
+  autoUpdate: boolean
   /** Repository path -> id of the account it uses. */
   repoAccounts: Record<string, string>
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
@@ -229,6 +231,7 @@ export const DEFAULT_SETTINGS: Settings = {
   rightPanelWidth: 360,
   cloneDir: '',
   autoFetchMinutes: 10,
+  autoUpdate: true,
   repoAccounts: {}
 }
 

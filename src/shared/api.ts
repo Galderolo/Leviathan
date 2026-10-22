@@ -23,6 +23,7 @@ import type {
 } from './types'
 import type { RebaseItem } from './rebase'
 import type { RepoChange, Snapshot } from './undo'
+import type { UpdateState } from './updates'
 
 /**
  * Everything the renderer can ask the main process to do.
@@ -35,6 +36,12 @@ export interface LeviathanInvokeApi {
   pickFolder(title?: string): Promise<string | null>
   gitVersion(): Promise<string>
   appVersion(): Promise<string>
+  getUpdateState(): Promise<UpdateState>
+  checkForUpdates(): Promise<UpdateState>
+  /** Downloads the update, or opens its release page where the app cannot replace itself. */
+  downloadUpdate(): Promise<void>
+  /** Quits and installs a downloaded update. */
+  installUpdate(): Promise<void>
 
   // Repository lifecycle
   openRepo(path: string): Promise<string>
@@ -177,6 +184,8 @@ export interface LeviathanInvokeApi {
 /** Event subscriptions exposed next to the invoke methods. */
 export interface LeviathanEventsApi {
   onRepoChanged(cb: (e: RepoChangedEvent) => void): () => void
+  /** New Leviathan releases: found, downloading, ready to install. */
+  onUpdate(cb: (state: UpdateState) => void): () => void
   onProgress(cb: (e: ProgressEvent) => void): () => void
   onAskpass(cb: (e: AskpassRequest) => void): () => void
 }
@@ -193,6 +202,10 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   pickFolder: true,
   gitVersion: true,
   appVersion: true,
+  getUpdateState: true,
+  checkForUpdates: true,
+  downloadUpdate: true,
+  installUpdate: true,
   openRepo: true,
   initRepo: true,
   cloneRepo: true,
@@ -279,5 +292,6 @@ export const IPC_INVOKE = 'leviathan:invoke'
 export const IPC_REPO_CHANGED = 'leviathan:repo-changed'
 export const IPC_PROGRESS = 'leviathan:progress'
 export const IPC_ASKPASS = 'leviathan:askpass'
+export const IPC_UPDATE = 'leviathan:update'
 
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string }

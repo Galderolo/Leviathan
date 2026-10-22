@@ -39,5 +39,5 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Configurable external editor, terminal and diff tool
 - [ ] Profiles: different author name/email per repository group
 - [ ] Code signing for Windows and macOS releases
-- [ ] Auto-update from GitHub releases
+- [ ] Auto-update on macOS (needs code signing)
 - [ ] End-to-end UI tests with Playwright

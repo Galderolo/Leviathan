@@ -29,6 +29,8 @@ import { Toolbar } from './components/Toolbar'
 import { WelcomeView } from './components/WelcomeView'
 import { getRepo, useActiveTab, useStore } from './store'
 import { resolveTheme } from './theme'
+import { t } from './i18n'
+import { toast } from './ui'
 
 const api = window.leviathan
 
@@ -58,6 +60,18 @@ export function App() {
     })
     const offProgress = api.onProgress((e) => handleProgress(e.repo, e.line))
     const offAskpass = api.onAskpass((e) => void handleAskpass(e))
+    const offUpdate = api.onUpdate((update) => {
+      const before = useStore.getState().update
+      useStore.setState({ update })
+      if (update.status === 'available' && update.version && before?.version !== update.version) {
+        toast('info', t('update.available', { version: update.version }))
+      }
+      // Installing failed (the app is still here): say so once.
+      if (update.status === 'ready' && update.error && update.error !== before?.error) {
+        toast('error', t('update.installFailed', { error: update.error.split('\n')[0] }))
+      }
+    })
+    void api.getUpdateState().then((update) => useStore.setState({ update }))
     const fetchTimer = window.setInterval(autoFetchTick, 30_000)
     const firstFetch = window.setTimeout(autoFetchTick, 5_000)
     const onFocus = () => {
@@ -70,6 +84,7 @@ export function App() {
       offChanged()
       offProgress()
       offAskpass()
+      offUpdate()
       window.clearInterval(fetchTimer)
       window.clearTimeout(firstFetch)
       window.removeEventListener('focus', onFocus)

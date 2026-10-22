@@ -12,6 +12,7 @@ import type {
   Settings
 } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
+import type { UpdateState } from '../../shared/updates'
 import type { Lang } from './i18n'
 import type { UndoEntry } from './undoStack'
 
@@ -184,6 +185,8 @@ export interface AppState {
   versions: { app: string; git: string }
   /** How diffs are shown: one column, or old and new side by side. */
   diffLayout: DiffLayout
+  /** Newer Leviathan releases, as the main process last reported. */
+  update: UpdateState | null
 }
 
 export const useStore = create<AppState>(() => ({
@@ -200,7 +203,8 @@ export const useStore = create<AppState>(() => ({
   rebase: null,
   cloneProgress: null,
   versions: { app: '', git: '' },
-  diffLayout: initialDiffLayout()
+  diffLayout: initialDiffLayout(),
+  update: null
 }))
 
 export function newRepoView(path: string, limit: number): RepoView {
