@@ -3,12 +3,15 @@ import { useShallow } from 'zustand/react/shallow'
 import { pullRequestsByRef } from '../graphFocus'
 import {
   Archive,
+  Box,
+  Boxes,
   ArrowDown,
   ArrowUp,
   Check,
   ChevronDown,
   ChevronRight,
   Cloud,
+  Download,
   EyeOff,
   Folder,
   GitBranch,
@@ -31,18 +34,29 @@ import {
   checkoutRef,
   loadLfsLocks,
   openExternal,
+  openSubmodule,
   selectRef,
   selectStash,
   setupLfs,
-  trackLfsPattern
+  trackLfsPattern,
+  updateSubmodules
 } from '../actions'
 import { useT } from '../i18n'
 import { readCollapsed, writeCollapsed, type Collapsed } from '../sidePanelState'
 import { patternLabel } from '../lfsView'
-import { branchMenu, lfsPatternMenu, lockMenu, pullRequestMenu, remoteMenu, stashMenu, tagMenu } from '../menus'
+import {
+  branchMenu,
+  lfsPatternMenu,
+  lockMenu,
+  pullRequestMenu,
+  remoteMenu,
+  stashMenu,
+  submoduleMenu,
+  tagMenu
+} from '../menus'
 import { useStore } from '../store'
 import { openMenu } from '../ui'
-import { buildTree, cx, formatDate, relativeDate, type TreeNode } from '../utils'
+import { buildTree, cx, formatDate, relativeDate, shortHash, type TreeNode } from '../utils'
 import { LockIcon } from './common'
 import { refDragProps, refDropProps } from './refDnd'
 
@@ -57,6 +71,7 @@ export function LeftPanel({ path }: { path: string }) {
         graphScope: r?.graphScope,
         selection: r?.selection,
         lfs: r?.lfs,
+        submodules: r?.submodules,
         busy: r?.busy
       }
     })
@@ -89,6 +104,8 @@ export function LeftPanel({ path }: { path: string }) {
   const prs = view?.pullRequests
   const prItems = (prs?.items ?? []).filter((p) => match('#' + p.number + ' ' + p.title + ' ' + p.sourceBranch))
   const prByRef = useMemo(() => pullRequestsByRef(prs?.items ?? [], prs?.remote ?? null, refs), [prs, refs])
+  const submodules = (view.submodules ?? []).filter((s) => match(s.path))
+  const staleSubs = (view.submodules ?? []).filter((s) => s.state === 'uninitialized' || s.state === 'outOfSync')
   const lfs = view?.lfs?.info.used ? view.lfs : null
   const locks = (lfs?.locks ?? []).filter((l) => match(l.path))
   const hiddenRefs = new Set(view?.graphScope.hidden ?? [])
@@ -269,6 +286,59 @@ export function LeftPanel({ path }: { path: string }) {
                 <span className="pr-branches">
                   {pr.sourceBranch} → {pr.targetBranch}
                 </span>
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {(view.submodules?.length ?? 0) > 0 && (
+          <Section
+            id="submodules"
+            icon={<Boxes size={14} />}
+            title={t('left.submodules')}
+            count={submodules.length}
+            collapsed={collapsed}
+            toggle={toggle}
+            action={
+              staleSubs.length > 0 ? (
+                <button
+                  className="icon-btn small"
+                  title={t('sub.updateAll')}
+                  disabled={!!view.busy}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void updateSubmodules(path, null)
+                  }}
+                >
+                  <Download size={14} />
+                </button>
+              ) : undefined
+            }
+          >
+            {staleSubs.length > 0 && (
+              <div className="side-note warn">
+                {t('sub.staleNote', { count: staleSubs.length })}{' '}
+                <a className="side-link" onClick={() => !view.busy && void updateSubmodules(path, null)}>
+                  {t('sub.updateAll')}
+                </a>
+              </div>
+            )}
+            {submodules.map((sub) => (
+              <div
+                key={sub.path}
+                className="side-row sub-row"
+                onDoubleClick={() => void openSubmodule(path, sub)}
+                onContextMenu={(e) => openMenu(e, submoduleMenu(path, sub))}
+                title={t('sub.tooltip', {
+                  url: sub.url,
+                  recorded: shortHash(sub.recorded),
+                  current: sub.current ? shortHash(sub.current) : '—'
+                })}
+              >
+                <Box size={13} className="dim" />
+                <span className="side-name">{sub.path}</span>
+                {sub.dirty && <span className="sub-tag dirty">{t('sub.dirty')}</span>}
+                {sub.state !== 'clean' && <span className={cx('sub-tag', sub.state)}>{t(`sub.${sub.state}`)}</span>}
               </div>
             ))}
           </Section>

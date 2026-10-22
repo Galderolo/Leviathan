@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import { supportsLineSelection } from '../../../shared/patch'
-import type { FileChange } from '../../../shared/types'
+import type { FileChange, SubmoduleChange } from '../../../shared/types'
 import { applyHunk, applyLines, closeDiff, discardFiles, openFile, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
 import { ConflictView } from './ConflictView'
@@ -120,9 +120,13 @@ export function DiffView({ path }: { path: string }) {
         {error && <div className="empty-state error">{error}</div>}
         {!error && !data && <div className="empty-state">{t('graph.loading')}</div>}
         {data?.binary && <div className="empty-state">{t('diff.binary')}</div>}
-        {data && !data.binary && data.hunks.length === 0 && <div className="empty-state">{t('diff.noChanges')}</div>}
+        {data?.submodule && <SubmoduleSummary change={data.submodule} />}
+        {data && !data.binary && !data.submodule && data.hunks.length === 0 && (
+          <div className="empty-state">{t('diff.noChanges')}</div>
+        )}
         {data &&
           !data.binary &&
+          !data.submodule &&
           data.hunks.map((hunk, hi) => {
             if (budget <= 0) return null
             const lines = hunk.lines.slice(0, budget)
@@ -230,4 +234,33 @@ export function DiffView({ path }: { path: string }) {
 
 function conflictMarker(text: string): boolean {
   return /^(<{7}|={7}|>{7})( |$)/.test(text)
+}
+
+/** A submodule's change: the commits it brings (+) or takes away (−), rather than two hashes. */
+function SubmoduleSummary({ change }: { change: SubmoduleChange }) {
+  const t = useT()
+  const short = (hash: string | null) => (hash ? shortHash(hash) : '—')
+  let title: string
+  if (change.from && change.to) title = t('diff.submoduleMoved', { from: short(change.from), to: short(change.to) })
+  else if (change.to) title = t('diff.submoduleAdded', { to: short(change.to) })
+  else title = t('diff.submoduleRemoved', { from: short(change.from) })
+  return (
+    <div className="submodule-diff">
+      <div className="submodule-diff-title">{title}</div>
+      {change.missing && <div className="dim">{t('diff.submoduleMissing')}</div>}
+      {!change.missing && change.from && change.from === change.to && (
+        <div className="dim">{t('diff.submoduleSame')}</div>
+      )}
+      {change.commits.length > 0 && (
+        <ul className="submodule-commits">
+          {change.commits.map((c) => (
+            <li key={c.hash + String(c.added)} className={c.added ? 'added' : 'removed'}>
+              <span className="sub-sign">{c.added ? '+' : '−'}</span>
+              <code>{shortHash(c.hash)}</code> {c.subject}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }

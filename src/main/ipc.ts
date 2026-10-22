@@ -13,6 +13,7 @@ import * as accounts from './accounts'
 import { answerAskpass } from './askpass'
 import * as lfs from './git/lfs'
 import * as repo from './git/repository'
+import * as submodules from './git/submodules'
 import { loadSettings, saveSettings } from './settings'
 import { openAction, openTerminal } from './shell'
 import { generateKey, listKeys } from './ssh'
@@ -47,10 +48,13 @@ const handlers: LeviathanInvokeApi = {
 
   openRepo: (path) => repo.openRepo(path),
   initRepo: (path, branch) => repo.initRepo(path, branch),
-  cloneRepo: async (url, dest, accountId) => {
-    const path = await repo.cloneRepo(url, dest, progress(dest), accountId ? accounts.cloneArgsFor(accountId) : [])
+  cloneRepo: async (url, dest, accountId, recurseSubmodules) => {
+    const args = accountId ? accounts.cloneArgsFor(accountId) : []
+    const path = await repo.cloneRepo(url, dest, progress(dest), args)
+    // Bound first, so private submodules on the same host are fetched with that account too.
     if (accountId) await accounts.setRepoAccount(path, accountId)
-    return path
+    const submoduleError = recurseSubmodules ? await submodules.initSubmodules(path, progress(dest)) : null
+    return { path, submoduleError }
   },
   watchRepo: async (path) => watchRepo(path, (e) => broadcast(IPC_REPO_CHANGED, e)),
   unwatchRepo: async (path) => unwatchRepo(path),
@@ -159,6 +163,8 @@ const handlers: LeviathanInvokeApi = {
   lfsMoveFiles: (path, paths) => lfs.lfsMoveFiles(path, paths),
   lfsRestage: (path, paths) => lfs.lfsRestage(path, paths),
   setupLfs: (path) => lfs.setupLfs(path, progress(path)),
+  getSubmodules: (path) => submodules.getSubmodules(path),
+  updateSubmodules: (path, paths) => submodules.updateSubmodules(path, paths, progress(path)),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')
     await shell.openExternal(url)

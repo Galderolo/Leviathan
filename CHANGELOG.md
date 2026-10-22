@@ -4,6 +4,16 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- Submodules: a SUBMODULES section in the side panel shows each one's state (not initialized, other commit than the recorded one, changes inside), with *Update all*, *Initialize and update*, *Check out the recorded commit*, *Open in a new tab* (or double-click) and *Open folder*. A note says when submodules are not at the commits the branch records.
+- The diff of a submodule lists the commits it brings in or takes away, instead of two commit hashes.
+- Cloning includes submodules (an option in the clone form, on by default).
+
+### Fixed
+
+- Collapsed or expanded folders and sections of the side panel are kept when switching tabs, and after a restart.
+
 ## [0.7.0] - 2026-10-22
 
 ### Added

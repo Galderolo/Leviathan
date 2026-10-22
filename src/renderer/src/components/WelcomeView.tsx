@@ -107,6 +107,7 @@ function CloneForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
   const [nameTouched, setNameTouched] = useState(false)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountId, setAccountId] = useState('')
+  const [withSubmodules, setWithSubmodules] = useState(true)
   const [repos, setRepos] = useState<RemoteRepo[] | null>(null)
   const [repoFilter, setRepoFilter] = useState('')
   const folder = nameTouched ? name : folderFromUrl(url)
@@ -146,7 +147,7 @@ function CloneForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
         e.preventDefault()
         if (!url.trim() || !dest) return
         void saveSettings({ cloneDir: parent })
-        await cloneRepository(url.trim(), dest, tabId, accountId || null)
+        await cloneRepository(url.trim(), dest, tabId, accountId || null, withSubmodules)
       }}
     >
       <FormTitle title={t('welcome.clone')} onBack={onBack} />
@@ -231,6 +232,10 @@ function CloneForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
         />
       </label>
       {dest && <div className="dim small">{t('clone.fullPath', { path: dest })}</div>}
+      <label className="checkbox">
+        <input type="checkbox" checked={withSubmodules} onChange={(e) => setWithSubmodules(e.target.checked)} />
+        {t('clone.submodules')}
+      </label>
       <div className="form-actions">
         {busy && (
           <span className="clone-progress dim">

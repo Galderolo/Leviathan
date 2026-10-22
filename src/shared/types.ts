@@ -131,6 +131,35 @@ export interface FileDiff {
   /** Raw file header (`diff --git ...` up to `+++ ...`). */
   header: string
   hunks: DiffHunk[]
+  /** For a submodule: the commits the change brings or takes away. */
+  submodule?: SubmoduleChange
+}
+
+export interface SubmoduleChange {
+  /** Commit before the change (null when the submodule is new). */
+  from: string | null
+  /** Commit after the change (null when it is removed). */
+  to: string | null
+  /** Newest first; `added` false for commits the change takes away. At most 100 each way. */
+  commits: { hash: string; subject: string; added: boolean }[]
+  /** The submodule is not checked out here or lacks those commits, so they cannot be listed. */
+  missing: boolean
+}
+
+/** A submodule of the repository. */
+export interface Submodule {
+  /** Name in `.gitmodules` (usually its path). */
+  name: string
+  path: string
+  url: string
+  /** Commit the repository records for it. */
+  recorded: string
+  /** Commit checked out inside it; null when it is not initialized. */
+  current: string | null
+  /** `outOfSync`: another commit than the recorded one is checked out. */
+  state: 'uninitialized' | 'clean' | 'outOfSync' | 'conflict'
+  /** Files changed inside it, not committed there. */
+  dirty: boolean
 }
 
 /** A commit that touched a file, with the file's path in that commit. */

@@ -28,6 +28,7 @@ import type {
   RepoOperation,
   RepoState,
   ResetMode,
+  SubmoduleChange,
   WorkingFile
 } from '../../shared/types'
 import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
@@ -336,8 +337,42 @@ async function readPreview(repo: string, path: string): Promise<{ binary: boolea
   }
 }
 
+/** The commits between two commits of a submodule, each way (at most 100 each), when they are available here. */
+async function submoduleChange(repo: string, diff: FileDiff): Promise<FileDiff> {
+  if (!/^(index \S+ 160000|new file mode 160000|deleted file mode 160000)$/m.test(diff.header)) return diff
+  const lines = diff.hunks.flatMap((h) => h.lines)
+  const commitOf = (type: 'add' | 'del') =>
+    /Subproject commit ([0-9a-f]{7,})/.exec(lines.find((l) => l.type === type)?.text ?? '')?.[1] ?? null
+  const from = commitOf('del')
+  const to = commitOf('add')
+  const change: SubmoduleChange = { from, to, commits: [], missing: false }
+  const dir = insideRepo(repo, diff.path)
+  if (!existsSync(join(dir, '.git'))) return { ...diff, submodule: { ...change, missing: true } }
+  if (!from || !to || from === to) return { ...diff, submodule: change }
+  const list = async (range: string, added: boolean) =>
+    (await run(dir, ['log', '--max-count=100', '--format=%H%x1f%s', range, '--']))
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        const [hash, subject] = line.split('\x1f')
+        return { hash, subject: subject ?? '', added }
+      })
+  try {
+    const [added, removed] = await Promise.all([list(`${from}..${to}`, true), list(`${to}..${from}`, false)])
+    return { ...diff, submodule: { ...change, commits: [...added, ...removed] } }
+  } catch {
+    // The submodule does not have one of those commits (not fetched there yet).
+    return { ...diff, submodule: { ...change, missing: true } }
+  }
+}
+
 export async function getDiff(repo: string, source: DiffSource): Promise<FileDiff> {
-  const diffArgs = ['--no-ext-diff', '-M']
+  return submoduleChange(repo, await getFileDiff(repo, source))
+}
+
+async function getFileDiff(repo: string, source: DiffSource): Promise<FileDiff> {
+  // A submodule's change as its two commits, whatever diff.submodule the user configured.
+  const diffArgs = ['--no-ext-diff', '-M', '--submodule=short']
   switch (source.kind) {
     case 'unstaged': {
       if (source.untracked || source.conflicted) {
