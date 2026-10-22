@@ -1974,6 +1974,18 @@ a:hover {
   background: var(--bg-1);
 }
 
+.device-code {
+  align-self: center;
+  padding: 6px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  user-select: all;
+}
+
 .account-form .input-row select {
   flex: 0 0 120px;
 }

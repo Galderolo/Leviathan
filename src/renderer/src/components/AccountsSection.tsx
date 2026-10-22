@@ -38,6 +38,8 @@ export function AccountsSection() {
   const [accounts, setAccounts] = useState<Account[] | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [saving, setSaving] = useState(false)
+  // GitHub sign-in in progress: the code to enter in the browser (null while it is being requested).
+  const [login, setLogin] = useState<{ userCode: string; verificationUri: string } | null | 'starting'>(null)
 
   const load = () =>
     api
@@ -48,6 +50,29 @@ export function AccountsSection() {
   useEffect(() => {
     void load()
   }, [])
+
+  // Closing Settings while waiting abandons the sign-in.
+  useEffect(() => () => void api.cancelGitHubLogin(), [])
+
+  const signIn = async () => {
+    setLogin('starting')
+    try {
+      const started = await api.startGitHubLogin()
+      setLogin(started)
+      const account = await api.finishGitHubLogin()
+      toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
+      await load()
+    } catch (err) {
+      if (!/cancelled/i.test(errorMessage(err))) toast('error', errorMessage(err))
+    } finally {
+      setLogin(null)
+    }
+  }
+
+  const cancelSignIn = () => {
+    void api.cancelGitHubLogin()
+    setLogin(null)
+  }
 
   const label = (p: Provider) => (p === 'other' ? t('accounts.other') : PROVIDER_LABELS[p])
 
@@ -204,8 +229,41 @@ export function AccountsSection() {
             </button>
           </div>
         </div>
+      ) : login ? (
+        <div className="account-form device-login">
+          {login === 'starting' ? (
+            <div className="dim small">{t('accounts.signInStarting')}</div>
+          ) : (
+            <>
+              <div className="small">{t('accounts.deviceHint')}</div>
+              <div className="device-code">{login.userCode}</div>
+              <div className="dim small">{t('accounts.waiting')}</div>
+            </>
+          )}
+          <div className="ssh-actions">
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn small" onClick={cancelSignIn}>
+              {t('common.cancel')}
+            </button>
+            {login !== 'starting' && (
+              <button
+                type="button"
+                className="btn small btn-primary"
+                onClick={() => {
+                  void navigator.clipboard.writeText(login.userCode).catch(() => {})
+                  openExternal(login.verificationUri)
+                }}
+              >
+                {t('accounts.copyAndOpen')}
+              </button>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="ssh-actions">
+          <button type="button" className="btn small btn-primary" onClick={() => void signIn()}>
+            {t('accounts.signInGitHub')}
+          </button>
           <button type="button" className="btn small" onClick={() => setDraft(emptyDraft())}>
             {t('accounts.add')}
           </button>

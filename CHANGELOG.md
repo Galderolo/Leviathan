@@ -4,6 +4,14 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- Sign in with GitHub from Settings → Accounts: enter the code shown in the browser and the account is added, no token to create. Organizations that restrict OAuth apps must approve Leviathan before their repositories are reachable with it.
+
+### Fixed
+
+- Adding an account that is already there (signing in again, or a new token) renews its token instead of adding it twice.
+
 ## [0.3.1] - 2026-10-22
 
 Same app as 0.3.0, released again so every platform has its installers.

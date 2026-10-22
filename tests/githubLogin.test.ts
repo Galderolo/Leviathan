@@ -17,6 +17,8 @@ vi.mock('electron', () => ({
 }))
 
 const TOKEN = 'gho_from_device_flow'
+let currentToken = TOKEN
+let lastAuth: string | undefined
 let authorized = false
 vi.stubGlobal('fetch', async (url: string, init?: { headers?: Record<string, string>; body?: string }) => {
   const json = (body: unknown) => ({ ok: true, status: 200, json: async () => body })
@@ -30,9 +32,11 @@ vi.stubGlobal('fetch', async (url: string, init?: { headers?: Record<string, str
     })
   }
   if (url === 'https://github.com/login/oauth/access_token') {
-    return json(authorized ? { access_token: TOKEN } : { error: 'authorization_pending' })
+    return json(authorized ? { access_token: currentToken } : { error: 'authorization_pending' })
   }
-  if (url === 'https://api.github.com/user' && init?.headers?.Authorization === `Bearer ${TOKEN}`) {
+  lastAuth = init?.headers?.Authorization
+  if (url.startsWith('https://api.github.com/user/repos')) return json([])
+  if (url === 'https://api.github.com/user' && init?.headers?.Authorization === `Bearer ${currentToken}`) {
     return json({ login: 'ana', id: 7, name: 'Ana' })
   }
   return { ok: false, status: 404, json: async () => ({}) }
@@ -42,6 +46,7 @@ const accounts = await import('../src/main/accounts')
 
 beforeEach(() => {
   authorized = false
+  currentToken = TOKEN
   for (const a of accounts.listAccounts()) accounts.removeAccount(a.id)
 })
 afterAll(() => rmSync(userData, { recursive: true, force: true }))
@@ -77,6 +82,20 @@ describe('signing in to GitHub from the browser', () => {
     await expect(first).rejects.toThrow(/cancelled/i)
     authorized = true
     expect((await accounts.finishGitHubLogin()).username).toBe('ana')
+  })
+
+  it('signing in again renews the token of the account instead of adding it twice', async () => {
+    authorized = true
+    await accounts.startGitHubLogin()
+    const first = await accounts.finishGitHubLogin()
+    await accounts.updateAccount(first.id, { name: 'Ana (personal)' })
+    currentToken = 'gho_renewed_token'
+    await accounts.startGitHubLogin()
+    const again = await accounts.finishGitHubLogin()
+    expect(again.id).toBe(first.id)
+    expect(accounts.listAccounts()).toEqual([{ ...first, name: 'Ana (personal)' }])
+    await accounts.listAccountRepos(first.id)
+    expect(lastAuth).toBe('Bearer gho_renewed_token')
   })
 
   it('cannot finish without starting', async () => {

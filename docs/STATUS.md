@@ -41,14 +41,11 @@ Pull requests were tested for real on a private GitHub repository (create as dra
 3. Commit, then tag and push: `git tag vx.y.z && git push origin main vx.y.z`.
 4. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again.
 
-### 3. Sign in with the browser (OAuth device flow)
+### 3. Sign in with the browser
 
-Last of the planned big features: log in to GitHub / GitLab from the browser instead of pasting a personal access token. It needs, from the maintainer:
+Done for GitHub (unreleased): Settings → Accounts → *Sign in with GitHub* runs the OAuth device flow with the project's OAuth App (client ID in `src/shared/providers.ts`, scopes `repo read:user`); the token goes straight into the encrypted account store. Code: `src/main/accounts/oauth.ts`, `startGitHubLogin` / `finishGitHubLogin` in `src/main/accounts/index.ts`.
 
-- a GitHub **OAuth App** (Settings → Developer settings → OAuth Apps) with *Device flow* enabled, and its **client ID** (public; no secret is needed for the device flow);
-- for GitLab, an **application** with the `api`, `read_user` and `write_repository` scopes, and its application ID.
-
-The flow plugs into the existing account store: the token obtained replaces the pasted one, and everything else (askpass, per-repo binding, pull requests) works unchanged.
+Still to do: GitLab (needs an *application* on gitlab.com with the `api`, `read_user` and `write_repository` scopes, and its application ID) and GitHub Enterprise (each server needs its own OAuth App).
 
 ### 4. Small decisions pending
 
@@ -93,7 +90,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Usernames with `%` or `@` in the askpass prompt; `*.ghe.com` API base and no-reply emails for hosts with a port.
 - Nested repositories match the first registered repository, not the deepest; Windows path casing in the repository → account map.
 - A clone that succeeds but fails to bind to the account is reported as a failed clone.
-- The same account can be added twice; `other` accounts get an invented default email.
+- `other` accounts get an invented default email.
 
 **Older items**
 - Background fetch does not mark the repository busy, so a manual pull at the same moment can hit "cannot lock ref".

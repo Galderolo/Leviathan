@@ -83,6 +83,11 @@ export async function addAccount(input: {
   } else {
     identity = await fetchIdentity(input.provider, host, token)
   }
+  // The same account again (signed in once more, or a new token): keep it, with the new token.
+  const existing = accounts()
+    .list()
+    .find((a) => a.provider === input.provider && a.host === host && a.username === identity.username)
+  if (existing) return accounts().setToken(existing.id, token)
   return accounts().add(
     {
       provider: input.provider,

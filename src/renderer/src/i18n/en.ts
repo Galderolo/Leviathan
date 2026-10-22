@@ -231,6 +231,11 @@ const en = {
   'accounts.title': 'Accounts',
   'accounts.none':
     'No accounts yet. Add one to push and pull without passwords and to clone from your repository list.',
+  'accounts.signInGitHub': 'Sign in with GitHub',
+  'accounts.signInStarting': 'Asking GitHub for a code…',
+  'accounts.deviceHint': 'Enter this code on GitHub to let Leviathan use your account:',
+  'accounts.copyAndOpen': 'Copy code and open GitHub',
+  'accounts.waiting': 'Waiting for you to authorize Leviathan in the browser…',
   'accounts.add': 'Add account',
   'accounts.other': 'Other',
   'accounts.host': 'Host (e.g. github.com)',

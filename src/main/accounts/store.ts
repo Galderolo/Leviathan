@@ -61,6 +61,16 @@ export class AccountStore {
     return publicPart(stored)
   }
 
+  /** Replaces the token of an account (signed in again, or a new token for it). */
+  setToken(id: string, token: string): Account {
+    if (!this.cipher.available()) throw new Error('Secure storage is not available on this system')
+    const found = this.accounts.find((a) => a.id === id)
+    if (!found) throw new Error('Account not found')
+    found.token = this.cipher.encrypt(token).toString('base64')
+    this.save()
+    return publicPart(found)
+  }
+
   update(id: string, patch: Partial<Pick<Account, 'name' | 'email'>>): Account {
     const found = this.accounts.find((a) => a.id === id)
     if (!found) throw new Error('Account not found')

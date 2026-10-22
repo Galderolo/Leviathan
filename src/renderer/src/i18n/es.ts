@@ -234,6 +234,11 @@ const es: Record<keyof typeof en, string> = {
   'accounts.title': 'Cuentas',
   'accounts.none':
     'Aún no hay cuentas. Añade una para hacer push y pull sin contraseñas y clonar desde tu lista de repos.',
+  'accounts.signInGitHub': 'Iniciar sesión con GitHub',
+  'accounts.signInStarting': 'Pidiendo un código a GitHub…',
+  'accounts.deviceHint': 'Introduce este código en GitHub para que Leviathan pueda usar tu cuenta:',
+  'accounts.copyAndOpen': 'Copiar código y abrir GitHub',
+  'accounts.waiting': 'Esperando a que autorices Leviathan en el navegador…',
   'accounts.add': 'Añadir cuenta',
   'accounts.other': 'Otro',
   'accounts.host': 'Host (p. ej. github.com)',
