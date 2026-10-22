@@ -91,3 +91,24 @@ describe('getBlame', () => {
     await expect(repo.getBlame(dir, 'docs.txt', '--output=x')).rejects.toThrow()
   })
 })
+
+describe('history and blame edge cases', () => {
+  it('starts the history from a given commit, for files of another branch', async () => {
+    await repo.createBranch(dir, 'feature', null, true)
+    await commitAs('Cy', 'feature only', { 'feat.txt': 'f\n' })
+    const tip = hashes['feature only']
+    await repo.checkout(dir, 'main')
+    expect(await repo.getFileHistory(dir, 'feat.txt', null)).toEqual([])
+    expect((await repo.getFileHistory(dir, 'feat.txt', tip)).map((h) => h.commit.subject)).toEqual(['feature only'])
+    await expect(repo.getFileHistory(dir, 'feat.txt', '--all')).rejects.toThrow()
+  })
+
+  it('refuses to blame a binary file before running blame', async () => {
+    writeFileSync(join(dir, 'blob.bin'), Buffer.from([1, 2, 0, 3, 4]))
+    await expect(repo.getBlame(dir, 'blob.bin', null)).rejects.toThrow(/binary/i)
+    await repo.stage(dir, ['blob.bin'])
+    await repo.commit(dir, 'add blob', false)
+    const head = (await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()
+    await expect(repo.getBlame(dir, 'blob.bin', head)).rejects.toThrow(/binary/i)
+  })
+})

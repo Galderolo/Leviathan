@@ -106,7 +106,7 @@ export function App() {
       } else if (e.key === 'F5' && active?.path) {
         e.preventDefault()
         void refreshRepo(active.path)
-      } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.fileView) {
+      } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.fileView && !isTyping(e.target)) {
         closeFileView(active.path)
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.diff) {
         const target = e.target as HTMLElement

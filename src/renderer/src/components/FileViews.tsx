@@ -6,6 +6,7 @@ import { useT } from '../i18n'
 import { useRepo, useStore } from '../store'
 import { errorMessage } from '../ui'
 import { cx, formatDate, relativeDate, shortHash, splitPath } from '../utils'
+import { historyDiffSource } from '../historyDiff'
 import { Avatar } from './common'
 import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 
@@ -18,7 +19,7 @@ export function FileView({ path }: { path: string }) {
   const fileView = useRepo(path)?.fileView
   if (!fileView) return null
   return fileView.kind === 'history' ? (
-    <FileHistoryView key={fileView.path} path={path} file={fileView.path} />
+    <FileHistoryView key={`${fileView.path}@${fileView.rev}`} path={path} file={fileView.path} rev={fileView.rev} />
   ) : (
     <BlameView key={`${fileView.path}@${fileView.rev}`} path={path} file={fileView.path} rev={fileView.rev} />
   )
@@ -45,7 +46,7 @@ function Header(props: { path: string; context: string; file: string; children?:
 }
 
 /** The commits that touched a file (following renames), and its diff in the one picked. */
-function FileHistoryView({ path, file }: { path: string; file: string }) {
+function FileHistoryView({ path, file, rev }: { path: string; file: string; rev: string | null }) {
   const t = useT()
   const lang = useStore((s) => s.lang)
   const [items, setItems] = useState<FileCommit[] | null>(null)
@@ -57,13 +58,13 @@ function FileHistoryView({ path, file }: { path: string; file: string }) {
   useEffect(() => {
     let live = true
     api
-      .getFileHistory(path, file)
+      .getFileHistory(path, file, rev)
       .then((list) => live && setItems(list))
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
       live = false
     }
-  }, [path, file])
+  }, [path, file, rev])
 
   const item = items?.[picked]
   useEffect(() => {
@@ -72,13 +73,7 @@ function FileHistoryView({ path, file }: { path: string; file: string }) {
     setDiff(null)
     setDiffError(null)
     api
-      .getDiff(path, {
-        kind: 'commit',
-        hash: item.commit.hash,
-        parent: item.commit.parents[0] ?? null,
-        path: item.path,
-        oldPath: item.oldPath
-      })
+      .getDiff(path, historyDiffSource(item))
       .then((d) => live && setDiff(d))
       .catch((err) => live && setDiffError(errorMessage(err)))
     return () => {

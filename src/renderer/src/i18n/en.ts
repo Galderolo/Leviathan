@@ -365,6 +365,7 @@ const en = {
   'history.title': 'HISTORY',
   'history.empty': 'No commit touched this file yet.',
   'history.showInGraph': 'Show in graph',
+  'history.notInGraph': 'That commit is further back than the graph shows; its details are on the right.',
   'history.renamedFrom': 'renamed from {path}',
   'blame.title': 'BLAME',
   'blame.working': 'working tree',

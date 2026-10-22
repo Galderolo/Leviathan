@@ -99,6 +99,14 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - An open conflict view is not closed when the file stops being conflicted (marked resolved from the list, or after Abort).
 - An open diff keeps an outdated untracked flag when the file stays in the same list (`git rm --cached`).
 
+**File history and blame**
+- File names with quotes, backslashes or tabs (Linux/macOS) come back quoted from `git log` (no `-z`), so their diff is empty.
+- History of a staged rename starts from the new name, which HEAD does not have yet (empty list).
+- A pure rename shows "No changes" with no "renamed from" note in the diff pane.
+- History stops at 300 commits and blame at 20 000 lines without saying so; neither view refreshes after a commit or checkout.
+- A global `blame.ignoreRevsFile` pointing to a missing file makes every blame fail with git's message.
+- Rendering 20 000 blame rows ("Show all") is slow; closing the view does not stop a long `log --follow` or blame.
+
 **Older items**
 - Background fetch does not mark the repository busy, so a manual pull at the same moment can hit "cannot lock ref".
 - Checkout-and-merge from drag and drop has no confirmation.

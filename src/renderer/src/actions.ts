@@ -483,8 +483,8 @@ function fixSelection(path: string): void {
   const hasChanges = changeCount(view) > 0
   const head = view.state.head.hash
   if (view.selection === null || (view.selection.kind === 'wip' && !hasChanges)) {
-    if (hasChanges) selectWip(path)
-    else if (head) void selectCommit(path, head)
+    if (hasChanges) selectWip(path, true)
+    else if (head) void selectCommit(path, head, false, true)
     else patchRepo(path, { selection: null, details: null })
   }
 }
@@ -499,7 +499,8 @@ export async function loadMore(path: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // Selection & diffs
 
-export function selectWip(path: string): void {
+export function selectWip(path: string, keepFileView = false): void {
+  if (!keepFileView && getRepo(path)?.fileView) patchRepo(path, { fileView: null })
   patchRepo(path, (r) => ({
     selection: { kind: 'wip' },
     details: null,
@@ -507,28 +508,37 @@ export function selectWip(path: string): void {
   }))
 }
 
-export function openFileHistory(path: string, file: string): void {
-  patchRepo(path, { fileView: { kind: 'history', path: file, rev: null } })
+/** History of a file from HEAD, or (`rev`) from a commit of another branch. The open diff gives way to it. */
+export function openFileHistory(path: string, file: string, rev: string | null = null): void {
+  patchRepo(path, { fileView: { kind: 'history', path: file, rev }, diff: null })
 }
 
 /** Blame of a file in the working tree (`rev` null) or as it was in a commit. */
 export function openBlame(path: string, file: string, rev: string | null): void {
-  patchRepo(path, { fileView: { kind: 'blame', path: file, rev } })
+  patchRepo(path, { fileView: { kind: 'blame', path: file, rev }, diff: null })
 }
 
 export function closeFileView(path: string): void {
   patchRepo(path, { fileView: null })
 }
 
-/** Leaves the file view for the graph, with that commit selected and in sight. */
+/**
+ * Leaves the file view for the graph, with that commit selected and in sight.
+ * Older commits than the graph holds are loaded first (within reason).
+ */
 export async function showCommitInGraph(path: string, hash: string): Promise<void> {
   patchRepo(path, { fileView: null, diff: null })
+  const loaded = () => getRepo(path)?.commits.some((c) => c.hash === hash) ?? false
+  for (let round = 0; round < 10 && !loaded() && getRepo(path)?.hasMore; round++) await loadMore(path)
+  if (!loaded()) toast('info', t('history.notInGraph'))
   await selectCommit(path, hash, true)
 }
 
-export async function selectCommit(path: string, hash: string, scroll = false): Promise<void> {
+export async function selectCommit(path: string, hash: string, scroll = false, keepFileView = false): Promise<void> {
   const view = getRepo(path)
   if (!view) return
+  // Picking something else leaves the file history or blame.
+  if (!keepFileView && view.fileView) patchRepo(path, { fileView: null })
   const stash = view.state?.stashes.find((s) => s.hash === hash)
   patchRepo(path, (r) => ({
     selection: stash ? { kind: 'stash', hash, index: stash.index } : { kind: 'commit', hash },
@@ -559,7 +569,7 @@ function sameSource(a: DiffSource, b: DiffSource): boolean {
 }
 
 export async function openDiff(path: string, source: DiffSource): Promise<void> {
-  patchRepo(path, { diff: { source, data: null } })
+  patchRepo(path, { diff: { source, data: null }, fileView: null })
   await loadDiff(path, source)
 }
 

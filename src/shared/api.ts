@@ -51,7 +51,7 @@ export interface LeviathanInvokeApi {
   getDiff(repo: string, source: DiffSource): Promise<FileDiff>
   getSnapshot(repo: string): Promise<Snapshot>
   /** Commits that touched a file, newest first, following renames. */
-  getFileHistory(repo: string, path: string): Promise<FileCommit[]>
+  getFileHistory(repo: string, path: string, rev: string | null): Promise<FileCommit[]>
   /** Who last changed each line: in the working tree (`rev` null) or in a commit. */
   getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]>
 

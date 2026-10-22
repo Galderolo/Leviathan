@@ -696,13 +696,22 @@ export async function checkoutPullRequest(
 
 const HISTORY_FORMAT = '%x1e%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%cn%x1f%ce%x1f%ct%x1f%s%x1f'
 
-/** Commits that touched a file, newest first, following renames (`git log --follow`). */
-export async function getFileHistory(repo: string, path: string, limit = 300): Promise<FileCommit[]> {
+/**
+ * Commits that touched a file, newest first, following renames (`git log --follow`),
+ * from HEAD or from `rev` (a commit of another branch).
+ */
+export async function getFileHistory(
+  repo: string,
+  path: string,
+  rev: string | null = null,
+  limit = 300
+): Promise<FileCommit[]> {
   insideRepo(repo, path)
+  if (rev !== null) assertSafeArg(rev, 'commit')
   const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 5000) : 300
   const out = await run(
     repo,
-    ['log', '--follow', `-n${count}`, `--format=${HISTORY_FORMAT}`, '--name-status', '--', path],
+    ['log', '--follow', `-n${count}`, `--format=${HISTORY_FORMAT}`, '--name-status', ...(rev ? [rev] : []), '--', path],
     {
       env: LITERAL_PATHS
     }
@@ -745,14 +754,42 @@ export async function getFileHistory(repo: string, path: string, limit = 300): P
 }
 
 const BLAME_MAX_LINES = 20000
+const BLAME_MAX_BYTES = 10 * 1024 * 1024
+
+/** Blame of a binary or very large file would only run long and produce noise: refuse it up front. */
+async function assertBlameable(repo: string, full: string, path: string, rev: string | null): Promise<void> {
+  const tooLarge = new Error('This file is too large to blame here.')
+  const binary = new Error('This is a binary file: it has no lines to blame.')
+  if (rev === null) {
+    const stat = await fs.lstat(full).catch(() => null)
+    if (!stat?.isFile()) return
+    if (stat.size > BLAME_MAX_BYTES) throw tooLarge
+    const handle = await fs.open(full, 'r')
+    try {
+      const head = Buffer.alloc(Math.min(stat.size, 8000))
+      await handle.read(head, 0, head.length, 0)
+      if (head.includes(0)) throw binary
+    } finally {
+      await handle.close()
+    }
+    return
+  }
+  const object = `${rev}:${path.replace(/\\/g, '/')}`
+  const size = await git(['cat-file', '-s', object], { cwd: repo, okCodes: [0, 128] })
+  if (size.exitCode !== 0) return
+  if (Number(size.stdout.trim()) > BLAME_MAX_BYTES) throw tooLarge
+  const blob = await run(repo, ['cat-file', 'blob', object])
+  if (blob.slice(0, 8000).includes('\0')) throw binary
+}
 
 /**
  * Who last changed each line of a file: as it is in the working tree (`rev`
  * null; lines not committed yet have an all-zeros hash) or in a commit.
  */
 export async function getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]> {
-  insideRepo(repo, path)
+  const full = insideRepo(repo, path)
   if (rev !== null) assertSafeArg(rev, 'commit')
+  await assertBlameable(repo, full, path, rev)
   const out = await run(repo, ['blame', '--porcelain', ...(rev ? [rev] : []), '--', path])
   if (out.includes('\0')) throw new Error('This is a binary file: it has no lines to blame.')
   const info = new Map<string, { author: string; date: number; summary: string }>()

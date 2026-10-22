@@ -263,7 +263,11 @@ export function fileMenu(
   const isNew = file.status === '?'
   if (items.length) items.push({ separator: true })
   items.push(
-    { label: t('menu.fileHistory'), disabled: isNew, onClick: () => openFileHistory(path, file.path) },
+    {
+      label: t('menu.fileHistory'),
+      disabled: isNew,
+      onClick: () => openFileHistory(path, file.path, area === 'commit' ? (hash ?? null) : null)
+    },
     {
       label: t('menu.blame'),
       disabled: isNew || file.status === 'D',

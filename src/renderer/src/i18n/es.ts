@@ -370,6 +370,7 @@ const es: Record<keyof typeof en, string> = {
   'history.title': 'HISTORIAL',
   'history.empty': 'Ningún commit ha tocado aún este archivo.',
   'history.showInGraph': 'Ver en el grafo',
+  'history.notInGraph': 'Ese commit es más antiguo de lo que muestra el grafo; tienes sus detalles a la derecha.',
   'history.renamedFrom': 'renombrado desde {path}',
   'blame.title': 'BLAME',
   'blame.working': 'archivo de trabajo',
