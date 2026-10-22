@@ -81,8 +81,6 @@ Code: `src/shared/submodules.ts` (`.gitmodules` and gitlink parsing), `src/main/
 - Per-repository git arguments (accounts) pick the innermost repository, so a submodule open in its own tab uses its own account.
 
 Known minor issues:
-- *Discard changes* on a submodule entry does nothing (`git restore` does not move submodules); *Check out the recorded commit* in its menu is the way.
-- A `.gitmodules` path that is absolute or contains `..` makes `getSubmodules` fail, and the section disappears.
 - The stale note counts submodules set to `update = none` and ones the user deinitialized on purpose; *Update all* re-initializes the latter.
 - The submodule list loads twice after an update; commit lists capped at 100 give no "and more" sign.
 - A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
@@ -136,14 +134,11 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Git LFS**
 - Pattern info has no sequence counter: two quick checkouts can leave the older patterns on screen until the next change.
-- "No locked files" shows when git-lfs is missing (nothing was asked), and locks are not loaded when git-lfs is installed while the app runs, until the next checkout or reopening the tab.
+- Locks are not loaded when git-lfs is installed while the app runs, until the next checkout or reopening the tab.
 - Loading locks can take up to four git-lfs runs (verify, then without it); a host without the locks API shows a red error after every open or fetch, and an interactive reload without a credential helper may ask several times.
 - An own lock on a file deleted locally (deletion not committed) is released by id, skipping git-lfs's uncommitted-changes check.
-- "Require locking before editing" has no confirmation, and makes matching files read-only at once (also files open in an editor).
 - Lock lookups per file row are linear in the number of locks (fine for hundreds).
 - A pre-push hook from another tool (husky…) stops git-lfs from installing its own: the section says "not set up" and *Set up* fails with "Hook already exists" (`git lfs update --manual` is the way out).
-- The "+" (track a pattern) button shows even when git-lfs is missing, and fails with "'lfs' is not a git command".
-- "Lock 1 files" when only one of the selected files can be locked.
 
 **Pull requests**
 - A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.
