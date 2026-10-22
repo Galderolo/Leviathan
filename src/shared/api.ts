@@ -157,7 +157,7 @@ export interface LeviathanInvokeApi {
   getPullRequests(repo: string): Promise<{ provider: Provider; remote: string; items: PullRequest[] } | null>
   createPullRequest(repo: string, input: NewPullRequest): Promise<PullRequest>
   /** Closes a pull request without merging it. */
-  closePullRequest(repo: string, number: number): Promise<void>
+  closePullRequest(repo: string, number: number, url: string): Promise<void>
   getDefaultBranch(repo: string): Promise<string | null>
   checkoutPullRequest(
     repo: string,

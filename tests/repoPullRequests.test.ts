@@ -110,14 +110,22 @@ describe('pull requests of a repository', () => {
   })
 
   it('closes one through the account', async () => {
-    await accounts.closeRepoPullRequest(work, 12)
+    await accounts.closeRepoPullRequest(work, 12, pr.html_url)
     expect(requests.at(-1)).toMatchObject({
       url: 'https://api.github.com/repos/org/app/pulls/12',
       method: 'PATCH',
       body: { state: 'closed' },
       auth: `Bearer ${TOKEN}`
     })
-    await expect(accounts.closeRepoPullRequest(other, 12)).rejects.toThrow(/No account/)
+    await expect(accounts.closeRepoPullRequest(other, 12, pr.html_url)).rejects.toThrow(/No account/)
+  })
+
+  it('refuses to close when the pull request is not the one the list showed', async () => {
+    const before = requests.length
+    await expect(accounts.closeRepoPullRequest(work, 12, 'https://github.com/someone/else/pull/12')).rejects.toThrow(
+      /not the one/i
+    )
+    expect(requests.slice(before).some((r) => r.method === 'PATCH')).toBe(false)
   })
 
   it('never hands the token to the renderer', async () => {

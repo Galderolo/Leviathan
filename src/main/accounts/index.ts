@@ -12,6 +12,7 @@ import {
   createPullRequest,
   defaultBranch,
   fetchIdentity,
+  getPullRequest,
   listPullRequests,
   listRepos
 } from './providers'
@@ -194,10 +195,18 @@ export async function createRepoPullRequest(repo: string, input: NewPullRequest)
   return createPullRequest(provider, host, project.path, project.token, { ...input, title: input.title.trim() })
 }
 
-export async function closeRepoPullRequest(repo: string, number: number): Promise<void> {
+/**
+ * Closes a pull request, after checking that the project resolved now still has
+ * it at `url`: the list may come from another remote or account than today's.
+ */
+export async function closeRepoPullRequest(repo: string, number: number, url: string): Promise<void> {
   const project = await repoProject(repo)
   if (!project) throw new Error("No account can reach this repository's remote")
   const { provider, host } = project.account
+  const current = await getPullRequest(provider, host, project.path, project.token, number)
+  if (typeof url !== 'string' || current.url !== url) {
+    throw new Error('This pull request is not the one the list showed any more. Refresh the list and try again.')
+  }
   await closePullRequest(provider, host, project.path, project.token, number)
 }
 

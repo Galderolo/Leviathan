@@ -70,10 +70,12 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - No line limit: up to 2 MB is rendered as one element per line.
 
 **Interactive rebase**
+- When a rebase stops for something other than conflicts (an untracked file in the way, a failed step), the message still says "usually for conflicts" and drops git's reason.
 - A rebase that stopped for a conflict and was continued is not undoable.
 - If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
 
 **Pull requests**
+- A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.
 - A token that can no longer be decrypted hides the section without a hint.
 - 401/403 messages are generic (no Gitea scope; expired token vs. missing scope).
 - More than 50 open PRs are not paginated; fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
@@ -92,6 +94,10 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - The divider: no keyboard support, a right-button press also drags, every move re-renders the panel (may stutter with huge lists).
 - Checked rows lose the hover highlight; in Spanish at the minimum panel width the header buttons can crowd the title.
 - Checkboxes in the staged list do not exclude files from the commit (unlike GitHub Desktop); "Quitar selección" can read as "deselect".
+
+**Diffs**
+- An open conflict view is not closed when the file stops being conflicted (marked resolved from the list, or after Abort).
+- An open diff keeps an outdated untracked flag when the file stays in the same list (`git rm --cached`).
 
 **Older items**
 - Background fetch does not mark the repository busy, so a manual pull at the same moment can hit "cannot lock ref".

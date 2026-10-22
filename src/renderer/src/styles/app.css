@@ -2015,6 +2015,16 @@ a:hover {
   color: var(--text-dim);
 }
 
+.pr-branches {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 .pr-icon {
   color: var(--green);
 }

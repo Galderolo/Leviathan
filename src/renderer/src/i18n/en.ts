@@ -374,6 +374,8 @@ const en = {
   'diff.unified': 'One column',
   'diff.split': 'Side by side (old | new)',
 
+  'error.operationInProgress': '{operation}: finish or abort it first.',
+
   'status.ready': 'Ready',
   'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',

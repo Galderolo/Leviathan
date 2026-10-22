@@ -512,7 +512,10 @@ export async function interactiveRebase(repo: string, base: string, items: Rebas
 /** The todo list and messages of an interactive rebase, once no rebase needs them any more. */
 async function removeRebaseFiles(repo: string): Promise<void> {
   if ((await currentOperation(repo)) === 'rebase') return
-  await fs.rm(join(await gitDir(repo), 'leviathan-rebase'), { recursive: true, force: true })
+  // Best effort: an antivirus holding one of the files for a moment must not turn success into an error.
+  await fs
+    .rm(join(await gitDir(repo), 'leviathan-rebase'), { recursive: true, force: true, maxRetries: 3 })
+    .catch(() => {})
 }
 
 export async function cherryPick(repo: string, hash: string): Promise<void> {

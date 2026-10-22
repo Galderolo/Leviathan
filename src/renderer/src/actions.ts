@@ -248,7 +248,7 @@ export async function closePullRequest(path: string, pr: PullRequest): Promise<v
   })
   if (!ok) return
   try {
-    await api.closePullRequest(path, pr.number)
+    await api.closePullRequest(path, pr.number, pr.url)
     toast('success', t('toast.prClosed', { number: pr.number }))
   } catch (err) {
     toast('error', errorMessage(err))
@@ -852,6 +852,11 @@ export function rebaseOnto(path: string, name: string): Promise<boolean> {
 
 /** Opens the interactive rebase dialog for the commits after `base`. */
 export async function openInteractiveRebase(path: string, base: string): Promise<void> {
+  const operation = getRepo(path)?.state?.operation
+  if (operation) {
+    toast('error', t('error.operationInProgress', { operation: t(`op.${operation}`) }))
+    return
+  }
   try {
     const commits = await api.getRebaseCommits(path, base)
     useStore.setState({ rebase: { path, base, commits } })
@@ -875,6 +880,8 @@ export async function startInteractiveRebase(
   base: string,
   items: RebaseItem[]
 ): Promise<'done' | 'stopped' | 'refused'> {
+  // A rebase (or another operation) already under way is a refusal, not this rebase stopping.
+  const before = (await api.getState(path).catch(() => null))?.operation ?? null
   try {
     await recordUndo(path, t('undo.interactiveRebase'), 'keep', () => api.interactiveRebase(path, base, items))
     toast('success', t('toast.rebased'))
@@ -882,7 +889,7 @@ export async function startInteractiveRebase(
     return 'done'
   } catch (err) {
     const state = await api.getState(path).catch(() => null)
-    if (state?.operation === 'rebase') {
+    if (!before && state?.operation === 'rebase') {
       // git's own output here is long and mentions commands the app does not offer.
       toast('info', t('toast.rebaseStopped'))
       closeInteractiveRebase()

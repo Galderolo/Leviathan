@@ -151,6 +151,21 @@ export async function createPullRequest(
   return toPullRequest(provider, created as Json)
 }
 
+/** One pull request, as the provider sees it now. */
+export async function getPullRequest(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  number: number,
+  fetchFn: FetchFn = fetch
+): Promise<PullRequest> {
+  if (!Number.isInteger(number) || number <= 0) throw new Error(`Invalid pull request number: ${number}`)
+  const kind = provider === 'gitlab' ? 'merge_requests' : 'pulls'
+  const body = await getJson(provider, host, `${projectPath(provider, path)}/${kind}/${number}`, token, fetchFn)
+  return toPullRequest(provider, body as Json)
+}
+
 /** Closes a pull request without merging it. */
 export async function closePullRequest(
   provider: Provider,
