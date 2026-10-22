@@ -4,6 +4,13 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-22
+
+### Fixed
+
+- After picking a branch in the side panel, a pull no longer dims the commits it brings: the highlight follows the branch as it moves.
+- Submodules showed as not initialized when the repository's path was spelled differently from the one git reports (a symlinked folder, a Windows short name).
+
 ## [0.8.0] - 2026-10-22
 
 ### Added
