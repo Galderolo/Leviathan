@@ -2,7 +2,7 @@ name: Release
 
 # Push a tag like `v0.3.0` to build installers for every platform and publish
 # them as a GitHub pre-release, with that version's CHANGELOG section as notes.
-# The release stays a draft if any build fails.
+# Nothing is uploaded unless every platform builds.
 on:
   push:
     tags: ['v*']
@@ -11,8 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  # One draft release for every build to upload to. Left to each build, the
-  # parallel jobs can each create their own draft and split the installers.
+  # A draft to fill in, with the notes, so the release can be checked before the installers land.
   draft:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +27,8 @@ jobs:
           gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
             gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
 
+  # Builds only keep their installers as artifacts: uploading from each build
+  # depends on the release still being a draft when that build gets a runner.
   build:
     needs: draft
     name: ${{ matrix.os }}
@@ -53,18 +54,38 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Package
-        run: npx electron-builder ${{ matrix.target }} --publish always
+        run: npx electron-builder ${{ matrix.target }} --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Unsigned builds by default. Add signing secrets here when the project has certificates.
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-  # Only when every platform built and uploaded its installers.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.blockmap
+            dist/latest*.yml
+
+  # Only when every platform built: upload everything, then publish.
   publish:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Publish the release
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - name: Upload the installers and publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
+        run: |
+          ls -l installers
+          gh release upload "$GITHUB_REF_NAME" installers/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

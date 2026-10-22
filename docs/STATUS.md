@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-21, with 0.3.0 released (213 tests).
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-22, with 0.3.1 released (213 tests).
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -10,9 +10,10 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 |---|---|---|
 | 0.1.0 | 2026-10-21 | Graph, staging (files, hunks, lines), commit, branches, merge/rebase, pull/push, stash, tags, clone/init |
 | 0.2.0 | 2026-10-21 | Accounts (encrypted tokens, per-repo identity and HTTPS auth), fetch button, branch start point, branch dates |
-| 0.3.0 | 2026-10-21 | Undo/redo, conflict editor, interactive rebase, pull requests, pull without checkout, unpushed-commit marks, new icon |
+| 0.3.0 | 2026-10-21 | Undo/redo, conflict editor, interactive rebase, pull requests, pull without checkout, unpushed-commit marks, new icon (no macOS installers) |
+| 0.3.1 | 2026-10-22 | Same app as 0.3.0, with the macOS installers |
 
-All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The release workflow is fixed since 0.3.0: one draft for all builds, notes taken from the CHANGELOG, and the release is published only when the three builds succeed.
+All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
 ## Done in 0.3.0
 
@@ -25,7 +26,7 @@ All of these went through a final whole-branch review; Critical and Important fi
 - **Pull a branch that is not checked out** (branch menu → *Pull … (fast-forward)*); the toast after a pull names the branch and says when it was already up to date, and the graph scrolls to the new tip.
 - **Unpushed commits** show a small ↑ at the end of their message in the graph.
 - **New app icon** (`resources/icon.png`, `src/renderer/public/leviathan.png`).
-- **Release workflow**: a first job creates one draft release (notes from the CHANGELOG), the three builds upload to it, and a last job publishes it.
+- **Release workflow**: a first job creates a draft with the CHANGELOG notes, the three builds keep their installers as artifacts, and a last job uploads them and publishes the release (0.3.1).
 
 ## Next steps
 
@@ -38,7 +39,7 @@ Pull requests were tested for real on a private GitHub repository (create as dra
 1. Set the version in `package.json` (and `package-lock.json`).
 2. Rename `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - <date>` and add an empty `[Unreleased]` above it.
 3. Commit, then tag and push: `git tag vx.y.z && git push origin main vx.y.z`.
-4. The Release workflow builds Windows, macOS and Linux, uploads everything to one draft and publishes it as a pre-release when all three succeed. If a build fails, the release stays a draft: fix, delete the draft and the tag, and tag again.
+4. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again.
 
 ### 3. Sign in with the browser (OAuth device flow)
 

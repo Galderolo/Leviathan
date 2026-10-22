@@ -4,6 +4,14 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-22
+
+Same app as 0.3.0, released again so every platform has its installers.
+
+### Fixed
+
+- The macOS installers were missing from the 0.3.0 release.
+
 ## [0.3.0] - 2026-10-21
 
 ### Added
