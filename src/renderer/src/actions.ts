@@ -594,7 +594,8 @@ export function selectStash(path: string, stash: Stash): void {
 /** Selects a branch's tip; the graph then dims what is not in that branch's history. */
 export function selectRef(path: string, ref: GitRef): void {
   void selectCommit(path, ref.hash, true)
-  patchRepo(path, { highlight: ref.type === 'tag' ? null : ref.hash })
+  // The branch, not its tip now: after a pull or a commit it keeps covering the branch's new commits.
+  patchRepo(path, { highlight: ref.type === 'tag' ? null : ref.fullName })
 }
 
 export function clearHighlight(path: string): void {

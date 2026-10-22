@@ -64,7 +64,7 @@ export interface RepoView {
   pullRequests: PullRequestsView | null
   /** Branches left out of the graph, or the only one shown (full ref names). */
   graphScope: GraphScope
-  /** Tip of the branch picked in the side panel: the graph dims commits outside its history. */
+  /** Branch picked in the side panel (full ref name): the graph dims commits outside its history. */
   highlight: string | null
   /** File history or blame shown in place of the graph. */
   fileView: { kind: 'history' | 'blame'; path: string; rev: string | null } | null

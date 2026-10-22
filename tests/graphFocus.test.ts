@@ -1,11 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { ancestry, pullRequestsByRef } from '../src/renderer/src/graphFocus'
+import { ancestry, highlightTip, pullRequestsByRef } from '../src/renderer/src/graphFocus'
 import type { Commit, GitRef, PullRequest } from '../src/shared/types'
 
 const ref = (r: Partial<GitRef> & Pick<GitRef, 'name' | 'type'>): GitRef =>
   ({ fullName: r.type === 'head' ? `refs/heads/${r.name}` : `refs/remotes/${r.name}`, hash: 'x', ...r }) as GitRef
 const pr = (number: number, sourceBranch: string, fromFork = false) =>
   ({ number, sourceBranch, fromFork, targetBranch: 'main' }) as PullRequest
+
+describe('highlightTip', () => {
+  it('follows the highlighted branch to where it is now (after a pull, a commit or a reset)', () => {
+    const before = [ref({ name: 'develop', type: 'head', hash: 'old' })]
+    const after = [ref({ name: 'develop', type: 'head', hash: 'new' })]
+    expect(highlightTip('refs/heads/develop', before)).toBe('old')
+    expect(highlightTip('refs/heads/develop', after)).toBe('new')
+  })
+
+  it('dims nothing once the branch is gone, or without a highlight', () => {
+    expect(highlightTip('refs/heads/deleted', [ref({ name: 'develop', type: 'head' })])).toBeNull()
+    expect(highlightTip(null, [ref({ name: 'develop', type: 'head' })])).toBeNull()
+  })
+})
 
 describe('pullRequestsByRef', () => {
   it('puts each pull request on its remote branch and the local branch that tracks it', () => {
