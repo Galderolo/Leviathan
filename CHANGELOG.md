@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Changed
+
+- After switching branches (or checking out a commit or a pull request), the uncommitted changes you brought along are shown; with none, the commit you are now on. A double-click on a branch used to leave its last commit on screen.
+
 ### Fixed
 
 - A cherry-pick, revert, merge, rebase or pull that stops for conflicts no longer shows git's output as an error: a short note says what to do, and the changes view opens with the banner and the conflicted files.
