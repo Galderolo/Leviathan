@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- Automatic updates from the GitHub releases: shortly after start and every few hours Leviathan looks for a newer version and says so in the status bar. The Windows installer build and the Linux AppImage download and install it with one click (then restart); the portable .exe, the .deb package and macOS open the release page instead. Settings → Updates turns the checks off or runs one now.
+
 ## [0.4.0] - 2026-10-22
 
 ### Added

@@ -377,6 +377,19 @@ const en = {
 
   'error.operationInProgress': '{operation}: finish or abort it first.',
 
+  'update.title': 'Updates',
+  'update.auto': 'Check for new versions automatically',
+  'update.checkNow': 'Check now',
+  'update.available': 'Leviathan {version} is available',
+  'update.download': 'Download and install',
+  'update.openPage': 'Download',
+  'update.downloading': 'Downloading update… {percent}%',
+  'update.ready': 'Leviathan {version} is ready',
+  'update.restart': 'Restart to update',
+  'update.latest': 'You have the latest version.',
+  'update.failed': 'Could not check for updates: {error}',
+  'update.devBuild': 'Updates are checked in installed builds only.',
+
   'status.ready': 'Ready',
   'status.fetchFailed': 'Background fetch failed',
   'status.commits': '{count} commits loaded',

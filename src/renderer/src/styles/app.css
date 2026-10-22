@@ -2127,6 +2127,33 @@ a:hover {
   white-space: pre;
 }
 
+.statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.update-notice .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
 .rebase-modal {
   width: 760px;
   max-height: calc(100vh - 80px);

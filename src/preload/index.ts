@@ -5,10 +5,12 @@ import {
   IPC_ASKPASS,
   IPC_PROGRESS,
   IPC_REPO_CHANGED,
+  IPC_UPDATE,
   type LeviathanApi,
   type IpcResult
 } from '../shared/api'
 import type { AskpassRequest, ProgressEvent, RepoChangedEvent } from '../shared/types'
+import type { UpdateState } from '../shared/updates'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, payload: T) => cb(payload)
@@ -19,7 +21,8 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 const api: Record<string, unknown> = {
   onRepoChanged: (cb: (e: RepoChangedEvent) => void) => subscribe(IPC_REPO_CHANGED, cb),
   onProgress: (cb: (e: ProgressEvent) => void) => subscribe(IPC_PROGRESS, cb),
-  onAskpass: (cb: (e: AskpassRequest) => void) => subscribe(IPC_ASKPASS, cb)
+  onAskpass: (cb: (e: AskpassRequest) => void) => subscribe(IPC_ASKPASS, cb),
+  onUpdate: (cb: (state: UpdateState) => void) => subscribe(IPC_UPDATE, cb)
 }
 
 for (const method of API_METHODS) {

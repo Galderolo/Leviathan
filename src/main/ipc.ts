@@ -5,6 +5,7 @@ import {
   IPC_INVOKE,
   IPC_PROGRESS,
   IPC_REPO_CHANGED,
+  IPC_UPDATE,
   type LeviathanInvokeApi,
   type IpcResult
 } from '../shared/api'
@@ -15,6 +16,7 @@ import { loadSettings, saveSettings } from './settings'
 import { openAction, openTerminal } from './shell'
 import { generateKey, listKeys } from './ssh'
 import { watchRepo, unwatchRepo } from './watcher'
+import { getUpdater, initUpdates } from './autoUpdate'
 
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -37,6 +39,10 @@ const handlers: LeviathanInvokeApi = {
   },
   gitVersion: () => repo.gitVersion(),
   appVersion: async () => app.getVersion(),
+  getUpdateState: async () => getUpdater().state(),
+  checkForUpdates: () => getUpdater().check(),
+  downloadUpdate: () => getUpdater().download(),
+  installUpdate: async () => getUpdater().install(),
 
   openRepo: (path) => repo.openRepo(path),
   initRepo: (path, branch) => repo.initRepo(path, branch),
@@ -147,6 +153,11 @@ const handlers: LeviathanInvokeApi = {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')
     await shell.openExternal(url)
   }
+}
+
+/** Update checks start once the window can hear about them. */
+export function startUpdates(): void {
+  initUpdates((state) => broadcast(IPC_UPDATE, state))
 }
 
 export function registerIpc(): void {

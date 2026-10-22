@@ -382,6 +382,19 @@ const es: Record<keyof typeof en, string> = {
 
   'error.operationInProgress': '{operation}: termínalo o abórtalo antes.',
 
+  'update.title': 'Actualizaciones',
+  'update.auto': 'Buscar versiones nuevas automáticamente',
+  'update.checkNow': 'Buscar ahora',
+  'update.available': 'Leviathan {version} está disponible',
+  'update.download': 'Descargar e instalar',
+  'update.openPage': 'Descargar',
+  'update.downloading': 'Descargando actualización… {percent}%',
+  'update.ready': 'Leviathan {version} está lista',
+  'update.restart': 'Reiniciar para actualizar',
+  'update.latest': 'Tienes la última versión.',
+  'update.failed': 'No se pudo comprobar si hay actualizaciones: {error}',
+  'update.devBuild': 'Las actualizaciones solo se buscan en las versiones instaladas.',
+
   'status.ready': 'Listo',
   'status.fetchFailed': 'Falló el fetch automático',
   'status.commits': '{count} commits cargados',

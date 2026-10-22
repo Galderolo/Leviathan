@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { BrowserWindow, Menu, app, nativeTheme, screen, shell } from 'electron'
 import { initAccounts } from './accounts'
 import { disposeAskpass, initAskpass } from './askpass'
-import { registerIpc } from './ipc'
+import { registerIpc, startUpdates } from './ipc'
 import { loadSettings, saveSettings } from './settings'
 import { unwatchAll } from './watcher'
 
@@ -81,6 +81,7 @@ app.whenReady().then(async () => {
   await initAskpass()
   initAccounts()
   createWindow()
+  startUpdates()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
