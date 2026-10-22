@@ -197,6 +197,28 @@ export function remoteMenu(path: string, name: string): MenuItem[] {
   return [{ label: t('menu.removeRemote', { name }), danger: true, onClick: () => void removeRemote(path, name) }]
 }
 
+/** Menu for several selected files: what applies to all of them at once. */
+export function filesMenu(path: string, files: FileChange[], area: 'unstaged' | 'staged'): MenuItem[] {
+  const count = files.length
+  const copy = {
+    label: t('menu.copyPaths'),
+    onClick: () => void copyText(files.map((f) => f.path).join('\n'), t('toast.copied'))
+  }
+  if (area === 'staged') {
+    return [
+      { label: t('menu.unstageCount', { count }), onClick: () => void unstageFiles(path, files) },
+      { separator: true },
+      copy
+    ]
+  }
+  return [
+    { label: t('menu.stageCount', { count }), onClick: () => void stageFiles(path, files) },
+    { label: t('menu.discardCount', { count }), danger: true, onClick: () => void discardFiles(path, files) },
+    { separator: true },
+    copy
+  ]
+}
+
 export function fileMenu(
   path: string,
   file: FileChange,

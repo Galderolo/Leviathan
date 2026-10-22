@@ -28,7 +28,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Visual commit graph**: coloured lanes with rounded elbows, lane-coloured row bands, branch and tag labels, author initials, the work-in-progress node and stashes drawn right in the graph. Smooth with thousands of commits.
 - **Tabs**: keep several repositories open; they are restored on the next start.
 - **Side panel**: local branches as a folder tree, remotes, stashes and tags, with ahead/behind counters and a filter.
-- **Staging**: stage or unstage whole files, individual **hunks** or single **lines**; discard changes; add files to `.gitignore`.
+- **Staging**: stage or unstage whole files, individual **hunks** or single **lines**; select several files (checkboxes, Ctrl/Shift+click) to stage, unstage or discard them together; discard changes; add files to `.gitignore`.
 - **Commits**: summary and description, amend the last commit, `Ctrl+Enter` to commit.
 - **Diff viewer** for the working tree, the index and any commit.
 - **Branches**: create, checkout (double-click), rename, delete, merge, rebase, push, delete from the remote. **Drag a branch onto another** to merge or rebase.

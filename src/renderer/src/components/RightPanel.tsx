@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { AlertTriangle, Copy, PencilLine } from 'lucide-react'
 import type { DiffSource, FileChange } from '../../../shared/types'
 import {
@@ -6,6 +6,7 @@ import {
   applyStash,
   commit,
   continueOperation,
+  discardFiles,
   dropStash,
   openDiff,
   popStash,
@@ -18,8 +19,17 @@ import {
   unstageFiles,
   updateDraft
 } from '../actions'
+import {
+  clickSelection,
+  emptySelection,
+  focusSelection,
+  pruneSelection,
+  splitRatio,
+  toggleAll,
+  type FileSelection
+} from '../fileSelection'
 import { useT } from '../i18n'
-import { fileMenu } from '../menus'
+import { fileMenu, filesMenu } from '../menus'
 import { useRepo, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
 import { cx, formatDate, shortHash, splitPath } from '../utils'
@@ -73,15 +83,36 @@ function FileRow(props: {
   onOpen: () => void
   onContext: (e: React.MouseEvent) => void
   action?: { label: string; run: () => void }
+  /** In a list where several files can be selected: Ctrl/Shift clicks and the checkbox change the selection. */
+  select?: { checked: boolean; click: (e: React.MouseEvent, fromCheckbox: boolean) => void }
 }) {
   const { dir, name } = splitPath(props.file.path)
+  const select = props.select
   return (
     <div
-      className={cx('file-row', props.active && 'active')}
-      onClick={props.onOpen}
+      className={cx('file-row', props.active && 'active', select?.checked && 'selected')}
+      onClick={(e) => {
+        if (select && (e.shiftKey || e.ctrlKey || e.metaKey)) select.click(e, false)
+        else {
+          select?.click(e, false)
+          props.onOpen()
+        }
+      }}
       onContextMenu={props.onContext}
       title={props.file.path}
     >
+      {select && (
+        <input
+          type="checkbox"
+          className="file-check"
+          checked={select.checked}
+          onChange={() => {}}
+          onClick={(e) => {
+            e.stopPropagation()
+            select.click(e, true)
+          }}
+        />
+      )}
       <StatusBadge status={props.file.status} />
       <span className="file-path">
         <span className="file-dir">{dir}</span>
@@ -109,16 +140,71 @@ function FileSection(props: {
   action?: ReactNode
   children: ReactNode
   className?: string
+  style?: CSSProperties
+  sectionRef?: Ref<HTMLDivElement>
+  /** Checkbox that selects every file of the list (or none). */
+  selectAll?: { all: boolean; some: boolean; toggle: () => void; title: string }
 }) {
+  const selectAll = props.selectAll
   return (
-    <div className={cx('file-section', props.className)}>
+    <div className={cx('file-section', props.className)} style={props.style} ref={props.sectionRef}>
       <div className="file-section-header">
-        <span>{props.title}</span>
-        {props.count > 0 && props.action}
+        <span className="file-section-title">
+          {selectAll && props.count > 0 && (
+            <input
+              type="checkbox"
+              className="file-check"
+              title={selectAll.title}
+              checked={selectAll.all}
+              ref={(el) => {
+                if (el) el.indeterminate = selectAll.some && !selectAll.all
+              }}
+              onChange={selectAll.toggle}
+            />
+          )}
+          {props.title}
+        </span>
+        {props.count > 0 && <span className="file-section-actions">{props.action}</span>}
       </div>
       <div className="file-list">{props.children}</div>
     </div>
   )
+}
+
+/** Selection state of one file list: Ctrl/Shift clicks, checkboxes and "select all". */
+function useFileSelection(files: FileChange[]) {
+  const order = files.map((f) => f.path)
+  const [state, setState] = useState<FileSelection>(emptySelection)
+  const selection = pruneSelection(state, order)
+  const selected = files.filter((f) => selection.paths.has(f.path))
+  return {
+    selected,
+    has: (file: FileChange) => selection.paths.has(file.path),
+    // A plain click on the row only opens the file; the checkbox, Ctrl and Shift change the selection.
+    click: (file: FileChange, e: React.MouseEvent, fromCheckbox: boolean) =>
+      setState(
+        !fromCheckbox && !e.shiftKey && !e.ctrlKey && !e.metaKey
+          ? focusSelection(selection, file.path)
+          : clickSelection(selection, order, file.path, {
+              shift: e.shiftKey,
+              toggle: fromCheckbox || e.ctrlKey || e.metaKey
+            })
+      ),
+    all: files.length > 0 && selected.length === files.length,
+    some: selected.length > 0,
+    toggleAll: () => setState(toggleAll(selection, order)),
+    clear: () => setState(emptySelection())
+  }
+}
+
+const SPLIT_KEY = 'leviathan.unstagedShare'
+
+function readSplit(): number {
+  try {
+    return splitRatio(Number(localStorage.getItem(SPLIT_KEY) ?? 0.5))
+  } catch {
+    return 0.5
+  }
 }
 
 function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
@@ -127,6 +213,36 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
   const { staged, unstaged, conflicted } = state.status
   const total = staged.length + unstaged.length + conflicted.length
   const branch = state.head.branch ?? (state.head.hash ? shortHash(state.head.hash) : 'HEAD')
+  const unstagedSel = useFileSelection(unstaged)
+  const stagedSel = useFileSelection(staged)
+
+  // Draggable divider between the unstaged and staged lists; the share is remembered.
+  const [split, setSplit] = useState(readSplit)
+  const unstagedRef = useRef<HTMLDivElement>(null)
+  const stagedRef = useRef<HTMLDivElement>(null)
+  const dragSplit = (e: React.PointerEvent<HTMLDivElement>) => {
+    const top = unstagedRef.current?.getBoundingClientRect().top
+    const bottom = stagedRef.current?.getBoundingClientRect().bottom
+    if (top === undefined || bottom === undefined || bottom <= top) return
+    const handle = e.currentTarget
+    handle.setPointerCapture(e.pointerId)
+    let latest = split
+    const move = (ev: PointerEvent) => {
+      latest = splitRatio((ev.clientY - top) / (bottom - top))
+      setSplit(latest)
+    }
+    const up = () => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', up)
+      try {
+        localStorage.setItem(SPLIT_KEY, String(latest))
+      } catch {
+        // not critical: the divider goes back to the middle next time
+      }
+    }
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', up)
+  }
 
   return (
     <div className="right-content">
@@ -174,10 +290,35 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
         <FileSection
           title={t('wip.unstaged', { count: unstaged.length })}
           count={unstaged.length}
+          style={{ flex: `${split} 1 0` }}
+          sectionRef={unstagedRef}
+          selectAll={{
+            all: unstagedSel.all,
+            some: unstagedSel.some,
+            toggle: unstagedSel.toggleAll,
+            title: t('wip.selectAll')
+          }}
           action={
-            <button className="btn small btn-stage" onClick={() => void stageAll(path)}>
-              {t('wip.stageAll')}
-            </button>
+            unstagedSel.some ? (
+              <>
+                <button
+                  className="btn small btn-danger-ghost"
+                  onClick={() => void discardFiles(path, unstagedSel.selected)}
+                >
+                  {t('wip.discardSelected')}
+                </button>
+                <button
+                  className="btn small btn-stage"
+                  onClick={() => void stageFiles(path, unstagedSel.selected).then(unstagedSel.clear)}
+                >
+                  {t('wip.stageSelected', { count: unstagedSel.selected.length })}
+                </button>
+              </>
+            ) : (
+              <button className="btn small btn-stage" onClick={() => void stageAll(path)}>
+                {t('wip.stageAll')}
+              </button>
+            )
           }
         >
           {unstaged.length === 0 && <div className="file-empty dim">{t('wip.noChanges')}</div>}
@@ -187,18 +328,44 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
               file={file}
               active={isActive(view, { kind: 'unstaged', path: file.path })}
               onOpen={() => void openDiff(path, { kind: 'unstaged', path: file.path, untracked: file.status === '?' })}
-              onContext={(e) => openMenu(e, fileMenu(path, file, 'unstaged'))}
+              onContext={(e) =>
+                openMenu(
+                  e,
+                  unstagedSel.has(file) && unstagedSel.selected.length > 1
+                    ? filesMenu(path, unstagedSel.selected, 'unstaged')
+                    : fileMenu(path, file, 'unstaged')
+                )
+              }
               action={{ label: t('wip.stage'), run: () => void stageFiles(path, [file]) }}
+              select={{ checked: unstagedSel.has(file), click: (e, box) => unstagedSel.click(file, e, box) }}
             />
           ))}
         </FileSection>
+        <div className="split-handle" onPointerDown={dragSplit} title={t('wip.resize')} />
         <FileSection
           title={t('wip.staged', { count: staged.length })}
           count={staged.length}
+          style={{ flex: `${1 - split} 1 0` }}
+          sectionRef={stagedRef}
+          selectAll={{
+            all: stagedSel.all,
+            some: stagedSel.some,
+            toggle: stagedSel.toggleAll,
+            title: t('wip.selectAll')
+          }}
           action={
-            <button className="btn small btn-unstage" onClick={() => void unstageAll(path)}>
-              {t('wip.unstageAll')}
-            </button>
+            stagedSel.some ? (
+              <button
+                className="btn small btn-unstage"
+                onClick={() => void unstageFiles(path, stagedSel.selected).then(stagedSel.clear)}
+              >
+                {t('wip.unstageSelected', { count: stagedSel.selected.length })}
+              </button>
+            ) : (
+              <button className="btn small btn-unstage" onClick={() => void unstageAll(path)}>
+                {t('wip.unstageAll')}
+              </button>
+            )
           }
         >
           {staged.length === 0 && <div className="file-empty dim">{t('wip.noChanges')}</div>}
@@ -208,8 +375,16 @@ function WorkingPanel({ path, view }: { path: string; view: RepoView }) {
               file={file}
               active={isActive(view, { kind: 'staged', path: file.path })}
               onOpen={() => void openDiff(path, { kind: 'staged', path: file.path })}
-              onContext={(e) => openMenu(e, fileMenu(path, file, 'staged'))}
+              onContext={(e) =>
+                openMenu(
+                  e,
+                  stagedSel.has(file) && stagedSel.selected.length > 1
+                    ? filesMenu(path, stagedSel.selected, 'staged')
+                    : fileMenu(path, file, 'staged')
+                )
+              }
               action={{ label: t('wip.unstage'), run: () => void unstageFiles(path, [file]) }}
+              select={{ checked: stagedSel.has(file), click: (e, box) => stagedSel.click(file, e, box) }}
             />
           ))}
         </FileSection>

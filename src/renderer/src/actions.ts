@@ -982,7 +982,10 @@ export function unstageAll(path: string): Promise<boolean> {
 export async function discardFiles(path: string, files: FileChange[]): Promise<void> {
   const ok = await confirmDialog({
     title: t('menu.discard'),
-    message: t('dlg.discardFile', { name: files.length === 1 ? files[0].path : String(files.length) }),
+    message:
+      files.length === 1
+        ? t('dlg.discardFile', { name: files[0].path })
+        : t('dlg.discardFiles', { count: files.length }),
     confirmText: t('menu.discard'),
     danger: true
   })

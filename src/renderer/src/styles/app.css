@@ -1055,6 +1055,45 @@ a:hover {
   border-bottom: 1px solid var(--border);
 }
 
+.file-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.file-section-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.file-check {
+  flex-shrink: 0;
+  margin: 0;
+  width: 13px;
+  height: 13px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Divider between the unstaged and staged lists: drag it to share the height. */
+.split-handle {
+  flex-shrink: 0;
+  height: 6px;
+  margin: -3px 0;
+  position: relative;
+  z-index: 1;
+  cursor: row-resize;
+}
+
+.split-handle:hover,
+.split-handle:active {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
 .file-section.conflicts {
   flex: 0 1 auto;
   max-height: 35%;
@@ -1101,6 +1140,10 @@ a:hover {
 
 .file-row:hover {
   background: var(--bg-3);
+}
+
+.file-row.selected {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .file-row.active {
