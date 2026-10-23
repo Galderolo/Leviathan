@@ -151,6 +151,29 @@ export function buildTree<T>(items: T[], nameOf: (item: T) => string): TreeNode<
   return root.children
 }
 
+/** A row of a tree as drawn: a folder or an item, at its depth; `key` is unique within the side panel. */
+export interface TreeRow<T> {
+  key: string
+  depth: number
+  node: TreeNode<T>
+}
+
+/** The rows of a tree that show, in order: a folded folder (`collapsed[prefix + path]`) hides what it holds. */
+export function visibleTreeRows<T>(
+  nodes: TreeNode<T>[],
+  prefix: string,
+  collapsed: Record<string, boolean | undefined>,
+  depth = 0,
+  rows: TreeRow<T>[] = []
+): TreeRow<T>[] {
+  for (const node of nodes) {
+    const key = prefix + node.path
+    rows.push({ key, depth, node })
+    if (!node.item && !collapsed[key]) visibleTreeRows(node.children, prefix, collapsed, depth + 1, rows)
+  }
+  return rows
+}
+
 export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(' ')
 }

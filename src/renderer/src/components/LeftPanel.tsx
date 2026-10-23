@@ -56,7 +56,8 @@ import {
 } from '../menus'
 import { useStore } from '../store'
 import { openMenu } from '../ui'
-import { buildTree, cx, formatDate, relativeDate, shortHash, type TreeNode } from '../utils'
+import { buildTree, cx, formatDate, relativeDate, shortHash, visibleTreeRows, type TreeNode } from '../utils'
+import { VirtualRows } from './VirtualRows'
 import { LockIcon } from './common'
 import { refDragProps, refDropProps } from './refDnd'
 
@@ -515,6 +516,13 @@ function Section(props: {
   )
 }
 
+/** Height of a `.side-row` in px; the CSS and the virtual lists must agree. */
+const SIDE_ROW_HEIGHT = 24
+
+/**
+ * A folder tree of refs. Only the rows near the visible part of the panel are drawn: with thousands of branches
+ * and tags, drawing them all made folding a section or typing in the filter take most of a second.
+ */
 function TreeView(props: {
   nodes: TreeNode<GitRef>[]
   prefix: string
@@ -523,39 +531,30 @@ function TreeView(props: {
   toggle: (key: string) => void
   leaf: (ref: GitRef, name: string) => ReactNode
 }) {
-  const depth = props.depth ?? 0
+  const { nodes, prefix, collapsed, depth = 0 } = props
+  const rows = useMemo(() => visibleTreeRows(nodes, prefix, collapsed, depth), [nodes, prefix, collapsed, depth])
   return (
-    <>
-      {props.nodes.map((node) => {
-        const key = props.prefix + node.path
-        if (node.item) {
-          return (
-            <div key={key} style={{ paddingLeft: depth * 14 }}>
-              {props.leaf(node.item, node.name)}
-            </div>
-          )
-        }
-        const closed = props.collapsed[key]
-        return (
-          <div key={key}>
-            <div className="side-row folder" style={{ paddingLeft: 8 + depth * 14 }} onClick={() => props.toggle(key)}>
-              {closed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-              <Folder size={13} className="dim" />
-              <span className="side-name">{node.name}</span>
-            </div>
-            {!closed && (
-              <TreeView
-                nodes={node.children}
-                prefix={props.prefix}
-                depth={depth + 1}
-                collapsed={props.collapsed}
-                toggle={props.toggle}
-                leaf={props.leaf}
-              />
-            )}
+    <VirtualRows
+      items={rows}
+      rowHeight={SIDE_ROW_HEIGHT}
+      render={({ key, depth, node }) =>
+        node.item ? (
+          <div key={key} style={{ paddingLeft: depth * 14 }}>
+            {props.leaf(node.item, node.name)}
+          </div>
+        ) : (
+          <div
+            key={key}
+            className="side-row folder"
+            style={{ paddingLeft: 8 + depth * 14 }}
+            onClick={() => props.toggle(key)}
+          >
+            {collapsed[key] ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+            <Folder size={13} className="dim" />
+            <span className="side-name">{node.name}</span>
           </div>
         )
-      })}
-    </>
+      }
+    />
   )
 }
