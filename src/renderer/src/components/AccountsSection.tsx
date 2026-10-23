@@ -11,6 +11,7 @@ const api = window.leviathan
 export const PROVIDER_LABELS: Record<Provider, string> = {
   github: 'GitHub',
   gitlab: 'GitLab',
+  bitbucket: 'Bitbucket',
   gitea: 'Gitea',
   other: 'Other'
 }
