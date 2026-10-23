@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { openExternal, openWhatsNew, saveSettings } from '../actions'
 import { LANGUAGES, useT, type TKey } from '../i18n'
-import { useStore } from '../store'
+import { useStore, type SettingsSection } from '../store'
 import { cx } from '../utils'
 import type { Settings, ThemeSetting } from '../../../shared/types'
 import { AccountsSection } from './AccountsSection'
@@ -12,9 +12,7 @@ import { UpdateSettings } from './UpdateNotice'
 
 const REPO_URL = 'https://github.com/Galderolo/Leviathan'
 
-type Section = 'general' | 'tools' | 'accounts' | 'ssh' | 'updates' | 'about'
-
-const SECTIONS: { id: Section; label: TKey }[] = [
+const SECTIONS: { id: SettingsSection; label: TKey }[] = [
   { id: 'general', label: 'settings.general' },
   { id: 'tools', label: 'tools.title' },
   { id: 'accounts', label: 'accounts.title' },
@@ -23,14 +21,11 @@ const SECTIONS: { id: Section; label: TKey }[] = [
   { id: 'about', label: 'settings.about' }
 ]
 
-// The section shown last, while the app runs.
-let lastSection: Section = 'general'
-
 /** Settings, by section. Every change is saved at once. */
 export function SettingsModal() {
   const open = useStore((s) => s.settingsOpen)
   const t = useT()
-  const [section, setSection] = useState<Section>(lastSection)
+  const section = useStore((s) => s.settingsSection)
 
   // Esc closes Settings wherever the focus is, unless a dialog is open on top of it.
   useEffect(() => {
@@ -44,10 +39,7 @@ export function SettingsModal() {
 
   if (!open) return null
   const close = () => useStore.setState({ settingsOpen: false })
-  const show = (id: Section) => {
-    lastSection = id
-    setSection(id)
-  }
+  const show = (id: SettingsSection) => useStore.setState({ settingsSection: id })
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>

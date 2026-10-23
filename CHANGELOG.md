@@ -18,6 +18,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- An account whose token stopped working (revoked or expired) says so in the pull requests section, with a link to Settings → Accounts, instead of only "GitHub rejected the token (401)".
 - The editor presets find Rider, Visual Studio, Sublime Text, Notepad++, VS Code and Cursor where their installers put them when they are not on the PATH (Rider showed "rider was not found" although installed).
 - Git LFS on a server without file locks (Bitbucket Cloud): the side panel says the server has no locks instead of showing git-lfs's "Repository or object not found" error, and the lock actions are hidden there.
 - LFS patterns with spaces show them as spaces, not as `[[:space:]]`.

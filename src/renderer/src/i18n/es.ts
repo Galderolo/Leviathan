@@ -409,6 +409,9 @@ const es: Record<keyof typeof en, string> = {
 
   'left.pullRequests': 'PULL REQUESTS',
   'left.noPullRequests': 'No hay pull requests abiertas',
+  'left.tokenRejected':
+    'El token de la cuenta ya no funciona (revocado o caducado): vuelve a iniciar sesión o ponle un token nuevo.',
+  'left.openAccounts': 'Abrir Cuentas',
   'menu.createPr': 'Crear pull request…',
   'menu.openPr': 'Abrir en el navegador',
   'menu.reviewPr': 'Revisar',

@@ -405,6 +405,9 @@ const en = {
 
   'left.pullRequests': 'PULL REQUESTS',
   'left.noPullRequests': 'No open pull requests',
+  'left.tokenRejected':
+    "The account's token no longer works (revoked or expired): sign in again, or give it a new token.",
+  'left.openAccounts': 'Open Accounts',
   'menu.createPr': 'Create pull request…',
   'menu.openPr': 'Open in browser',
   'menu.reviewPr': 'Review',
