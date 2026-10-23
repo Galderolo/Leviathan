@@ -2092,6 +2092,36 @@ a:hover {
   white-space: nowrap;
 }
 
+/* A folder in a history header: it opens that folder's history. */
+.path-step {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.path-step:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* Folder history: the files the picked commit changed there, above the diff of one of them. */
+.folder-commit {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.folder-files {
+  flex-shrink: 0;
+  max-height: 32%;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+}
+
 .blame-lines {
   font-family: var(--mono);
   font-size: 12.5px;

@@ -612,6 +612,11 @@ export function openFileHistory(path: string, file: string, rev: string | null =
   patchRepo(path, { fileView: { kind: 'history', path: file, rev }, diff: null, review: null })
 }
 
+/** History of a folder: the commits that changed anything inside it, from HEAD or from `rev`. */
+export function openFolderHistory(path: string, folder: string, rev: string | null = null): void {
+  patchRepo(path, { fileView: { kind: 'folder', path: folder, rev }, diff: null, review: null })
+}
+
 /** Blame of a file in the working tree (`rev` null) or as it was in a commit. */
 export function openBlame(path: string, file: string, rev: string | null): void {
   patchRepo(path, { fileView: { kind: 'blame', path: file, rev }, diff: null, review: null })

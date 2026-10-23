@@ -29,6 +29,7 @@ import {
   openInEditor,
   openInMergeTool,
   openFileHistory,
+  openFolderHistory,
   openInteractiveRebase,
   openReview,
   openSubmodule,
@@ -382,6 +383,19 @@ export function fileMenu(
       disabled: isNew,
       onClick: () => openFileHistory(path, file.path, area === 'commit' ? (hash ?? null) : null)
     },
+    ...(file.path.includes('/')
+      ? [
+          {
+            label: t('menu.folderHistory'),
+            onClick: () =>
+              openFolderHistory(
+                path,
+                file.path.slice(0, file.path.lastIndexOf('/')),
+                area === 'commit' ? (hash ?? null) : null
+              )
+          }
+        ]
+      : []),
     {
       label: t('menu.blame'),
       disabled: isNew || file.status === 'D',
