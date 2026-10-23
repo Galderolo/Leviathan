@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -84,6 +84,13 @@ describe('external tools', () => {
   it('reports a terminal that is not installed, before anything starts', async () => {
     settings.terminal = 'leviathan-no-such-terminal {folder}'
     await expect(openTerminal(dir)).rejects.toThrow('"leviathan-no-such-terminal" was not found')
+  })
+
+  it('refuses to give cmd a folder with % in its path: cmd would read it as a variable', async () => {
+    const odd = join(dir, '..', 'game%PATH%x')
+    mkdirSync(odd)
+    settings.terminal = `"${process.execPath}" {folder}`
+    await expect(openTerminal(odd, 'win32')).rejects.toThrow('%')
   })
 
   // `open -a iTerm` without iTerm exits with an error at once. (Started the macOS and Linux way: on Windows, start

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { launch, Sandbox } from './app'
@@ -42,6 +42,22 @@ test('opens a repository with its history and its uncommitted changes', async ()
   await expect(page.locator('.tab.active')).toContainText('game')
   await page.locator('.graph-row.row-wip').click()
   await expect(unstaged().locator('.file-row')).toHaveCount(2)
+})
+
+test('never runs a git.exe that a repository has at its root', async () => {
+  test.skip(process.platform !== 'win32', 'only Windows looks for programs in the working folder')
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  // Planted last: the test's own git commands run in this folder too. A harmless program stands in for a hostile
+  // one; if it ran instead of git, the repository would not load.
+  copyFileSync(join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'whoami.exe'), join(repo, 'git.exe'))
+  // Started as on a usual machine, where nothing turned that search off.
+  for (const key of Object.keys(box.env)) {
+    if (key.toLowerCase() === 'nodefaultcurrentdirectoryinexepath') delete box.env[key]
+  }
+  await open(repo)
+
+  await expect(commitRows()).toHaveCount(1)
+  await expect(unstaged().locator('.file-row', { hasText: 'git.exe' })).toHaveCount(1)
 })
 
 test('stages the changes and commits them', async () => {

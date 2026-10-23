@@ -28,12 +28,14 @@ const winEnv = {
 }
 
 describe('findProgram', () => {
-  it('keeps a command the PATH already finds', async () => {
+  it('takes a command the PATH finds by its full path, so nothing searches for it again', async () => {
     const fs = fakeFs([
       'C:\\Tools\\rider.cmd',
       'C:\\Program Files\\JetBrains\\JetBrains Rider 2025.2\\bin\\rider64.exe'
     ])
-    expect(await findProgram('rider', winEnv, 'win32', fs)).toBe('rider')
+    expect(await findProgram('rider', winEnv, 'win32', fs)).toBe('C:\\Tools\\rider.cmd')
+    const unix = fakeFs(['/usr/local/bin/subl'], false)
+    expect(await findProgram('subl', { PATH: '/usr/bin:/usr/local/bin' }, 'linux', unix)).toBe('/usr/local/bin/subl')
   })
 
   it('finds Rider where JetBrains installs it, the newest version first', async () => {
@@ -106,7 +108,7 @@ describe('locateProgram', () => {
 
   it('says when a program is nowhere, a path included', async () => {
     const fs = fakeFs(['C:\\Windows\\system32\\cmd.exe'])
-    expect(await locateProgram('cmd', winEnv, 'win32', fs)).toBe('cmd')
+    expect(await locateProgram('cmd', winEnv, 'win32', fs)).toBe('C:\\Windows\\system32\\cmd.exe')
     expect(await locateProgram('git-bash', winEnv, 'win32', fs)).toBeNull()
     expect(await locateProgram('D:\\Apps\\term.exe', winEnv, 'win32', fs)).toBeNull()
   })

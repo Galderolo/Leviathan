@@ -103,21 +103,25 @@ async function expand(place: string, windows: boolean, fsx: ProgramFs): Promise<
   return found
 }
 
-async function onPath(program: string, env: Env, platform: NodeJS.Platform, fsx: ProgramFs): Promise<boolean> {
+/** Where the PATH has a program (its full path), trying Windows' executable extensions; null when it has none. */
+async function onPath(program: string, env: Env, platform: NodeJS.Platform, fsx: ProgramFs): Promise<string | null> {
   const windows = platform === 'win32'
   const path = windows ? win32 : posix
   const dirs = (env.PATH ?? env.Path ?? '').split(windows ? ';' : ':').filter(Boolean)
   const exts = windows ? ['', ...(env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)] : ['']
   for (const dir of dirs) {
-    for (const ext of exts) if (await fsx.exists(path.join(dir, program + ext))) return true
+    for (const ext of exts) {
+      const full = path.join(dir, program + ext.toLowerCase())
+      if (await fsx.exists(full)) return full
+    }
   }
-  return false
+  return null
 }
 
 /**
- * Where a program is: the command itself when the PATH finds it (or it is a path that exists), else where its
+ * Where a program is, as a full path: on the PATH (or the path it already is, when it exists), else where its
  * installer usually puts it (Rider, Visual Studio, Git Bash and others are often not on the PATH); null when
- * nowhere.
+ * nowhere. Never the working folder: started by its full path, a program is not looked for there either.
  */
 export async function locateProgram(
   program: string,
@@ -126,7 +130,8 @@ export async function locateProgram(
   fsx: ProgramFs = realFs
 ): Promise<string | null> {
   if (/[\\/]/.test(program)) return (await fsx.exists(program)) ? program : null
-  if (await onPath(program, env, platform, fsx)) return program
+  const found = await onPath(program, env, platform, fsx)
+  if (found) return found
   for (const place of installPlaces(program, env, platform)) {
     const [found] = await expand(place, platform === 'win32', fsx)
     if (found) return found

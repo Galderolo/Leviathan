@@ -1,3 +1,5 @@
+// First: no program may be found in a repository folder (see the module).
+import './programSearch'
 import { join } from 'node:path'
 import { BrowserWindow, Menu, app, nativeTheme, screen, shell } from 'electron'
 import { initAccounts } from './accounts'

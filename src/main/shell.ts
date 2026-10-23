@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { extname } from 'node:path'
+import { commandProcessor } from './programSearch'
 
 /**
  * Formats that the usual default apps only display or edit. Anything else may be
@@ -49,7 +50,8 @@ function launch(command: string, args: string[], cwd: string): Promise<boolean> 
 export async function openSystemTerminal(dir: string): Promise<void> {
   if (!existsSync(dir)) throw new Error(`Folder does not exist: ${dir}`)
   if (process.platform === 'win32') {
-    if (await launch('cmd.exe', ['/c', 'start', 'cmd.exe'], dir)) return
+    const cmd = commandProcessor()
+    if (await launch(cmd, ['/c', 'start', cmd], dir)) return
   } else if (process.platform === 'darwin') {
     if (await launch('open', ['-a', 'Terminal', dir], dir)) return
   } else {
