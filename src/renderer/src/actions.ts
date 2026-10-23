@@ -102,8 +102,7 @@ export async function initApp(): Promise<void> {
     void refreshRepo(tab.path)
     void loadRepoAccount(tab.path)
   }
-  const launched = await api.takeLaunchFolder().catch(() => null)
-  if (launched) await openFromCommandLine(launched)
+  for (const folder of await api.takeLaunchFolders().catch(() => [])) await openFromCommandLine(folder)
 }
 
 function welcomeTab(): Tab {

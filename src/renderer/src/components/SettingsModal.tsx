@@ -29,7 +29,8 @@ export function SettingsModal() {
       setAutoFetch(String(settings.autoFetchMinutes))
       setAutoUpdate(settings.autoUpdate)
     }
-  }, [open, settings])
+    // Only when Settings opens: the sections that save at once (external tools) must not reset the rest.
+  }, [open])
 
   // Esc closes Settings wherever the focus is, unless a dialog is open on top of it.
   useEffect(() => {

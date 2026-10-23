@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { BrowserWindow, Menu, app, nativeTheme, screen, shell } from 'electron'
 import { initAccounts } from './accounts'
 import { disposeAskpass, initAskpass } from './askpass'
-import { launchFolder, setLaunchFolder } from './cli'
+import { launchFolder, offerLaunchFolder, windowLoading } from './cli'
 import { registerIpc, sendOpenFolder, startUpdates } from './ipc'
 import { loadSettings, saveSettings } from './settings'
 import { unwatchAll } from './watcher'
@@ -15,18 +15,20 @@ if (process.env.LEVIATHAN_USER_DATA) app.setPath('userData', process.env.LEVIATH
 // One window per profile: `leviathan <folder>` while it runs opens the folder there, in a new tab.
 const primary = app.requestSingleInstanceLock()
 if (!primary) app.quit()
-setLaunchFolder(launchFolder(process.argv, process.cwd(), !!process.defaultApp))
+const startFolder = launchFolder(process.argv, process.cwd(), !!process.defaultApp)
+if (startFolder) offerLaunchFolder(startFolder)
 app.on('second-instance', (_event, argv, workingDirectory) => {
   const win = BrowserWindow.getAllWindows()[0]
   if (win) {
     if (win.isMinimized()) win.restore()
     win.focus()
+  } else {
+    // macOS keeps running without windows.
+    createWindow()
   }
   const folder = launchFolder(argv, workingDirectory, !!process.defaultApp)
-  if (!folder) return
-  // A window still loading asks for it once it starts, as on a first launch.
-  if (!win || win.webContents.isLoading()) setLaunchFolder(folder)
-  else sendOpenFolder(folder)
+  // Until the window has restored its tabs, the folder waits for the window to ask for it.
+  if (folder && offerLaunchFolder(folder) === 'send') sendOpenFolder(folder)
 })
 
 function restoreBounds(): Electron.Rectangle | { width: number; height: number } {
@@ -49,6 +51,7 @@ function prefersDark(): boolean {
 }
 
 function createWindow(): void {
+  windowLoading()
   const win = new BrowserWindow({
     ...restoreBounds(),
     minWidth: 900,
@@ -68,6 +71,8 @@ function createWindow(): void {
 
   if (loadSettings().window?.maximized) win.maximize()
   win.once('ready-to-show', () => win.show())
+  // A reload restores the tabs again: folders from the command line wait for it.
+  win.webContents.on('did-start-loading', windowLoading)
 
   // Never navigate the app window away; send links to the browser instead.
   win.webContents.setWindowOpenHandler(({ url }) => {

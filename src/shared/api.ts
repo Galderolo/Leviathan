@@ -199,8 +199,8 @@ export interface LeviathanInvokeApi {
   /** Shows one file's change in the diff tool; fails with NO_DIFF_TOOL when none is chosen or configured. */
   openDiffTool(repo: string, source: DiffSource): Promise<void>
   openMergeTool(repo: string, file: string): Promise<void>
-  /** The folder the app was started with (`leviathan .`), once. */
-  takeLaunchFolder(): Promise<string | null>
+  /** Folders given with `leviathan <folder>` before the window was ready (after restoring its tabs), once. */
+  takeLaunchFolders(): Promise<string[]>
   /** Windows: adds the `leviathan` command to the user's PATH. */
   installCommandLine(): Promise<'added' | 'present'>
   /** How to get the `leviathan` command here: a button on Windows, a command to copy elsewhere. */
@@ -338,7 +338,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   openInEditor: true,
   openDiffTool: true,
   openMergeTool: true,
-  takeLaunchFolder: true,
+  takeLaunchFolders: true,
   installCommandLine: true,
   commandLineInfo: true,
   getLfsInfo: true,

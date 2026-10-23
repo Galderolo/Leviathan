@@ -11,8 +11,32 @@ export function launchFolder(argv: string[], cwd: string, defaultApp: boolean): 
   if (defaultApp) args.shift()
   const last = args[args.length - 1]
   if (!last) return null
-  const path = /^[A-Za-z]:[\\/]|^\\\\/.test(cwd) || /^[A-Za-z]:[\\/]/.test(last) ? win32 : posix
-  return path.resolve(cwd, last)
+  // From the leviathan command: the portable build runs in a temporary folder, not where the command was typed.
+  const base = argv.find((a) => a.startsWith('--cwd='))?.slice('--cwd='.length) || cwd
+  const path = /^[A-Za-z]:[\\/]|^\\\\/.test(base) || /^[A-Za-z]:[\\/]/.test(last) ? win32 : posix
+  return path.resolve(base, last)
+}
+
+/**
+ * `leviathan.cmd`: starts the app with the folder the command was typed in. cmd reads the file in the console code
+ * page, so user folders are named by their variables and any other non-ASCII path is refused.
+ */
+export function commandShim(exe: string, env: Record<string, string | undefined>): string {
+  let target = exe
+  const vars = ['LOCALAPPDATA', 'APPDATA', 'USERPROFILE']
+    .filter((name) => env[name])
+    .sort((a, b) => env[b]!.length - env[a]!.length)
+  const name = vars.find((v) => exe.toLowerCase().startsWith(env[v]!.replace(/\\+$/, '').toLowerCase() + '\\'))
+  let prefix = ''
+  if (name) {
+    prefix = `%${name}%`
+    target = exe.slice(env[name]!.replace(/\\+$/, '').length)
+  }
+  if (/[^\x20-\x7e]/.test(target)) {
+    throw new Error(`The command cannot start Leviathan from ${exe}: move it to a folder without accents or symbols.`)
+  }
+  // `\.` keeps a drive root such as C:\ from ending in \" (an escaped quote).
+  return `@echo off\r\nstart "" "${prefix}${target.replace(/%/g, '%%')}" --cwd="%CD%\\." %*\r\n`
 }
 
 /** The user's PATH with `dir` appended, or null when it is already there. */
@@ -27,21 +51,32 @@ export function addToPathList(current: string, dir: string): string | null {
   return [...parts, dir].join(';')
 }
 
-let launchFolderPending: string | null = null
+// Folders from the command line wait here until the window has restored its tabs and asks for them: opened
+// earlier, they would race with that restore.
+const launch = { folders: [] as string[], windowReady: false }
 
-/** Remembers the folder the app was started with, until the window asks for it. */
-export function setLaunchFolder(folder: string | null): void {
-  launchFolderPending = folder
+/** A folder from the command line: `send` it to the window now, or it was `queued` until the window asks. */
+export function offerLaunchFolder(folder: string): 'send' | 'queued' {
+  if (launch.windowReady) return 'send'
+  launch.folders.push(folder)
+  return 'queued'
 }
 
-export function takeLaunchFolder(): string | null {
-  const folder = launchFolderPending
-  launchFolderPending = null
-  return folder
+/** The window has restored its tabs: it takes the queued folders, and later ones are sent as they come. */
+export function takeLaunchFolders(): string[] {
+  launch.windowReady = true
+  return launch.folders.splice(0)
+}
+
+/** The window (re)loads: folders wait again until it asks. */
+export function windowLoading(): void {
+  launch.windowReady = false
 }
 
 const USER_ENV_KEY = 'HKCU:\\Environment'
-const READ_PATH = "(Get-Item -Path $env:LEVIATHAN_ENV_KEY).GetValue('Path', '', 'DoNotExpandEnvironmentNames')"
+// As base64 of UTF-16: PowerShell writes text to a pipe in the console code page, which would garble accents.
+const READ_PATH =
+  "[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes((Get-Item -Path $env:LEVIATHAN_ENV_KEY).GetValue('Path', '', 'DoNotExpandEnvironmentNames')))"
 // Written back as an expandable string (entries like %USERPROFILE%\bin keep working), then a user variable is set
 // and removed so that Explorer and new terminals hear that the environment changed.
 const WRITE_PATH =
@@ -72,8 +107,9 @@ export async function installCommandLine(
   envKey = USER_ENV_KEY
 ): Promise<'added' | 'present'> {
   await fs.mkdir(binDir, { recursive: true })
-  await fs.writeFile(join(binDir, 'leviathan.cmd'), `@echo off\r\nstart "" "${exe}" %*\r\n`, 'utf8')
-  const current = (await powershell(READ_PATH, { LEVIATHAN_ENV_KEY: envKey })).trim()
+  await fs.writeFile(join(binDir, 'leviathan.cmd'), commandShim(exe, process.env), 'utf8')
+  const encoded = (await powershell(READ_PATH, { LEVIATHAN_ENV_KEY: envKey })).trim()
+  const current = Buffer.from(encoded, 'base64').toString('utf16le')
   const next = addToPathList(current, binDir)
   if (next === null) return 'present'
   await powershell(WRITE_PATH, { LEVIATHAN_ENV_KEY: envKey, LEVIATHAN_NEW_PATH: next })

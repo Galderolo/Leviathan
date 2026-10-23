@@ -13,7 +13,7 @@ import {
 } from '../shared/api'
 import * as accounts from './accounts'
 import { answerAskpass } from './askpass'
-import { installCommandLine, takeLaunchFolder } from './cli'
+import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
@@ -164,7 +164,7 @@ const handlers: LeviathanInvokeApi = {
   openInEditor: (path, file, line) => tools.openInEditor(path, file, line),
   openDiffTool: (path, source) => tools.openDiffTool(path, source),
   openMergeTool: (path, file) => tools.openMergeTool(path, file),
-  takeLaunchFolder: async () => takeLaunchFolder(),
+  takeLaunchFolders: async () => takeLaunchFolders(),
   installCommandLine: async () => {
     if (process.platform !== 'win32' || !app.isPackaged) throw new Error('Only the installed Windows app can do this')
     // The portable build runs from a temporary copy: the command must start the .exe the user keeps.

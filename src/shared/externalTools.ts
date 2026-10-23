@@ -59,11 +59,9 @@ export function editorArgs(template: string, target: { file?: string; line?: num
     const args = kept.map((a) => a.replaceAll('{folder}', target.folder))
     return args.some((a) => a.includes(target.folder)) ? [program, ...args] : [program, ...args, target.folder]
   }
-  const fill = (a: string) =>
-    a
-      .replaceAll('{file}', target.file!)
-      .replaceAll('{line}', String(target.line ?? 1))
-      .replaceAll('{folder}', target.folder)
+  // In one pass, so a file name with "{line}" in it stays as it is.
+  const values: Record<string, string> = { file: target.file, line: String(target.line ?? 1), folder: target.folder }
+  const fill = (a: string) => a.replace(/\{(file|line|folder)\}/g, (_, name: string) => values[name])
   return [program, ...rest.map(fill)]
 }
 
