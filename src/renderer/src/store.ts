@@ -161,6 +161,8 @@ export interface MenuState {
   items: MenuItem[]
 }
 
+export type SettingsSection = 'general' | 'tools' | 'accounts' | 'ssh' | 'updates' | 'about'
+
 export interface FormField {
   key: string
   label: string
@@ -197,6 +199,8 @@ export interface AppState {
   dialog: DialogState | null
   toasts: Toast[]
   settingsOpen: boolean
+  /** The section Settings shows (the last one shown, unless something opens another). */
+  settingsSection: SettingsSection
   whatsNewOpen: boolean
   /** Interactive rebase dialog: the commits after `base` in repository `path`. */
   rebase: { path: string; base: string; commits: RebaseCommit[] } | null
@@ -219,6 +223,7 @@ export const useStore = create<AppState>(() => ({
   dialog: null,
   toasts: [],
   settingsOpen: false,
+  settingsSection: 'general',
   whatsNewOpen: false,
   rebase: null,
   cloneProgress: null,

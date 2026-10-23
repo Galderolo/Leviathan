@@ -262,7 +262,17 @@ export function LeftPanel({ path }: { path: string }) {
             collapsed={collapsed}
             toggle={toggle}
           >
-            {prs.error && <div className="side-note error">{prs.error}</div>}
+            {prs.error && /rejected the token/.test(prs.error) ? (
+              // The account's token no longer works (revoked, expired): say what to do about it.
+              <div className="side-note error">
+                {t('left.tokenRejected')}{' '}
+                <a onClick={() => useStore.setState({ settingsOpen: true, settingsSection: 'accounts' })}>
+                  {t('left.openAccounts')}
+                </a>
+              </div>
+            ) : (
+              prs.error && <div className="side-note error">{prs.error}</div>
+            )}
             {!prs.error && !prItems.length && <div className="side-note">{t('left.noPullRequests')}</div>}
             {prItems.map((pr) => (
               <div
