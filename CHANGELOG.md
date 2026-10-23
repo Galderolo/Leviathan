@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-23
+
 ### Added
 
 - **Review pull requests in the app** (GitHub, GitLab, Bitbucket, Gitea): a pull request's menu → *Review* shows its files and their diff (fetched with git: nothing is checked out and your branches are not touched) and its conversation, including comments on lines. Add a comment, approve it, and merge it on the server (merge commit, squash or rebase, as the provider allows).
