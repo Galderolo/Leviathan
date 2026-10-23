@@ -46,7 +46,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Pull requests**: see the open pull requests (merge requests on GitLab) of the repository in the side panel, **review** one (its files and diff, its comments; comment, approve, merge), check one out, or open a new one from a branch — on GitHub, GitLab, Bitbucket and Gitea, through your account.
 - **Git LFS**: see which files go through LFS, lock and unlock files (yours and, with a confirmation, other people's), track patterns, and get warned before committing a big binary outside LFS or a file someone else locked. Detects a missing or unconfigured git-lfs and sets it up.
 - **Submodules**: see their state in the side panel, initialize and update them, open them in a tab, see which commits a submodule change brings, and clone with them.
-- **External tools**: open files in your editor (VS Code, Rider, Visual Studio… or any command), a change in your diff tool and a conflict in your merge tool; and `leviathan .` in a terminal opens the repository you are in.
+- **External tools**: open files in your editor (VS Code, Rider, Visual Studio… or any command), a change in your diff tool, a conflict in your merge tool and the repository in your terminal (PowerShell, Windows Terminal, Git Bash, iTerm…); and `leviathan .` in a terminal opens the repository you are in.
 - **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets and pulls — without ever losing uncommitted work.
 - **Automatic updates** from the GitHub releases: one click with the Windows installer and the Linux AppImage; the portable build, the .deb and macOS point to the download. The check contacts github.com every half hour (and when you come back to the app) and can be turned off in Settings.
 - **What's new**: the notes of every version, from the status bar.
@@ -143,7 +143,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Editor de conflictos: versión actual y entrante lado a lado, eligiendo por bloque o el archivo entero.
 - Git LFS: ver qué archivos van por LFS, bloquear y desbloquear archivos, seguir patrones y avisos antes de hacer commit de un binario grande fuera de LFS o de un archivo que otra persona tiene bloqueado.
 - Submódulos: su estado en el panel lateral, inicializarlos y actualizarlos, abrirlos en una pestaña, ver qué commits trae un cambio de submódulo y clonar con ellos.
-- Herramientas externas: abrir archivos en tu editor (VS Code, Rider, Visual Studio… o cualquier comando), un cambio en tu herramienta de diff y un conflicto en la de merge; y `leviathan .` en una terminal abre el repositorio en el que estás.
+- Herramientas externas: abrir archivos en tu editor (VS Code, Rider, Visual Studio… o cualquier comando), un cambio en tu herramienta de diff, un conflicto en la de merge y el repositorio en tu terminal (PowerShell, Windows Terminal, Git Bash, iTerm…); y `leviathan .` en una terminal abre el repositorio en el que estás.
 - Deshacer / rehacer (Ctrl+Z / Ctrl+Mayús+Z) commits, checkouts, ramas, tags, merges, rebases, resets y pulls.
 - Fetch automático, tema claro y oscuro.
 - Ramas: crear, checkout con doble clic, renombrar, borrar, merge, rebase, push.

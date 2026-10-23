@@ -18,7 +18,7 @@ import * as lfs from './git/lfs'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
 import { loadSettings, saveSettings } from './settings'
-import { openAction, openTerminal } from './shell'
+import { openAction } from './shell'
 import { generateKey, listKeys } from './ssh'
 import { watchRepo, unwatchRepo } from './watcher'
 import { getUpdater, initUpdates } from './autoUpdate'
@@ -122,7 +122,7 @@ const handlers: LeviathanInvokeApi = {
   addRemote: (path, name, url) => repo.addRemote(path, name, url),
   removeRemote: (path, name) => repo.removeRemote(path, name),
 
-  openTerminal: (path) => openTerminal(path),
+  openTerminal: (path) => tools.openTerminal(path),
   openPath: async (path) => {
     if (!statSync(path).isDirectory()) throw new Error('Only folders can be opened this way')
     const error = await shell.openPath(path)

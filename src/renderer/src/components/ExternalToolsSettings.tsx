@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DIFF_TOOLS, EDITOR_PRESETS } from '../../../shared/externalTools'
+import { DIFF_TOOLS, EDITOR_PRESETS, terminalPresets } from '../../../shared/externalTools'
 import { installCommandLine, saveSettings } from '../actions'
 import { useT } from '../i18n'
 import { useStore } from '../store'
@@ -7,37 +7,37 @@ import { copyText } from '../ui'
 
 const api = window.leviathan
 
-/** Editor, diff/merge tool and the `leviathan` command; each change is saved at once. */
-export function ExternalToolsSettings() {
+/** A program picked among presets or typed as a command, with a system default; each change is saved at once. */
+function CommandChoice(props: {
+  label: string
+  /** What an empty command does. */
+  systemLabel: string
+  presets: { id: string; label: string; command: string }[]
+  value: string
+  /** The command to start from when "Other (command)" is picked with nothing typed yet. */
+  example: string
+  hint: string
+  save: (command: string) => void
+}) {
   const t = useT()
-  const settings = useStore((s) => s.settings)
-  const preset = EDITOR_PRESETS.find((p) => p.command === settings.editor)
-  const [choice, setChoice] = useState(settings.editor ? (preset?.id ?? 'custom') : '')
-  const [command, setCommand] = useState(settings.editor)
-  const [cli, setCli] = useState<{ windows: boolean; packaged: boolean; command: string | null } | null>(null)
-
-  useEffect(() => {
-    void api.commandLineInfo().then(setCli, () => setCli(null))
-  }, [])
+  const preset = props.presets.find((p) => p.command === props.value)
+  const [choice, setChoice] = useState(props.value ? (preset?.id ?? 'custom') : '')
+  const [command, setCommand] = useState(props.value)
 
   const pick = (id: string) => {
     setChoice(id)
-    const next =
-      id === 'custom'
-        ? command || 'code --goto "{file}:{line}"'
-        : (EDITOR_PRESETS.find((p) => p.id === id)?.command ?? '')
+    const next = id === 'custom' ? command || props.example : (props.presets.find((p) => p.id === id)?.command ?? '')
     setCommand(next)
-    void saveSettings({ editor: next })
+    props.save(next)
   }
 
   return (
-    <div className="tools-section">
-      <div className="ssh-title">{t('tools.title')}</div>
+    <>
       <label className="field">
-        <span>{t('tools.editor')}</span>
+        <span>{props.label}</span>
         <select value={choice} onChange={(e) => pick(e.target.value)}>
-          <option value="">{t('tools.systemDefault')}</option>
-          {EDITOR_PRESETS.map((p) => (
+          <option value="">{props.systemLabel}</option>
+          {props.presets.map((p) => (
             <option key={p.id} value={p.id}>
               {p.label}
             </option>
@@ -47,15 +47,51 @@ export function ExternalToolsSettings() {
       </label>
       {choice === 'custom' && (
         <label className="field">
-          <span className="dim small">{t('tools.commandHint')}</span>
+          <span className="dim small">{props.hint}</span>
           <input
             value={command}
             spellCheck={false}
             onChange={(e) => setCommand(e.target.value)}
-            onBlur={() => void saveSettings({ editor: command.trim() })}
+            onBlur={() => props.save(command.trim())}
           />
         </label>
       )}
+    </>
+  )
+}
+
+/** Editor, terminal, diff/merge tool and the `leviathan` command; each change is saved at once. */
+export function ExternalToolsSettings() {
+  const t = useT()
+  const settings = useStore((s) => s.settings)
+  const terminals = terminalPresets(api.platform)
+  const [cli, setCli] = useState<{ windows: boolean; packaged: boolean; command: string | null } | null>(null)
+
+  useEffect(() => {
+    void api.commandLineInfo().then(setCli, () => setCli(null))
+  }, [])
+
+  return (
+    <div className="tools-section">
+      <div className="ssh-title">{t('tools.title')}</div>
+      <CommandChoice
+        label={t('tools.editor')}
+        systemLabel={t('tools.systemDefault')}
+        presets={EDITOR_PRESETS}
+        value={settings.editor}
+        example='code --goto "{file}:{line}"'
+        hint={t('tools.commandHint')}
+        save={(editor) => void saveSettings({ editor })}
+      />
+      <CommandChoice
+        label={t('tools.terminal')}
+        systemLabel={t('tools.systemTerminal')}
+        presets={terminals}
+        value={settings.terminal}
+        example={terminals[0].command}
+        hint={t('tools.terminalHint')}
+        save={(terminal) => void saveSettings({ terminal })}
+      />
       <label className="field">
         <span>{t('tools.diffTool')}</span>
         <select value={settings.diffTool} onChange={(e) => void saveSettings({ diffTool: e.target.value })}>

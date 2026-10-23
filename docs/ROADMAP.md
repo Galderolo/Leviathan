@@ -38,7 +38,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] More languages (French, Portuguese, German, Italian...) — **good first issue**
 - [x] Open the app with a repository path from the command line (`leviathan .`)
 - [x] Configurable external editor and diff/merge tool
-- [ ] Configurable terminal
+- [x] Configurable terminal
 - [ ] Profiles: different author name/email per repository group
 - [ ] Code signing for Windows and macOS releases
 - [ ] Auto-update on macOS (needs code signing)

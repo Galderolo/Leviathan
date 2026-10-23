@@ -7,7 +7,16 @@ import {
   takeLaunchFolders,
   windowLoading
 } from '../src/main/cli'
-import { EDITOR_PRESETS, difftoolArgs, editorArgs, mergetoolArgs, splitCommand } from '../src/shared/externalTools'
+import {
+  EDITOR_PRESETS,
+  difftoolArgs,
+  editorArgs,
+  mergetoolArgs,
+  splitCommand,
+  terminalArgs,
+  terminalPresets,
+  windowsStartLine
+} from '../src/shared/externalTools'
 
 describe('splitCommand', () => {
   it('splits a command line like a shell would, keeping quoted parts and Windows paths whole', () => {
@@ -192,5 +201,43 @@ describe('addToPathList', () => {
     ).toBeNull()
     expect(addToPathList('', 'C:\\bin')).toBe('C:\\bin')
     expect(addToPathList('C:\\Tools;', 'C:\\bin')).toBe('C:\\Tools;C:\\bin')
+  })
+})
+
+describe('terminal commands', () => {
+  it('fills in the folder as one argument, whatever it holds', () => {
+    expect(terminalArgs('konsole --workdir {folder}', '/home/ana/My Game')).toEqual([
+      'konsole',
+      '--workdir',
+      '/home/ana/My Game'
+    ])
+    expect(terminalArgs('xfce4-terminal --working-directory={folder}', '/g')).toEqual([
+      'xfce4-terminal',
+      '--working-directory=/g'
+    ])
+    expect(terminalArgs('wt -d .', 'C:\\g')).toEqual(['wt', '-d', '.'])
+    expect(terminalArgs('   ', 'C:\\g')).toEqual([])
+  })
+
+  it('starts a Windows terminal through start, quoting what cmd would read', () => {
+    expect(windowsStartLine(['cmd'])).toBe('/d /s /c "start "" cmd"')
+    expect(windowsStartLine(['C:\\Program Files\\Git\\git-bash.exe', '--cd=.'])).toBe(
+      '/d /s /c "start "" "C:\\Program Files\\Git\\git-bash.exe" --cd=."'
+    )
+    // & | < > ^ would end or redirect the command outside quotes.
+    expect(windowsStartLine(['wt', '-d', 'D:\\R&D\\game'])).toBe('/d /s /c "start "" wt -d "D:\\R&D\\game""')
+    expect(windowsStartLine(['pwsh', ''])).toBe('/d /s /c "start "" pwsh """')
+    // cmd has no way to pass a quote inside a quoted argument.
+    expect(() => windowsStartLine(['pwsh', '-c', 'echo "hi"'])).toThrow(/quote/i)
+  })
+
+  it("offers each system's terminals; on Windows none takes the folder on its command line", () => {
+    expect(terminalPresets('win32').map((p) => p.id)).toEqual(['cmd', 'powershell', 'pwsh', 'wt', 'gitbash'])
+    expect(terminalPresets('darwin').map((p) => p.id)).toEqual(['terminal', 'iterm', 'warp'])
+    expect(terminalPresets('linux')[0].id).toBe('gnome')
+    expect(terminalPresets('freebsd')).toEqual(terminalPresets('linux'))
+    // There it would go through cmd, which expands %…% even inside quotes: they start in it instead.
+    for (const p of terminalPresets('win32')) expect(p.command).not.toContain('{folder}')
+    for (const p of [...terminalPresets('darwin'), ...terminalPresets('linux')]) expect(p.command).toContain('{folder}')
   })
 })

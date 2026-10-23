@@ -43,10 +43,10 @@ function launch(command: string, args: string[], cwd: string): Promise<boolean> 
 }
 
 /**
- * Opens the platform terminal in `dir`. The directory is passed as the
+ * Opens the platform terminal in `dir` (no terminal chosen in Settings). The directory is passed as the
  * working directory, never interpolated into a shell command line.
  */
-export async function openTerminal(dir: string): Promise<void> {
+export async function openSystemTerminal(dir: string): Promise<void> {
   if (!existsSync(dir)) throw new Error(`Folder does not exist: ${dir}`)
   if (process.platform === 'win32') {
     if (await launch('cmd.exe', ['/c', 'start', 'cmd.exe'], dir)) return

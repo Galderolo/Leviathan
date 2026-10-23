@@ -280,6 +280,8 @@ export interface Settings {
   editor: string
   /** Diff and merge tool for `git difftool` / `git mergetool`; empty: the one set in git's config. */
   diffTool: string
+  /** Command that opens a terminal, started in the repository's folder ({folder}); empty: the system's. */
+  terminal: string
   /** Repository path -> id of the account it uses. */
   repoAccounts: Record<string, string>
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
@@ -302,6 +304,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lastSeenVersion: '',
   editor: '',
   diffTool: '',
+  terminal: '',
   repoAccounts: {}
 }
 

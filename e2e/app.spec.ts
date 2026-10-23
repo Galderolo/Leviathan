@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { launch, Sandbox } from './app'
@@ -164,6 +164,36 @@ test('keeps Settings in sections and saves each change at once', async () => {
   await expect(page.locator('.settings-body:visible')).toContainText('Sign in with GitLab')
   await page.keyboard.press('Escape')
   await expect(page.locator('.modal.settings')).toHaveCount(0)
+})
+
+test('opens the terminal chosen in Settings in the repository folder', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  // A stand-in terminal: it writes down where it started and what it was given, then exits.
+  const marker = join(box.root, 'terminal.json')
+  const fake = join(box.root, 'fake-terminal.cjs')
+  writeFileSync(
+    fake,
+    `require('fs').writeFileSync(${JSON.stringify(marker)}, JSON.stringify({ cwd: process.cwd(), folder: process.argv[2] }))\n`
+  )
+  await open(repo)
+
+  await page.locator('.toolbar-right .icon-btn').click()
+  await page.locator('.settings-nav-item', { hasText: 'External tools' }).click()
+  await page.locator('label.field', { hasText: 'Terminal' }).locator('select').selectOption('custom')
+  const command = page.locator('label.field', { hasText: "started in the repository's folder" }).locator('input')
+  await command.fill(`"${process.execPath}" "${fake}" {folder}`)
+  await command.blur()
+  await expect
+    .poll(async () => (await page.evaluate(() => window.leviathan.getSettings())).terminal)
+    .toContain('fake-terminal')
+  await page.keyboard.press('Escape')
+
+  await toolbarButton('Terminal').click()
+  await expect.poll(() => existsSync(marker)).toBe(true)
+  const started = JSON.parse(readFileSync(marker, 'utf8')) as { cwd: string; folder: string }
+  const same = (p: string) => realpathSync.native(p).toLowerCase()
+  expect(same(started.cwd)).toBe(same(repo))
+  expect(same(started.folder)).toBe(same(repo))
 })
 
 test('highlights the code of a diff', async () => {

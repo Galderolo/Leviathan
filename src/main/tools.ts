@@ -1,16 +1,22 @@
+import { spawn as spawnDirect } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import spawn from 'cross-spawn'
-import { difftoolArgs, editorArgs, mergetoolArgs } from '../shared/externalTools'
+import { difftoolArgs, editorArgs, mergetoolArgs, terminalArgs, windowsStartLine } from '../shared/externalTools'
 import type { DiffSource } from '../shared/types'
 import { insideRepo } from './git/repository'
 import { git } from './git/runner'
-import { findProgram } from './programs'
+import { findProgram, locateProgram } from './programs'
 import { loadSettings } from './settings'
+import { openSystemTerminal } from './shell'
 
 /** Thrown when no diff or merge tool is chosen in Settings nor configured in git: git would fall back to vimdiff. */
 export const NO_DIFF_TOOL = 'NO_DIFF_TOOL'
 
-/** Starts a program detached from the app and returns once it runs, or with why it could not start. */
-function launch(args: string[], cwd: string): Promise<void> {
+/**
+ * Starts a program detached from the app and returns once it runs, or with why it could not start. `strict`: an
+ * error exit right away is a failure too (`open -a` with an app that is not installed).
+ */
+function launch(args: string[], cwd: string, strict = false): Promise<void> {
   return new Promise((resolve, reject) => {
     // cross-spawn runs .cmd launchers (code.cmd, subl.cmd…) through cmd.exe with every argument escaped,
     // so a file name with & or % stays a file name.
@@ -32,9 +38,10 @@ function launch(args: string[], cwd: string): Promise<void> {
       child.unref()
       started = setTimeout(resolve, 1000)
     })
-    child.once('exit', () => {
+    child.once('exit', (code) => {
       clearTimeout(started)
-      resolve()
+      if (strict && code) reject(new Error(`"${args[0]}" could not be started (exit code ${code})`))
+      else resolve()
     })
   })
 }
@@ -47,6 +54,42 @@ export async function openInEditor(repo: string, file: string | null, line?: num
   // Rider, Visual Studio and others are often not on the PATH: look where their installers put them.
   if (args.length) args[0] = await findProgram(args[0])
   await launch(args, repo)
+}
+
+/**
+ * Starts a program in a window of its own through cmd's `start`: a console program (PowerShell, cmd) started
+ * directly from the app would get no window. Returns once `start` did.
+ */
+function startInWindow(args: string[], cwd: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawnDirect('cmd.exe', [windowsStartLine(args)], {
+      cwd,
+      detached: true,
+      stdio: 'ignore',
+      windowsVerbatimArguments: true
+    })
+    child.once('error', reject)
+    child.once('exit', (code) =>
+      code === 0 ? resolve() : reject(new Error(`"${args[0]}" could not be started (exit code ${code})`))
+    )
+  })
+}
+
+/** Opens the terminal chosen in Settings, or the system's, in the repository's folder. */
+export async function openTerminal(repo: string, platform: NodeJS.Platform = process.platform): Promise<void> {
+  const template = loadSettings().terminal.trim()
+  if (!template) return openSystemTerminal(repo)
+  if (!existsSync(repo)) throw new Error(`Folder does not exist: ${repo}`)
+  const args = terminalArgs(template, repo)
+  const program = args.length ? await locateProgram(args[0]) : null
+  if (!program) {
+    throw new Error(
+      `"${args[0] ?? template}" was not found. Check the terminal in Settings, or pick "Other (command)" there with the full path of its program.`
+    )
+  }
+  args[0] = program
+  if (platform === 'win32') await startInWindow(args, repo)
+  else await launch(args, repo, true)
 }
 
 /** Whether git has a tool set under any of `keys` for this repository. */

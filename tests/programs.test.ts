@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findProgram, type ProgramFs } from '../src/main/programs'
+import { findProgram, locateProgram, type ProgramFs } from '../src/main/programs'
 
 /** A file system holding exactly `files` (Windows paths compare without case, like NTFS). */
 function fakeFs(files: string[], windows = true): ProgramFs {
@@ -82,5 +82,32 @@ describe('findProgram', () => {
     expect(await findProgram('D:\\Apps\\editor.exe', winEnv, 'win32', fs)).toBe('D:\\Apps\\editor.exe')
     expect(await findProgram('myeditor', winEnv, 'win32', fs)).toBe('myeditor')
     expect(await findProgram('rider', winEnv, 'win32', fs)).toBe('rider')
+  })
+})
+
+describe('locateProgram', () => {
+  it('finds the terminals Settings offers where their installers put them', async () => {
+    const fs = fakeFs([
+      'C:\\Program Files\\Git\\git-bash.exe',
+      'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+      'C:\\Users\\ana\\AppData\\Local\\Microsoft\\WindowsApps\\wt.exe'
+    ])
+    expect(await locateProgram('git-bash', winEnv, 'win32', fs)).toBe('C:\\Program Files\\Git\\git-bash.exe')
+    expect(await locateProgram('pwsh', winEnv, 'win32', fs)).toBe('C:\\Program Files\\PowerShell\\7\\pwsh.exe')
+    expect(await locateProgram('wt', winEnv, 'win32', fs)).toBe(
+      'C:\\Users\\ana\\AppData\\Local\\Microsoft\\WindowsApps\\wt.exe'
+    )
+    // Git for Windows installed for the user only.
+    const user = fakeFs(['C:\\Users\\ana\\AppData\\Local\\Programs\\Git\\git-bash.exe'])
+    expect(await locateProgram('git-bash', winEnv, 'win32', user)).toBe(
+      'C:\\Users\\ana\\AppData\\Local\\Programs\\Git\\git-bash.exe'
+    )
+  })
+
+  it('says when a program is nowhere, a path included', async () => {
+    const fs = fakeFs(['C:\\Windows\\system32\\cmd.exe'])
+    expect(await locateProgram('cmd', winEnv, 'win32', fs)).toBe('cmd')
+    expect(await locateProgram('git-bash', winEnv, 'win32', fs)).toBeNull()
+    expect(await locateProgram('D:\\Apps\\term.exe', winEnv, 'win32', fs)).toBeNull()
   })
 })

@@ -256,8 +256,10 @@ export interface LeviathanInvokeApi {
   updateSubmodules(repo: string, paths: string[] | null): Promise<void>
 }
 
-/** Event subscriptions exposed next to the invoke methods. */
+/** Event subscriptions, and the platform, exposed next to the invoke methods. */
 export interface LeviathanEventsApi {
+  /** `process.platform` of the app: win32, darwin, linux… */
+  readonly platform: string
   onRepoChanged(cb: (e: RepoChangedEvent) => void): () => void
   /** New Leviathan releases: found, downloading, ready to install. */
   onUpdate(cb: (state: UpdateState) => void): () => void
