@@ -16,32 +16,40 @@ const ana: Account = {
   name: 'Ana',
   email: 'ana@example.invalid'
 }
+// Tokens are asked for only once an account matches: a renewal must not happen for an unrelated account.
+const asked: string[] = []
+const tokenOf = (id: string, token: string) => async () => {
+  asked.push(id)
+  return token
+}
 const accounts = [
-  { account: ana, token: 'T0K' },
-  { account: { ...ana, id: '2', host: 'other.org', username: 'bo' }, token: 'B0' }
+  { account: ana, token: tokenOf('1', 'T0K') },
+  { account: { ...ana, id: '2', host: 'other.org', username: 'bo' }, token: tokenOf('2', 'B0') }
 ]
 
 describe('answerFromAccounts', () => {
-  it('answers the password prompt with the matching account token', () => {
-    expect(answerFromAccounts("Password for 'https://ana@example.com': ", accounts)).toBe('T0K')
-    expect(answerFromAccounts("Password for 'https://ANA@Example.com': ", accounts)).toBe('T0K')
+  it('answers the password prompt with the matching account token, asking only that account for it', async () => {
+    asked.length = 0
+    expect(await answerFromAccounts("Password for 'https://ana@example.com': ", accounts)).toBe('T0K')
+    expect(await answerFromAccounts("Password for 'https://ANA@Example.com': ", accounts)).toBe('T0K')
+    expect(asked).toEqual(['1', '1'])
   })
 
-  it('answers the username prompt when exactly one account exists for the host', () => {
-    expect(answerFromAccounts("Username for 'https://example.com': ", accounts)).toBe('ana')
-    const two = [...accounts, { account: { ...ana, id: '3', username: 'cy' }, token: 'C' }]
-    expect(answerFromAccounts("Username for 'https://example.com': ", two)).toBeNull()
+  it('answers the username prompt when exactly one account exists for the host', async () => {
+    expect(await answerFromAccounts("Username for 'https://example.com': ", accounts)).toBe('ana')
+    const two = [...accounts, { account: { ...ana, id: '3', username: 'cy' }, token: tokenOf('3', 'C') }]
+    expect(await answerFromAccounts("Username for 'https://example.com': ", two)).toBeNull()
   })
 
-  it('never sends a token over plain http', () => {
-    expect(answerFromAccounts("Password for 'http://ana@example.com': ", accounts)).toBeNull()
-    expect(answerFromAccounts("Username for 'http://example.com': ", accounts)).toBeNull()
+  it('never sends a token over plain http', async () => {
+    expect(await answerFromAccounts("Password for 'http://ana@example.com': ", accounts)).toBeNull()
+    expect(await answerFromAccounts("Username for 'http://example.com': ", accounts)).toBeNull()
   })
 
-  it('leaves everything else to the user', () => {
-    expect(answerFromAccounts("Password for 'https://zed@example.com': ", accounts)).toBeNull()
-    expect(answerFromAccounts("Password for 'https://ana@unknown.net': ", accounts)).toBeNull()
-    expect(answerFromAccounts('Enter passphrase for key /x/id_ed25519: ', accounts)).toBeNull()
+  it('leaves everything else to the user', async () => {
+    expect(await answerFromAccounts("Password for 'https://zed@example.com': ", accounts)).toBeNull()
+    expect(await answerFromAccounts("Password for 'https://ana@unknown.net': ", accounts)).toBeNull()
+    expect(await answerFromAccounts('Enter passphrase for key /x/id_ed25519: ', accounts)).toBeNull()
   })
 })
 

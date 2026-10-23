@@ -177,6 +177,10 @@ export interface LeviathanInvokeApi {
   startGitHubLogin(): Promise<{ userCode: string; verificationUri: string; expiresIn: number }>
   finishGitHubLogin(): Promise<Account>
   cancelGitHubLogin(): Promise<void>
+  /** Starts signing in to GitLab.com: the page to open in the browser, which comes back to the app. */
+  startGitLabLogin(): Promise<{ url: string }>
+  finishGitLabLogin(): Promise<Account>
+  cancelGitLabLogin(): Promise<void>
 
   // Pull requests, through the account for the repository's remote (null: no such account)
   getPullRequests(repo: string): Promise<{ provider: Provider; remote: string; items: PullRequest[] } | null>
@@ -329,6 +333,9 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   startGitHubLogin: true,
   finishGitHubLogin: true,
   cancelGitHubLogin: true,
+  startGitLabLogin: true,
+  finishGitLabLogin: true,
+  cancelGitLabLogin: true,
   getPullRequests: true,
   createPullRequest: true,
   closePullRequest: true,

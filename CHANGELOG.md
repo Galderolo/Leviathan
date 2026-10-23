@@ -4,6 +4,14 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Sign in with GitLab** (gitlab.com) from *Settings → Accounts*: allow Leviathan on the page that opens in the browser, no token to create. The sign-in renews itself in the background (GitLab's tokens last two hours).
+
+### Changed
+
+- GitLab accounts send their token as `Authorization: Bearer`, which takes both personal access tokens and the tokens of a GitLab sign-in.
+
 ## [0.10.0] - 2026-10-23
 
 ### Added

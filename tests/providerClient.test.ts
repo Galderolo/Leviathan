@@ -49,7 +49,8 @@ describe('fetchIdentity', () => {
       name: 'Bo',
       email: '9-bo@users.noreply.gitlab.com'
     })
-    expect(calls[0].headers['PRIVATE-TOKEN']).toBe(TOKEN)
+    // Bearer takes both personal access tokens and the tokens of a GitLab sign-in.
+    expect(calls[0].headers.Authorization).toBe(`Bearer ${TOKEN}`)
   })
 
   it('explains a rejected token without leaking it', async () => {

@@ -1,6 +1,14 @@
 import { join } from 'node:path'
 import { app, safeStorage } from 'electron'
-import { GITHUB_CLIENT_ID, GITHUB_SCOPES, credentialArgs, noreplyEmail, withoutAccount } from '../../shared/providers'
+import {
+  GITHUB_CLIENT_ID,
+  GITHUB_SCOPES,
+  GITLAB_CLIENT_ID,
+  GITLAB_REDIRECT_PORT,
+  credentialArgs,
+  noreplyEmail,
+  withoutAccount
+} from '../../shared/providers'
 import { pickProject } from '../../shared/forge'
 import { parseRemotes } from '../../shared/parsers'
 import type { Account, NewPullRequest, Provider, PullRequest, RemoteRepo } from '../../shared/types'
@@ -16,7 +24,9 @@ import {
   listPullRequests,
   listRepos
 } from './providers'
-import { AccountStore, type Cipher } from './store'
+import { AccountStore, type Cipher, type Renewal } from './store'
+import { TokenSource } from './tokens'
+import { authorizeUrl, codeChallenge, exchangeCode, newSignIn, refreshTokens, waitForRedirect } from './gitlabOAuth'
 import { pollDeviceFlow, startDeviceFlow, type DeviceCode } from './oauth'
 
 const cipher: Cipher = {
@@ -35,6 +45,17 @@ function accounts(): AccountStore {
   return store
 }
 
+// Only GitLab sign-ins have tokens that expire.
+let tokens: TokenSource | null = null
+
+/** An account's token, renewed first when it is about to expire. */
+function freshToken(id: string): Promise<string | null> {
+  tokens ??= new TokenSource(accounts(), (account, refreshToken) =>
+    refreshTokens({ host: account.host, clientId: GITLAB_CLIENT_ID, refreshToken })
+  )
+  return tokens.token(id)
+}
+
 function requireAccount(id: string): Account {
   const account = accounts().get(id)
   if (!account) throw new Error('Account not found')
@@ -46,8 +67,7 @@ export function initAccounts(): void {
   setAccountSource(() =>
     accounts()
       .list()
-      .map((account) => ({ account, token: accounts().token(account.id) ?? '' }))
-      .filter((c) => c.token)
+      .map((account) => ({ account, token: () => freshToken(account.id) }))
   )
   for (const [repo, id] of Object.entries(loadSettings().repoAccounts ?? {})) {
     const account = accounts().get(id)
@@ -76,6 +96,8 @@ export async function addAccount(input: {
   username?: string
   name?: string
   email?: string
+  /** For a token that expires (GitLab sign-in). */
+  renewal?: Renewal
 }): Promise<Account> {
   const host = normaliseHost(input.host)
   const token = input.token.trim()
@@ -95,7 +117,7 @@ export async function addAccount(input: {
   const existing = accounts()
     .list()
     .find((a) => a.provider === input.provider && a.host === host && a.username === identity.username)
-  if (existing) return accounts().setToken(existing.id, token)
+  if (existing) return accounts().setToken(existing.id, token, input.renewal)
   return accounts().add(
     {
       provider: input.provider,
@@ -104,7 +126,8 @@ export async function addAccount(input: {
       name: input.name?.trim() || identity.name,
       email: input.email?.trim() || identity.email
     },
-    token
+    token,
+    input.renewal
   )
 }
 
@@ -134,7 +157,7 @@ export function removeAccount(id: string): void {
 export async function listAccountRepos(id: string): Promise<RemoteRepo[]> {
   const account = requireAccount(id)
   if (account.provider === 'other') return []
-  return listRepos(account.provider, account.host, accounts().token(id) ?? '')
+  return listRepos(account.provider, account.host, (await freshToken(id)) ?? '')
 }
 
 export function getRepoAccount(repo: string): string | null {
@@ -163,7 +186,7 @@ export async function setRepoAccount(repo: string, accountId: string | null): Pr
 async function repoProject(repo: string) {
   const { stdout } = await git(['remote', '-v'], { cwd: repo })
   const project = pickProject(parseRemotes(stdout), accounts().list(), getRepoAccount(repo))
-  const token = project && accounts().token(project.account.id)
+  const token = project && (await freshToken(project.account.id))
   return project && token ? { ...project, token } : null
 }
 
@@ -258,4 +281,62 @@ export async function finishGitHubLogin(): Promise<Account> {
 export function cancelGitHubLogin(): void {
   login?.controller.abort()
   login = null
+}
+
+// ---------------------------------------------------------------------------
+// Signing in to GitLab.com from the browser: GitLab sends the browser back to a
+// local address with a code, which is traded for tokens (with PKCE: no secret).
+
+let gitlabLogin: { controller: AbortController; code: Promise<string>; verifier: string } | null = null
+
+/** Starts a sign-in (cancelling one still waiting): the page to open in the browser. */
+export async function startGitLabLogin(): Promise<{ url: string }> {
+  cancelGitLabLogin()
+  const { verifier, state } = newSignIn()
+  const controller = new AbortController()
+  let listening!: () => void
+  const ready = new Promise<void>((resolve) => (listening = resolve))
+  const code = waitForRedirect(GITLAB_REDIRECT_PORT, state, controller.signal, listening)
+  code.catch(() => {})
+  gitlabLogin = { controller, code, verifier }
+  // A busy port fails here, before the browser is sent anywhere.
+  await Promise.race([ready, code])
+  const url = authorizeUrl({
+    host: 'gitlab.com',
+    clientId: GITLAB_CLIENT_ID,
+    port: GITLAB_REDIRECT_PORT,
+    state,
+    challenge: codeChallenge(verifier)
+  })
+  return { url }
+}
+
+/** Waits until the browser comes back from GitLab, then adds the account. */
+export async function finishGitLabLogin(): Promise<Account> {
+  const current = gitlabLogin
+  if (!current) throw new Error('No sign-in in progress')
+  try {
+    const code = await current.code
+    const signedIn = await exchangeCode({
+      host: 'gitlab.com',
+      clientId: GITLAB_CLIENT_ID,
+      port: GITLAB_REDIRECT_PORT,
+      code,
+      verifier: current.verifier
+    })
+    if (current.controller.signal.aborted) throw new Error('Sign-in cancelled')
+    return await addAccount({
+      provider: 'gitlab',
+      host: 'gitlab.com',
+      token: signedIn.accessToken,
+      renewal: { refreshToken: signedIn.refreshToken, expiresAt: signedIn.expiresAt }
+    })
+  } finally {
+    if (gitlabLogin === current) gitlabLogin = null
+  }
+}
+
+export function cancelGitLabLogin(): void {
+  gitlabLogin?.controller.abort()
+  gitlabLogin = null
 }

@@ -123,7 +123,9 @@ Pull requests were tested for real on a private GitHub repository (create as dra
 
 Done for GitHub (unreleased): Settings → Accounts → *Sign in with GitHub* runs the OAuth device flow with the project's OAuth App (client ID in `src/shared/providers.ts`, scopes `repo read:user`); the token goes straight into the encrypted account store. Code: `src/main/accounts/oauth.ts`, `startGitHubLogin` / `finishGitHubLogin` in `src/main/accounts/index.ts`.
 
-Still to do: GitLab (needs an *application* on gitlab.com with the `api`, `read_user` and `write_repository` scopes, and its application ID) and GitHub Enterprise (each server needs its own OAuth App).
+GitLab.com (unreleased): gitlab.com answers the device flow with `access_denied` for this application, so *Sign in with GitLab* uses the authorization code flow with PKCE. The app listens on `127.0.0.1:47231` (the redirect URI registered with the application, ID `GITLAB_CLIENT_ID` in `src/shared/providers.ts`, scopes `api read_user write_repository`) before the browser is sent anywhere, so a busy port fails at once; only a callback with this sign-in's `state` is taken. GitLab's access tokens last two hours: the renewal token is stored encrypted next to it (`AccountStore.renewal`) and `TokenSource` renews five minutes before expiry, one renewal at a time per account (GitLab replaces the renewal token each time). Askpass asks for a token only once an account matches the prompt, so an unrelated expired account is never renewed. OAuth tokens work for git over HTTPS with the real username (GitLab only checks the password) and for the API as `Authorization: Bearer`, which also takes personal access tokens. Code: `src/main/accounts/gitlabOAuth.ts`, `src/main/accounts/tokens.ts`, `startGitLabLogin` / `finishGitLabLogin` in `src/main/accounts/index.ts`.
+
+Still to do: GitHub Enterprise and self-managed GitLab (each server needs its own application).
 
 ### 4. Small decisions pending
 

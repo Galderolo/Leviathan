@@ -13,7 +13,8 @@ function authHeaders(provider: Provider, token: string): Record<string, string> 
     case 'github':
       return { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' }
     case 'gitlab':
-      return { 'PRIVATE-TOKEN': token }
+      // Personal access tokens and the tokens of a GitLab sign-in alike.
+      return { Authorization: `Bearer ${token}` }
     default:
       return { Authorization: `token ${token}` }
   }

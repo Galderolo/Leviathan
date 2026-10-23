@@ -79,3 +79,8 @@ export function hasRemoteOnHost(remotes: Remote[], host: string): boolean {
 export const GITHUB_CLIENT_ID = 'Ov23liIeu6UqggJLSdlI'
 /** The same permissions a token made from the token page gets (`workflow`: pushes that change CI files). */
 export const GITHUB_SCOPES = 'repo workflow read:user'
+
+/** Leviathan's application on gitlab.com (sign-in from the browser, with PKCE). Public by design. */
+export const GITLAB_CLIENT_ID = 'f6655291e303deffbfa9d7aa9dc8c88a0264f8b4354c33942da97316804c8e6e'
+/** The browser comes back to http://127.0.0.1:<port>/callback, the address registered with the application. */
+export const GITLAB_REDIRECT_PORT = 47231

@@ -40,6 +40,8 @@ export function AccountsSection() {
   const [saving, setSaving] = useState(false)
   // GitHub sign-in in progress: the code to enter in the browser ('starting' while it is requested).
   const [login, setLogin] = useState<{ userCode: string; verificationUri: string } | null | 'starting'>(null)
+  // GitLab sign-in in progress: the page opened in the browser ('starting' while the app gets ready for it).
+  const [gitlab, setGitlab] = useState<{ url: string } | null | 'starting'>(null)
   // Each sign-in (and each cancel) gets a new number: a cancelled one must not touch the next one's box.
   const attempt = useRef(0)
 
@@ -63,6 +65,7 @@ export function AccountsSection() {
     () => () => {
       attempt.current++
       void api.cancelGitHubLogin()
+      void api.cancelGitLabLogin()
     },
     []
   )
@@ -89,6 +92,31 @@ export function AccountsSection() {
     attempt.current++
     void api.cancelGitHubLogin()
     setLogin(null)
+  }
+
+  const signInGitLab = async () => {
+    const mine = ++attempt.current
+    const current = () => attempt.current === mine
+    setGitlab('starting')
+    try {
+      const started = await api.startGitLabLogin()
+      if (!current()) return
+      setGitlab(started)
+      openExternal(started.url)
+      const account = await api.finishGitLabLogin()
+      toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
+      await changed()
+    } catch (err) {
+      if (current() && !/cancelled/i.test(errorMessage(err))) toast('error', errorMessage(err))
+    } finally {
+      if (current()) setGitlab(null)
+    }
+  }
+
+  const cancelGitLab = () => {
+    attempt.current++
+    void api.cancelGitLabLogin()
+    setGitlab(null)
   }
 
   const label = (p: Provider) => (p === 'other' ? t('accounts.other') : PROVIDER_LABELS[p])
@@ -246,6 +274,22 @@ export function AccountsSection() {
             </button>
           </div>
         </div>
+      ) : gitlab ? (
+        <div className="account-form device-login">
+          <div className="small">{t('accounts.gitlabHint')}</div>
+          <div className="dim small">{t('accounts.waiting')}</div>
+          <div className="ssh-actions">
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn small" onClick={cancelGitLab}>
+              {t('common.cancel')}
+            </button>
+            {gitlab !== 'starting' && (
+              <button type="button" className="btn small btn-primary" onClick={() => openExternal(gitlab.url)}>
+                {t('accounts.openAgain')}
+              </button>
+            )}
+          </div>
+        </div>
       ) : login ? (
         <div className="account-form device-login">
           {login === 'starting' ? (
@@ -280,6 +324,9 @@ export function AccountsSection() {
         <div className="ssh-actions">
           <button type="button" className="btn small btn-primary" onClick={() => void signIn()}>
             {t('accounts.signInGitHub')}
+          </button>
+          <button type="button" className="btn small btn-primary" onClick={() => void signInGitLab()}>
+            {t('accounts.signInGitLab')}
           </button>
           <button type="button" className="btn small" onClick={() => setDraft(emptyDraft())}>
             {t('accounts.add')}

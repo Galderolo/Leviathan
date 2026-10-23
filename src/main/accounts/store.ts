@@ -9,9 +9,19 @@ export interface Cipher {
   decrypt(data: Buffer): string
 }
 
+/** What renews an access token that expires (GitLab sign-in). */
+export interface Renewal {
+  refreshToken: string
+  /** When the access token expires, unix milliseconds. */
+  expiresAt: number
+}
+
 interface StoredAccount extends Account {
   /** base64 of the encrypted token */
   token: string
+  /** base64 of the encrypted renewal token, for tokens that expire. */
+  refresh?: string
+  expiresAt?: number
 }
 
 /** Accounts persisted in a JSON file; tokens are only ever written encrypted. */
@@ -49,26 +59,46 @@ export class AccountStore {
     }
   }
 
-  add(account: Omit<Account, 'id'>, token: string): Account {
+  /** Null for tokens that do not expire, or when the renewal token cannot be decrypted. */
+  renewal(id: string): Renewal | null {
+    const found = this.accounts.find((a) => a.id === id)
+    if (!found?.refresh || found.expiresAt === undefined) return null
+    try {
+      return { refreshToken: this.cipher.decrypt(Buffer.from(found.refresh, 'base64')), expiresAt: found.expiresAt }
+    } catch {
+      return null
+    }
+  }
+
+  add(account: Omit<Account, 'id'>, token: string, renewal?: Renewal): Account {
     if (!this.cipher.available()) throw new Error('Secure storage is not available on this system')
     const stored: StoredAccount = {
       ...account,
       id: randomUUID(),
-      token: this.cipher.encrypt(token).toString('base64')
+      token: this.cipher.encrypt(token).toString('base64'),
+      ...this.sealed(renewal)
     }
     this.accounts.push(stored)
     this.save()
     return publicPart(stored)
   }
 
-  /** Replaces the token of an account (signed in again, or a new token for it). */
-  setToken(id: string, token: string): Account {
+  /** Replaces the token of an account (signed in again, renewed, or a new token for it). */
+  setToken(id: string, token: string, renewal?: Renewal): Account {
     if (!this.cipher.available()) throw new Error('Secure storage is not available on this system')
     const found = this.accounts.find((a) => a.id === id)
     if (!found) throw new Error('Account not found')
     found.token = this.cipher.encrypt(token).toString('base64')
+    const sealed = this.sealed(renewal)
+    found.refresh = sealed.refresh
+    found.expiresAt = sealed.expiresAt
     this.save()
     return publicPart(found)
+  }
+
+  private sealed(renewal?: Renewal): Pick<StoredAccount, 'refresh' | 'expiresAt'> {
+    if (!renewal) return { refresh: undefined, expiresAt: undefined }
+    return { refresh: this.cipher.encrypt(renewal.refreshToken).toString('base64'), expiresAt: renewal.expiresAt }
   }
 
   update(id: string, patch: Partial<Pick<Account, 'name' | 'email'>>): Account {
