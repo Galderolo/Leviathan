@@ -187,6 +187,9 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - An open conflict view is not closed when the file stops being conflicted (marked resolved from the list, or after Abort).
 - An open diff keeps an outdated untracked flag when the file stays in the same list (`git rm --cached`).
 
+**Stash**
+- Stashing some files (`git stash push -- <paths>`) still keeps a picture of the whole index in the stash: files that were staged appear in it too, though they stay as they were in the working tree.
+
 **File history and blame**
 - File names with quotes, backslashes or tabs (Linux/macOS) come back quoted from `git log` (no `-z`), so their diff is empty.
 - History of a staged rename starts from the new name, which HEAD does not have yet (empty list).

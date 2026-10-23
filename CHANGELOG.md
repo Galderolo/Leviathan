@@ -7,9 +7,11 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Added
 
 - **Sign in with GitLab** (gitlab.com) from *Settings → Accounts*: allow Leviathan on the page that opens in the browser, no token to create. The sign-in renews itself in the background (GitLab's tokens last two hours).
+- **Stash some files**: right-click a file (or several selected ones) in the uncommitted changes → *Stash this file* / *Stash N files*. The toolbar's Stash still stashes everything.
 
 ### Changed
 
+- Settings is organized in sections (General, External tools, Accounts, SSH keys, Updates, About), and every change is saved at once: there is no Save button any more.
 - GitLab accounts send their token as `Authorization: Bearer`, which takes both personal access tokens and the tokens of a GitLab sign-in.
 
 ## [0.10.0] - 2026-10-23

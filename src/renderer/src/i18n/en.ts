@@ -194,6 +194,8 @@ const en = {
   'menu.stashChanges': 'Stash all changes',
   'menu.stashWithMessage': 'Stash with message…',
   'menu.discard': 'Discard changes',
+  'menu.stashFile': 'Stash this file',
+  'menu.stashCount': 'Stash {count} files',
   'menu.discardAll': 'Discard all changes',
   'menu.openFile': 'Open file',
   'menu.showInFolder': 'Show in folder',
@@ -536,6 +538,8 @@ const en = {
   'status.commits_one': '1 commit loaded',
 
   'settings.title': 'Settings',
+  'settings.general': 'General',
+  'settings.about': 'About',
   'settings.language': 'Language',
   'settings.theme': 'Theme',
   'settings.themeSystem': 'Same as the system',

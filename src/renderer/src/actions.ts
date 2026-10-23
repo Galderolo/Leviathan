@@ -894,6 +894,12 @@ export async function stashChanges(path: string, askMessage = false): Promise<vo
   await runOp(path, () => api.stashSave(path, message))
 }
 
+/** Stashes only these files (both their staged and unstaged changes; a rename takes its old path along). */
+export async function stashFiles(path: string, files: FileChange[]): Promise<void> {
+  const paths = [...new Set(files.flatMap((f) => (f.origPath ? [f.origPath, f.path] : [f.path])))]
+  await runOp(path, () => api.stashSave(path, null, paths))
+}
+
 /** Pops `stash`, or the most recent stash when none is given (toolbar Pop). */
 export async function popStash(path: string, stash?: Stash): Promise<void> {
   const target = stash ?? getRepo(path)?.state?.stashes[0]

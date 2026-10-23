@@ -196,6 +196,8 @@ const es: Record<keyof typeof en, string> = {
   'menu.stashChanges': 'Guardar cambios en stash',
   'menu.stashWithMessage': 'Stash con mensaje…',
   'menu.discard': 'Descartar cambios',
+  'menu.stashFile': 'Guardar este archivo en stash',
+  'menu.stashCount': 'Guardar {count} archivos en stash',
   'menu.discardAll': 'Descartar todos los cambios',
   'menu.openFile': 'Abrir archivo',
   'menu.showInFolder': 'Mostrar en carpeta',
@@ -544,6 +546,8 @@ const es: Record<keyof typeof en, string> = {
   'status.commits_one': '1 commit cargado',
 
   'settings.title': 'Ajustes',
+  'settings.general': 'General',
+  'settings.about': 'Acerca de',
   'settings.language': 'Idioma',
   'settings.theme': 'Tema',
   'settings.themeSystem': 'Igual que el sistema',
