@@ -535,6 +535,8 @@ const en = {
   'status.commits_one': '1 commit loaded',
 
   'settings.title': 'Settings',
+  'settings.general': 'General',
+  'settings.about': 'About',
   'settings.language': 'Language',
   'settings.theme': 'Theme',
   'settings.themeSystem': 'Same as the system',

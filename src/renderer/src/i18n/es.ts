@@ -543,6 +543,8 @@ const es: Record<keyof typeof en, string> = {
   'status.commits_one': '1 commit cargado',
 
   'settings.title': 'Ajustes',
+  'settings.general': 'General',
+  'settings.about': 'Acerca de',
   'settings.language': 'Idioma',
   'settings.theme': 'Tema',
   'settings.themeSystem': 'Igual que el sistema',

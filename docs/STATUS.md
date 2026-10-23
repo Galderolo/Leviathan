@@ -129,7 +129,6 @@ Still to do: GitLab (needs an *application* on gitlab.com with the `api`, `read_
 
 - Add a Windows `.zip` target (unpack once, starts faster than the portable `.exe`, which unpacks itself on every launch).
 - Optionally bring the UI accent colour (teal) closer to the blue of the new icon.
-- Organize Settings: it holds unrelated things in one long window (general, external tools, accounts, SSH keys, updates, about). Split it into sections or tabs.
 
 ## Known minor issues
 
