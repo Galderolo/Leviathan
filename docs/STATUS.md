@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-23, with 0.12.0 released (442 tests). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-23, with 0.13.0 released (478 tests, 13 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -26,6 +26,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.10.0 | 2026-10-23 | External editor, diff and merge tools, `leviathan .` from a terminal, one window per profile, discard asks with a count |
 | 0.11.0 | 2026-10-23 | Sign in with GitLab, stash some files, Settings in sections saved at once |
 | 0.12.0 | 2026-10-23 | Bitbucket Cloud accounts and pull requests, stash mine and apply, VS Code as diff/merge tool fixed |
+| 0.13.0 | 2026-10-23 | Pull request review in the app, rebase drag and drop and edit, syntax highlighting, pull and push when a push is refused, editors found off the PATH, LFS servers without locks |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
@@ -35,7 +36,7 @@ All of these went through a final whole-branch review; Critical and Important fi
 
 - **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z): commits, amends, checkouts, branch and tag changes, merges, rebases, cherry-picks, reverts, resets, pulls. It refuses to undo while an operation is in progress, keeps branch settings (upstream) when branches are deleted, created or renamed, and undoing a merge commit brings the merge back. Code: `src/shared/undo.ts`, `applyChange` / `getSnapshot` in `src/main/git/repository.ts`, `src/renderer/src/undoStack.ts`.
 - **Conflict editor**: current and incoming versions side by side, choices per block or the whole file (including deletions and submodules). Files over 2 MB or not in UTF-8 can only take a side, and a save is refused if the file changed since it was opened. Code: `src/shared/conflicts.ts`, `components/ConflictView.tsx`.
-- **Interactive rebase**: right-click a commit → reorder (arrows, Alt+↑/↓ or drag by the grip), reword, edit, squash, fixup, drop. `edit` makes git stop without an error after applying the commit: git leaves `rebase-merge/amend`, which `getState` reports as `editing`; the app then shows the banner (the WIP row stays while any operation is in progress, `wipShown`) and the user amends and continues (unreleased). No editor is ever opened; the todo list and messages are prepared in `<gitdir>/leviathan-rebase/` and applied with `GIT_SEQUENCE_EDITOR=cp`. Code: `src/shared/rebase.ts`, `interactiveRebase` in `repository.ts`, `components/RebaseDialog.tsx`.
+- **Interactive rebase**: right-click a commit → reorder (arrows, Alt+↑/↓ or drag by the grip), reword, edit, squash, fixup, drop. `edit` makes git stop without an error after applying the commit: git leaves `rebase-merge/amend`, which `getState` reports as `editing`; the app then shows the banner (the WIP row stays while any operation is in progress, `wipShown`) and the user amends and continues (0.13.0). No editor is ever opened; the todo list and messages are prepared in `<gitdir>/leviathan-rebase/` and applied with `GIT_SEQUENCE_EDITOR=cp`. Code: `src/shared/rebase.ts`, `interactiveRebase` in `repository.ts`, `components/RebaseDialog.tsx`.
 - **Pull requests** (GitHub, GitLab, Gitea) through the stored accounts: a side-panel section listing open PRs (click shows the branch, double-click checks it out, menu opens it in the browser), and "Create pull request…" on a branch, which pushes first when needed. GitLab tokens need the `api` scope. Code: `src/shared/forge.ts`, `src/main/accounts/providers.ts`, `src/main/accounts/index.ts`, `checkoutPullRequest` in `repository.ts`.
 - **Pull a branch that is not checked out** (branch menu → *Pull … (fast-forward)*); the toast after a pull names the branch and says when it was already up to date, and the graph scrolls to the new tip.
 - **Unpushed commits** show a small ↑ at the end of their message in the graph.
@@ -60,7 +61,7 @@ Things worth knowing about git-lfs (3.5):
 
 Measured on real Unity projects (read-only, fingerprinted before and after) and on a synthetic repository (30 000 commits, 20 000 files, 1 500 branches with upstreams, 1 500 tags; generator kept outside the repo). What changed and why:
 - **Virtual file lists** (`components/VirtualRows.tsx`, `virtualRows.ts`): only rows near the visible part of the scrolling container are rendered (rows are 25 px, `FILE_ROW_HEIGHT`). The side panel and the working-tree lists subscribe only to what they show (`useShallow`), so typing a commit message does not redraw them.
-- **Virtual side panel** (`TreeView` in `LeftPanel.tsx`, `visibleTreeRows` in `utils.ts`): the branch, remote and tag trees are flattened into the rows that show (folded folders hide theirs) and drawn with `VirtualRows` at 24 px (`.side-row`). With 4 500 refs: 34 580 DOM nodes down to 375, folding a section from 0.7–0.9 s to about 20 ms, typing four letters in the filter from 1.4 s to 65 ms (unreleased).
+- **Virtual side panel** (`TreeView` in `LeftPanel.tsx`, `visibleTreeRows` in `utils.ts`): the branch, remote and tag trees are flattened into the rows that show (folded folders hide theirs) and drawn with `VirtualRows` at 24 px (`.side-row`). With 4 500 refs: 34 580 DOM nodes down to 375, folding a section from 0.7–0.9 s to about 20 ms, typing four letters in the filter from 1.4 s to 65 ms (0.13.0).
 - **Ahead/behind cache** (`src/main/git/refs.ts`): `%(upstream:track)` is only asked for branches whose tip or upstream moved; `%(upstream:short)` is never asked (git checks every short name against all refs, 0.6 s with 4 500 refs), the short name is derived from `%(upstream)`.
 - **Index stat refresh** (`shouldRefreshIndex` / `refreshIndexStat` in `repository.ts`): statuses never write the index (`GIT_OPTIONAL_LOCKS=0`), so stale stat info made every status re-read files (for LFS files, through `git-lfs filter-process`, about a second on Windows). After a status of 500 ms or more, at most every 5 minutes, `getState` runs `update-index -q --refresh`; the app's other commands in that repository wait for it (`holdingIndex` in `runner.ts`).
 - **Index lock**: `add`, `commit`, `restore`, `reset`, `rm`, `mv`, `apply`, `update-index`, `checkout` and `switch` are retried for up to 2 s when another git holds `index.lock` (they fail before changing anything).
@@ -74,8 +75,6 @@ Known minor issues left from the review (none loses work):
 - The index-lock retry matches git's message in stderr, so a hook printing that same message would make a command run twice.
 - The 500 ms "slow status" trigger also fires when status is slow for other reasons (many untracked files): the refresh then holds the index for nothing, once every 5 minutes.
 - Caches per repository (ahead/behind, last index refresh) are not dropped when a tab closes.
-
-Still slow-ish: with thousands of branches and tags expanded in the side panel (it is not virtualized), each state change costs around 50 ms per thousand rows; collapsing REMOTE / TAGS avoids it.
 
 ## Submodules (0.8.0)
 
@@ -94,7 +93,7 @@ Known minor issues:
 - A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
 - `submodule update` paths are validated but not literal (`GIT_LITERAL_PATHSPECS`), and *Open in a new tab* on a submodule deinitialized outside the app focuses the parent instead.
 
-## Pull request review (unreleased)
+## Pull request review (0.13.0)
 
 Code: `fetchPullRequestRange` / `getRangeFiles` in `repository.ts`, the review functions at the end of `src/main/accounts/providers.ts` and `accounts/index.ts`, `components/PullRequestView.tsx`.
 - Files and diff come from git, not from provider diff APIs: the pull request (the same source as checkout: `refs/pull/N/head`, GitLab's merge request ref, Bitbucket's branch) is fetched into `refs/leviathan/review/N` — not checkout's `refs/leviathan/pulls/N`, which tells whether `pr/N` has commits of its own — with its target branch; the range is merge-base..head, shown with the usual viewer. Nothing is checked out.
@@ -108,7 +107,7 @@ Known minor issues:
 - `refs/leviathan/review/N` are not deleted after a review, so their commits stay in the repository until removed by hand.
 - The merge dialog always proposes a merge commit first, even where the project only allows squashing.
 
-## Syntax highlighting (unreleased)
+## Syntax highlighting (0.13.0)
 
 Code: `src/shared/syntax.ts` (language by file name, highlight.js output to classed text per line, merged with the changed-words marking), `src/renderer/src/syntax.ts` (highlight.js core with the registered languages, per hunk), `LineText` in `components/DiffLines.tsx`, the `--syn-*` colours in `app.css`.
 - Each side of a hunk (context and removed lines; context and added lines) is highlighted as one piece of code, so comments and strings spanning lines stay right inside a hunk; one that starts before the hunk is not known.
@@ -120,7 +119,7 @@ Code: `src/shared/syntax.ts` (language by file name, highlight.js output to clas
 Code: the `bitbucket` branches in `src/main/accounts/providers.ts`, `bitbucketIdentity` / `bitbucketRepos` there, the Bitbucket case of `checkoutPullRequest`. Researched in October 2026:
 - App passwords stopped working in June 2026. Accounts use Atlassian API tokens with scopes (`read:user`, `read:workspace`, `read:repository`, `write:repository`, `read:pullrequest`, `write:pullrequest`, all `:bitbucket`), sent to the API as `Authorization: Bearer`; git takes them as the password of the Bitbucket username (case-sensitive, the one in remote URLs such as `https://user@bitbucket.org/…`), so that username is the account's and the form lets the user type it.
 - Sign-in from the browser would need an OAuth consumer whose secret ships in the app: not done.
-- `/user` gives the username, `/user/emails` the primary confirmed email (Bitbucket has no no-reply address; without that scope the form asks for the email). The account-wide repository list is gone: repositories come from `/user/workspaces`, then `/repositories/{workspace}?role=member` per workspace (at most 50 workspaces, 100 repositories). Clone URLs are built without the username Bitbucket puts in its clone links: git would use it over the account bound to the repository.
+- `/user` gives the username, `/user/emails` the primary confirmed email (Bitbucket has no no-reply address; without that scope the form asks for the email). The account-wide repository list is gone: repositories come from `/user/workspaces`, then `/repositories/{workspace}` per workspace, most recently updated first (at most 50 workspaces, 100 repositories; no `role=member`, which left out repositories the user owns). Clone URLs are built without the username Bitbucket puts in its clone links: git would use it over the account bound to the repository.
 - Pull requests: `/pullrequests?state=OPEN`, created with `source` / `destination` branches (and `draft`), closed with `/decline`; the main branch is `mainbranch.name`. Bitbucket keeps no pull request refs: a same-repository pull request is fetched from its branch (also as `pr/N` when a local branch of that name holds other work); one from a fork asks to add the fork as a remote.
 - `state=OPEN` includes draft pull requests (checked on a public repository in October 2026; an Atlassian ticket said it did not). A token missing scopes gets a 403 naming them (`error.detail.required`). A nickname is not a username: without `username` from the API, the form asks for it.
 - Bitbucket Data Center has another API: only `bitbucket.org`; a server goes as "Other".
@@ -128,7 +127,7 @@ Code: the `bitbucket` branches in `src/main/accounts/providers.ts`, `bitbucketId
 ## External tools (0.10.0)
 
 Code: `src/shared/externalTools.ts` (editor presets, command templates, `git difftool` / `mergetool` arguments), `src/main/tools.ts` (launching), `src/main/cli.ts` (the command-line folder and the Windows PATH install), `components/ExternalToolsSettings.tsx`.
-- The editor command is split like a shell would but run without one (cross-spawn, which also finds `.cmd` shims such as `code.cmd`). `{file}`, `{line}` and `{folder}` are filled in, in one pass; without a file, the file and line arguments (and the option right before them) are left out so the editor gets the folder. On Windows a program missing from the PATH still starts (cross-spawn falls back to cmd.exe) and only fails when cmd exits, so the launch waits up to a second for that before reporting success.
+- The editor command is split like a shell would but run without one (cross-spawn, which also finds `.cmd` shims such as `code.cmd`). `{file}`, `{line}` and `{folder}` are filled in, in one pass; without a file, the file and line arguments (and the option right before them) are left out so the editor gets the folder. On Windows a program missing from the PATH still starts (cross-spawn falls back to cmd.exe) and only fails when cmd exits, so the launch waits up to a second for that before reporting success. A program the PATH does not find is looked for where its installer puts it (`findProgram` in `src/main/programs.ts`: Rider from JetBrains' installer or Toolbox, Visual Studio, Sublime Text, Notepad++, VS Code, Cursor; the newest version folder first) (0.13.0).
 - Diff and merge tools go through `git difftool -y` / `git mergetool -y` (`--tool=` when one is picked in Settings; `mergetool.keepBackup=false`), so git's own tool settings and paths apply. With no tool in Settings nor in git's config (`diff.tool` or, as git difftool falls back to it, `merge.tool`), the app says so instead of letting git prompt. A commit's renamed file passes both paths; hashes are checked. Paths are literal (`GIT_LITERAL_PATHSPECS`), and `MSYS=noglob` stops Git for Windows' sh from expanding `[id].tsx` into another file's name when the tool starts. `git mergetool` itself loops over its files unquoted, so names with `[ ] * ?` are refused for the merge tool (the conflict editor handles them).
 - One instance per profile (`requestSingleInstanceLock`): `leviathan <folder>` while the app runs hands the folder to the open window (`second-instance`). Folders wait in a queue until the window has restored its saved tabs and asks for them (`takeLaunchFolders`), and again after a reload; opened earlier, they raced with that restore and the saved tabs were overwritten. In development the first argument that is not a switch is electron's app folder and is skipped.
 - Windows: *Add the leviathan command* writes `<userData>\bin\leviathan.cmd` (`start "" "<exe>" --cwd="%CD%\." %*`; the portable build's own `.exe`, not its temporary copy) and appends that folder to the user PATH in the registry, kept unexpanded (`REG_EXPAND_SZ`), then announces the change. `--cwd` is where the command was typed: the portable build runs from a temporary folder. cmd reads the file in the console code page, so the path names `%LOCALAPPDATA%`, `%APPDATA%` or `%USERPROFILE%` instead of folders that may have accents, and other non-ASCII paths are refused. The PATH is read back as base64 of UTF-16: PowerShell writes text to a pipe in the console code page, which garbled entries with accents. Only new terminals see it. `tests/cliInstall.test.ts` uses a scratch registry key, never the real PATH.
@@ -191,7 +190,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **Git LFS**
 - Pattern info has no sequence counter: two quick checkouts can leave the older patterns on screen until the next change.
 - Locks are not loaded when git-lfs is installed while the app runs, until the next checkout or reopening the tab.
-- Loading locks can take up to four git-lfs runs (verify, then without it); a host without the locks API shows a red error after every open or fetch, and an interactive reload without a credential helper may ask several times.
+- Loading locks can take up to four git-lfs runs (verify, then without it), and an interactive reload without a credential helper may ask several times. A host without the locks API (Bitbucket Cloud) is told apart by git-lfs's message (`NO_LOCKING_API` in `src/main/git/lfs.ts`: "not found", "not supported", 404), so a different wording from a server would show as an error again (0.13.0).
 - An own lock on a file deleted locally (deletion not committed) is released by id, skipping git-lfs's uncommitted-changes check.
 - Lock lookups per file row are linear in the number of locks (fine for hundreds).
 - A pre-push hook from another tool (husky…) stops git-lfs from installing its own: the section says "not set up" and *Set up* fails with "Hook already exists" (`git lfs update --manual` is the way out).
@@ -199,7 +198,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **Pull requests**
 - A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.
 - A token that can no longer be decrypted hides the section without a hint.
-- 401/403 messages are generic (no Gitea scope; expired token vs. missing scope).
+- 403 messages are generic (no Gitea scope). A 401 in the side panel says the token stopped working and links to Settings → Accounts (0.13.0), matched on the "rejected the token" text.
 - More than 50 open PRs are not paginated; fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 - A local branch named `pr` blocks `pr/N`.
 
@@ -251,6 +250,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 npm ci
 npm run dev          # app with hot reload
 npm test             # vitest, real git repositories in temp folders
+npm run e2e          # Playwright drives the built app (after npm run build)
 npm run typecheck
 npm run format:check
 npm run dist:win     # installers in dist/ (also dist:mac, dist:linux)
