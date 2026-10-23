@@ -1,5 +1,12 @@
 import { apiBase, noreplyEmail } from '../../shared/providers'
-import type { NewPullRequest, Provider, PullRequest, RemoteRepo } from '../../shared/types'
+import type {
+  MergeMethod,
+  NewPullRequest,
+  Provider,
+  PullRequest,
+  PullRequestComment,
+  RemoteRepo
+} from '../../shared/types'
 
 export type FetchFn = (
   url: string,
@@ -378,4 +385,169 @@ async function missingScopes(res: Awaited<ReturnType<FetchFn>>): Promise<string>
   const message = typeof error.message === 'string' ? error.message : ''
   if (required.length) return `: it needs ${required.join(', ')}`
   return message ? `: ${message}` : ''
+}
+
+// ---------------------------------------------------------------------------
+// Reviewing a pull request: its conversation, approving and merging it.
+
+const at = (o: unknown, key: string): unknown => (o && typeof o === 'object' ? (o as Json)[key] : undefined)
+
+function assertNumber(number: number): void {
+  if (!Number.isInteger(number) || number <= 0) throw new Error(`Invalid pull request number: ${number}`)
+}
+
+function toComment(provider: Provider, c: Json): PullRequestComment {
+  const comment = (author: unknown, body: unknown, createdAt: unknown, path?: unknown, line?: unknown) => ({
+    id: String(c.id),
+    author: String(author ?? ''),
+    body: String(body ?? ''),
+    createdAt: String(createdAt ?? ''),
+    ...(typeof path === 'string' && path ? { path } : {}),
+    ...(typeof line === 'number' ? { line } : {})
+  })
+  switch (provider) {
+    case 'gitlab': {
+      const position = c.position
+      return comment(
+        at(c.author, 'username'),
+        c.body,
+        c.created_at,
+        at(position, 'new_path'),
+        at(position, 'new_line') ?? at(position, 'old_line')
+      )
+    }
+    case 'bitbucket':
+      return comment(
+        at(c.user, 'display_name') ?? at(c.user, 'nickname'),
+        at(c.content, 'raw'),
+        c.created_on,
+        at(c.inline, 'path'),
+        at(c.inline, 'to') ?? at(c.inline, 'from')
+      )
+    default:
+      return comment(at(c.user, 'login'), c.body, c.created_at, c.path, c.line ?? c.original_line)
+  }
+}
+
+/** A pull request's comments, oldest first: general ones and those on lines of its files. */
+export async function listPullRequestComments(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  number: number,
+  fetchFn: FetchFn = fetch
+): Promise<PullRequestComment[]> {
+  assertNumber(number)
+  const project = projectPath(provider, path)
+  const get = (route: string) => getJson(provider, host, project + route, token, fetchFn)
+  let comments: Json[]
+  switch (provider) {
+    case 'github': {
+      const [general, inline] = await Promise.all([
+        get(`/issues/${number}/comments?per_page=100`),
+        get(`/pulls/${number}/comments?per_page=100`)
+      ])
+      comments = [...items(general), ...items(inline)]
+      break
+    }
+    case 'gitlab':
+      // System notes ("added 1 commit", "approved this merge request") are not part of the conversation.
+      comments = items(await get(`/merge_requests/${number}/notes?per_page=100&sort=asc`)).filter((n) => !n.system)
+      break
+    case 'bitbucket':
+      // Deleted comments, and pending ones (drafts of a review not sent yet).
+      comments = items(await get(`/pullrequests/${number}/comments?pagelen=100`)).filter(
+        (c) => !c.deleted && !c.pending
+      )
+      break
+    default:
+      comments = items(await get(`/issues/${number}/comments`))
+  }
+  return comments.map((c) => toComment(provider, c)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
+/** Adds a general comment to a pull request. */
+export async function addPullRequestComment(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  number: number,
+  body: string,
+  fetchFn: FetchFn = fetch
+): Promise<PullRequestComment> {
+  assertNumber(number)
+  const project = projectPath(provider, path)
+  const [route, payload]: [string, Json] =
+    provider === 'gitlab'
+      ? [`/merge_requests/${number}/notes`, { body }]
+      : provider === 'bitbucket'
+        ? [`/pullrequests/${number}/comments`, { content: { raw: body } }]
+        : [`/issues/${number}/comments`, { body }]
+  const created = await request(provider, host, project + route, token, fetchFn, { method: 'POST', body: payload })
+  return toComment(provider, created as Json)
+}
+
+/** Approves a pull request as the account. */
+export async function approvePullRequest(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  number: number,
+  fetchFn: FetchFn = fetch
+): Promise<void> {
+  assertNumber(number)
+  const project = projectPath(provider, path)
+  const [route, payload]: [string, Json] =
+    provider === 'gitlab'
+      ? [`/merge_requests/${number}/approve`, {}]
+      : provider === 'bitbucket'
+        ? [`/pullrequests/${number}/approve`, {}]
+        : [`/pulls/${number}/reviews`, { event: provider === 'github' ? 'APPROVE' : 'APPROVED' }]
+  await request(provider, host, project + route, token, fetchFn, { method: 'POST', body: payload })
+}
+
+/** Merges a pull request on the provider (it needs to be mergeable there: approvals, checks, no conflicts). */
+export async function mergePullRequest(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  number: number,
+  method: MergeMethod,
+  fetchFn: FetchFn = fetch
+): Promise<void> {
+  assertNumber(number)
+  const project = projectPath(provider, path)
+  switch (provider) {
+    case 'github':
+      await request(provider, host, `${project}/pulls/${number}/merge`, token, fetchFn, {
+        method: 'PUT',
+        body: { merge_method: method }
+      })
+      return
+    case 'gitlab':
+      if (method === 'rebase')
+        throw new Error('GitLab merges with a merge commit or a squash: rebase the branch first.')
+      await request(provider, host, `${project}/merge_requests/${number}/merge`, token, fetchFn, {
+        method: 'PUT',
+        body: { squash: method === 'squash' }
+      })
+      return
+    case 'bitbucket': {
+      const strategy = { merge: 'merge_commit', squash: 'squash', rebase: 'rebase_fast_forward' }[method]
+      await request(provider, host, `${project}/pullrequests/${number}/merge`, token, fetchFn, {
+        method: 'POST',
+        body: { merge_strategy: strategy }
+      })
+      return
+    }
+    default:
+      await request(provider, host, `${project}/pulls/${number}/merge`, token, fetchFn, {
+        method: 'POST',
+        body: { Do: method }
+      })
+  }
 }

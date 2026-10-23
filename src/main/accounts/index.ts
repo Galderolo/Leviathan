@@ -11,18 +11,33 @@ import {
 } from '../../shared/providers'
 import { pickProject } from '../../shared/forge'
 import { parseRemotes } from '../../shared/parsers'
-import type { Account, NewPullRequest, Provider, PullRequest, RemoteRepo } from '../../shared/types'
+import type {
+  Account,
+  FileChange,
+  MergeMethod,
+  NewPullRequest,
+  Provider,
+  PullRequest,
+  PullRequestComment,
+  RemoteRepo
+} from '../../shared/types'
+import { mergeMethods } from '../../shared/providers'
+import { fetchPullRequestRange, getRangeFiles } from '../git/repository'
 import { setAccountSource } from '../askpass'
 import { git, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
 import {
+  addPullRequestComment,
+  approvePullRequest,
   closePullRequest,
   createPullRequest,
   defaultBranch,
   fetchIdentity,
   getPullRequest,
+  listPullRequestComments,
   listPullRequests,
-  listRepos
+  listRepos,
+  mergePullRequest
 } from './providers'
 import { AccountStore, type Cipher, type Renewal } from './store'
 import { TokenSource } from './tokens'
@@ -353,4 +368,55 @@ export async function finishGitLabLogin(): Promise<Account> {
 export function cancelGitLabLogin(): void {
   gitlabLogin?.controller.abort()
   gitlabLogin = null
+}
+
+// ---------------------------------------------------------------------------
+// Reviewing a pull request of a repository's hosted project.
+
+async function requireProject(repo: string) {
+  const project = await repoProject(repo)
+  if (!project) throw new Error("No account can reach this repository's remote")
+  return project
+}
+
+/** A pull request's commits fetched for review (nothing checked out): its range and the files it changes. */
+export async function reviewPullRequest(
+  repo: string,
+  pr: { number: number; sourceBranch: string; targetBranch: string; fromFork: boolean }
+): Promise<{ base: string; head: string; files: FileChange[] }> {
+  const project = await requireProject(repo)
+  const range = await fetchPullRequestRange(repo, project.remote, pr, project.account.provider)
+  return { ...range, files: await getRangeFiles(repo, range.base, range.head) }
+}
+
+export async function getPullRequestComments(repo: string, number: number): Promise<PullRequestComment[]> {
+  const { account, path, token } = await requireProject(repo)
+  return listPullRequestComments(account.provider, account.host, path, token, number)
+}
+
+export async function commentOnPullRequest(repo: string, number: number, body: string): Promise<PullRequestComment> {
+  if (typeof body !== 'string' || !body.trim()) throw new Error('The comment is empty')
+  const { account, path, token } = await requireProject(repo)
+  return addPullRequestComment(account.provider, account.host, path, token, number, body.trim())
+}
+
+export async function approveRepoPullRequest(repo: string, number: number): Promise<void> {
+  const { account, path, token } = await requireProject(repo)
+  await approvePullRequest(account.provider, account.host, path, token, number)
+}
+
+/** Merges a pull request, after checking it is still the one the review showed (like closing one). */
+export async function mergeRepoPullRequest(
+  repo: string,
+  number: number,
+  url: string,
+  method: MergeMethod
+): Promise<void> {
+  const { account, path, token } = await requireProject(repo)
+  if (!mergeMethods(account.provider).includes(method)) throw new Error(`This provider cannot merge with ${method}`)
+  const current = await getPullRequest(account.provider, account.host, path, token, number)
+  if (typeof url !== 'string' || current.url !== url) {
+    throw new Error('This pull request is not the one the review showed any more. Open it again.')
+  }
+  await mergePullRequest(account.provider, account.host, path, token, number, method)
 }

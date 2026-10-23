@@ -5,12 +5,15 @@ import type {
   Commit,
   CommitDetails,
   DiffSource,
+  FileChange,
   FileCommit,
   FileDiff,
+  MergeMethod,
   NewPullRequest,
   ProgressEvent,
   Provider,
   PullRequest,
+  PullRequestComment,
   PullMode,
   RebaseCommit,
   RemoteRepo,
@@ -190,6 +193,15 @@ export interface LeviathanInvokeApi {
   createPullRequest(repo: string, input: NewPullRequest): Promise<PullRequest>
   /** Closes a pull request without merging it. */
   closePullRequest(repo: string, number: number, url: string): Promise<void>
+  /** Fetches a pull request for review (nothing is checked out): its range and the files it changes. */
+  reviewPullRequest(
+    repo: string,
+    pr: { number: number; sourceBranch: string; targetBranch: string; fromFork: boolean }
+  ): Promise<{ base: string; head: string; files: FileChange[] }>
+  getPullRequestComments(repo: string, number: number): Promise<PullRequestComment[]>
+  commentOnPullRequest(repo: string, number: number, body: string): Promise<PullRequestComment>
+  approvePullRequest(repo: string, number: number): Promise<void>
+  mergePullRequest(repo: string, number: number, url: string, method: MergeMethod): Promise<void>
   getDefaultBranch(repo: string): Promise<string | null>
   checkoutPullRequest(
     repo: string,
@@ -343,6 +355,11 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getPullRequests: true,
   createPullRequest: true,
   closePullRequest: true,
+  reviewPullRequest: true,
+  getPullRequestComments: true,
+  commentOnPullRequest: true,
+  approvePullRequest: true,
+  mergePullRequest: true,
   getDefaultBranch: true,
   checkoutPullRequest: true,
   generateSshKey: true,
