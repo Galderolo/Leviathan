@@ -42,7 +42,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Clone, init and open** repositories; recent repositories list.
 - **Search** commits by message, author or SHA.
 - **Live refresh** when files change on disk.
-- **Accounts**: **sign in with GitHub** from the browser (enter a short code, no token to create; organizations that restrict OAuth apps must approve Leviathan first), or add as many GitHub, GitLab, Gitea or other accounts as you like with a personal access token (stored encrypted). Each repository can use an account: commits get its name and private no-reply email, and push/pull use its token without asking. Clone straight from an account's repository list.
+- **Accounts**: **sign in with GitHub or GitLab** from the browser (no token to create; GitHub organizations that restrict OAuth apps must approve Leviathan first), or add as many GitHub, GitLab, Gitea or other accounts as you like with a personal access token (stored encrypted). Each repository can use an account: commits get its name and private no-reply email, and push/pull use its token without asking. Clone straight from an account's repository list.
 - **Pull requests**: see the open pull requests (merge requests on GitLab) of the repository in the side panel, check one out, or open a new one from a branch — on GitHub, GitLab and Gitea, through your account.
 - **Git LFS**: see which files go through LFS, lock and unlock files (yours and, with a confirmation, other people's), track patterns, and get warned before committing a big binary outside LFS or a file someone else locked. Detects a missing or unconfigured git-lfs and sets it up.
 - **Submodules**: see their state in the side panel, initialize and update them, open them in a tab, see which commits a submodule change brings, and clone with them.
@@ -111,7 +111,7 @@ Windows releases are going to be signed through [SignPath](https://signpath.io):
 Leviathan collects no telemetry or usage data, has no accounts of its own and shows no ads. It only connects to other systems for what you ask it to do, plus one automatic check:
 
 - **Your git remotes** (fetch, pull, push, clone), with the credentials you give it or your own credential helper.
-- **The hosting services of the accounts you add** (GitHub, GitLab, Gitea…), to list repositories and pull requests and to sign you in. Tokens are stored encrypted on your computer and are only sent to the service they belong to.
+- **The hosting services of the accounts you add** (GitHub, GitLab, Gitea…), to list repositories and pull requests and to sign you in. Tokens are stored encrypted on your computer and are only sent to the service they belong to. While you sign in to GitLab, the app listens on 127.0.0.1:47231 (your own computer only) for the browser to come back.
 - **The Git LFS servers of your repositories**, to list and change file locks.
 - **github.com, to look for new Leviathan releases**, shortly after start, every half hour and when you come back to the app (at most every ten minutes). It sends nothing about you or your repositories, and can be turned off in *Settings → Updates*. Opening *What's new* also reads the list of releases from github.com.
 
@@ -138,7 +138,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Preparar (stage) archivos completos, bloques o líneas sueltas, commit, amend, diff.
 - Arrastrar una rama sobre otra para hacer merge o rebase.
 - Repos privados: usuario/token HTTPS, passphrase SSH y huellas de host se piden en la app; gestión de claves SSH.
-- Iniciar sesión con GitHub desde el navegador (con un código, sin crear tokens), o varias cuentas (GitHub, GitLab, Gitea…) con token cifrado: cada repo usa la suya para el autor de los commits (email privado por defecto) y para push/pull sin contraseñas; clonar desde la lista de repos de la cuenta.
+- Iniciar sesión con GitHub o GitLab desde el navegador (sin crear tokens), o varias cuentas (GitHub, GitLab, Gitea…) con token cifrado: cada repo usa la suya para el autor de los commits (email privado por defecto) y para push/pull sin contraseñas; clonar desde la lista de repos de la cuenta.
 - Pull requests (merge requests en GitLab) en el panel lateral: verlas, hacer checkout y crear una desde una rama, en GitHub, GitLab y Gitea.
 - Editor de conflictos: versión actual y entrante lado a lado, eligiendo por bloque o el archivo entero.
 - Git LFS: ver qué archivos van por LFS, bloquear y desbloquear archivos, seguir patrones y avisos antes de hacer commit de un binario grande fuera de LFS o de un archivo que otra persona tiene bloqueado.

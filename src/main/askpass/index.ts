@@ -22,17 +22,17 @@ export function setAccountSource(source: () => AccountCredentials[]): void {
  * Answers from a stored account when one matches; otherwise sends the prompt to
  * the app window and waits for the user's answer (null = cancelled).
  */
-function ask(prompt: string, context: { interactive: boolean }): Promise<string | null> {
+async function ask(prompt: string, context: { interactive: boolean }): Promise<string | null> {
   let automatic: string | null = null
   try {
-    automatic = answerFromAccounts(prompt, accountSource())
+    automatic = await answerFromAccounts(prompt, accountSource())
   } catch {
-    // a broken account store must never block the prompt itself
+    // a broken account store or a failed renewal must never block the prompt itself
   }
-  if (automatic !== null) return Promise.resolve(automatic)
-  if (!context.interactive) return Promise.resolve(null)
+  if (automatic !== null) return automatic
+  if (!context.interactive) return null
   const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
-  if (!win || win.isDestroyed()) return Promise.resolve(null)
+  if (!win || win.isDestroyed()) return null
   const id = randomUUID()
   return new Promise((resolve) => {
     const timer = setTimeout(() => answerAskpass(id, null), TIMEOUT_MS)

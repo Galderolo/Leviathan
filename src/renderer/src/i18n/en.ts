@@ -279,6 +279,9 @@ const en = {
   'accounts.none':
     'No accounts yet. Add one to push and pull without passwords and to clone from your repository list.',
   'accounts.signInGitHub': 'Sign in with GitHub',
+  'accounts.signInGitLab': 'Sign in with GitLab',
+  'accounts.gitlabHint': 'Allow Leviathan on the GitLab page that opened in your browser.',
+  'accounts.openAgain': 'Open the page again',
   'accounts.signInStarting': 'Asking GitHub for a code…',
   'accounts.deviceHint': 'Enter this code on GitHub to let Leviathan use your account:',
   'accounts.copyAndOpen': 'Copy code and open GitHub',

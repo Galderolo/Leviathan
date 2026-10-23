@@ -282,6 +282,9 @@ const es: Record<keyof typeof en, string> = {
   'accounts.none':
     'Aún no hay cuentas. Añade una para hacer push y pull sin contraseñas y clonar desde tu lista de repos.',
   'accounts.signInGitHub': 'Iniciar sesión con GitHub',
+  'accounts.signInGitLab': 'Iniciar sesión con GitLab',
+  'accounts.gitlabHint': 'Autoriza a Leviathan en la página de GitLab que se ha abierto en el navegador.',
+  'accounts.openAgain': 'Abrir la página otra vez',
   'accounts.signInStarting': 'Pidiendo un código a GitHub…',
   'accounts.deviceHint': 'Introduce este código en GitHub para que Leviathan pueda usar tu cuenta:',
   'accounts.copyAndOpen': 'Copiar código y abrir GitHub',

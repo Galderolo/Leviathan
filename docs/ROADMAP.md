@@ -26,7 +26,8 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Remotes and collaboration
 
-- [ ] Sign in to GitLab and GitHub Enterprise from the browser (GitHub.com already works)
+- [x] Sign in to GitLab.com from the browser
+- [ ] Sign in to GitHub Enterprise and self-managed GitLab from the browser (each server needs its own application)
 - [ ] Pull requests on Bitbucket
 - [ ] Review pull requests in the app (diff, comments, approve, merge)
 - [x] Submodule support in the side panel
