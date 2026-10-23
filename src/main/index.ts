@@ -2,7 +2,8 @@ import { join } from 'node:path'
 import { BrowserWindow, Menu, app, nativeTheme, screen, shell } from 'electron'
 import { initAccounts } from './accounts'
 import { disposeAskpass, initAskpass } from './askpass'
-import { registerIpc, startUpdates } from './ipc'
+import { launchFolder, offerLaunchFolder, windowLoading } from './cli'
+import { registerIpc, sendOpenFolder, startUpdates } from './ipc'
 import { loadSettings, saveSettings } from './settings'
 import { unwatchAll } from './watcher'
 
@@ -10,6 +11,25 @@ const isDev = !app.isPackaged
 
 // Lets contributors and automated tests run with an isolated profile.
 if (process.env.LEVIATHAN_USER_DATA) app.setPath('userData', process.env.LEVIATHAN_USER_DATA)
+
+// One window per profile: `leviathan <folder>` while it runs opens the folder there, in a new tab.
+const primary = app.requestSingleInstanceLock()
+if (!primary) app.quit()
+const startFolder = launchFolder(process.argv, process.cwd(), !!process.defaultApp)
+if (startFolder) offerLaunchFolder(startFolder)
+app.on('second-instance', (_event, argv, workingDirectory) => {
+  const win = BrowserWindow.getAllWindows()[0]
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  } else {
+    // macOS keeps running without windows.
+    createWindow()
+  }
+  const folder = launchFolder(argv, workingDirectory, !!process.defaultApp)
+  // Until the window has restored its tabs, the folder waits for the window to ask for it.
+  if (folder && offerLaunchFolder(folder) === 'send') sendOpenFolder(folder)
+})
 
 function restoreBounds(): Electron.Rectangle | { width: number; height: number } {
   const saved = loadSettings().window
@@ -31,6 +51,7 @@ function prefersDark(): boolean {
 }
 
 function createWindow(): void {
+  windowLoading()
   const win = new BrowserWindow({
     ...restoreBounds(),
     minWidth: 900,
@@ -50,6 +71,8 @@ function createWindow(): void {
 
   if (loadSettings().window?.maximized) win.maximize()
   win.once('ready-to-show', () => win.show())
+  // A reload restores the tabs again: folders from the command line wait for it.
+  win.webContents.on('did-start-loading', windowLoading)
 
   // Never navigate the app window away; send links to the browser instead.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -75,17 +98,19 @@ function createWindow(): void {
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-app.whenReady().then(async () => {
-  Menu.setApplicationMenu(null)
-  registerIpc()
-  await initAskpass()
-  initAccounts()
-  createWindow()
-  startUpdates()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+// A second instance only hands its folder to the first one (`second-instance`) and quits.
+if (primary)
+  app.whenReady().then(async () => {
+    Menu.setApplicationMenu(null)
+    registerIpc()
+    await initAskpass()
+    initAccounts()
+    createWindow()
+    startUpdates()
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
-})
 
 app.on('window-all-closed', () => {
   unwatchAll()

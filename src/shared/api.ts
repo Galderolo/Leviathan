@@ -193,6 +193,19 @@ export interface LeviathanInvokeApi {
   /** Creates an ed25519 key in ~/.ssh; refuses to overwrite. */
   generateSshKey(opts: { email: string; passphrase: string; fileName: string }): Promise<SshKey>
 
+  // External tools
+  /** Opens a file (at a line), or the repository when `file` is null, in the editor chosen in Settings. */
+  openInEditor(repo: string, file: string | null, line?: number): Promise<void>
+  /** Shows one file's change in the diff tool; fails with NO_DIFF_TOOL when none is chosen or configured. */
+  openDiffTool(repo: string, source: DiffSource): Promise<void>
+  openMergeTool(repo: string, file: string): Promise<void>
+  /** Folders given with `leviathan <folder>` before the window was ready (after restoring its tabs), once. */
+  takeLaunchFolders(): Promise<string[]>
+  /** Windows: adds the `leviathan` command to the user's PATH. */
+  installCommandLine(): Promise<'added' | 'present'>
+  /** How to get the `leviathan` command here: a button on Windows, a command to copy elsewhere. */
+  commandLineInfo(): Promise<{ windows: boolean; packaged: boolean; command: string | null }>
+
   // Git LFS
   getLfsInfo(repo: string): Promise<LfsInfo>
   /** `background` never asks for credentials. `verified` is false when the server cannot tell whose locks they are. */
@@ -220,6 +233,8 @@ export interface LeviathanEventsApi {
   onRepoChanged(cb: (e: RepoChangedEvent) => void): () => void
   /** New Leviathan releases: found, downloading, ready to install. */
   onUpdate(cb: (state: UpdateState) => void): () => void
+  /** `leviathan <folder>` was run while the app was open. */
+  onOpenFolder(cb: (folder: string) => void): () => void
   onProgress(cb: (e: ProgressEvent) => void): () => void
   onAskpass(cb: (e: AskpassRequest) => void): () => void
 }
@@ -320,6 +335,12 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getDefaultBranch: true,
   checkoutPullRequest: true,
   generateSshKey: true,
+  openInEditor: true,
+  openDiffTool: true,
+  openMergeTool: true,
+  takeLaunchFolders: true,
+  installCommandLine: true,
+  commandLineInfo: true,
   getLfsInfo: true,
   getLfsLocks: true,
   lfsLock: true,
@@ -340,5 +361,6 @@ export const IPC_REPO_CHANGED = 'leviathan:repo-changed'
 export const IPC_PROGRESS = 'leviathan:progress'
 export const IPC_ASKPASS = 'leviathan:askpass'
 export const IPC_UPDATE = 'leviathan:update'
+export const IPC_OPEN_FOLDER = 'leviathan:open-folder'
 
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string }

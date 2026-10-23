@@ -1,4 +1,5 @@
 import { lstatSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import {
   API_METHODS,
@@ -6,11 +7,13 @@ import {
   IPC_PROGRESS,
   IPC_REPO_CHANGED,
   IPC_UPDATE,
+  IPC_OPEN_FOLDER,
   type LeviathanInvokeApi,
   type IpcResult
 } from '../shared/api'
 import * as accounts from './accounts'
 import { answerAskpass } from './askpass'
+import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
@@ -19,6 +22,7 @@ import { openAction, openTerminal } from './shell'
 import { generateKey, listKeys } from './ssh'
 import { watchRepo, unwatchRepo } from './watcher'
 import { getUpdater, initUpdates } from './autoUpdate'
+import * as tools from './tools'
 import { fetchReleaseNotes } from './releaseNotes'
 
 function broadcast(channel: string, payload: unknown): void {
@@ -157,6 +161,24 @@ const handlers: LeviathanInvokeApi = {
   getDefaultBranch: (path) => accounts.getDefaultBranch(path),
   checkoutPullRequest: (path, remote, pr, provider) => repo.checkoutPullRequest(path, remote, pr, provider),
   generateSshKey: (opts) => generateKey(opts),
+  openInEditor: (path, file, line) => tools.openInEditor(path, file, line),
+  openDiffTool: (path, source) => tools.openDiffTool(path, source),
+  openMergeTool: (path, file) => tools.openMergeTool(path, file),
+  takeLaunchFolders: async () => takeLaunchFolders(),
+  installCommandLine: async () => {
+    if (process.platform !== 'win32' || !app.isPackaged) throw new Error('Only the installed Windows app can do this')
+    // The portable build runs from a temporary copy: the command must start the .exe the user keeps.
+    const exe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath
+    return installCommandLine(exe, join(app.getPath('userData'), 'bin'))
+  },
+  commandLineInfo: async () => ({
+    windows: process.platform === 'win32',
+    packaged: app.isPackaged,
+    command:
+      process.platform === 'win32'
+        ? null
+        : `sudo ln -sf "${process.env.APPIMAGE || process.execPath}" /usr/local/bin/leviathan`
+  }),
   getLfsInfo: (path) => lfs.getLfsInfo(path),
   getLfsLocks: (path, background) => lfs.getLfsLocks(path, !!background),
   lfsLock: (path, file) => lfs.lfsLock(path, file),
@@ -172,6 +194,11 @@ const handlers: LeviathanInvokeApi = {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')
     await shell.openExternal(url)
   }
+}
+
+/** `leviathan <folder>` while the app runs: the window opens it in a tab. */
+export function sendOpenFolder(folder: string): void {
+  broadcast(IPC_OPEN_FOLDER, folder)
 }
 
 /** Update checks start once the window can hear about them. */

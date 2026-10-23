@@ -102,6 +102,7 @@ export async function initApp(): Promise<void> {
     void refreshRepo(tab.path)
     void loadRepoAccount(tab.path)
   }
+  for (const folder of await api.takeLaunchFolders().catch(() => [])) await openFromCommandLine(folder)
 }
 
 function welcomeTab(): Tab {
@@ -1424,6 +1425,56 @@ export function openFile(repo: string, file: string): void {
     .openRepoFile(repo, file)
     .then((result) => result === 'revealed' && toast('info', t('toast.revealedExecutable')))
     .catch((err) => toast('error', errorMessage(err)))
+}
+
+/** Opens a file at a line, or the repository, in the editor from Settings; without one, with the system's app. */
+export function openInEditor(repo: string, file: string | null, line?: number): void {
+  if (!useStore.getState().settings.editor.trim()) {
+    if (file) openFile(repo, file)
+    else void api.openPath(repo).catch((err) => toast('error', errorMessage(err)))
+    return
+  }
+  api.openInEditor(repo, file, line).catch((err) => toast('error', errorMessage(err)))
+}
+
+function toolError(err: unknown): void {
+  toast('error', errorMessage(err) === 'NO_DIFF_TOOL' ? t('tools.noDiffTool') : errorMessage(err))
+}
+
+export function openInDiffTool(repo: string, source: DiffSource): void {
+  api.openDiffTool(repo, source).catch(toolError)
+}
+
+export function openInMergeTool(repo: string, file: string): void {
+  api.openMergeTool(repo, file).catch(toolError)
+}
+
+/** Windows: adds the `leviathan` command to the user's PATH, after saying so. */
+export async function installCommandLine(): Promise<void> {
+  const ok = await confirmDialog({
+    title: t('tools.installCommand'),
+    message: t('dlg.installCommand'),
+    confirmText: t('tools.installCommand')
+  })
+  if (!ok) return
+  try {
+    const result = await api.installCommandLine()
+    toast('success', t(result === 'added' ? 'toast.commandAdded' : 'toast.commandPresent'))
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+}
+
+/** A folder given on the command line (`leviathan .`), at start or while the app runs. */
+export async function openFromCommandLine(folder: string): Promise<void> {
+  // Into the welcome tab on screen, if that is what is showing.
+  const { tabs, activeTab } = useStore.getState()
+  const welcome = tabs.find((tab) => tab.id === activeTab && tab.path === null)
+  try {
+    await openRepository(folder, welcome?.id)
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
 }
 
 export function showFileInFolder(repo: string, file: string): void {

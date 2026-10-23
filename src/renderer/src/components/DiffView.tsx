@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import { supportsLineSelection } from '../../../shared/patch'
 import type { FileChange, SubmoduleChange } from '../../../shared/types'
-import { applyHunk, applyLines, closeDiff, discardFiles, openFile, stageFiles, unstageFiles } from '../actions'
+import { applyHunk, applyLines, closeDiff, discardFiles, openInEditor, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
 import { ConflictView } from './ConflictView'
 import { useRepo, useStore } from '../store'
@@ -73,6 +73,7 @@ export function DiffView({ path }: { path: string }) {
   }
 
   let budget = showAll ? Number.POSITIVE_INFINITY : LINE_LIMIT
+  const hasEditor = useStore((s) => !!s.settings.editor.trim())
   const totalLines = data?.hunks.reduce((n, h) => n + h.lines.length, 0) ?? 0
 
   return (
@@ -107,7 +108,12 @@ export function DiffView({ path }: { path: string }) {
           )}
           <DiffLayoutToggle />
           {source.kind !== 'commit' && (
-            <button className="icon-btn" title={t('menu.openFile')} onClick={() => openFile(path, source.path)}>
+            <button
+              className="icon-btn"
+              title={hasEditor ? t('tools.openInEditor') : t('menu.openFile')}
+              // In the editor, at the first changed line.
+              onClick={() => openInEditor(path, source.path, data?.hunks[0]?.newStart)}
+            >
               <ExternalLink size={15} />
             </button>
           )}

@@ -10,6 +10,7 @@ import {
   handleProgress,
   initApp,
   newTab,
+  openFromCommandLine,
   pull,
   push,
   redo,
@@ -62,6 +63,7 @@ export function App() {
       if (getRepo(e.repo)) void refreshRepo(e.repo, { log: e.kind === 'git' })
     })
     const offProgress = api.onProgress((e) => handleProgress(e.repo, e.line))
+    const offOpenFolder = api.onOpenFolder((folder) => void openFromCommandLine(folder))
     const offAskpass = api.onAskpass((e) => void handleAskpass(e))
     const offUpdate = api.onUpdate((update) => {
       const before = useStore.getState().update
@@ -88,6 +90,7 @@ export function App() {
       offProgress()
       offAskpass()
       offUpdate()
+      offOpenFolder()
       window.clearInterval(fetchTimer)
       window.clearTimeout(firstFetch)
       window.removeEventListener('focus', onFocus)

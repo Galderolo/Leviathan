@@ -90,6 +90,21 @@ Known minor issues:
 - A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
 - `submodule update` paths are validated but not literal (`GIT_LITERAL_PATHSPECS`), and *Open in a new tab* on a submodule deinitialized outside the app focuses the parent instead.
 
+## External tools (unreleased)
+
+Code: `src/shared/externalTools.ts` (editor presets, command templates, `git difftool` / `mergetool` arguments), `src/main/tools.ts` (launching), `src/main/cli.ts` (the command-line folder and the Windows PATH install), `components/ExternalToolsSettings.tsx`.
+- The editor command is split like a shell would but run without one (cross-spawn, which also finds `.cmd` shims such as `code.cmd`). `{file}`, `{line}` and `{folder}` are filled in, in one pass; without a file, the file and line arguments (and the option right before them) are left out so the editor gets the folder. On Windows a program missing from the PATH still starts (cross-spawn falls back to cmd.exe) and only fails when cmd exits, so the launch waits up to a second for that before reporting success.
+- Diff and merge tools go through `git difftool -y` / `git mergetool -y` (`--tool=` when one is picked in Settings; `mergetool.keepBackup=false`), so git's own tool settings and paths apply. With no tool in Settings nor in git's config (`diff.tool` or, as git difftool falls back to it, `merge.tool`), the app says so instead of letting git prompt. A commit's renamed file passes both paths; hashes are checked. Paths are literal (`GIT_LITERAL_PATHSPECS`), and `MSYS=noglob` stops Git for Windows' sh from expanding `[id].tsx` into another file's name when the tool starts. `git mergetool` itself loops over its files unquoted, so names with `[ ] * ?` are refused for the merge tool (the conflict editor handles them).
+- One instance per profile (`requestSingleInstanceLock`): `leviathan <folder>` while the app runs hands the folder to the open window (`second-instance`). Folders wait in a queue until the window has restored its saved tabs and asks for them (`takeLaunchFolders`), and again after a reload; opened earlier, they raced with that restore and the saved tabs were overwritten. In development the first argument that is not a switch is electron's app folder and is skipped.
+- Windows: *Add the leviathan command* writes `<userData>\bin\leviathan.cmd` (`start "" "<exe>" --cwd="%CD%\." %*`; the portable build's own `.exe`, not its temporary copy) and appends that folder to the user PATH in the registry, kept unexpanded (`REG_EXPAND_SZ`), then announces the change. `--cwd` is where the command was typed: the portable build runs from a temporary folder. cmd reads the file in the console code page, so the path names `%LOCALAPPDATA%`, `%APPDATA%` or `%USERPROFILE%` instead of folders that may have accents, and other non-ASCII paths are refused. The PATH is read back as base64 of UTF-16: PowerShell writes text to a pipe in the console code page, which garbled entries with accents. Only new terminals see it. `tests/cliInstall.test.ts` uses a scratch registry key, never the real PATH.
+
+Known minor issues:
+- Uninstalling the app leaves `leviathan.cmd` and its PATH entry behind.
+- Tools that need a terminal (vimdiff…) cannot work: there is no terminal for them.
+- On macOS and Linux the suggested symlink starts the binary itself, so the first instance stays attached to that terminal.
+- A staged rename opens in the diff tool as a new file (only the new path is passed).
+- The merge tool refuses files whose name has `[ ] * ?` (see above).
+
 ## Next steps
 
 ### 1. Keep an eye on 0.3.0

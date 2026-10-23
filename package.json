@@ -25,6 +25,7 @@
     "node": ">=22.12"
   },
   "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -57,6 +58,7 @@
     "open-source"
   ],
   "dependencies": {
+    "cross-spawn": "^7.0.6",
     "electron-updater": "^6.8.10"
   }
 }

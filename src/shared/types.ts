@@ -261,6 +261,10 @@ export interface Settings {
   pushAfterCommit: boolean
   /** Version that ran last: a newer one opens "What's new" once. */
   lastSeenVersion: string
+  /** Command that opens a file in the user's editor ({file}, {line}, {folder}); empty: the system's default app. */
+  editor: string
+  /** Diff and merge tool for `git difftool` / `git mergetool`; empty: the one set in git's config. */
+  diffTool: string
   /** Repository path -> id of the account it uses. */
   repoAccounts: Record<string, string>
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
@@ -281,6 +285,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoUpdate: true,
   pushAfterCommit: false,
   lastSeenVersion: '',
+  editor: '',
+  diffTool: '',
   repoAccounts: {}
 }
 

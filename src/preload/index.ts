@@ -6,6 +6,7 @@ import {
   IPC_PROGRESS,
   IPC_REPO_CHANGED,
   IPC_UPDATE,
+  IPC_OPEN_FOLDER,
   type LeviathanApi,
   type IpcResult
 } from '../shared/api'
@@ -22,7 +23,8 @@ const api: Record<string, unknown> = {
   onRepoChanged: (cb: (e: RepoChangedEvent) => void) => subscribe(IPC_REPO_CHANGED, cb),
   onProgress: (cb: (e: ProgressEvent) => void) => subscribe(IPC_PROGRESS, cb),
   onAskpass: (cb: (e: AskpassRequest) => void) => subscribe(IPC_ASKPASS, cb),
-  onUpdate: (cb: (state: UpdateState) => void) => subscribe(IPC_UPDATE, cb)
+  onUpdate: (cb: (state: UpdateState) => void) => subscribe(IPC_UPDATE, cb),
+  onOpenFolder: (cb: (folder: string) => void) => subscribe(IPC_OPEN_FOLDER, cb)
 }
 
 for (const method of API_METHODS) {
