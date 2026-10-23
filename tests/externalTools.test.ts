@@ -62,10 +62,10 @@ describe('difftoolArgs / mergetoolArgs', () => {
       'a b.txt'
     ])
     expect(difftoolArgs({ kind: 'staged', path: 'x' }, null)).toEqual(['difftool', '-y', '--cached', '--', 'x'])
-    expect(difftoolArgs({ kind: 'commit', hash: 'abc', parent: 'p1', path: 'x' }, 'vscode')).toEqual([
+    expect(difftoolArgs({ kind: 'commit', hash: 'abc', parent: 'p1', path: 'x' }, 'meld')).toEqual([
       'difftool',
       '-y',
-      '--tool=vscode',
+      '--tool=meld',
       'p1',
       'abc',
       '--',
@@ -81,6 +81,27 @@ describe('difftoolArgs / mergetoolArgs', () => {
       'x'
     ])
     expect(mergetoolArgs('a.txt', 'kdiff3')).toEqual(['mergetool', '-y', '--tool=kdiff3', '--', 'a.txt'])
+  })
+
+  it('tells git how to run VS Code, which git does not know as a tool', () => {
+    expect(difftoolArgs({ kind: 'unstaged', path: 'a.txt' }, 'vscode')).toEqual([
+      '-c',
+      'difftool.vscode.cmd=code --wait --diff "$LOCAL" "$REMOTE"',
+      'difftool',
+      '-y',
+      '--tool=vscode',
+      '--',
+      'a.txt'
+    ])
+    expect(mergetoolArgs('a.txt', 'vscode')).toEqual([
+      '-c',
+      'mergetool.vscode.cmd=code --wait --merge "$REMOTE" "$LOCAL" "$BASE" "$MERGED"',
+      'mergetool',
+      '-y',
+      '--tool=vscode',
+      '--',
+      'a.txt'
+    ])
   })
 
   it('names both paths of a file the commit renamed, so the tool compares the old and new versions', () => {
