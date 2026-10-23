@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-23
+
 ### Added
 
 - **Sign in with GitLab** (gitlab.com) from *Settings → Accounts*: allow Leviathan on the page that opens in the browser, no token to create. The sign-in renews itself in the background (GitLab's tokens last two hours).

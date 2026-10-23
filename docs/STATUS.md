@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-23, with 0.10.0 released (412 tests). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-23, with 0.11.0 released (426 tests). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -24,6 +24,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.9.3 | 2026-10-22 | Resizable BRANCH / TAG and GRAPH columns (remembered), wide graphs scroll sideways |
 | 0.9.4 | 2026-10-23 | Fixes: conflict stops are not errors, checkout shows what came along, Push counts unpushed commits, stashes list untracked files |
 | 0.10.0 | 2026-10-23 | External editor, diff and merge tools, `leviathan .` from a terminal, one window per profile, discard asks with a count |
+| 0.11.0 | 2026-10-23 | Sign in with GitLab, stash some files, Settings in sections saved at once |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
@@ -121,9 +122,9 @@ Pull requests were tested for real on a private GitHub repository (create as dra
 
 ### 3. Sign in with the browser
 
-Done for GitHub (unreleased): Settings → Accounts → *Sign in with GitHub* runs the OAuth device flow with the project's OAuth App (client ID in `src/shared/providers.ts`, scopes `repo read:user`); the token goes straight into the encrypted account store. Code: `src/main/accounts/oauth.ts`, `startGitHubLogin` / `finishGitHubLogin` in `src/main/accounts/index.ts`.
+Done for GitHub: Settings → Accounts → *Sign in with GitHub* runs the OAuth device flow with the project's OAuth App (client ID in `src/shared/providers.ts`, scopes `repo read:user`); the token goes straight into the encrypted account store. Code: `src/main/accounts/oauth.ts`, `startGitHubLogin` / `finishGitHubLogin` in `src/main/accounts/index.ts`.
 
-GitLab.com (unreleased): gitlab.com answers the device flow with `access_denied` for this application, so *Sign in with GitLab* uses the authorization code flow with PKCE. The app listens on `127.0.0.1:47231` (the redirect URI registered with the application, ID `GITLAB_CLIENT_ID` in `src/shared/providers.ts`, scopes `api read_user write_repository`) before the browser is sent anywhere, so a busy port fails at once; only a callback with this sign-in's `state` is taken. GitLab's access tokens last two hours: the renewal token is stored encrypted next to it (`AccountStore.renewal`) and `TokenSource` renews five minutes before expiry, one renewal at a time per account (GitLab replaces the renewal token each time). Askpass asks for a token only once an account matches the prompt, so an unrelated expired account is never renewed. OAuth tokens work for git over HTTPS with the real username (GitLab only checks the password) and for the API as `Authorization: Bearer`, which also takes personal access tokens. Code: `src/main/accounts/gitlabOAuth.ts`, `src/main/accounts/tokens.ts`, `startGitLabLogin` / `finishGitLabLogin` in `src/main/accounts/index.ts`.
+GitLab.com (0.11.0; tried with a real account: sign-in, a forced renewal, and a clone of a private repository without prompts): gitlab.com answers the device flow with `access_denied` for this application, so *Sign in with GitLab* uses the authorization code flow with PKCE. The app listens on `127.0.0.1:47231` (the redirect URI registered with the application, ID `GITLAB_CLIENT_ID` in `src/shared/providers.ts`, scopes `api read_user write_repository`) before the browser is sent anywhere, so a busy port fails at once; only a callback with this sign-in's `state` is taken. GitLab's access tokens last two hours: the renewal token is stored encrypted next to it (`AccountStore.renewal`) and `TokenSource` renews five minutes before expiry, one renewal at a time per account (GitLab replaces the renewal token each time). Askpass asks for a token only once an account matches the prompt, so an unrelated expired account is never renewed. OAuth tokens work for git over HTTPS with the real username (GitLab only checks the password) and for the API as `Authorization: Bearer`, which also takes personal access tokens. Code: `src/main/accounts/gitlabOAuth.ts`, `src/main/accounts/tokens.ts`, `startGitLabLogin` / `finishGitLabLogin` in `src/main/accounts/index.ts`.
 
 Still to do: GitHub Enterprise and self-managed GitLab (each server needs its own application).
 
