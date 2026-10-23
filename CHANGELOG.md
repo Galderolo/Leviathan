@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-23
+
 ### Added
 
 - **Bitbucket Cloud accounts**: add one with an Atlassian API token (*Settings → Accounts → Add account*, the form lists the scopes it needs). Push and pull without passwords, clone from the repositories of your workspaces, and see, check out, open and decline pull requests. Commits use the account's primary email (Bitbucket has no no-reply address). Bitbucket Data Center servers can still be added as "Other".
