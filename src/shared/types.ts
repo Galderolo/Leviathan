@@ -290,7 +290,7 @@ export const DEFAULT_SETTINGS: Settings = {
   repoAccounts: {}
 }
 
-export type Provider = 'github' | 'gitlab' | 'gitea' | 'other'
+export type Provider = 'github' | 'gitlab' | 'bitbucket' | 'gitea' | 'other'
 
 /** A hosting account. The token is never part of this object; it stays encrypted in the main process. */
 export interface Account {

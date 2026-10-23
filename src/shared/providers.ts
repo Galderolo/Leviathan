@@ -1,10 +1,11 @@
 import type { Account, Provider, Remote } from './types'
 
-export const PROVIDERS: Provider[] = ['github', 'gitlab', 'gitea', 'other']
+export const PROVIDERS: Provider[] = ['github', 'gitlab', 'bitbucket', 'gitea', 'other']
 
 export const DEFAULT_HOSTS: Record<Provider, string> = {
   github: 'github.com',
   gitlab: 'gitlab.com',
+  bitbucket: 'bitbucket.org',
   gitea: '',
   other: ''
 }
@@ -16,6 +17,9 @@ export function apiBase(provider: Provider, host: string): string | null {
       return host === 'github.com' ? 'https://api.github.com' : `https://${host}/api/v3`
     case 'gitlab':
       return `https://${host}/api/v4`
+    case 'bitbucket':
+      // Bitbucket Cloud only: Bitbucket Data Center has another API (add it as "other").
+      return host === 'bitbucket.org' ? 'https://api.bitbucket.org/2.0' : null
     case 'gitea':
       return `https://${host}/api/v1`
     default:
@@ -42,6 +46,9 @@ export function tokenPageUrl(provider: Provider, host: string): string | null {
       return `https://${host}/settings/tokens/new?scopes=repo,workflow,read:user&description=Leviathan`
     case 'gitlab':
       return `https://${host}/-/user_settings/personal_access_tokens?name=Leviathan&scopes=api,read_user,write_repository`
+    case 'bitbucket':
+      // Atlassian API tokens: "Create API token with scopes", app Bitbucket (the scopes cannot be preselected).
+      return 'https://id.atlassian.com/manage-profile/security/api-tokens'
     case 'gitea':
       return `https://${host}/user/settings/applications`
     default:

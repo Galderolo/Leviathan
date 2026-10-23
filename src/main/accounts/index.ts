@@ -111,7 +111,21 @@ export async function addAccount(input: {
     if (!username) throw new Error('Enter the username for this account')
     identity = { username, name: username, email: noreplyEmail('other', host, 0, username) }
   } else {
+    if (input.provider === 'bitbucket' && host !== 'bitbucket.org') {
+      throw new Error(
+        'Only Bitbucket Cloud (bitbucket.org) is supported: add a Bitbucket Data Center server as "Other"'
+      )
+    }
     identity = await fetchIdentity(input.provider, host, token)
+    // Bitbucket: the username git shows in remote URLs, when the user knows it better than the API.
+    if (input.provider === 'bitbucket' && input.username?.trim()) identity.username = input.username.trim()
+    if (!identity.username) {
+      throw new Error('Type your Bitbucket username (the one in your remote URLs): Bitbucket did not give it')
+    }
+  }
+  // Bitbucket has no no-reply address: without the email from the API, the user gives one.
+  if (!input.email?.trim() && !identity.email) {
+    throw new Error('Enter the commit email: this token cannot read the email addresses of the account')
   }
   // The same account again (signed in once more, or a new token): keep it, with the new token.
   const existing = accounts()

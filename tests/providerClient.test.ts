@@ -279,3 +279,171 @@ describe('closePullRequest', () => {
     await expect(closePullRequest('github', 'github.com', 'org/app', TOKEN, 7, fn)).rejects.toThrow(/permission/)
   })
 })
+
+describe('Bitbucket Cloud', () => {
+  const API = 'https://api.bitbucket.org/2.0'
+  const pr = (id: number, source: string, fromRepo = 'studio/game') => ({
+    id,
+    title: `PR ${id}`,
+    author: { display_name: 'Ana Pérez', nickname: 'ana' },
+    source: { branch: { name: source }, repository: { full_name: fromRepo } },
+    destination: { branch: { name: 'develop' }, repository: { full_name: 'studio/game' } },
+    draft: false,
+    links: { html: { href: `https://bitbucket.org/studio/game/pull-requests/${id}` } },
+    updated_on: '2026-10-20T10:00:00Z'
+  })
+
+  it('reads the user with the primary confirmed email (Bitbucket has no no-reply address)', async () => {
+    const { fn, calls } = fakeFetch({
+      [`${API}/user`]: { body: { username: 'dcervera1', display_name: 'David', nickname: 'dc', account_id: 'x' } },
+      [`${API}/user/emails?pagelen=100`]: {
+        body: {
+          values: [
+            { email: 'old@studio.example', is_primary: false, is_confirmed: true },
+            { email: 'david@studio.example', is_primary: true, is_confirmed: true }
+          ]
+        }
+      }
+    })
+    expect(await fetchIdentity('bitbucket', 'bitbucket.org', TOKEN, fn)).toEqual({
+      username: 'dcervera1',
+      name: 'David',
+      email: 'david@studio.example'
+    })
+    expect(calls[0].headers.Authorization).toBe(`Bearer ${TOKEN}`)
+  })
+
+  it('leaves out an email the token may not read, and a username Bitbucket does not give (a nickname is no username)', async () => {
+    const { fn } = fakeFetch({
+      [`${API}/user`]: { body: { nickname: 'dc', display_name: '' } },
+      [`${API}/user/emails?pagelen=100`]: { status: 403, body: {} }
+    })
+    expect(await fetchIdentity('bitbucket', 'bitbucket.org', TOKEN, fn)).toEqual({
+      username: '',
+      name: 'dc',
+      email: ''
+    })
+  })
+
+  it('lists the repositories of every workspace, most recently updated first', async () => {
+    const repo = (name: string, updated: string) => ({
+      full_name: name,
+      is_private: true,
+      description: '',
+      updated_on: updated,
+      links: {
+        clone: [
+          { name: 'ssh', href: `git@bitbucket.org:${name}.git` },
+          { name: 'https', href: `https://dcervera1@bitbucket.org/${name}.git` }
+        ]
+      }
+    })
+    const { fn } = fakeFetch({
+      [`${API}/user/workspaces?pagelen=100`]: {
+        body: { values: [{ workspace: { slug: 'studio' } }, { workspace: { slug: 'me' } }] }
+      },
+      [`${API}/repositories/studio?sort=-updated_on&pagelen=100`]: {
+        body: { values: [repo('studio/game', '2026-10-01T00:00:00Z')] }
+      },
+      [`${API}/repositories/me?sort=-updated_on&pagelen=100`]: {
+        body: { values: [repo('me/tool', '2026-10-05T00:00:00Z')] }
+      }
+    })
+    expect(await listRepos('bitbucket', 'bitbucket.org', TOKEN, fn)).toEqual([
+      {
+        fullName: 'me/tool',
+        cloneUrl: 'https://bitbucket.org/me/tool.git',
+        private: true,
+        description: '',
+        updatedAt: '2026-10-05T00:00:00Z'
+      },
+      {
+        fullName: 'studio/game',
+        cloneUrl: 'https://bitbucket.org/studio/game.git',
+        private: true,
+        description: '',
+        updatedAt: '2026-10-01T00:00:00Z'
+      }
+    ])
+  })
+
+  it('lists, opens, declines pull requests and reads the main branch', async () => {
+    const base = `${API}/repositories/studio/game`
+    const { fn, calls } = fakeFetch({
+      [`${base}/pullrequests?state=OPEN&sort=-updated_on&pagelen=50`]: {
+        body: { values: [pr(7, 'feature/x'), pr(8, 'fix/y', 'ana/game')] }
+      },
+      [`${base}/pullrequests`]: { body: pr(9, 'feature/z') },
+      [`${base}/pullrequests/7/decline`]: { body: pr(7, 'feature/x') },
+      [base]: { body: { mainbranch: { name: 'develop' } } }
+    })
+    expect(await listPullRequests('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, fn)).toEqual([
+      {
+        number: 7,
+        title: 'PR 7',
+        author: 'Ana Pérez',
+        sourceBranch: 'feature/x',
+        targetBranch: 'develop',
+        draft: false,
+        url: 'https://bitbucket.org/studio/game/pull-requests/7',
+        fromFork: false,
+        updatedAt: '2026-10-20T10:00:00Z'
+      },
+      expect.objectContaining({ number: 8, fromFork: true })
+    ])
+
+    const input = { title: 'Z', body: 'why', source: 'feature/z', target: 'develop', draft: true }
+    expect((await createPullRequest('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, input, fn)).number).toBe(9)
+    expect(calls[1]).toMatchObject({
+      method: 'POST',
+      body: {
+        title: 'Z',
+        description: 'why',
+        source: { branch: { name: 'feature/z' } },
+        destination: { branch: { name: 'develop' } },
+        draft: true
+      }
+    })
+
+    await closePullRequest('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, 7, fn)
+    expect(calls[2]).toMatchObject({ url: `${base}/pullrequests/7/decline`, method: 'POST' })
+    expect(await defaultBranch('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, fn)).toBe('develop')
+  })
+
+  it('does not take a server error for a token that cannot read emails', async () => {
+    const { fn } = fakeFetch({
+      [`${API}/user`]: { body: { username: 'dcervera1', display_name: 'David' } },
+      [`${API}/user/emails?pagelen=100`]: { status: 500, body: {} }
+    })
+    await expect(fetchIdentity('bitbucket', 'bitbucket.org', TOKEN, fn)).rejects.toThrow('(500)')
+  })
+
+  it('names the permission a token lacks', async () => {
+    const { fn } = fakeFetch({
+      [`${API}/user/workspaces?pagelen=100`]: {
+        status: 403,
+        body: {
+          type: 'error',
+          error: {
+            message: 'Your credentials lack one or more required privilege scopes.',
+            detail: { granted: ['read:user:bitbucket'], required: ['read:workspace:bitbucket'] }
+          }
+        }
+      }
+    })
+    await expect(listRepos('bitbucket', 'bitbucket.org', TOKEN, fn)).rejects.toThrow('read:workspace:bitbucket')
+  })
+
+  it("shows Bitbucket's own explanation of an error", async () => {
+    const { fn } = fakeFetch({
+      'https://api.bitbucket.org/2.0/repositories/studio/game/pullrequests': {
+        status: 400,
+        body: { type: 'error', error: { message: 'There are no changes to be pulled' } }
+      }
+    })
+    const input = { title: 'Z', body: '', source: 'develop', target: 'develop', draft: false }
+    await expect(createPullRequest('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, input, fn)).rejects.toThrow(
+      'There are no changes to be pulled'
+    )
+  })
+})

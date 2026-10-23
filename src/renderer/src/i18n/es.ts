@@ -278,13 +278,14 @@ const es: Record<keyof typeof en, string> = {
   'ssh.copy': 'Copiar clave pública',
   'ssh.generate': 'Generar clave nueva',
   'ssh.generateHint':
-    'Crea una clave ed25519 en tu carpeta .ssh y copia la clave pública para pegarla en GitHub o GitLab.',
+    'Crea una clave ed25519 en tu carpeta .ssh y copia la clave pública para pegarla en GitHub, GitLab o Bitbucket.',
   'ssh.email': 'Email (comentario de la clave)',
   'ssh.fileName': 'Nombre del archivo',
   'ssh.passphrase': 'Passphrase (opcional)',
   'ssh.created': 'Clave SSH creada. Clave pública copiada al portapapeles.',
   'ssh.addGithub': 'Añadir en GitHub',
   'ssh.addGitlab': 'Añadir en GitLab',
+  'ssh.addBitbucket': 'Añadir en Bitbucket',
 
   'accounts.title': 'Cuentas',
   'accounts.none':
@@ -303,6 +304,12 @@ const es: Record<keyof typeof en, string> = {
   'accounts.token': 'Token personal',
   'accounts.createToken': 'Crear un token',
   'accounts.username': 'Usuario',
+  'accounts.bitbucketUsername': 'Usuario de Bitbucket, el de las URL de tus remotos',
+  'accounts.apiToken': 'API token de Atlassian',
+  'accounts.bitbucketTokenHint':
+    'El token se guarda cifrado en este equipo. Bitbucket no tiene dirección no-reply: por defecto los commits usan el email principal de la cuenta (escribe otro arriba para usar ese).',
+  'accounts.bitbucketHint':
+    'Créalo con "Create API token with scopes", app Bitbucket, y estos permisos: read:user, read:workspace, read:repository, write:repository, read:pullrequest y write:pullrequest (todos terminan en :bitbucket).',
   'accounts.name': 'Nombre en los commits',
   'accounts.email': 'Email en los commits',
   'accounts.optional': 'opcional',

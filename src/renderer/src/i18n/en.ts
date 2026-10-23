@@ -275,13 +275,14 @@ const en = {
   'ssh.copy': 'Copy public key',
   'ssh.generate': 'Generate new key',
   'ssh.generateHint':
-    'Creates an ed25519 key in your .ssh folder and copies the public key, ready to paste into GitHub or GitLab.',
+    'Creates an ed25519 key in your .ssh folder and copies the public key, ready to paste into GitHub, GitLab or Bitbucket.',
   'ssh.email': 'Email (key comment)',
   'ssh.fileName': 'File name',
   'ssh.passphrase': 'Passphrase (optional)',
   'ssh.created': 'SSH key created. Public key copied to the clipboard.',
   'ssh.addGithub': 'Add to GitHub',
   'ssh.addGitlab': 'Add to GitLab',
+  'ssh.addBitbucket': 'Add to Bitbucket',
 
   'accounts.title': 'Accounts',
   'accounts.none':
@@ -300,6 +301,12 @@ const en = {
   'accounts.token': 'Personal access token',
   'accounts.createToken': 'Create a token',
   'accounts.username': 'Username',
+  'accounts.bitbucketUsername': 'Bitbucket username, as in your remote URLs',
+  'accounts.apiToken': 'Atlassian API token',
+  'accounts.bitbucketTokenHint':
+    'The token is stored encrypted on this computer. Bitbucket has no no-reply address: by default commits use the primary email of the account (type another one above to use it instead).',
+  'accounts.bitbucketHint':
+    'Create it with "Create API token with scopes", app Bitbucket, and these scopes: read:user, read:workspace, read:repository, write:repository, read:pullrequest and write:pullrequest (all ending in :bitbucket).',
   'accounts.name': 'Commit name',
   'accounts.email': 'Commit email',
   'accounts.optional': 'optional',
