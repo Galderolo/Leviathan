@@ -31,6 +31,15 @@ npm run format     # or format:check to only verify
 
 CI runs the same checks on Windows, macOS and Linux.
 
+End-to-end tests drive the built app through Electron (Playwright), each with throwaway repositories, a git config and an app profile of its own:
+
+```bash
+npm run build
+npm run e2e
+```
+
+CI runs them on Windows and Linux; a failed test leaves a screenshot and a trace in `test-results/e2e`.
+
 ## How the code is organised
 
 ```

@@ -42,4 +42,4 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [ ] Profiles: different author name/email per repository group
 - [ ] Code signing for Windows and macOS releases
 - [ ] Auto-update on macOS (needs code signing)
-- [ ] End-to-end UI tests with Playwright
+- [x] End-to-end UI tests with Playwright (in CI)

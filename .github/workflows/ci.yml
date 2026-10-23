@@ -39,3 +39,38 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # The built app driven through Electron: open a repository, commit, branch, stash, a conflict, dialogs, Settings.
+  e2e:
+    name: e2e (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: End-to-end tests (virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run e2e
+
+      - name: End-to-end tests
+        if: runner.os != 'Linux'
+        run: npm run e2e
+
+      - name: Screenshots and traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.os }}
+          path: test-results/e2e
+          retention-days: 7

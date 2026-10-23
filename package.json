@@ -19,12 +19,14 @@
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:linux": "electron-vite build && electron-builder --linux",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "engines": {
     "node": ">=22.12"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@types/cross-spawn": "^6.0.6",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",

@@ -8,3 +8,4 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 *.tmp
+test-results/
