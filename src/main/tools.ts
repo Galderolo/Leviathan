@@ -3,6 +3,7 @@ import { difftoolArgs, editorArgs, mergetoolArgs } from '../shared/externalTools
 import type { DiffSource } from '../shared/types'
 import { insideRepo } from './git/repository'
 import { git } from './git/runner'
+import { findProgram } from './programs'
 import { loadSettings } from './settings'
 
 /** Thrown when no diff or merge tool is chosen in Settings nor configured in git: git would fall back to vimdiff. */
@@ -17,7 +18,13 @@ function launch(args: string[], cwd: string): Promise<void> {
     let started: NodeJS.Timeout | undefined
     child.once('error', (err: NodeJS.ErrnoException) => {
       clearTimeout(started)
-      reject(err.code === 'ENOENT' ? new Error(`"${args[0]}" was not found. Check the editor in Settings.`) : err)
+      reject(
+        err.code === 'ENOENT'
+          ? new Error(
+              `"${args[0]}" was not found. Check the editor in Settings, or pick "Other (command)" there with the full path of its program.`
+            )
+          : err
+      )
     })
     // On Windows a program that is not on the PATH runs through cmd.exe, which starts fine and only then fails:
     // cross-spawn turns that early exit into ENOENT. Wait a moment for it before saying the editor started.
@@ -37,6 +44,8 @@ export async function openInEditor(repo: string, file: string | null, line?: num
   const template = loadSettings().editor.trim()
   if (!template) throw new Error('No editor is chosen in Settings')
   const args = editorArgs(template, { file: file ? insideRepo(repo, file) : undefined, line, folder: repo })
+  // Rider, Visual Studio and others are often not on the PATH: look where their installers put them.
+  if (args.length) args[0] = await findProgram(args[0])
   await launch(args, repo)
 }
 
