@@ -2,7 +2,8 @@ import { join } from 'node:path'
 import { BrowserWindow, Menu, app, nativeTheme, screen, shell } from 'electron'
 import { initAccounts } from './accounts'
 import { disposeAskpass, initAskpass } from './askpass'
-import { registerIpc, startUpdates } from './ipc'
+import { launchFolder, setLaunchFolder } from './cli'
+import { registerIpc, sendOpenFolder, startUpdates } from './ipc'
 import { loadSettings, saveSettings } from './settings'
 import { unwatchAll } from './watcher'
 
@@ -10,6 +11,23 @@ const isDev = !app.isPackaged
 
 // Lets contributors and automated tests run with an isolated profile.
 if (process.env.LEVIATHAN_USER_DATA) app.setPath('userData', process.env.LEVIATHAN_USER_DATA)
+
+// One window per profile: `leviathan <folder>` while it runs opens the folder there, in a new tab.
+const primary = app.requestSingleInstanceLock()
+if (!primary) app.quit()
+setLaunchFolder(launchFolder(process.argv, process.cwd(), !!process.defaultApp))
+app.on('second-instance', (_event, argv, workingDirectory) => {
+  const win = BrowserWindow.getAllWindows()[0]
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  }
+  const folder = launchFolder(argv, workingDirectory, !!process.defaultApp)
+  if (!folder) return
+  // A window still loading asks for it once it starts, as on a first launch.
+  if (!win || win.webContents.isLoading()) setLaunchFolder(folder)
+  else sendOpenFolder(folder)
+})
 
 function restoreBounds(): Electron.Rectangle | { width: number; height: number } {
   const saved = loadSettings().window
@@ -75,17 +93,19 @@ function createWindow(): void {
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-app.whenReady().then(async () => {
-  Menu.setApplicationMenu(null)
-  registerIpc()
-  await initAskpass()
-  initAccounts()
-  createWindow()
-  startUpdates()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+// A second instance only hands its folder to the first one (`second-instance`) and quits.
+if (primary)
+  app.whenReady().then(async () => {
+    Menu.setApplicationMenu(null)
+    registerIpc()
+    await initAskpass()
+    initAccounts()
+    createWindow()
+    startUpdates()
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
-})
 
 app.on('window-all-closed', () => {
   unwatchAll()

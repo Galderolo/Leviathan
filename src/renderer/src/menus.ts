@@ -1,5 +1,5 @@
 import { lfsPatternFor, type LfsLock, type LfsPattern } from '../../shared/lfs'
-import type { FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
+import type { DiffSource, FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
 import {
   applyStash,
   checkoutAndMerge,
@@ -25,6 +25,9 @@ import {
   openExternal,
   openBlame,
   openFile,
+  openInDiffTool,
+  openInEditor,
+  openInMergeTool,
   openFileHistory,
   openInteractiveRebase,
   openSubmodule,
@@ -52,7 +55,7 @@ import {
 import { dropActions } from './dragDrop'
 import { t } from './i18n'
 import { lockFor } from './lfsView'
-import { getRepo, type MenuItem } from './store'
+import { getRepo, useStore, type MenuItem } from './store'
 import { copyText } from './ui'
 
 function current(path: string): { branch: string | null; head: string | null } {
@@ -341,6 +344,19 @@ export function fileMenu(
   } else if (area === 'conflicted') {
     items.push({ label: t('wip.markResolved'), onClick: () => void stageFiles(path, [file]) }, { separator: true })
   }
+  const editor = !!useStore.getState().settings.editor.trim()
+  if (editor && file.status !== 'D') {
+    items.push({ label: t('tools.openInEditor'), onClick: () => openInEditor(path, file.path) })
+  }
+  if (area === 'conflicted') {
+    items.push({ label: t('tools.openInMergeTool'), onClick: () => openInMergeTool(path, file.path) })
+  } else if (file.status !== '?') {
+    const source: DiffSource =
+      area === 'commit'
+        ? { kind: 'commit', hash: hash ?? '', parent: parentOf(path, hash), path: file.path, oldPath: file.origPath }
+        : { kind: area, path: file.path }
+    items.push({ label: t('tools.openInDiffTool'), onClick: () => openInDiffTool(path, source) })
+  }
   if (area !== 'commit' || file.status !== 'D') {
     items.push(
       { label: t('menu.openFile'), onClick: () => openFile(path, file.path) },
@@ -381,4 +397,10 @@ export function submoduleMenu(path: string, sub: Submodule): MenuItem[] {
     { separator: true },
     { label: t('menu.copyPath'), onClick: () => void copyText(sub.path, t('toast.copied')) }
   ]
+}
+
+/** First parent of a commit shown in the side panel's details (null for the first commit). */
+function parentOf(path: string, hash: string | undefined): string | null {
+  const details = getRepo(path)?.details
+  return details && details.commit.hash === hash ? (details.commit.parents[0] ?? null) : null
 }

@@ -4,6 +4,7 @@ import { LANGUAGES, useT } from '../i18n'
 import { useStore } from '../store'
 import type { Settings, ThemeSetting } from '../../../shared/types'
 import { AccountsSection } from './AccountsSection'
+import { ExternalToolsSettings } from './ExternalToolsSettings'
 import { SshKeysSection } from './SshKeysSection'
 import { UpdateSettings } from './UpdateNotice'
 
@@ -51,7 +52,7 @@ export function SettingsModal() {
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <form
-        className="modal wide"
+        className="modal wide settings"
         onSubmit={(e) => {
           e.preventDefault()
           void save()
@@ -59,72 +60,76 @@ export function SettingsModal() {
         onKeyDown={(e) => e.key === 'Escape' && close()}
       >
         <div className="modal-title">{t('settings.title')}</div>
-        <label className="field">
-          <span>{t('settings.theme')}</span>
-          <select value={theme} onChange={(e) => setTheme(e.target.value as ThemeSetting)}>
-            <option value="system">{t('settings.themeSystem')}</option>
-            <option value="dark">{t('settings.themeDark')}</option>
-            <option value="light">{t('settings.themeLight')}</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>{t('settings.language')}</span>
-          <select value={language} onChange={(e) => setLanguage(e.target.value as Settings['language'])}>
-            <option value="auto">{t('settings.auto')}</option>
-            {LANGUAGES.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>{t('settings.commitLimit')}</span>
-          <input
-            type="number"
-            min={100}
-            max={50000}
-            step={100}
-            value={limit}
-            onChange={(e) => setLimit(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>{t('settings.autoFetch')}</span>
-          <select value={autoFetch} onChange={(e) => setAutoFetch(e.target.value)}>
-            {[0, 1, 5, 10, 30].map((m) => (
-              <option key={m} value={String(m)}>
-                {m === 0 ? t('settings.autoFetchOff') : t('settings.autoFetchEvery', { count: m })}
-              </option>
-            ))}
-          </select>
-        </label>
-        <UpdateSettings auto={autoUpdate} onAuto={setAutoUpdate} />
-        <AccountsSection />
-        <SshKeysSection />
-        <div className="about">
-          <div>
-            Leviathan {versions.app} · git {versions.git}
+        {/* Scrolls on short windows, with the title and the buttons always in view. */}
+        <div className="settings-body">
+          <label className="field">
+            <span>{t('settings.theme')}</span>
+            <select value={theme} onChange={(e) => setTheme(e.target.value as ThemeSetting)}>
+              <option value="system">{t('settings.themeSystem')}</option>
+              <option value="dark">{t('settings.themeDark')}</option>
+              <option value="light">{t('settings.themeLight')}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t('settings.language')}</span>
+            <select value={language} onChange={(e) => setLanguage(e.target.value as Settings['language'])}>
+              <option value="auto">{t('settings.auto')}</option>
+              {LANGUAGES.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{t('settings.commitLimit')}</span>
+            <input
+              type="number"
+              min={100}
+              max={50000}
+              step={100}
+              value={limit}
+              onChange={(e) => setLimit(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>{t('settings.autoFetch')}</span>
+            <select value={autoFetch} onChange={(e) => setAutoFetch(e.target.value)}>
+              {[0, 1, 5, 10, 30].map((m) => (
+                <option key={m} value={String(m)}>
+                  {m === 0 ? t('settings.autoFetchOff') : t('settings.autoFetchEvery', { count: m })}
+                </option>
+              ))}
+            </select>
+          </label>
+          <UpdateSettings auto={autoUpdate} onAuto={setAutoUpdate} />
+          <ExternalToolsSettings />
+          <AccountsSection />
+          <SshKeysSection />
+          <div className="about">
+            <div>
+              Leviathan {versions.app} · git {versions.git}
+            </div>
+            <div className="dim">{t('settings.license')}</div>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                openWhatsNew()
+              }}
+            >
+              {t('whatsNew.title')}
+            </a>
+            <a
+              href={REPO_URL}
+              onClick={(e) => {
+                e.preventDefault()
+                openExternal(REPO_URL)
+              }}
+            >
+              {REPO_URL.replace('https://', '')}
+            </a>
           </div>
-          <div className="dim">{t('settings.license')}</div>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              openWhatsNew()
-            }}
-          >
-            {t('whatsNew.title')}
-          </a>
-          <a
-            href={REPO_URL}
-            onClick={(e) => {
-              e.preventDefault()
-              openExternal(REPO_URL)
-            }}
-          >
-            {REPO_URL.replace('https://', '')}
-          </a>
         </div>
         <div className="modal-actions">
           <button type="button" className="btn" onClick={close}>

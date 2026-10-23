@@ -4,6 +4,20 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Open files in your editor**: pick VS Code, Cursor, Rider, Visual Studio, Sublime Text, Notepad++ or any command in *Settings → External tools*. Files open from their menu (from the diff, at the first changed line) and the repository from the repository menu.
+- **Diff and merge tools**: show a file's change (uncommitted, staged or in a commit) in your diff tool, and resolve a conflicted file in your merge tool: the one set in git's config, or one picked in Settings.
+- **`leviathan .` from a terminal** opens the repository of that folder, in a new tab of the open window. On Windows, *Settings → External tools → Add the leviathan command* puts it on your user PATH; on macOS and Linux, Settings shows the command that creates it.
+
+### Changed
+
+- Starting Leviathan while it is open brings the open window forward instead of opening a second one.
+
+### Fixed
+
+- Settings scrolls on short windows; its Save and Cancel buttons could end up off screen.
+
 ## [0.9.4] - 2026-10-23
 
 ### Changed

@@ -21,6 +21,7 @@ import {
   createBranch,
   fetchAll,
   openInFileManager,
+  openInEditor,
   openTerminal,
   popStash,
   pull,
@@ -125,6 +126,9 @@ export function Toolbar({ path }: { path: string }) {
     openMenuBelow(e, [
       { label: t('menu.repoAccount'), onClick: () => void chooseRepoAccount(path) },
       { separator: true },
+      ...(useStore.getState().settings.editor.trim()
+        ? [{ label: t('tools.openInEditor'), onClick: () => openInEditor(path, null) }]
+        : []),
       { label: t('menu.openFolder'), onClick: () => openInFileManager(path) },
       { label: t('toolbar.terminal'), onClick: () => openTerminal(path) },
       { separator: true },

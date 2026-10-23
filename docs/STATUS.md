@@ -90,6 +90,20 @@ Known minor issues:
 - A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
 - `submodule update` paths are validated but not literal (`GIT_LITERAL_PATHSPECS`), and *Open in a new tab* on a submodule deinitialized outside the app focuses the parent instead.
 
+## External tools (unreleased)
+
+Code: `src/shared/externalTools.ts` (editor presets, command templates, `git difftool` / `mergetool` arguments), `src/main/tools.ts` (launching), `src/main/cli.ts` (the command-line folder and the Windows PATH install), `components/ExternalToolsSettings.tsx`.
+- The editor command is split like a shell would but run without one (cross-spawn, which also finds `.cmd` shims such as `code.cmd`). `{file}`, `{line}` and `{folder}` are filled in; without a file, the file and line arguments (and the option right before them) are left out so the editor gets the folder.
+- Diff and merge tools go through `git difftool -y` / `git mergetool -y` (`--tool=` when one is picked in Settings; `mergetool.keepBackup=false`), so git's own tool settings and paths apply. With no tool in Settings nor in `diff.tool` / `merge.tool`, the app says so instead of letting git prompt. A commit's renamed file passes both paths.
+- One instance per profile (`requestSingleInstanceLock`): `leviathan <folder>` while the app runs hands the folder to the open window (`second-instance`); at start, or while the window is still loading, the window asks for it once (`takeLaunchFolder`). In development the first argument that is not a switch is electron's app folder and is skipped.
+- Windows: *Add the leviathan command* writes `<userData>\bin\leviathan.cmd` (`start "" "<exe>" %*`; the portable build's own `.exe`, not its temporary copy) and appends that folder to the user PATH in the registry, kept unexpanded (`REG_EXPAND_SZ`), then announces the change. Only new terminals see it. `tests/cliInstall.test.ts` uses a scratch registry key, never the real PATH.
+
+Known minor issues:
+- Uninstalling the app leaves `leviathan.cmd` and its PATH entry behind.
+- Tools that need a terminal (vimdiff…) cannot work: there is no terminal for them.
+- On macOS and Linux the suggested symlink starts the binary itself, so the first instance stays attached to that terminal.
+- A staged rename opens in the diff tool as a new file (only the new path is passed).
+
 ## Next steps
 
 ### 1. Keep an eye on 0.3.0
