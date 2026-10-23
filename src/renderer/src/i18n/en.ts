@@ -249,6 +249,14 @@ const en = {
   'toast.copied': 'Copied to clipboard',
   'toast.nothingToStash': 'There are no changes to stash',
   'toast.noStashes': 'There are no stashes to pop',
+  'dlg.stashClashTitle': 'Your changes are in the way',
+  'dlg.stashClashOne':
+    '{name} has uncommitted changes that this stash also changes, so git does not apply it (nothing was changed). Put your changes in a stash of their own first, then apply this one?',
+  'dlg.stashClashMany':
+    '{count} files have uncommitted changes that this stash also changes, so git does not apply it (nothing was changed). Put your changes in a stash of their own first, then apply this one?',
+  'dlg.stashClashConfirm': 'Stash mine and apply',
+  'stash.setAside': 'Set aside to apply: {name}',
+  'toast.stashSetAside': 'Your changes are in a new stash ("Set aside to apply…"): apply it to get them back.',
   'toast.revealedExecutable': 'For safety this file is shown in its folder instead of being opened.',
 
   'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Leviathan.',

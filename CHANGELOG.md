@@ -9,6 +9,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 - **Bitbucket Cloud accounts**: add one with an Atlassian API token (*Settings → Accounts → Add account*, the form lists the scopes it needs). Push and pull without passwords, clone from the repositories of your workspaces, and see, check out, open and decline pull requests. Commits use the account's primary email (Bitbucket has no no-reply address). Bitbucket Data Center servers can still be added as "Other".
 - *Add to Bitbucket* next to the SSH keys.
 
+### Changed
+
+- Applying or popping a stash that changes files you have changed too says so (git refuses, to keep your changes) and offers *Stash mine and apply*: your changes to those files go into a stash of their own, then the stash you picked is applied.
+
 ### Fixed
 
 - Choosing VS Code as the diff and merge tool failed with "Unknown merge tool vscode": git does not know VS Code by name, so Leviathan now tells it how to run it (its diff, and its three-way merge editor).

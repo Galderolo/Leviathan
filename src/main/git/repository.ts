@@ -761,6 +761,27 @@ export async function stashUntrackedClashes(repo: string, index: number, hash: s
   return files.filter((_, i) => exists[i])
 }
 
+/**
+ * Files the stash changes that also have uncommitted changes (staged or not): git refuses to apply the stash
+ * while they are there, so as not to overwrite them.
+ */
+export async function stashTrackedClashes(repo: string, index: number, hash: string): Promise<string[]> {
+  const ref = await verifiedStashRef(repo, index, hash)
+  const stashed = (await run(repo, ['diff', '--name-only', '-z', `${ref}^1`, ref, '--'])).split('\0').filter(Boolean)
+  if (!stashed.length) return []
+  const status = await run(repo, ['status', '--porcelain=v1', '-z', '--untracked-files=no'])
+  const dirty = new Set<string>()
+  const entries = status.split('\0')
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
+    if (entry.length < 4) continue
+    dirty.add(entry.slice(3))
+    // A rename or copy is followed by its old path.
+    if (entry[0] === 'R' || entry[0] === 'C') dirty.add(entries[++i])
+  }
+  return stashed.filter((file) => dirty.has(file))
+}
+
 export async function stashDrop(repo: string, index: number, hash: string): Promise<void> {
   await run(repo, ['stash', 'drop', '-q', await verifiedStashRef(repo, index, hash)])
 }
