@@ -192,6 +192,22 @@ describe('reviewing a pull request', () => {
     expect((await repo.getState(work)).status.unstaged.map((f) => f.path)).toEqual(['a.txt'])
   })
 
+  it('leaves no review ref behind: not of a review that ended, nor of earlier ones when another starts', async () => {
+    const reviews = async () =>
+      (await git(['for-each-ref', '--format=%(refname)', 'refs/leviathan/review/'], { cwd: work })).stdout
+        .split('\n')
+        .filter(Boolean)
+    await repo.fetchPullRequestRange(work, 'origin', same, 'github')
+    expect(await reviews()).toEqual(['refs/leviathan/review/3'])
+    // The app closed with #3 open: the next review starting drops it.
+    await repo.fetchPullRequestRange(work, 'origin', { ...same, number: 7, sourceBranch: 'fork-work' }, 'github')
+    expect(await reviews()).toEqual(['refs/leviathan/review/7'])
+    await repo.endPullRequestReview(work, 7)
+    expect(await reviews()).toEqual([])
+    // Ending a review whose fetch never finished is fine.
+    await repo.endPullRequestReview(work, 3)
+  })
+
   it('takes a Bitbucket pull request from its branch, and refuses one from a fork', async () => {
     await git(['push', '-q', 'origin', ':refs/pull/3/head'], { cwd: otherDir })
     const range = await repo.fetchPullRequestRange(work, 'origin', same, 'bitbucket')

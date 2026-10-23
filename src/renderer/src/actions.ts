@@ -304,13 +304,15 @@ export async function approveReviewedPullRequest(path: string, pr: PullRequest, 
   }
 }
 
-/** Merges the reviewed pull request on the provider, the way the user picks among those it offers. */
-export async function mergeReviewedPullRequest(
-  path: string,
-  pr: PullRequest,
-  methods: MergeMethod[],
-  head: string
-): Promise<void> {
+/** Merges the reviewed pull request on the provider, the way the user picks among those the project allows. */
+export async function mergeReviewedPullRequest(path: string, pr: PullRequest, head: string): Promise<void> {
+  let methods: MergeMethod[]
+  try {
+    methods = await api.getMergeMethods(path, pr.targetBranch)
+  } catch (err) {
+    toast('error', errorMessage(err))
+    return
+  }
   const values = await formDialog({
     title: t('review.mergeTitle', { number: pr.number }),
     message: t('review.mergeHint', { source: pr.sourceBranch, target: pr.targetBranch }),

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import type { Provider } from '../src/shared/types'
 import {
   addPullRequestComment,
+  allowedMergeMethods,
   approvePullRequest,
   listPullRequestComments,
   mergePullRequest,
@@ -230,5 +232,54 @@ describe('Gitea pull request conversation', () => {
       ['POST', '/pulls/7/reviews', { event: 'APPROVED', commit_id: HEAD }],
       ['POST', '/pulls/7/merge', { Do: 'merge', head_commit_id: HEAD }]
     ])
+  })
+})
+
+describe('merge methods a project allows', () => {
+  const allowed = (provider: Provider, host: string, routes: Record<string, unknown>) =>
+    allowedMergeMethods(provider, host, 'org/app', TOKEN, 'main', fakeFetch(routes).fn)
+
+  it("GitHub: offers the enabled ones, and all of them when the token cannot see the project's settings", async () => {
+    const base = 'https://api.github.com/repos/org/app'
+    const settings = { allow_merge_commit: false, allow_squash_merge: true, allow_rebase_merge: true }
+    expect(await allowed('github', 'github.com', { [`GET ${base}`]: settings })).toEqual(['squash', 'rebase'])
+    expect(await allowed('github', 'github.com', { [`GET ${base}`]: { default_branch: 'main' } })).toEqual([
+      'merge',
+      'squash',
+      'rebase'
+    ])
+    // Unreachable settings are no reason to refuse a merge: the server still says no when it must.
+    expect(await allowed('github', 'github.com', {})).toEqual(['merge', 'squash', 'rebase'])
+  })
+
+  it("GitLab: follows the project's squash setting", async () => {
+    const base = 'https://gitlab.com/api/v4/projects/org%2Fapp'
+    const squash = (option: string) => allowed('gitlab', 'gitlab.com', { [`GET ${base}`]: { squash_option: option } })
+    expect(await squash('never')).toEqual(['merge'])
+    expect(await squash('always')).toEqual(['squash'])
+    expect(await squash('default_on')).toEqual(['squash', 'merge'])
+    expect(await squash('default_off')).toEqual(['merge', 'squash'])
+  })
+
+  it("Bitbucket: the target branch's strategies with its default first, all when it allows none the app knows", async () => {
+    const branch = 'https://api.bitbucket.org/2.0/repositories/org/app/refs/branches/main'
+    const strategies = (list: string[], preset: string) =>
+      allowed('bitbucket', 'bitbucket.org', {
+        [`GET ${branch}`]: { name: 'main', merge_strategies: list, default_merge_strategy: preset }
+      })
+    expect(await strategies(['merge_commit', 'squash', 'fast_forward'], 'squash')).toEqual(['squash', 'merge'])
+    expect(await strategies(['rebase_fast_forward', 'merge_commit'], 'merge_commit')).toEqual(['merge', 'rebase'])
+    expect(await strategies(['fast_forward'], 'fast_forward')).toEqual(['merge', 'squash', 'rebase'])
+  })
+
+  it('Gitea: the allowed styles with the default first', async () => {
+    const base = 'https://git.acme.com/api/v1/repos/org/app'
+    const repo = {
+      allow_merge_commits: true,
+      allow_rebase: false,
+      allow_squash_merge: true,
+      default_merge_style: 'squash'
+    }
+    expect(await allowed('gitea', 'git.acme.com', { [`GET ${base}`]: repo })).toEqual(['squash', 'merge'])
   })
 })

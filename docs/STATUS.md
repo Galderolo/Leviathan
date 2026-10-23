@@ -96,7 +96,8 @@ Known minor issues:
 ## Pull request review (0.13.0)
 
 Code: `fetchPullRequestRange` / `getRangeFiles` in `repository.ts`, the review functions at the end of `src/main/accounts/providers.ts` and `accounts/index.ts`, `components/PullRequestView.tsx`.
-- Files and diff come from git, not from provider diff APIs: the pull request (the same source as checkout: `refs/pull/N/head`, GitLab's merge request ref, Bitbucket's branch) is fetched into `refs/leviathan/review/N` — not checkout's `refs/leviathan/pulls/N`, which tells whether `pr/N` has commits of its own — with its target branch; the range is merge-base..head, shown with the usual viewer. Nothing is checked out.
+- Files and diff come from git, not from provider diff APIs: the pull request (the same source as checkout: `refs/pull/N/head`, GitLab's merge request ref, Bitbucket's branch) is fetched into `refs/leviathan/review/N` — not checkout's `refs/leviathan/pulls/N`, which tells whether `pr/N` has commits of its own — with its target branch; the range is merge-base..head, shown with the usual viewer. Nothing is checked out. The ref is deleted when the review ends however it ends (the review's component unmounting), and a new review drops any left from one that did not end (the app closed).
+- The merge dialog offers what the project allows, its default first (`allowedMergeMethods`): GitHub's `allow_merge_commit` / `allow_squash_merge` / `allow_rebase_merge`, GitLab's `squash_option`, the target branch's `merge_strategies` / `default_merge_strategy` on Bitbucket, Gitea's `allow_*` and `default_merge_style`. Settings the token cannot read offer every method.
 - The conversation comes from the provider: general comments and comments on lines (shown read-only with a link to their file), GitLab's system notes and Bitbucket's deleted and pending comments left out. Comment, approve, merge: GitHub `issues/N/comments`, `pulls/N/reviews` (APPROVE), `pulls/N/merge`; GitLab notes, `approve`, `merge` (`squash`; no rebase there); Bitbucket `comments`, `approve`, `merge` (`merge_commit` / `squash` / `rebase_fast_forward`); Gitea `issues/N/comments`, `pulls/N/reviews` (APPROVED), `pulls/N/merge` (`Do`). Merging checks the pull request is still the one the review showed, like closing one.
 - The E2E test is skipped on Linux CI: the runner has no keyring, and the app does not keep tokens only obfuscated. It fakes GitHub without network: `GIT_SSH_COMMAND` runs `git upload-pack` on a local bare repository behind `git@github.com:org/app.git`, and `fetch` is replaced in the main process.
 
@@ -104,8 +105,7 @@ Known minor issues:
 - Comments cannot be written on a line yet, and Markdown in comments shows as plain text.
 - At most one page of comments is read (100; Gitea 50); GitLab keeps the newest.
 - Approving and merging name the reviewed commit (GitHub `commit_id` / `sha`, GitLab `sha`, Gitea `commit_id` / `head_commit_id`; Bitbucket is checked first), so a pull request that moved on is refused.
-- `refs/leviathan/review/N` are not deleted after a review, so their commits stay in the repository until removed by hand.
-- The merge dialog always proposes a merge commit first, even where the project only allows squashing.
+- A project that only allows a method the app does not offer (Bitbucket's fast-forward, GitLab's fast-forward merge) still gets the usual choices, and the server's refusal.
 
 ## Syntax highlighting (0.13.0)
 

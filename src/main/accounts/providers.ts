@@ -1,4 +1,4 @@
-import { apiBase, noreplyEmail } from '../../shared/providers'
+import { apiBase, mergeMethods, noreplyEmail } from '../../shared/providers'
 import type {
   MergeMethod,
   NewPullRequest,
@@ -599,5 +599,88 @@ export async function mergePullRequest(
         method: 'POST',
         body: { Do: method, head_commit_id: head }
       })
+  }
+}
+
+/** `methods` with `preset` (a provider's default, when it is one of them) first. */
+function presetFirst(methods: MergeMethod[], preset: MergeMethod | undefined): MergeMethod[] {
+  return preset && methods.includes(preset) ? [preset, ...methods.filter((m) => m !== preset)] : methods
+}
+
+/** The merge methods the project's settings allow, its default first (unknown settings allow them all). */
+async function projectMergeMethods(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  targetBranch: string,
+  fetchFn: FetchFn
+): Promise<MergeMethod[]> {
+  const all = mergeMethods(provider)
+  const project = projectPath(provider, path)
+  switch (provider) {
+    case 'github': {
+      const repo = (await getJson(provider, host, project, token, fetchFn)) as Json
+      const flags = { merge: 'allow_merge_commit', squash: 'allow_squash_merge', rebase: 'allow_rebase_merge' }
+      return all.filter((m) => repo[flags[m]] !== false)
+    }
+    case 'gitlab': {
+      // Merging takes a squash flag: whether there is a choice is the project's squash setting.
+      const repo = (await getJson(provider, host, project, token, fetchFn)) as Json
+      switch (repo.squash_option) {
+        case 'never':
+          return ['merge']
+        case 'always':
+          return ['squash']
+        case 'default_on':
+          return ['squash', 'merge']
+        default:
+          return ['merge', 'squash']
+      }
+    }
+    case 'bitbucket': {
+      // Strategies are set per target branch (branch restrictions), with the repository's as fallback.
+      const name = targetBranch.split('/').map(encodeURIComponent).join('/')
+      const branch = (await getJson(provider, host, `${project}/refs/branches/${name}`, token, fetchFn)) as Json
+      if (!Array.isArray(branch.merge_strategies)) return all
+      const ours: Record<string, MergeMethod> = {
+        merge_commit: 'merge',
+        squash: 'squash',
+        rebase_fast_forward: 'rebase'
+      }
+      const allowed = all.filter((m) => (branch.merge_strategies as unknown[]).some((s) => ours[String(s)] === m))
+      return presetFirst(allowed, ours[String(branch.default_merge_strategy)])
+    }
+    default: {
+      const repo = (await getJson(provider, host, project, token, fetchFn)) as Json
+      const flags = { merge: 'allow_merge_commits', squash: 'allow_squash_merge', rebase: 'allow_rebase' }
+      const allowed = all.filter((m) => repo[flags[m]] !== false)
+      return presetFirst(
+        allowed,
+        all.find((m) => m === repo.default_merge_style)
+      )
+    }
+  }
+}
+
+/**
+ * The ways a pull request into `targetBranch` can merge, as the project allows, its default first: GitHub's
+ * `allow_*_merge`, GitLab's squash setting, the target branch's strategies on Bitbucket, Gitea's merge styles.
+ * Settings the token cannot read, or none the app knows, offer every method: the server still refuses when it must.
+ */
+export async function allowedMergeMethods(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  targetBranch: string,
+  fetchFn: FetchFn = fetch
+): Promise<MergeMethod[]> {
+  const all = mergeMethods(provider)
+  try {
+    const allowed = await projectMergeMethods(provider, host, path, token, targetBranch, fetchFn)
+    return allowed.length ? allowed : all
+  } catch {
+    return all
   }
 }

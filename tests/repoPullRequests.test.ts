@@ -153,6 +153,14 @@ describe('pull requests of a repository', () => {
     ).rejects.toThrow(/not the one/i)
   })
 
+  it("offers the merge methods the project allows, read with the account's token", async () => {
+    // This project's answer has no merge settings: every method stays on offer.
+    expect(await accounts.getMergeMethods(work, 'main')).toEqual(['merge', 'squash', 'rebase'])
+    expect(requests.at(-1)).toMatchObject({ url: 'https://api.github.com/repos/org/app', auth: `Bearer ${TOKEN}` })
+    await expect(accounts.getMergeMethods(work, '' as never)).rejects.toThrow()
+    await expect(accounts.getMergeMethods(other, 'main')).rejects.toThrow(/No account/)
+  })
+
   it('comments on a pull request, refusing an empty comment', async () => {
     await expect(accounts.commentOnPullRequest(work, 12, '   ')).rejects.toThrow(/empty/)
     expect((await accounts.commentOnPullRequest(work, 12, ' Thanks ')).body).toBe('Thanks')

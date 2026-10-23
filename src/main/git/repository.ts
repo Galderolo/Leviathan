@@ -918,10 +918,13 @@ export async function fetchPullRequestRange(
   if (!Number.isInteger(pr.number) || pr.number <= 0) throw new Error(`Invalid pull request number: ${pr.number}`)
   const source = pullRequestSource(pr, provider)
   // Not checkout's refs/leviathan/pulls/N: that one tells whether pr/N has commits of its own.
-  const review = `refs/leviathan/review/${pr.number}`
+  const review = `${REVIEW_REFS}${pr.number}`
+  // Reviews that did not end here (the app closed while one was open) leave theirs behind.
+  await dropReviewRefs(repo, review)
   const target = `refs/remotes/${remote}/${pr.targetBranch}`
   await git(['fetch', remote, `+${source}:${review}`, `+refs/heads/${pr.targetBranch}:${target}`], { cwd: repo })
-  const head = (await refValue(repo, review))!
+  const head = await refValue(repo, review)
+  if (!head) throw new Error('The pull request could not be fetched. Open it again.')
   const found = await git(['merge-base', target, head], { cwd: repo, okCodes: [0, 1] })
   if (found.exitCode !== 0) {
     throw new Error(
@@ -929,6 +932,24 @@ export async function fetchPullRequestRange(
     )
   }
   return { base: found.stdout.trim(), head }
+}
+
+/** Where reviews keep the pull request they show, one ref per pull request number. */
+const REVIEW_REFS = 'refs/leviathan/review/'
+
+/** Deletes the review refs, all but `keep`: their commits are only needed while a review shows them. */
+async function dropReviewRefs(repo: string, keep?: string): Promise<void> {
+  const { stdout } = await git(['for-each-ref', '--format=%(refname)', REVIEW_REFS], { cwd: repo })
+  const stale = stdout.split('\n').filter((ref) => ref && ref !== keep)
+  if (stale.length) {
+    await git(['update-ref', '--stdin'], { cwd: repo, input: stale.map((ref) => `delete ${ref}\n`).join('') })
+  }
+}
+
+/** Ends a pull request's review: the ref holding its commits goes (they stay while anything else holds them). */
+export async function endPullRequestReview(repo: string, number: number): Promise<void> {
+  if (!Number.isInteger(number) || number <= 0) throw new Error(`Invalid pull request number: ${number}`)
+  await git(['update-ref', '-d', `${REVIEW_REFS}${number}`], { cwd: repo })
 }
 
 /** Files changed between two commits (a pull request's review range), renames found. */
