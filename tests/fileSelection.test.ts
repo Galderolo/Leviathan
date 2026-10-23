@@ -3,7 +3,7 @@ import {
   clickSelection,
   emptySelection,
   focusSelection,
-  listForDialog,
+  discardSummary,
   pruneSelection,
   splitRatio,
   toggleAll,
@@ -94,10 +94,14 @@ describe('splitRatio', () => {
   })
 })
 
-describe('listForDialog', () => {
-  it('names up to ten files and counts the rest', () => {
-    const many = Array.from({ length: 13 }, (_, i) => `f${i}.txt`)
-    expect(listForDialog(many)).toEqual({ shown: many.slice(0, 10), more: 3 })
-    expect(listForDialog(['a', 'b'])).toEqual({ shown: ['a', 'b'], more: 0 })
+describe('discardSummary', () => {
+  it('names a single file, and only counts several (a list of long paths made the dialog huge)', () => {
+    expect(discardSummary([{ path: 'Assets/Player.cs', status: 'M' }])).toEqual({
+      name: 'Assets/Player.cs',
+      count: 1,
+      untracked: 0
+    })
+    const many = Array.from({ length: 26 }, (_, i) => ({ path: `Packages/f${i}.class`, status: i < 3 ? '?' : 'M' }))
+    expect(discardSummary(many)).toEqual({ name: null, count: 26, untracked: 3 })
   })
 })

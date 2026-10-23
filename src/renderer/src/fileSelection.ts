@@ -60,7 +60,15 @@ export function splitRatio(ratio: number): number {
   return Math.min(0.85, Math.max(0.15, ratio))
 }
 
-/** The files a confirmation names (the first `max`) and how many more there are. */
-export function listForDialog(paths: string[], max = 10): { shown: string[]; more: number } {
-  return { shown: paths.slice(0, max), more: Math.max(0, paths.length - max) }
+/** What a discard confirmation says: the file's name when there is one, otherwise how many, and how many are new. */
+export function discardSummary(files: { path: string; status: string }[]): {
+  name: string | null
+  count: number
+  untracked: number
+} {
+  return {
+    name: files.length === 1 ? files[0].path : null,
+    count: files.length,
+    untracked: files.filter((f) => f.status === '?').length
+  }
 }
