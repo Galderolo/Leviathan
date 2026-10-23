@@ -6,6 +6,7 @@ import { applyHunk, applyLines, closeDiff, discardFiles, openInEditor, stageFile
 import { useT } from '../i18n'
 import { ConflictView } from './ConflictView'
 import { useRepo, useStore } from '../store'
+import { highlightHunks } from '../syntax'
 import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 import { cx, shortHash, splitPath } from '../utils'
 
@@ -22,6 +23,7 @@ export function DiffView({ path }: { path: string }) {
   const data = diff?.data
   const layout = useStore((s) => s.diffLayout)
   const spansByHunk = useMemo(() => data?.hunks.map(wordSpans) ?? [], [data])
+  const syntaxByHunk = useMemo(() => (data ? highlightHunks(data.hunks, data.path) : []), [data])
 
   useEffect(() => {
     setPicked(null)
@@ -190,7 +192,7 @@ export function DiffView({ path }: { path: string }) {
                   )}
                 </div>
                 {layout === 'split' ? (
-                  <SplitHunkLines hunk={hunk} limit={lines.length} />
+                  <SplitHunkLines hunk={hunk} limit={lines.length} syntax={syntaxByHunk[hi]} />
                 ) : (
                   <div className="hunk-lines">
                     {lines.map((line, li) => {
@@ -217,7 +219,7 @@ export function DiffView({ path }: { path: string }) {
                             <span className="ln">{line.newNo ?? ''}</span>
                             <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
                           </span>
-                          <LineText line={line} spans={spansByHunk[hi]?.get(li)} />
+                          <LineText line={line} spans={spansByHunk[hi]?.get(li)} syntax={syntaxByHunk[hi]?.get(li)} />
                         </div>
                       )
                     })}

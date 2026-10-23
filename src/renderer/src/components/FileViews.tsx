@@ -8,6 +8,7 @@ import { errorMessage } from '../ui'
 import { cx, formatDate, relativeDate, shortHash, splitPath } from '../utils'
 import { historyDiffSource } from '../historyDiff'
 import { Avatar } from './common'
+import { highlightHunks } from '../syntax'
 import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 
 const api = window.leviathan
@@ -134,6 +135,7 @@ export function ReadOnlyDiff({ data }: { data: FileDiff }) {
   const [showAll, setShowAll] = useState(false)
   const layout = useStore((s) => s.diffLayout)
   const spansByHunk = useMemo(() => data.hunks.map(wordSpans), [data])
+  const syntaxByHunk = useMemo(() => highlightHunks(data.hunks, data.path), [data])
   if (data.binary) return <div className="empty-state">{t('diff.binary')}</div>
   if (!data.hunks.length) return <div className="empty-state">{t('diff.noChanges')}</div>
   let budget = showAll ? Number.POSITIVE_INFINITY : LINE_LIMIT
@@ -150,7 +152,7 @@ export function ReadOnlyDiff({ data }: { data: FileDiff }) {
               <code>{hunk.header}</code>
             </div>
             {layout === 'split' ? (
-              <SplitHunkLines hunk={hunk} limit={lines.length} />
+              <SplitHunkLines hunk={hunk} limit={lines.length} syntax={syntaxByHunk[hi]} />
             ) : (
               <div className="hunk-lines">
                 {lines.map((line, li) => (
@@ -160,7 +162,7 @@ export function ReadOnlyDiff({ data }: { data: FileDiff }) {
                       <span className="ln">{line.newNo ?? ''}</span>
                       <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
                     </span>
-                    <LineText line={line} spans={spansByHunk[hi]?.get(li)} />
+                    <LineText line={line} spans={spansByHunk[hi]?.get(li)} syntax={syntaxByHunk[hi]?.get(li)} />
                   </div>
                 ))}
               </div>

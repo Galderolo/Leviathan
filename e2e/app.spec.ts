@@ -162,3 +162,16 @@ test('keeps Settings in sections and saves each change at once', async () => {
   await page.keyboard.press('Escape')
   await expect(page.locator('.modal.settings')).toHaveCount(0)
 })
+
+test('highlights the code of a diff', async () => {
+  const repo = box.repo('game', { 'Assets/Player.cs': 'public class Player\n{\n    int hp = 1;\n}\n' })
+  box.write(repo, { 'Assets/Player.cs': 'public class Player\n{\n    int hp = 2; // more\n}\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'Player.cs' }).click()
+  await expect(page.locator('.diff-view .code .hljs-keyword').first()).toBeVisible()
+  await expect(page.locator('.diff-view .code .hljs-comment')).toHaveText('// more')
+  // The changed number is still marked inside the highlighted line.
+  await expect(page.locator('.diff-line.add mark.word-change').first()).toContainText('2')
+})

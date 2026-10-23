@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 import { Columns2, Rows2 } from 'lucide-react'
 import type { DiffHunk, DiffLine } from '../../../shared/types'
+import { mergeSegments, type SyntaxToken } from '../../../shared/syntax'
 import { pairChanges, splitRows, wordDiff, type Span } from '../../../shared/wordDiff'
 import { useT } from '../i18n'
 import { DIFF_LAYOUT_KEY, useStore, type DiffLayout } from '../store'
@@ -52,26 +53,35 @@ export function wordSpans(hunk: DiffHunk): Map<number, Span[]> {
   return spans
 }
 
-/** The text of a line, with the words that changed marked. */
-export function LineText({ line, spans }: { line: DiffLine; spans?: Span[] }) {
-  if (!spans) return <span className="code">{line.text || ' '}</span>
+/** The text of a line, highlighted as code, with the words that changed marked. */
+export function LineText({ line, spans, syntax }: { line: DiffLine; spans?: Span[]; syntax?: SyntaxToken[] }) {
+  if (!spans && !syntax?.length) return <span className="code">{line.text || ' '}</span>
   return (
     <span className="code">
-      {spans.map((s, i) =>
-        s.changed ? (
+      {mergeSegments(line.text, syntax, spans).map((s, i) => {
+        const text = s.cls ? <span className={s.cls}>{s.text}</span> : s.text
+        return s.changed ? (
           <mark key={i} className="word-change">
-            {s.text}
+            {text}
           </mark>
         ) : (
-          s.text
+          <Fragment key={i}>{text}</Fragment>
         )
-      )}
+      })}
     </span>
   )
 }
 
 /** A hunk side by side: old version on the left, new on the right. Read-only. */
-export function SplitHunkLines({ hunk, limit }: { hunk: DiffHunk; limit: number }) {
+export function SplitHunkLines({
+  hunk,
+  limit,
+  syntax
+}: {
+  hunk: DiffHunk
+  limit: number
+  syntax?: Map<number, SyntaxToken[]> | null
+}) {
   const spans = useMemo(() => wordSpans(hunk), [hunk])
   const rows = useMemo(() => splitRows(hunk.lines), [hunk])
   const side = (index: number | null, which: 'left' | 'right') => {
@@ -83,7 +93,7 @@ export function SplitHunkLines({ hunk, limit }: { hunk: DiffHunk; limit: number 
       <div className={cx('split-cell', line.type)}>
         <span className="ln">{no ?? ''}</span>
         <span className="sign">{sign}</span>
-        <LineText line={line} spans={spans.get(index)} />
+        <LineText line={line} spans={spans.get(index)} syntax={syntax?.get(index)} />
       </div>
     )
   }

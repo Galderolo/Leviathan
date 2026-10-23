@@ -93,6 +93,13 @@ Known minor issues:
 - A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
 - `submodule update` paths are validated but not literal (`GIT_LITERAL_PATHSPECS`), and *Open in a new tab* on a submodule deinitialized outside the app focuses the parent instead.
 
+## Syntax highlighting (unreleased)
+
+Code: `src/shared/syntax.ts` (language by file name, highlight.js output to classed text per line, merged with the changed-words marking), `src/renderer/src/syntax.ts` (highlight.js core with the registered languages, per hunk), `LineText` in `components/DiffLines.tsx`, the `--syn-*` colours in `app.css`.
+- Each side of a hunk (context and removed lines; context and added lines) is highlighted as one piece of code, so comments and strings spanning lines stay right inside a hunk; one that starts before the hunk is not known.
+- Text is never injected as HTML: highlight.js's output is turned into text pieces with a class, and pieces that do not add up to the line fall back to the plain text.
+- Plain beyond 2 000 characters per line, 100 000 per hunk or 300 000 per diff. Unknown extensions are not guessed (no auto-detection). Shaders use GLSL's grammar, the closest highlight.js has to HLSL.
+
 ## Bitbucket Cloud (0.12.0; tried with a real account: identity, repository list, git authentication)
 
 Code: the `bitbucket` branches in `src/main/accounts/providers.ts`, `bitbucketIdentity` / `bitbucketRepos` there, the Bitbucket case of `checkoutPullRequest`. Researched in October 2026:
