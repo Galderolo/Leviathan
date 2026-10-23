@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Fixed
+
+- Choosing VS Code as the diff and merge tool failed with "Unknown merge tool vscode": git does not know VS Code by name, so Leviathan now tells it how to run it (its diff, and its three-way merge editor).
+
 ## [0.11.0] - 2026-10-23
 
 ### Added
