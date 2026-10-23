@@ -3087,3 +3087,101 @@ a:hover {
 .rebase-row.drop-below {
   box-shadow: inset 0 -2px 0 var(--accent);
 }
+
+/* Pull request review */
+.review-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.review-meta code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.review-draft {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--bg-3);
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.review-tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.review-tab {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+}
+
+.review-tab:hover {
+  background: var(--row-hover);
+}
+
+.review-tab.active {
+  background: var(--bg-3);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.review-conversation {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.review-comment {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-1);
+}
+
+.review-comment-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.review-comment-file {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.review-comment-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.review-reply {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.review-reply textarea {
+  width: 100%;
+  resize: vertical;
+}

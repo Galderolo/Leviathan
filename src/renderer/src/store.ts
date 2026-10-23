@@ -68,6 +68,8 @@ export interface RepoView {
   highlight: string | null
   /** File history or blame shown in place of the graph. */
   fileView: { kind: 'history' | 'blame'; path: string; rev: string | null } | null
+  /** The pull request under review in the center panel. */
+  review: PullRequest | null
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
   undo: UndoEntry[]
   redo: UndoEntry[]
@@ -246,6 +248,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     account: null,
     pullRequests: null,
     fileView: null,
+    review: null,
     graphScope: readGraphScope(path),
     highlight: null,
     undo: [],

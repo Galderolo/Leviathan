@@ -5,6 +5,7 @@ import type {
   FileChange,
   FileDiff,
   GitRef,
+  MergeMethod,
   PullRequest,
   PullMode,
   RepoState,
@@ -277,6 +278,54 @@ export async function closePullRequest(path: string, pr: PullRequest): Promise<v
   try {
     await api.closePullRequest(path, pr.number, pr.url)
     toast('success', t('toast.prClosed', { number: pr.number }))
+  } catch (err) {
+    toast('error', errorMessage(err))
+  } finally {
+    void loadPullRequests(path)
+  }
+}
+
+/** Opens a pull request's review in the center panel: its files and their diff, and its conversation. */
+export function openReview(path: string, pr: PullRequest): void {
+  patchRepo(path, { review: pr, fileView: null, diff: null })
+}
+
+export function closeReview(path: string): void {
+  patchRepo(path, { review: null })
+}
+
+export async function approveReviewedPullRequest(path: string, pr: PullRequest): Promise<void> {
+  try {
+    await api.approvePullRequest(path, pr.number)
+    toast('success', t('toast.prApproved', { number: pr.number }))
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+}
+
+/** Merges the reviewed pull request on the provider, the way the user picks among those it offers. */
+export async function mergeReviewedPullRequest(path: string, pr: PullRequest, methods: MergeMethod[]): Promise<void> {
+  const values = await formDialog({
+    title: t('review.mergeTitle', { number: pr.number }),
+    message: t('review.mergeHint', { source: pr.sourceBranch, target: pr.targetBranch }),
+    confirmText: t('review.merge'),
+    fields: [
+      {
+        key: 'method',
+        label: t('review.mergeMethod'),
+        type: 'select',
+        value: methods[0],
+        options: methods.map((m) => ({ value: m, label: t(`review.method.${m}`) }))
+      }
+    ]
+  })
+  if (!values) return
+  try {
+    await api.mergePullRequest(path, pr.number, pr.url, values.method as MergeMethod)
+    toast('success', t('toast.prMerged', { number: pr.number }))
+    closeReview(path)
+    // The merge happened on the provider: bring it here.
+    void fetchAll(path)
   } catch (err) {
     toast('error', errorMessage(err))
   } finally {

@@ -3,6 +3,7 @@ import {
   autoFetchTick,
   closeDiff,
   closeFileView,
+  closeReview,
   closeTab,
   cycleTab,
   browseAndOpen,
@@ -25,6 +26,7 @@ import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import { RebaseDialog } from './components/RebaseDialog'
 import { FileView } from './components/FileViews'
+import { PullRequestView } from './components/PullRequestView'
 import { SettingsModal } from './components/SettingsModal'
 import { WhatsNew } from './components/WhatsNew'
 import { StatusBar } from './components/StatusBar'
@@ -133,6 +135,8 @@ export function App() {
       } else if (e.key === 'F5' && active?.path) {
         e.preventDefault()
         void refreshRepo(active.path)
+      } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.review && !isTyping(e.target)) {
+        closeReview(active.path)
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.fileView && !isTyping(e.target)) {
         closeFileView(active.path)
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.diff) {
@@ -165,6 +169,7 @@ function RepoScreen({ path }: { path: string }) {
   const settings = useStore((s) => s.settings)
   const hasDiff = useStore((s) => !!s.repos[path]?.diff)
   const hasFileView = useStore((s) => !!s.repos[path]?.fileView)
+  const hasReview = useStore((s) => !!s.repos[path]?.review)
   const [left, setLeft] = useState(settings.leftPanelWidth)
   const [right, setRight] = useState(settings.rightPanelWidth)
 
@@ -183,7 +188,15 @@ function RepoScreen({ path }: { path: string }) {
           onCommit={(v) => void saveSettings({ leftPanelWidth: v })}
         />
         <div className="center-panel">
-          {hasFileView ? <FileView path={path} /> : hasDiff ? <DiffView path={path} /> : <CommitGraph path={path} />}
+          {hasReview ? (
+            <PullRequestView path={path} />
+          ) : hasFileView ? (
+            <FileView path={path} />
+          ) : hasDiff ? (
+            <DiffView path={path} />
+          ) : (
+            <CommitGraph path={path} />
+          )}
         </div>
         <Resizer
           value={right}

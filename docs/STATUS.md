@@ -94,6 +94,17 @@ Known minor issues:
 - A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
 - `submodule update` paths are validated but not literal (`GIT_LITERAL_PATHSPECS`), and *Open in a new tab* on a submodule deinitialized outside the app focuses the parent instead.
 
+## Pull request review (unreleased)
+
+Code: `fetchPullRequestRange` / `getRangeFiles` in `repository.ts`, the review functions at the end of `src/main/accounts/providers.ts` and `accounts/index.ts`, `components/PullRequestView.tsx`.
+- Files and diff come from git, not from provider diff APIs: the pull request (the same source as checkout: `refs/pull/N/head`, GitLab's merge request ref, Bitbucket's branch) is fetched into `refs/leviathan/review/N` — not checkout's `refs/leviathan/pulls/N`, which tells whether `pr/N` has commits of its own — with its target branch; the range is merge-base..head, shown with the usual viewer. Nothing is checked out.
+- The conversation comes from the provider: general comments and comments on lines (shown read-only with a link to their file), GitLab's system notes and Bitbucket's deleted and pending comments left out. Comment, approve, merge: GitHub `issues/N/comments`, `pulls/N/reviews` (APPROVE), `pulls/N/merge`; GitLab notes, `approve`, `merge` (`squash`; no rebase there); Bitbucket `comments`, `approve`, `merge` (`merge_commit` / `squash` / `rebase_fast_forward`); Gitea `issues/N/comments`, `pulls/N/reviews` (APPROVED), `pulls/N/merge` (`Do`). Merging checks the pull request is still the one the review showed, like closing one.
+- The E2E test fakes GitHub without network: `GIT_SSH_COMMAND` runs `git upload-pack` on a local bare repository behind `git@github.com:org/app.git`, and `fetch` is replaced in the main process.
+
+Known minor issues:
+- Comments cannot be written on a line yet, and Markdown in comments shows as plain text.
+- At most 100 comments are read (one page).
+
 ## Syntax highlighting (unreleased)
 
 Code: `src/shared/syntax.ts` (language by file name, highlight.js output to classed text per line, merged with the changed-words marking), `src/renderer/src/syntax.ts` (highlight.js core with the registered languages, per hunk), `LineText` in `components/DiffLines.tsx`, the `--syn-*` colours in `app.css`.
