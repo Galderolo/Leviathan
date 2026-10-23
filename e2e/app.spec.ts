@@ -1,3 +1,5 @@
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { launch, Sandbox } from './app'
 
@@ -234,4 +236,94 @@ test('stops at a commit to edit it, and goes on after amending it', async () => 
   await expect(page.locator('.op-banner')).toHaveCount(0)
   expect(box.git(repo, 'log', '--format=%s', '-3')).toBe('three\ntwo, edited\none')
   expect(box.git(repo, 'show', 'HEAD~1:two.txt')).toBe('two, edited')
+})
+
+test('reviews a pull request: its files and diff, its conversation, approving and merging it', async () => {
+  // origin looks like GitHub but a fake ssh serves it from a local bare repository; GitHub's API is a stub in the
+  // main process. Nothing leaves the machine.
+  const origin = join(box.root, 'origin.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  const contrib = box.repo('contrib', { 'Assets/Login.cs': 'public class Login\n{\n    int tries = 3;\n}\n' })
+  box.git(contrib, 'remote', 'add', 'origin', origin)
+  box.git(contrib, 'push', '-q', 'origin', 'main')
+  box.git(contrib, 'checkout', '-qb', 'login')
+  box.write(contrib, { 'Assets/Login.cs': 'public class Login\n{\n    int tries = 5;\n}\n', 'NOTES.md': 'notes\n' })
+  box.git(contrib, 'add', '.')
+  box.git(contrib, 'commit', '-qm', 'Remember the user')
+  box.git(contrib, 'push', '-q', 'origin', 'login', 'login:refs/pull/12/head')
+  const work = join(box.root, 'work')
+  box.git(box.root, 'clone', '-q', origin, work)
+  box.git(work, 'remote', 'set-url', 'origin', 'git@github.com:org/app.git')
+  const fakeSsh = join(box.root, 'fake-ssh.sh')
+  const slashes = (p: string) => p.split('\\').join('/')
+  writeFileSync(fakeSsh, `#!/bin/sh\nexec git upload-pack "${slashes(origin)}"\n`)
+  box.env.GIT_SSH_COMMAND = `sh "${slashes(fakeSsh)}"`
+  await open(work)
+
+  await app!.evaluate(() => {
+    const pr = {
+      number: 12,
+      title: 'Remember the user',
+      user: { login: 'ana' },
+      head: { ref: 'login', repo: { full_name: 'org/app' } },
+      base: { ref: 'main', repo: { full_name: 'org/app' } },
+      draft: false,
+      html_url: 'https://github.com/org/app/pull/12',
+      updated_at: '2026-10-22T10:00:00Z'
+    }
+    const api = 'https://api.github.com'
+    const routes: Record<string, unknown> = {
+      [`GET ${api}/user`]: { login: 'me', id: 7, name: 'Me' },
+      [`GET ${api}/repos/org/app/pulls/12`]: pr,
+      [`GET ${api}/repos/org/app/issues/12/comments?per_page=100`]: [
+        { id: 1, user: { login: 'bo' }, body: 'Can we keep 3 tries?', created_at: '2026-10-22T11:00:00Z' }
+      ],
+      [`GET ${api}/repos/org/app/pulls/12/comments?per_page=100`]: [],
+      [`GET ${api}/repos/org/app/pulls/12/reviews?per_page=100`]: [],
+      [`POST ${api}/repos/org/app/issues/12/comments`]: { id: 3, user: { login: 'me' }, body: 'Fine', created_at: 'x' },
+      [`POST ${api}/repos/org/app/pulls/12/reviews`]: {},
+      [`PUT ${api}/repos/org/app/pulls/12/merge`]: { merged: true }
+    }
+    const calls: string[] = []
+    ;(globalThis as Record<string, unknown>).__calls = calls
+    globalThis.fetch = (async (url: string, init: { method?: string; body?: string } = {}) => {
+      const method = init.method ?? 'GET'
+      calls.push(`${method} ${url} ${init.body ?? ''}`.trim())
+      let body = routes[`${method} ${url}`]
+      if (body === undefined && url.startsWith(`${api}/repos/org/app/pulls?`)) body = [pr]
+      if (body === undefined && url === `${api}/repos/org/app`) body = { default_branch: 'main' }
+      const status = body === undefined ? 404 : 200
+      return { ok: status < 400, status, json: async () => body ?? {} }
+    }) as unknown as typeof fetch
+  })
+  await page.evaluate(() => window.leviathan.addAccount({ provider: 'github', host: 'github.com', token: 'fake' }))
+  await page.evaluate(() => location.reload())
+
+  await page.locator('.left-panel').getByText('Remember the user').click({ button: 'right' })
+  await menuItem('Review').click()
+  await expect(page.locator('.review-view .history-list .file-row')).toHaveText([/Login\.cs/, /NOTES\.md/])
+  await expect(page.locator('.review-view .diff-line.add .code')).toHaveText(['    int tries = 5;'])
+  expect(box.git(work, 'branch', '--show-current')).toBe('main')
+
+  await page.locator('.review-tab', { hasText: 'Conversation' }).click()
+  await expect(page.locator('.review-comment')).toHaveCount(1)
+  await page.locator('.review-reply textarea').fill('Fine')
+  await page.locator('.review-reply .btn-primary').click()
+  await expect(page.locator('.review-comment')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Approve' }).click()
+  await page.getByRole('button', { name: 'Merge…' }).click()
+  await page.locator('.modal select').selectOption('squash')
+  await page.locator('.modal .btn-primary').click()
+  await expect(page.locator('.review-view')).toHaveCount(0)
+
+  const writes = await app!.evaluate(() =>
+    ((globalThis as Record<string, unknown>).__calls as string[]).filter((c) => !c.startsWith('GET'))
+  )
+  // Approving and merging name the reviewed commit, so the server refuses if the pull request moved on.
+  const head = box.git(contrib, 'rev-parse', 'login')
+  expect(writes).toEqual([
+    'POST https://api.github.com/repos/org/app/issues/12/comments {"body":"Fine"}',
+    `POST https://api.github.com/repos/org/app/pulls/12/reviews {"event":"APPROVE","commit_id":"${head}"}`,
+    `PUT https://api.github.com/repos/org/app/pulls/12/merge {"merge_method":"squash","sha":"${head}"}`
+  ])
 })

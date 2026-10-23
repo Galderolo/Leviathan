@@ -19,6 +19,7 @@ import type {
   BlameLine,
   CommitDetails,
   DiffSource,
+  FileChange,
   FileCommit,
   FileDiff,
   GitRef,
@@ -869,17 +870,7 @@ export async function checkoutPullRequest(
   }
 
   const branch = `pr/${pr.number}`
-  let source = provider === 'gitlab' ? `refs/merge-requests/${pr.number}/head` : `refs/pull/${pr.number}/head`
-  if (provider === 'bitbucket') {
-    // Bitbucket keeps no pull request refs: only a branch of this same repository can be fetched.
-    if (pr.fromFork) {
-      throw new Error(
-        'This pull request comes from a fork, which Bitbucket does not publish in this repository. Add the fork as a remote to check out its branch.'
-      )
-    }
-    assertSafeArg(pr.sourceBranch, 'branch')
-    source = `refs/heads/${pr.sourceBranch}`
-  }
+  const source = pullRequestSource(pr, provider)
   // The last version fetched, out of sight of the branch lists, tells whether pr/N has commits of its own.
   const mirror = `refs/leviathan/pulls/${pr.number}`
   const previous = await refValue(repo, mirror)
@@ -893,6 +884,58 @@ export async function checkoutPullRequest(
       `${branch} has commits of its own that the pull request does not have. Rename or delete ${branch} to check out its latest version.`
     )
   await run(repo, ['checkout', '-q', branch, '--'])
+}
+
+/** Where the remote keeps a pull request's latest version. */
+function pullRequestSource(
+  pr: { number: number; sourceBranch: string; fromFork: boolean },
+  provider: Provider
+): string {
+  if (provider === 'gitlab') return `refs/merge-requests/${pr.number}/head`
+  if (provider !== 'bitbucket') return `refs/pull/${pr.number}/head`
+  // Bitbucket keeps no pull request refs: only a branch of this same repository can be fetched.
+  if (pr.fromFork) {
+    throw new Error(
+      'This pull request comes from a fork, which Bitbucket does not publish in this repository. Add the fork as a remote to fetch its branch.'
+    )
+  }
+  assertSafeArg(pr.sourceBranch, 'branch')
+  return `refs/heads/${pr.sourceBranch}`
+}
+
+/**
+ * Fetches a pull request and its target branch for a review, leaving branches and the work tree alone: what it
+ * brings is `base..head`, from the merge base with its target (later commits on the target are not part of it).
+ */
+export async function fetchPullRequestRange(
+  repo: string,
+  remote: string,
+  pr: { number: number; sourceBranch: string; targetBranch: string; fromFork: boolean },
+  provider: Provider
+): Promise<{ base: string; head: string }> {
+  assertSafeArg(remote, 'remote')
+  assertSafeArg(pr.targetBranch, 'branch')
+  if (!Number.isInteger(pr.number) || pr.number <= 0) throw new Error(`Invalid pull request number: ${pr.number}`)
+  const source = pullRequestSource(pr, provider)
+  // Not checkout's refs/leviathan/pulls/N: that one tells whether pr/N has commits of its own.
+  const review = `refs/leviathan/review/${pr.number}`
+  const target = `refs/remotes/${remote}/${pr.targetBranch}`
+  await git(['fetch', remote, `+${source}:${review}`, `+refs/heads/${pr.targetBranch}:${target}`], { cwd: repo })
+  const head = (await refValue(repo, review))!
+  const found = await git(['merge-base', target, head], { cwd: repo, okCodes: [0, 1] })
+  if (found.exitCode !== 0) {
+    throw new Error(
+      `This pull request has no history in common with ${pr.targetBranch} here (unrelated histories, or a shallow clone).`
+    )
+  }
+  return { base: found.stdout.trim(), head }
+}
+
+/** Files changed between two commits (a pull request's review range), renames found. */
+export async function getRangeFiles(repo: string, base: string, head: string): Promise<FileChange[]> {
+  assertSafeArg(base, 'commit')
+  assertSafeArg(head, 'commit')
+  return parseNameStatus(await run(repo, ['diff', '--name-status', '-z', '-M', base, head, '--']))
 }
 
 const HISTORY_FORMAT = '%x1e%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%cn%x1f%ce%x1f%ct%x1f%s%x1f'

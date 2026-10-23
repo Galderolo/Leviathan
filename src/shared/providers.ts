@@ -1,4 +1,4 @@
-import type { Account, Provider, Remote } from './types'
+import type { Account, MergeMethod, Provider, Remote } from './types'
 
 export const PROVIDERS: Provider[] = ['github', 'gitlab', 'bitbucket', 'gitea', 'other']
 
@@ -91,3 +91,8 @@ export const GITHUB_SCOPES = 'repo workflow read:user'
 export const GITLAB_CLIENT_ID = 'f6655291e303deffbfa9d7aa9dc8c88a0264f8b4354c33942da97316804c8e6e'
 /** The browser comes back to http://127.0.0.1:<port>/callback, the address registered with the application. */
 export const GITLAB_REDIRECT_PORT = 47231
+
+/** The ways a provider can merge a pull request (GitLab rebases in a separate step, not when merging). */
+export function mergeMethods(provider: Provider): MergeMethod[] {
+  return provider === 'gitlab' ? ['merge', 'squash'] : ['merge', 'squash', 'rebase']
+}

@@ -5,6 +5,7 @@ import type {
   FileChange,
   FileDiff,
   GitRef,
+  MergeMethod,
   PullRequest,
   PullMode,
   RepoState,
@@ -284,6 +285,60 @@ export async function closePullRequest(path: string, pr: PullRequest): Promise<v
   }
 }
 
+/** Opens a pull request's review in the center panel: its files and their diff, and its conversation. */
+export function openReview(path: string, pr: PullRequest): void {
+  patchRepo(path, { review: pr, fileView: null, diff: null })
+}
+
+export function closeReview(path: string): void {
+  patchRepo(path, { review: null })
+}
+
+/** Approves the reviewed pull request at `head`, the commit the review showed. */
+export async function approveReviewedPullRequest(path: string, pr: PullRequest, head: string): Promise<void> {
+  try {
+    await api.approvePullRequest(path, pr.number, pr.url, head)
+    toast('success', t('toast.prApproved', { number: pr.number }))
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+}
+
+/** Merges the reviewed pull request on the provider, the way the user picks among those it offers. */
+export async function mergeReviewedPullRequest(
+  path: string,
+  pr: PullRequest,
+  methods: MergeMethod[],
+  head: string
+): Promise<void> {
+  const values = await formDialog({
+    title: t('review.mergeTitle', { number: pr.number }),
+    message: t('review.mergeHint', { source: pr.sourceBranch, target: pr.targetBranch }),
+    confirmText: t('review.merge'),
+    fields: [
+      {
+        key: 'method',
+        label: t('review.mergeMethod'),
+        type: 'select',
+        value: methods[0],
+        options: methods.map((m) => ({ value: m, label: t(`review.method.${m}`) }))
+      }
+    ]
+  })
+  if (!values) return
+  try {
+    await api.mergePullRequest(path, pr.number, pr.url, values.method as MergeMethod, head)
+    toast('success', t('toast.prMerged', { number: pr.number }))
+    closeReview(path)
+    // The merge happened on the provider: bring it here.
+    void fetchAll(path)
+  } catch (err) {
+    toast('error', errorMessage(err))
+  } finally {
+    void loadPullRequests(path)
+  }
+}
+
 export async function checkoutPullRequest(path: string, pr: PullRequest): Promise<boolean> {
   const info = getRepo(path)?.pullRequests
   if (!info?.provider || !info.remote) return false
@@ -552,12 +607,12 @@ export function selectWip(path: string, keepFileView = false): void {
 
 /** History of a file from HEAD, or (`rev`) from a commit of another branch. The open diff gives way to it. */
 export function openFileHistory(path: string, file: string, rev: string | null = null): void {
-  patchRepo(path, { fileView: { kind: 'history', path: file, rev }, diff: null })
+  patchRepo(path, { fileView: { kind: 'history', path: file, rev }, diff: null, review: null })
 }
 
 /** Blame of a file in the working tree (`rev` null) or as it was in a commit. */
 export function openBlame(path: string, file: string, rev: string | null): void {
-  patchRepo(path, { fileView: { kind: 'blame', path: file, rev }, diff: null })
+  patchRepo(path, { fileView: { kind: 'blame', path: file, rev }, diff: null, review: null })
 }
 
 export function closeFileView(path: string): void {
@@ -569,7 +624,7 @@ export function closeFileView(path: string): void {
  * Older commits than the graph holds are loaded first (within reason).
  */
 export async function showCommitInGraph(path: string, hash: string): Promise<void> {
-  patchRepo(path, { fileView: null, diff: null })
+  patchRepo(path, { fileView: null, diff: null, review: null })
   const loaded = () => getRepo(path)?.commits.some((c) => c.hash === hash) ?? false
   for (let round = 0; round < 10 && !loaded() && getRepo(path)?.hasMore; round++) await loadMore(path)
   if (!loaded()) toast('info', t('history.notInGraph'))
@@ -644,7 +699,7 @@ function sameSource(a: DiffSource, b: DiffSource): boolean {
 }
 
 export async function openDiff(path: string, source: DiffSource): Promise<void> {
-  patchRepo(path, { diff: { source, data: null }, fileView: null })
+  patchRepo(path, { diff: { source, data: null }, fileView: null, review: null })
   await loadDiff(path, source)
 }
 

@@ -202,6 +202,19 @@ export interface PullRequest {
   updatedAt: string
 }
 
+/** A comment on a pull request: a general one, or one on a line of a file (`path`, `line` in its new version). */
+export interface PullRequestComment {
+  id: string
+  author: string
+  body: string
+  createdAt: string
+  path?: string
+  line?: number
+}
+
+/** How a pull request is merged: a merge commit, one squashed commit, or its commits rebased onto the target. */
+export type MergeMethod = 'merge' | 'squash' | 'rebase'
+
 export interface NewPullRequest {
   title: string
   body: string

@@ -158,3 +158,46 @@ describe('checking out a Bitbucket pull request', () => {
     ).rejects.toThrow(/fork/)
   })
 })
+
+describe('reviewing a pull request', () => {
+  const same = { number: 3, sourceBranch: 'feature', targetBranch: 'main', fromFork: false }
+
+  it('fetches what it brings: from the merge base with its target to its latest version', async () => {
+    // main moved on after the pull request was opened: its commits are not part of the review.
+    await git(['checkout', '-q', 'main'], { cwd: otherDir })
+    await commitFile(otherDir, 'm.txt', 'main moved on')
+    await git(['push', '-q', 'origin', 'main'], { cwd: otherDir })
+
+    const range = await repo.fetchPullRequestRange(work, 'origin', same, 'github')
+    expect(range.head).toBe(await tip(otherDir, 'feature'))
+    expect(range.base).toBe(await tip(work, 'main'))
+    expect(await repo.getRangeFiles(work, range.base, range.head)).toEqual([{ path: 'f.txt', status: 'A' }])
+    // The diff of one file, as the viewer shows it.
+    const diff = await repo.getDiff(work, { kind: 'commit', hash: range.head, parent: range.base, path: 'f.txt' })
+    expect(diff.hunks[0].lines.map((l) => l.text)).toEqual(['f.txt'])
+  })
+
+  it('keeps out of the ref that tells whether pr/N has commits of its own, and leaves the work tree alone', async () => {
+    writeFileSync(join(work, 'a.txt'), 'uncommitted\n')
+    await repo.fetchPullRequestRange(
+      work,
+      'origin',
+      { ...same, number: 7, sourceBranch: 'fork-work', fromFork: true },
+      'github'
+    )
+    expect(
+      (await git(['rev-parse', '-q', '--verify', 'refs/leviathan/pulls/7'], { cwd: work, okCodes: [0, 1] })).stdout
+    ).toBe('')
+    expect((await repo.getState(work)).head.branch).toBe('main')
+    expect((await repo.getState(work)).status.unstaged.map((f) => f.path)).toEqual(['a.txt'])
+  })
+
+  it('takes a Bitbucket pull request from its branch, and refuses one from a fork', async () => {
+    await git(['push', '-q', 'origin', ':refs/pull/3/head'], { cwd: otherDir })
+    const range = await repo.fetchPullRequestRange(work, 'origin', same, 'bitbucket')
+    expect(range.head).toBe(await tip(otherDir, 'feature'))
+    await expect(
+      repo.fetchPullRequestRange(work, 'origin', { ...same, number: 7, fromFork: true }, 'bitbucket')
+    ).rejects.toThrow(/fork/)
+  })
+})

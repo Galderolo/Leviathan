@@ -30,6 +30,7 @@ import {
   openInMergeTool,
   openFileHistory,
   openInteractiveRebase,
+  openReview,
   openSubmodule,
   openSubmoduleFolder,
   popStash,
@@ -99,6 +100,7 @@ export function commitMenu(path: string, hash: string): MenuItem[] {
 
 export function pullRequestMenu(path: string, pr: PullRequest): MenuItem[] {
   return [
+    { label: t('menu.reviewPr'), onClick: () => openReview(path, pr) },
     { label: t('menu.openPr'), onClick: () => openExternal(pr.url) },
     { label: t('menu.checkoutPr'), onClick: () => void checkoutPullRequest(path, pr) },
     { separator: true },

@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Review pull requests in the app** (GitHub, GitLab, Bitbucket, Gitea): a pull request's menu → *Review* shows its files and their diff (fetched with git: nothing is checked out and your branches are not touched) and its conversation, including comments on lines. Add a comment, approve it, and merge it on the server (merge commit, squash or rebase, as the provider allows).
 - **Interactive rebase**: drag a commit by its grip to move it, and *Edit* stops at a commit so you can change it (edit the files, commit with *Amend previous commit*, then *Continue*).
 - **Syntax highlighting in diffs** (changes, commits, file history), in both themes, with the changed words still marked. C#, shaders, Unity's YAML assets, USS/UXML, JavaScript/TypeScript, JSON, XML, Python, C/C++, Java, Kotlin, Go, Rust, Lua, shell, PowerShell, SQL and more; very large hunks stay plain so diffs open fast.
 

@@ -43,6 +43,10 @@ vi.stubGlobal(
     if (url === 'https://api.github.com/repos/org/app/pulls') return json(201, pr)
     if (url === 'https://api.github.com/repos/org/app') return json(200, { default_branch: 'main' })
     if (url === 'https://api.github.com/repos/org/app/pulls/12') return json(200, { ...pr, state: 'closed' })
+    if (url === 'https://api.github.com/repos/org/app/pulls/12/merge') return json(200, { merged: true })
+    if (url === 'https://api.github.com/repos/org/app/issues/12/comments') {
+      return json(201, { id: 1, user: { login: 'ana' }, body: 'Thanks', created_at: '2026-10-23T00:00:00Z' })
+    }
     return json(404, {})
   }
 )
@@ -126,6 +130,33 @@ describe('pull requests of a repository', () => {
       /not the one/i
     )
     expect(requests.slice(before).some((r) => r.method === 'PATCH')).toBe(false)
+  })
+
+  it('merges a reviewed pull request only while it is still the one the review showed', async () => {
+    const before = requests.length
+    const head = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
+    await expect(
+      accounts.mergeRepoPullRequest(work, 12, 'https://github.com/someone/else/pull/12', 'merge', head)
+    ).rejects.toThrow(/not the one/i)
+    expect(requests.slice(before).some((r) => r.method === 'PUT')).toBe(false)
+
+    await accounts.mergeRepoPullRequest(work, 12, pr.html_url, 'squash', head)
+    expect(requests.at(-1)).toMatchObject({
+      url: 'https://api.github.com/repos/org/app/pulls/12/merge',
+      method: 'PUT',
+      body: { merge_method: 'squash', sha: head }
+    })
+    await expect(accounts.mergeRepoPullRequest(work, 12, pr.html_url, 'octopus' as never, head)).rejects.toThrow()
+    // Approving is tied to the reviewed commit, and to the pull request the review showed, too.
+    await expect(
+      accounts.approveRepoPullRequest(work, 12, 'https://github.com/someone/else/pull/12', head)
+    ).rejects.toThrow(/not the one/i)
+  })
+
+  it('comments on a pull request, refusing an empty comment', async () => {
+    await expect(accounts.commentOnPullRequest(work, 12, '   ')).rejects.toThrow(/empty/)
+    expect((await accounts.commentOnPullRequest(work, 12, ' Thanks ')).body).toBe('Thanks')
+    expect(requests.at(-1)?.body).toEqual({ body: 'Thanks' })
   })
 
   it('never hands the token to the renderer', async () => {
