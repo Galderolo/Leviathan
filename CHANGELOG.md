@@ -4,17 +4,23 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Review pull requests in the app** (GitHub, GitLab, Bitbucket, Gitea): a pull request's menu → *Review* shows its files and their diff (fetched with git: nothing is checked out and your branches are not touched) and its conversation, including comments on lines. Add a comment, approve it, and merge it on the server (merge commit, squash or rebase, as the provider allows).
+- **Interactive rebase**: drag a commit by its grip to move it, and *Edit* stops at a commit so you can change it (edit the files, commit with *Amend previous commit*, then *Continue*).
+- **Syntax highlighting in diffs** (changes, commits, file history), in both themes, with the changed words still marked. C#, shaders, Unity's YAML assets, USS/UXML, JavaScript/TypeScript, JSON, XML, Python, C/C++, Java, Kotlin, Go, Rust, Lua, shell, PowerShell, SQL and more; very large hunks stay plain so diffs open fast.
+
 ### Changed
 
 - A push refused because the remote branch has commits that are not here yet ("fetch first") asks to pull them and push again, instead of showing git's hints.
 - While a merge, rebase, cherry-pick or revert waits to be continued, the uncommitted changes row stays in the graph even with no changes, so its banner (*Continue*, *Abort*) is always at hand.
 - The side panel stays quick with thousands of branches and tags: only the rows in view are drawn. With 4 500 refs, folding a section or typing in the filter took up to a second; now it takes a few tens of milliseconds.
 
-### Added
+### Fixed
 
-- **Review pull requests in the app** (GitHub, GitLab, Bitbucket, Gitea): a pull request's menu → *Review* shows its files and their diff (fetched with git: nothing is checked out and your branches are not touched) and its conversation, including comments on lines. Add a comment, approve it, and merge it on the server (merge commit, squash or rebase, as the provider allows).
-- **Interactive rebase**: drag a commit by its grip to move it, and *Edit* stops at a commit so you can change it (edit the files, commit with *Amend previous commit*, then *Continue*).
-- **Syntax highlighting in diffs** (changes, commits, file history), in both themes, with the changed words still marked. C#, shaders, Unity's YAML assets, USS/UXML, JavaScript/TypeScript, JSON, XML, Python, C/C++, Java, Kotlin, Go, Rust, Lua, shell, PowerShell, SQL and more; very large hunks stay plain so diffs open fast.
+- The editor presets find Rider, Visual Studio, Sublime Text, Notepad++, VS Code and Cursor where their installers put them when they are not on the PATH (Rider showed "rider was not found" although installed).
+- Git LFS on a server without file locks (Bitbucket Cloud): the side panel says the server has no locks instead of showing git-lfs's "Repository or object not found" error, and the lock actions are hidden there.
+- LFS patterns with spaces show them as spaces, not as `[[:space:]]`.
 
 ## [0.12.0] - 2026-10-23
 
@@ -29,9 +35,6 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
-- The editor presets find Rider, Visual Studio, Sublime Text, Notepad++, VS Code and Cursor where their installers put them when they are not on the PATH (Rider showed "rider was not found" although installed).
-- Git LFS on a server without file locks (Bitbucket Cloud): the side panel says the server has no locks instead of showing git-lfs's "Repository or object not found" error, and the lock actions are hidden there.
-- LFS patterns with spaces show them as spaces, not as `[[:space:]]`.
 - Choosing VS Code as the diff and merge tool failed with "Unknown merge tool vscode": git does not know VS Code by name, so Leviathan now tells it how to run it (its diff, and its three-way merge editor).
 
 ## [0.11.0] - 2026-10-23
