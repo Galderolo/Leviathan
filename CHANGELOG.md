@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Changed
+
+- Applying or popping a stash that changes files you have changed too says so (git refuses, to keep your changes) and offers *Stash mine and apply*: your changes to those files go into a stash of their own, then the stash you picked is applied.
+
 ### Fixed
 
 - Choosing VS Code as the diff and merge tool failed with "Unknown merge tool vscode": git does not know VS Code by name, so Leviathan now tells it how to run it (its diff, and its three-way merge editor).

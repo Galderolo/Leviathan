@@ -918,8 +918,31 @@ export function applyStash(path: string, stash: Stash): Promise<boolean> {
  * Applies (or pops) a stash. Its untracked files that already exist are left
  * as they are and git fails after applying the rest: that is said plainly
  * instead of git's file-by-file list.
+ *
+ * When files it changes have uncommitted changes, git refuses to apply it at all: the user can set those changes
+ * aside in a stash of their own first.
  */
 async function restoreStash(path: string, stash: Stash, pop: boolean): Promise<boolean> {
+  const inTheWay = await api.stashTrackedClashes(path, stash.index, stash.hash).catch(() => [])
+  if (inTheWay.length) {
+    const ok = await confirmDialog({
+      title: t('dlg.stashClashTitle'),
+      message:
+        inTheWay.length === 1
+          ? t('dlg.stashClashOne', { name: inTheWay[0] })
+          : t('dlg.stashClashMany', { count: inTheWay.length }),
+      confirmText: t('dlg.stashClashConfirm')
+    })
+    if (!ok) return false
+    const aside = await runOp(path, () => api.stashSave(path, t('stash.setAside', { name: stash.message }), inTheWay))
+    if (!aside) return false
+    // The new stash comes first: the picked one moved down, find it by its hash.
+    const moved = (await api.getState(path)).stashes.find((s) => s.hash === stash.hash)
+    if (!moved) return false
+    const done = await restoreStash(path, moved, pop)
+    if (done) toast('info', t('toast.stashSetAside'))
+    return done
+  }
   const clashes = await api.stashUntrackedClashes(path, stash.index, stash.hash).catch(() => [])
   const restore = pop ? api.stashPop : api.stashApply
   return runOp(path, () => restore(path, stash.index, stash.hash), {

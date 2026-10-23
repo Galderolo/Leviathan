@@ -252,6 +252,14 @@ const es: Record<keyof typeof en, string> = {
   'toast.copied': 'Copiado al portapapeles',
   'toast.nothingToStash': 'No hay cambios para guardar en stash',
   'toast.noStashes': 'No hay stashes',
+  'dlg.stashClashTitle': 'Tus cambios están en medio',
+  'dlg.stashClashOne':
+    '{name} tiene cambios sin commit que este stash también cambia, así que git no lo aplica (no se ha tocado nada). ¿Guardar antes tus cambios en un stash propio y aplicar este?',
+  'dlg.stashClashMany':
+    '{count} archivos tienen cambios sin commit que este stash también cambia, así que git no lo aplica (no se ha tocado nada). ¿Guardar antes tus cambios en un stash propio y aplicar este?',
+  'dlg.stashClashConfirm': 'Guardar los míos y aplicar',
+  'stash.setAside': 'Apartado para aplicar: {name}',
+  'toast.stashSetAside': 'Tus cambios están en un stash nuevo ("Apartado para aplicar…"): aplícalo para recuperarlos.',
   'toast.revealedExecutable': 'Por seguridad, este archivo se muestra en su carpeta en lugar de abrirlo.',
 
   'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Leviathan.',

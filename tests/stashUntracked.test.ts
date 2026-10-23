@@ -109,3 +109,22 @@ describe('stashUntrackedClashes', () => {
     expect(await repo.stashUntrackedClashes(dir, stash.index, stash.hash)).toEqual([])
   })
 })
+
+describe('stashTrackedClashes', () => {
+  it('names the files the stash changes that have uncommitted changes, which make git refuse to apply it', async () => {
+    await commitFile('other.txt', 'base\n', 'other')
+    writeFileSync(join(dir, 'tracked.txt'), 'stashed\n')
+    await repo.stashSave(dir, null)
+    const stash = await topStash()
+    expect(await repo.stashTrackedClashes(dir, stash.index, stash.hash)).toEqual([])
+
+    // A change elsewhere is no clash; one in the same file is, staged or not.
+    writeFileSync(join(dir, 'other.txt'), 'mine\n')
+    expect(await repo.stashTrackedClashes(dir, stash.index, stash.hash)).toEqual([])
+    writeFileSync(join(dir, 'tracked.txt'), 'mine\n')
+    expect(await repo.stashTrackedClashes(dir, stash.index, stash.hash)).toEqual(['tracked.txt'])
+    await expect(repo.stashApply(dir, stash.index, stash.hash)).rejects.toThrow(/overwritten/)
+    await repo.stage(dir, ['tracked.txt'])
+    expect(await repo.stashTrackedClashes(dir, stash.index, stash.hash)).toEqual(['tracked.txt'])
+  })
+})

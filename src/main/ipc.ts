@@ -112,6 +112,7 @@ const handlers: LeviathanInvokeApi = {
   stashApply: (path, index, hash) => repo.stashApply(path, index, hash),
   stashDrop: (path, index, hash) => repo.stashDrop(path, index, hash),
   stashUntrackedClashes: (path, index, hash) => repo.stashUntrackedClashes(path, index, hash),
+  stashTrackedClashes: (path, index, hash) => repo.stashTrackedClashes(path, index, hash),
 
   fetch: (path, background) => repo.fetchAll(path, background ? () => {} : progress(path), !!background),
   pull: (path, mode) => repo.pull(path, mode, progress(path)),
