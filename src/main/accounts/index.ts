@@ -28,6 +28,7 @@ import { git, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
 import {
   addPullRequestComment,
+  allowedMergeMethods,
   approvePullRequest,
   closePullRequest,
   createPullRequest,
@@ -415,6 +416,13 @@ async function reviewedProject(repo: string, number: number, url: string) {
 export async function approveRepoPullRequest(repo: string, number: number, url: string, head: string): Promise<void> {
   const { account, path, token } = await reviewedProject(repo, number, url)
   await approvePullRequest(account.provider, account.host, path, token, number, head)
+}
+
+/** The ways the project lets a pull request into `targetBranch` merge, its default first. */
+export async function getMergeMethods(repo: string, targetBranch: string): Promise<MergeMethod[]> {
+  if (typeof targetBranch !== 'string' || !targetBranch) throw new Error('Invalid branch')
+  const { account, path, token } = await requireProject(repo)
+  return allowedMergeMethods(account.provider, account.host, path, token, targetBranch)
 }
 
 /** Merges a pull request at the reviewed commit, after checking it is still the one the review showed. */

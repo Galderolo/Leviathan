@@ -203,6 +203,10 @@ export interface LeviathanInvokeApi {
   /** Approves the pull request at `head`, the commit the review showed (refused when it moved on). */
   approvePullRequest(repo: string, number: number, url: string, head: string): Promise<void>
   mergePullRequest(repo: string, number: number, url: string, method: MergeMethod, head: string): Promise<void>
+  /** The merge methods the project allows for a pull request into `targetBranch`, its default first. */
+  getMergeMethods(repo: string, targetBranch: string): Promise<MergeMethod[]>
+  /** Ends a pull request's review: the ref holding its commits goes. */
+  endPullRequestReview(repo: string, number: number): Promise<void>
   getDefaultBranch(repo: string): Promise<string | null>
   checkoutPullRequest(
     repo: string,
@@ -365,6 +369,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   commentOnPullRequest: true,
   approvePullRequest: true,
   mergePullRequest: true,
+  getMergeMethods: true,
+  endPullRequestReview: true,
   getDefaultBranch: true,
   checkoutPullRequest: true,
   generateSshKey: true,

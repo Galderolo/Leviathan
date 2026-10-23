@@ -4,6 +4,14 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Changed
+
+- Merging a reviewed pull request offers only the methods the project allows (for example squash when it takes no merge commits), its default first: GitHub's merge settings, GitLab's squash setting, Bitbucket's merge strategies of the target branch, Gitea's merge styles.
+
+### Fixed
+
+- A pull request review leaves nothing behind once it ends: the ref that held its commits (`refs/leviathan/review/N`) is deleted.
+
 ## [0.13.0] - 2026-10-23
 
 ### Added

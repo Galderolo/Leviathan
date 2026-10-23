@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Check, ExternalLink, GitMerge, X } from 'lucide-react'
-import { mergeMethods } from '../../../shared/providers'
 import type { FileChange, FileDiff, PullRequest, PullRequestComment } from '../../../shared/types'
 import { approveReviewedPullRequest, closeReview, mergeReviewedPullRequest, openExternal } from '../actions'
 import { useT } from '../i18n'
@@ -56,6 +55,10 @@ function Review({ path, pr }: { path: string; pr: PullRequest }) {
       live = false
     }
   }, [path, pr])
+
+  // A ref holds the pull request's commits while the review shows them: let go of it when the review ends, however
+  // it ends (closed, replaced by another view, its tab closed).
+  useEffect(() => () => void api.endPullRequestReview(path, pr.number).catch(() => {}), [path, pr.number])
 
   useEffect(() => {
     if (!range || !picked) return
@@ -116,11 +119,7 @@ function Review({ path, pr }: { path: string; pr: PullRequest }) {
           <button
             className="btn small btn-primary"
             disabled={busy || !provider || !range}
-            onClick={() =>
-              provider &&
-              range &&
-              void run(() => mergeReviewedPullRequest(path, pr, mergeMethods(provider), range.head))
-            }
+            onClick={() => provider && range && void run(() => mergeReviewedPullRequest(path, pr, range.head))}
           >
             <GitMerge size={13} /> {t('review.merge')}
           </button>

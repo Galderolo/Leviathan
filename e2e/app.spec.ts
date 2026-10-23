@@ -295,7 +295,10 @@ test('reviews a pull request: its files and diff, its conversation, approving an
       calls.push(`${method} ${url} ${init.body ?? ''}`.trim())
       let body = routes[`${method} ${url}`]
       if (body === undefined && url.startsWith(`${api}/repos/org/app/pulls?`)) body = [pr]
-      if (body === undefined && url === `${api}/repos/org/app`) body = { default_branch: 'main' }
+      // A project that takes no merge commits.
+      if (body === undefined && url === `${api}/repos/org/app`) {
+        body = { default_branch: 'main', allow_merge_commit: false, allow_squash_merge: true, allow_rebase_merge: true }
+      }
       const status = body === undefined ? 404 : 200
       return { ok: status < 400, status, json: async () => body ?? {} }
     }) as unknown as typeof fetch
@@ -316,9 +319,15 @@ test('reviews a pull request: its files and diff, its conversation, approving an
   await expect(page.locator('.review-comment')).toHaveCount(2)
   await page.getByRole('button', { name: 'Approve' }).click()
   await page.getByRole('button', { name: 'Merge…' }).click()
-  await page.locator('.modal select').selectOption('squash')
+  // Only the methods the project allows, the first of them chosen.
+  await expect(page.locator('.modal select')).toHaveValue('squash')
+  expect(
+    await page.locator('.modal select option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value))
+  ).toEqual(['squash', 'rebase'])
   await page.locator('.modal .btn-primary').click()
   await expect(page.locator('.review-view')).toHaveCount(0)
+  // The ref that held the pull request's commits for the review is gone with it.
+  await expect.poll(() => box.git(work, 'for-each-ref', 'refs/leviathan/review/')).toBe('')
 
   const writes = await app!.evaluate(() =>
     ((globalThis as Record<string, unknown>).__calls as string[]).filter((c) => !c.startsWith('GET'))
