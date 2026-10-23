@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom } from '../src/renderer/src/pushTarget'
+import {
+  amendsPushedCommit,
+  pushAfterCommitTarget,
+  pushNeedsPull,
+  remotesToChooseFrom
+} from '../src/renderer/src/pushTarget'
 import type { GitRef, HeadInfo, Remote } from '../src/shared/types'
 
 describe('pushAfterCommitTarget', () => {
@@ -56,5 +61,25 @@ describe('remotesToChooseFrom', () => {
   it('does not ask when there is only one remote (or none)', () => {
     expect(remotesToChooseFrom('topic', [head('topic')], [remote('origin')])).toBeNull()
     expect(remotesToChooseFrom('topic', [head('topic')], [])).toBeNull()
+  })
+})
+
+describe('pushNeedsPull', () => {
+  it('recognizes a push refused because the remote has commits that are not here yet', () => {
+    const fetchFirst = [
+      'To https://bitbucket.org/studio/game.git',
+      ' ! [rejected]            develop -> develop (fetch first)',
+      "error: failed to push some refs to 'https://bitbucket.org/studio/game.git'",
+      'hint: Updates were rejected because the remote contains work that you do not'
+    ].join('\n')
+    expect(pushNeedsPull(fetchFirst)).toBe(true)
+    expect(pushNeedsPull(' ! [rejected]        main -> main (non-fast-forward)')).toBe(true)
+  })
+
+  it('leaves other refusals alone', () => {
+    // A force push with lease refused: pulling would throw away what the user meant to replace.
+    expect(pushNeedsPull(' ! [rejected]        main -> main (stale info)')).toBe(false)
+    expect(pushNeedsPull(' ! [remote rejected] main -> main (pre-receive hook declined)')).toBe(false)
+    expect(pushNeedsPull('fatal: Authentication failed')).toBe(false)
   })
 })
