@@ -141,6 +141,13 @@ async function currentOperation(repo: string): Promise<RepoOperation> {
   return null
 }
 
+/** The commit an interactive rebase stopped at to be edited: git leaves `rebase-merge/amend` then (not for a conflict). */
+async function editingCommit(repo: string, operation: RepoOperation): Promise<string | null> {
+  if (operation !== 'rebase') return null
+  const text = await fs.readFile(join(await gitDir(repo), 'rebase-merge', 'amend'), 'utf8').catch(() => '')
+  return text.trim() || null
+}
+
 const SLOW_STATUS_MS = 500
 const INDEX_REFRESH_EVERY_MS = 5 * 60_000
 const lastIndexRefresh = new Map<string, number>()
@@ -201,6 +208,7 @@ export async function getState(repo: string): Promise<RepoState> {
   ])
   const lfs = new Set(lfsFiles)
   const size = ({ path, size }: { path: string; size: number }) => ({ path, size })
+  const editing = await editingCommit(repo, operation)
   await maybeRefreshIndex(repo, statusMs)
   return {
     path: repo,
@@ -210,6 +218,7 @@ export async function getState(repo: string): Promise<RepoState> {
     remotes,
     status,
     operation,
+    editing,
     unpushed,
     lfsFiles,
     // Files that go through LFS are staged as small pointers: big ones are only those outside LFS.

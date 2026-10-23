@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp } from 'lucide-react'
-import { REBASE_ACTIONS, rebaseProblem, type RebaseAction, type RebaseItem } from '../../../shared/rebase'
+import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react'
+import { moveItem, REBASE_ACTIONS, rebaseProblem, type RebaseAction, type RebaseItem } from '../../../shared/rebase'
 import type { RebaseCommit } from '../../../shared/types'
 import { closeInteractiveRebase, startInteractiveRebase } from '../actions'
 import { useT } from '../i18n'
@@ -22,6 +22,9 @@ function RebaseForm({ path, base, commits }: { path: string; base: string; commi
   const branch = useStore((s) => s.repos[path]?.state?.head.branch) ?? 'HEAD'
   const [items, setItems] = useState<RebaseItem[]>(() => commits.map((c) => ({ hash: c.hash, action: 'pick' })))
   const [running, setRunning] = useState(false)
+  // Drag and drop by the grip: the commit being dragged and the row it is over (indexes in `items`).
+  const [dragging, setDragging] = useState<number | null>(null)
+  const [over, setOver] = useState<number | null>(null)
   const runningRef = useRef(false)
   runningRef.current = running
   const byHash = new Map(commits.map((c) => [c.hash, c]))
@@ -46,6 +49,10 @@ function RebaseForm({ path, base, commits }: { path: string; base: string; commi
       ;[next[index], next[to]] = [next[to], next[index]]
       return next
     })
+  const endDrag = () => {
+    setDragging(null)
+    setOver(null)
+  }
   const start = async () => {
     setRunning(true)
     if ((await startInteractiveRebase(path, base, items)) === 'refused') setRunning(false)
@@ -73,7 +80,28 @@ function RebaseForm({ path, base, commits }: { path: string; base: string; commi
             return (
               <div
                 key={item.hash}
-                className={cx('rebase-row', item.action === 'drop' && 'dropped', melded && 'melded')}
+                className={cx(
+                  'rebase-row',
+                  item.action === 'drop' && 'dropped',
+                  melded && 'melded',
+                  dragging === index && 'dragging',
+                  // The list is newest first: a commit moved later lands above the row, earlier below it.
+                  over === index &&
+                    dragging !== null &&
+                    dragging !== index &&
+                    (dragging < index ? 'drop-above' : 'drop-below')
+                )}
+                onDragOver={(e) => {
+                  if (dragging === null) return
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                  if (over !== index) setOver(index)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (dragging !== null) setItems((prev) => moveItem(prev, dragging, index))
+                  endDrag()
+                }}
                 onKeyDown={(e) => {
                   if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
                   e.preventDefault()
@@ -81,6 +109,19 @@ function RebaseForm({ path, base, commits }: { path: string; base: string; commi
                 }}
               >
                 <div className="rebase-line">
+                  <span
+                    className="rebase-grip"
+                    title={t('rebase.drag')}
+                    draggable={!running}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/plain', item.hash)
+                      setDragging(index)
+                    }}
+                    onDragEnd={endDrag}
+                  >
+                    <GripVertical size={14} />
+                  </span>
                   <select
                     value={item.action}
                     disabled={running}

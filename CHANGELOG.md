@@ -6,10 +6,12 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Changed
 
+- While a merge, rebase, cherry-pick or revert waits to be continued, the uncommitted changes row stays in the graph even with no changes, so its banner (*Continue*, *Abort*) is always at hand.
 - The side panel stays quick with thousands of branches and tags: only the rows in view are drawn. With 4 500 refs, folding a section or typing in the filter took up to a second; now it takes a few tens of milliseconds.
 
 ### Added
 
+- **Interactive rebase**: drag a commit by its grip to move it, and *Edit* stops at a commit so you can change it (edit the files, commit with *Amend previous commit*, then *Continue*).
 - **Syntax highlighting in diffs** (changes, commits, file history), in both themes, with the changed words still marked. C#, shaders, Unity's YAML assets, USS/UXML, JavaScript/TypeScript, JSON, XML, Python, C/C++, Java, Kotlin, Go, Rust, Lua, shell, PowerShell, SQL and more; very large hunks stay plain so diffs open fast.
 
 ## [0.12.0] - 2026-10-23

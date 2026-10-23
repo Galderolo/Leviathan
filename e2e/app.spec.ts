@@ -175,3 +175,63 @@ test('highlights the code of a diff', async () => {
   // The changed number is still marked inside the highlighted line.
   await expect(page.locator('.diff-line.add mark.word-change').first()).toContainText('2')
 })
+
+/** A repository with `base` and then commits one, two and three, each adding its own file. */
+function threeCommits(): string {
+  const repo = box.repo('game', { 'base.txt': 'base\n' })
+  for (const name of ['one', 'two', 'three']) {
+    box.write(repo, { [`${name}.txt`]: `${name}\n` })
+    box.git(repo, 'add', '.')
+    box.git(repo, 'commit', '-qm', name)
+  }
+  return repo
+}
+
+async function openRebaseFromBase(): Promise<void> {
+  await commitRows().filter({ hasText: 'first' }).click({ button: 'right' })
+  await menuItem('Interactive rebase from here…').click()
+  await expect(page.locator('.rebase-row')).toHaveCount(3)
+}
+
+test('reorders commits by dragging them in the interactive rebase', async () => {
+  const repo = threeCommits()
+  await open(repo)
+  await openRebaseFromBase()
+
+  // Newest first: drag "one" (bottom) above "three" (top).
+  const row = (subject: string) => page.locator('.rebase-row', { hasText: subject })
+  await row('one').locator('.rebase-grip').dragTo(row('three'))
+  await expect(page.locator('.rebase-subject')).toHaveText(['one', 'three', 'two'])
+  await page.getByRole('button', { name: 'Start rebase' }).click()
+
+  await expect.poll(() => box.git(repo, 'log', '--format=%s', '-3')).toBe('one\nthree\ntwo')
+})
+
+test('stops at a commit to edit it, and goes on after amending it', async () => {
+  const repo = threeCommits()
+  await open(repo)
+  await openRebaseFromBase()
+
+  await page.locator('.rebase-row', { hasText: 'two' }).locator('select').selectOption('edit')
+  await page.getByRole('button', { name: 'Start rebase' }).click()
+  await page.locator('.graph-row.row-wip').click()
+  await expect(page.locator('.op-banner')).toContainText('so you can change it')
+
+  box.write(repo, { 'two.txt': 'two, edited\n' })
+  await expect(unstaged().locator('.file-row', { hasText: 'two.txt' })).toBeVisible()
+  await page.getByRole('button', { name: 'Stage all changes' }).click()
+  await expect(page.locator('.file-section').nth(1).locator('.file-row')).toHaveCount(1)
+  // Turning amend on loads the commit's message first.
+  const amend = page.locator('.commit-box input[type=checkbox]')
+  await amend.click()
+  await expect(amend).toBeChecked()
+  await expect(page.locator('.summary-input')).toHaveValue('two')
+  await page.locator('.summary-input').fill('two, edited')
+  await page.locator('.btn-commit').click()
+  await expect.poll(() => box.git(repo, 'log', '--format=%s', '-1')).toBe('two, edited')
+  await page.locator('.op-banner').getByRole('button', { name: 'Continue' }).click()
+
+  await expect(page.locator('.op-banner')).toHaveCount(0)
+  expect(box.git(repo, 'log', '--format=%s', '-3')).toBe('three\ntwo, edited\none')
+  expect(box.git(repo, 'show', 'HEAD~1:two.txt')).toBe('two, edited')
+})

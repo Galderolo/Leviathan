@@ -24,6 +24,7 @@ import {
   type GraphColumns
 } from '../graphColumns'
 import { useRepo, useStore } from '../store'
+import { wipShown } from '../checkoutView'
 import { openMenu } from '../ui'
 import { cx, formatDate, groupRefs, initials, laneColor, matchesFilter, shortHash, type RefLabel } from '../utils'
 import { Avatar } from './common'
@@ -46,7 +47,7 @@ export function CommitGraph({ path }: { path: string }) {
   const changeCount = state
     ? state.status.staged.length + state.status.unstaged.length + state.status.conflicted.length
     : 0
-  const hasChanges = changeCount > 0
+  const hasChanges = wipShown(state)
 
   const items = useMemo(
     () => buildGraphItems(commits ?? [], stashes ?? [], headHash, hasChanges),

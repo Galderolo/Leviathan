@@ -140,6 +140,9 @@ const es: Record<keyof typeof en, string> = {
   'op.continue': 'Continuar',
   'op.conflictsHint': 'Resuelve los conflictos, márcalos como resueltos y continúa.',
   'op.readyHint': 'Todos los conflictos resueltos. Puedes continuar.',
+  'toast.rebaseEditStop': 'El rebase se ha parado en el commit a editar: cámbialo, haz amend y continúa.',
+  'op.editHint':
+    'Parado en {hash} para que lo cambies: edita los archivos, haz commit con "Modificar el commit anterior" y continúa.',
 
   'commit.commit': 'commit',
   'commit.parents': 'padres',
@@ -378,9 +381,11 @@ const es: Record<keyof typeof en, string> = {
   'menu.interactiveRebase': 'Rebase interactivo desde aquí…',
   'rebase.title': 'Rebase interactivo de {branch}',
   'rebase.hint':
-    'Los commits posteriores a {base}, del más reciente al más antiguo. Unir funde un commit en el de debajo.',
+    'Los commits posteriores a {base}, del más reciente al más antiguo. Arrastra uno por su asa para moverlo. Unir funde un commit en el de debajo; Editar para ahí para que lo cambies.',
   'rebase.pick': 'Mantener',
   'rebase.reword': 'Cambiar mensaje',
+  'rebase.edit': 'Editar (parar aquí)',
+  'rebase.drag': 'Arrastra para moverlo',
   'rebase.squash': 'Unir',
   'rebase.fixup': 'Unir sin mensaje',
   'rebase.drop': 'Descartar',

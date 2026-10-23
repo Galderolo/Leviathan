@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { git } from '../src/main/git/runner'
-import { viewAfterCheckout } from '../src/renderer/src/checkoutView'
+import { viewAfterCheckout, wipShown } from '../src/renderer/src/checkoutView'
 
 let dir: string
 
@@ -52,5 +52,20 @@ describe('viewAfterCheckout', () => {
 
   it('has nothing to show without a state', () => {
     expect(viewAfterCheckout(null)).toBeNull()
+  })
+})
+
+describe('wipShown', () => {
+  const status = (n: number) => ({
+    staged: [],
+    unstaged: Array.from({ length: n }, (_, i) => ({ path: `f${i}`, status: 'M' as const })),
+    conflicted: []
+  })
+  it('shows the uncommitted changes row when there are changes, or an operation to continue or abort', () => {
+    expect(wipShown({ status: status(1), operation: null })).toBe(true)
+    expect(wipShown({ status: status(0), operation: null })).toBe(false)
+    // A rebase stopped at a commit to edit has no changes yet: its banner (Continue / Abort) lives there.
+    expect(wipShown({ status: status(0), operation: 'rebase' })).toBe(true)
+    expect(wipShown(null)).toBe(false)
   })
 })
