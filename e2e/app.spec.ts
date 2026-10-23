@@ -67,10 +67,10 @@ test('creates a branch and switches between branches', async () => {
   await toolbarButton('Branch').click()
   await page.locator('.modal input').first().fill('feature/rising')
   await page.locator('.modal .btn-primary').click()
-  await expect.poll(() => box.git(repo, 'branch', '--show-current')).toBe('feature/rising')
+  await expect.poll(() => box.branch(repo)).toBe('feature/rising')
 
   await page.locator('.left-panel').getByText('main', { exact: true }).dblclick()
-  await expect.poll(() => box.git(repo, 'branch', '--show-current')).toBe('main')
+  await expect.poll(() => box.branch(repo)).toBe('main')
 })
 
 test('stashes the changes and pops them back', async () => {
@@ -307,7 +307,7 @@ test('reviews a pull request: its files and diff, its conversation, approving an
   await menuItem('Review').click()
   await expect(page.locator('.review-view .history-list .file-row')).toHaveText([/Login\.cs/, /NOTES\.md/])
   await expect(page.locator('.review-view .diff-line.add .code')).toHaveText(['    int tries = 5;'])
-  expect(box.git(work, 'branch', '--show-current')).toBe('main')
+  expect(box.branch(work)).toBe('main')
 
   await page.locator('.review-tab', { hasText: 'Conversation' }).click()
   await expect(page.locator('.review-comment')).toHaveCount(1)
@@ -330,4 +330,30 @@ test('reviews a pull request: its files and diff, its conversation, approving an
     `POST https://api.github.com/repos/org/app/pulls/12/reviews {"event":"APPROVE","commit_id":"${head}"}`,
     `PUT https://api.github.com/repos/org/app/pulls/12/merge {"merge_method":"squash","sha":"${head}"}`
   ])
+})
+
+test('offers to pull and push again when the remote has commits that are not here yet', async () => {
+  const origin = join(box.root, 'origin.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(repo, 'remote', 'add', 'origin', origin)
+  box.git(repo, 'push', '-q', '-u', 'origin', 'main')
+  // Someone else pushes first.
+  const other = join(box.root, 'other')
+  box.git(box.root, 'clone', '-q', origin, other)
+  box.write(other, { 'b.txt': 'theirs\n' })
+  box.git(other, 'add', '.')
+  box.git(other, 'commit', '-qm', 'theirs')
+  box.git(other, 'push', '-q')
+  box.write(repo, { 'c.txt': 'mine\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'mine')
+  await open(repo)
+
+  await toolbarButton('Push').click()
+  await expect(page.locator('.modal')).toContainText('has commits on the remote that are not here yet')
+  await page.locator('.modal .btn-primary').click()
+
+  await expect.poll(() => box.git(origin, 'log', '--format=%s', 'main')).toContain('mine')
+  expect(box.git(origin, 'log', '--format=%s', 'main')).toContain('theirs')
 })

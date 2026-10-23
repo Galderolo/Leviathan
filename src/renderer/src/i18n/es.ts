@@ -232,6 +232,11 @@ const es: Record<keyof typeof en, string> = {
   'dlg.dropStash': '¿Borrar el stash "{name}"? No se puede deshacer.',
   'dlg.stashMessage': 'Mensaje del stash (opcional)',
   'dlg.forcePush': '¿Push forzado de "{branch}"? Se perderán los commits del remoto que no tengas en local.',
+  'dlg.pushBehindTitle': 'El remoto tiene commits nuevos',
+  'dlg.pushBehind':
+    '{branch} tiene commits en el remoto que aún no tienes (alguien hizo push después de tu último pull), así que git no ha hecho el push. ¿Hacer pull primero y volver a hacer push?',
+  'dlg.pullAndPush': 'Hacer pull y push',
+  'error.pushBehindOther': '{branch} tiene commits en el remoto que aún no tienes: haz pull primero y luego push.',
   'dlg.addRemote': 'Añadir remoto',
   'dlg.remote': 'Remoto',
   'dlg.publishBranch': 'Publicar {branch} en…',

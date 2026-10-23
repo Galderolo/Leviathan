@@ -229,6 +229,11 @@ const en = {
   'dlg.dropStash': 'Delete the stash "{name}"? This cannot be undone.',
   'dlg.stashMessage': 'Stash message (optional)',
   'dlg.forcePush': 'Force push "{branch}"? Commits on the remote that you do not have locally will be lost.',
+  'dlg.pushBehindTitle': 'The remote has new commits',
+  'dlg.pushBehind':
+    '{branch} has commits on the remote that are not here yet (someone pushed after your last pull), so git did not push. Pull them first, then push again?',
+  'dlg.pullAndPush': 'Pull and push',
+  'error.pushBehindOther': '{branch} has commits on the remote that are not here yet: pull it first, then push.',
   'dlg.addRemote': 'Add remote',
   'dlg.remote': 'Remote',
   'dlg.publishBranch': 'Publish {branch} to…',

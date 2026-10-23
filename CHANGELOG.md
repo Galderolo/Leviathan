@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Changed
 
+- A push refused because the remote branch has commits that are not here yet ("fetch first") asks to pull them and push again, instead of showing git's hints.
 - While a merge, rebase, cherry-pick or revert waits to be continued, the uncommitted changes row stays in the graph even with no changes, so its banner (*Continue*, *Abort*) is always at hand.
 - The side panel stays quick with thousands of branches and tags: only the rows in view are drawn. With 4 500 refs, folding a section or typing in the filter took up to a second; now it takes a few tens of milliseconds.
 

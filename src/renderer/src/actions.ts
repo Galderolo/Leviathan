@@ -27,7 +27,7 @@ import { followDiff } from './diffFollow'
 import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
 import { discardSummary } from './fileSelection'
 import { branchStartOptions } from './branchStart'
-import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom } from './pushTarget'
+import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom, pushNeedsPull } from './pushTarget'
 import { stoppedOperation } from './operationStop'
 import { viewAfterCheckout, wipShown } from './checkoutView'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
@@ -754,6 +754,8 @@ async function runOp(
     undo?: { label: string; mode?: RepoChange['mode'] }
     /** Shown instead of git's message when the command fails. */
     errorText?: string
+    /** Failures the caller handles itself (no error toast for them). */
+    quiet?: (err: unknown) => boolean
   } = {}
 ): Promise<boolean> {
   if (opts.busy) patchRepo(path, { busy: opts.busy, progress: null })
@@ -768,7 +770,7 @@ async function runOp(
     // (git's own message mentions commands the app does not offer).
     const stopped = stoppedOperation(before, await api.getState(path).catch(() => null))
     if (stopped?.conflicts) toast('info', t('toast.stoppedForConflicts'))
-    else toast('error', opts.errorText ?? errorMessage(err))
+    else if (!opts.quiet?.(err)) toast('error', opts.errorText ?? errorMessage(err))
     // Show the banner and the conflicted files.
     if (stopped) selectWip(path)
     return false
@@ -903,10 +905,26 @@ export async function push(path: string, opts: { force?: boolean; branch?: strin
     if (!values) return false
     remote = values.remote
   }
-  return runOp(path, () => api.push(path, { force: !!opts.force, branch: opts.branch, remote }), {
+  // git refuses when the remote branch has commits that are not here yet: offer to pull them first.
+  let behind = false
+  const ok = await runOp(path, () => api.push(path, { force: !!opts.force, branch: opts.branch, remote }), {
     busy: 'push',
-    success: t('toast.pushed', { branch })
+    success: t('toast.pushed', { branch }),
+    quiet: (err) => (behind = !opts.force && pushNeedsPull(errorMessage(err)))
   })
+  if (ok || !behind) return ok
+  // Pull brings the checked-out branch only.
+  if (branch !== headBranch(path)) {
+    toast('error', t('error.pushBehindOther', { branch }))
+    return false
+  }
+  const again = await confirmDialog({
+    title: t('dlg.pushBehindTitle'),
+    message: t('dlg.pushBehind', { branch }),
+    confirmText: t('dlg.pullAndPush')
+  })
+  if (!again || !(await pull(path))) return false
+  return push(path, { branch: opts.branch })
 }
 
 /** Asks for the name and the starting point (preselected: `startHash`, or HEAD). */

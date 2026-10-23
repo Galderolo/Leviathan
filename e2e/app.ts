@@ -47,6 +47,18 @@ export class Sandbox {
     return execFileSync('git', args, { cwd, env: this.env, encoding: 'utf8' }).trim()
   }
 
+  /**
+   * The checked-out branch, '' while it cannot be read: polled during a checkout, HEAD can be unreadable for an
+   * instant ("failed to resolve HEAD").
+   */
+  branch(dir: string): string {
+    try {
+      return this.git(dir, 'branch', '--show-current')
+    } catch {
+      return ''
+    }
+  }
+
   /** A repository with one commit of `files`. */
   repo(name: string, files: Record<string, string>): string {
     const dir = join(this.root, name)

@@ -32,3 +32,11 @@ export function pushAfterCommitTarget(head: HeadInfo, remotes: Remote[]): string
 export function amendsPushedCommit(amend: boolean, before: { head: HeadInfo; unpushed: string[] }): boolean {
   return amend && !!before.head.hash && !before.unpushed.includes(before.head.hash)
 }
+
+/**
+ * Whether git refused a push because the remote branch has commits that are not here yet ("fetch first",
+ * "non-fast-forward"): pulling first fixes it. A force push with lease refused ("stale info") is not one of them.
+ */
+export function pushNeedsPull(message: string): boolean {
+  return /\[rejected\][^\n]*\((fetch first|non-fast-forward)\)/.test(message)
+}
