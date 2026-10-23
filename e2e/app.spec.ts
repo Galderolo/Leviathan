@@ -85,9 +85,10 @@ test('stashes the changes and pops them back', async () => {
   expect(box.git(repo, 'status', '--porcelain')).toBe('')
 
   await toolbarButton('Pop').click()
-  await expect.poll(() => box.read(repo, 'a.txt')).toBe('mine\n')
+  // git drops the stash only once all of it is back, new files included (they come a moment after the others).
+  await expect.poll(() => box.git(repo, 'stash', 'list')).toBe('')
+  expect(box.read(repo, 'a.txt')).toBe('mine\n')
   expect(box.read(repo, 'new.txt')).toBe('new\n')
-  expect(box.git(repo, 'stash', 'list')).toBe('')
 })
 
 test('shows a merge stopped by a conflict, and aborts it', async () => {
@@ -239,6 +240,9 @@ test('stops at a commit to edit it, and goes on after amending it', async () => 
 })
 
 test('reviews a pull request: its files and diff, its conversation, approving and merging it', async () => {
+  // Accounts need the system's secure storage, which a Linux runner without a keyring does not have (the app
+  // refuses to keep tokens only obfuscated). Windows and macOS cover this test.
+  test.skip(process.platform === 'linux' && !!process.env.CI, 'no keyring for the account token')
   // origin looks like GitHub but a fake ssh serves it from a local bare repository; GitHub's API is a stub in the
   // main process. Nothing leaves the machine.
   const origin = join(box.root, 'origin.git')
