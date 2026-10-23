@@ -339,10 +339,10 @@ describe('Bitbucket Cloud', () => {
       [`${API}/user/workspaces?pagelen=100`]: {
         body: { values: [{ workspace: { slug: 'studio' } }, { workspace: { slug: 'me' } }] }
       },
-      [`${API}/repositories/studio?role=member&sort=-updated_on&pagelen=100`]: {
+      [`${API}/repositories/studio?sort=-updated_on&pagelen=100`]: {
         body: { values: [repo('studio/game', '2026-10-01T00:00:00Z')] }
       },
-      [`${API}/repositories/me?role=member&sort=-updated_on&pagelen=100`]: {
+      [`${API}/repositories/me?sort=-updated_on&pagelen=100`]: {
         body: { values: [repo('me/tool', '2026-10-05T00:00:00Z')] }
       }
     })

@@ -336,12 +336,14 @@ async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Pr
     .map((w) => (w.workspace && typeof w.workspace === 'object' ? String((w.workspace as Json).slug ?? '') : ''))
     .filter(Boolean)
     .slice(0, 20)
+  // No role filter: role=member only counts explicit access, which leaves out the repositories of a workspace
+  // the user owns. Without it the list is every repository of the workspace the user can see.
   const pages = await Promise.all(
     workspaces.map((slug) =>
       getJson(
         'bitbucket',
         host,
-        `/repositories/${encodeURIComponent(slug)}?role=member&sort=-updated_on&pagelen=100`,
+        `/repositories/${encodeURIComponent(slug)}?sort=-updated_on&pagelen=100`,
         token,
         fetchFn
       )
