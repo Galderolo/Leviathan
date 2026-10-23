@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-23
+
 ### Added
 
 - **Folder history**: a file's menu → *Folder history* lists the commits that changed something in its folder; pick one to see the files it changed there and their diff. In any history or blame, the folders in the path at the top open their own history, to go up a level.
