@@ -424,7 +424,10 @@ export function LeftPanel({ path }: { path: string }) {
                   }
                 </div>
                 {lfs.locksError && <div className="side-note error">{lfs.locksError}</div>}
-                {!lfs.locksError && !lfs.locksLoading && !locks.length && (
+                {!lfs.locksError && lfs.locksUnsupported && (
+                  <div className="side-note">{t('lfs.locksUnsupported')}</div>
+                )}
+                {!lfs.locksError && !lfs.locksUnsupported && !lfs.locksLoading && !locks.length && (
                   <div className="side-note">{t('lfs.noLocks')}</div>
                 )}
                 {!lfs.locksError && locks.length > 0 && !lfs.verified && (

@@ -79,7 +79,13 @@ export async function getLfsInfo(repo: string): Promise<LfsInfo> {
  * Locks on the LFS server, telling the user's own from the others when the server can.
  * `--json` hides errors (an unreachable server lists nothing), so an empty list is asked again without it.
  */
-export async function getLfsLocks(repo: string, background = false): Promise<{ locks: LfsLock[]; verified: boolean }> {
+/** git-lfs's answer when the server has no locking API (Bitbucket Cloud answers 404: "Repository or object not found"). */
+const NO_LOCKING_API = /not found|does not support|not supported|\b404\b/i
+
+export async function getLfsLocks(
+  repo: string,
+  background = false
+): Promise<{ locks: LfsLock[]; verified: boolean; unsupported?: boolean }> {
   const env = background ? NON_INTERACTIVE_ENV : undefined
   const locks = (args: string[]) => run(repo, ['lfs', 'locks', ...args], { env })
   const verified = parseVerifiedLocks(await locks(['--verify', '--json']))
@@ -91,7 +97,16 @@ export async function getLfsLocks(repo: string, background = false): Promise<{ l
     // The server may not support verifying: list the locks without telling whose they are.
   }
   const unverified = parseLocks(await locks(['--json']), null)
-  if (!unverified.length) await locks([])
+  if (!unverified.length) {
+    // --json hides errors: ask again for git-lfs's reason, which tells a server without locks from a broken one.
+    try {
+      await locks([])
+    } catch (err) {
+      if (err instanceof Error && NO_LOCKING_API.test(err.message))
+        return { locks: [], verified: false, unsupported: true }
+      throw err
+    }
+  }
   return { locks: unverified, verified: false }
 }
 

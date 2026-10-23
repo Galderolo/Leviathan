@@ -16,8 +16,8 @@ interface FakeLock {
   owner: { name: string }
 }
 
-/** A Git LFS locking API: locks created through it belong to "me". */
-async function lockServer(opts: { verify: boolean }) {
+/** A Git LFS locking API: locks created through it belong to "me". `noLocks`: a server without one (Bitbucket Cloud). */
+async function lockServer(opts: { verify: boolean; noLocks?: boolean }) {
   const locks: FakeLock[] = []
   const requests: { method: string; path: string; body: Record<string, unknown> }[] = []
   let next = 1
@@ -32,6 +32,7 @@ async function lockServer(opts: { verify: boolean }) {
         res.writeHead(status, { 'Content-Type': 'application/vnd.git-lfs+json' })
         res.end(JSON.stringify(payload))
       }
+      if (opts.noLocks && url.pathname.includes('/locks')) return send(404, { message: 'Not Found' })
       if (url.pathname.endsWith('/locks/verify')) {
         if (!opts.verify) return send(404, { message: 'Not found' })
         return send(200, {
@@ -314,6 +315,14 @@ describe.skipIf(!hasLfs)('LFS locks', () => {
     })
     server.locks.length = 0
     expect(await lfs.getLfsLocks(work)).toEqual({ locks: [], verified: false })
+  })
+
+  it('says when the server has no locking API at all, like Bitbucket Cloud, instead of failing', async () => {
+    const old = server
+    server = await lockServer({ verify: false, noLocks: true })
+    await old.close()
+    await git(['config', 'lfs.url', server.url], { cwd: work })
+    expect(await lfs.getLfsLocks(work, true)).toEqual({ locks: [], verified: false, unsupported: true })
   })
 
   it('reports an unreachable server instead of an empty list', async () => {

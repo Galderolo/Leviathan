@@ -72,6 +72,11 @@ describe('labels', () => {
     )
   })
 
+  it('shows the spaces that .gitattributes writes as [[:space:]]', () => {
+    const pattern = 'Assets/TextMesh[[:space:]]Pro/Shaders/**'
+    expect(patternLabel({ pattern, lockable: false, source: '.gitattributes' })).toBe('Assets/TextMesh Pro/Shaders/**')
+  })
+
   it('formats file sizes', () => {
     expect(formatSize(51 * 1024 * 1024 + 1024)).toBe('51 MB')
     expect(formatSize(1.5 * 1024 * 1024 * 1024)).toBe('1.5 GB')

@@ -229,7 +229,11 @@ export interface LeviathanInvokeApi {
   // Git LFS
   getLfsInfo(repo: string): Promise<LfsInfo>
   /** `background` never asks for credentials. `verified` is false when the server cannot tell whose locks they are. */
-  getLfsLocks(repo: string, background?: boolean): Promise<{ locks: LfsLock[]; verified: boolean }>
+  /** `unsupported`: the server has no Git LFS locking API (Bitbucket Cloud). */
+  getLfsLocks(
+    repo: string,
+    background?: boolean
+  ): Promise<{ locks: LfsLock[]; verified: boolean; unsupported?: boolean }>
   lfsLock(repo: string, path: string): Promise<LfsLock>
   /** `force` releases someone else's lock. */
   lfsUnlock(repo: string, lock: { id: string; path: string }, force: boolean): Promise<void>

@@ -457,6 +457,7 @@ const en = {
   'lfs.patterns': 'Tracked patterns',
   'lfs.locks': 'Locked files',
   'lfs.noLocks': 'No locked files',
+  'lfs.locksUnsupported': 'This server does not offer Git LFS locks (Bitbucket Cloud has none).',
   'lfs.refreshLocks': 'Reload locks',
   'lfs.unverified': 'The server does not say whose locks these are',
   'lfs.you': 'you',
