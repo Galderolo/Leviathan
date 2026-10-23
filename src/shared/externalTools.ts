@@ -69,8 +69,25 @@ export function editorArgs(template: string, target: { file?: string; line?: num
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
 /** `git difftool` arguments to show one file's change with `tool` (null: the one set in git's config). */
+/**
+ * Tools git does not know by name, with the command it should run for them (`$LOCAL`, `$REMOTE`, `$BASE` and
+ * `$MERGED` are git's). VS Code: its diff, and its three-way merge editor.
+ */
+const TOOL_COMMANDS: Record<string, { diff: string; merge: string }> = {
+  vscode: {
+    diff: 'code --wait --diff "$LOCAL" "$REMOTE"',
+    merge: 'code --wait --merge "$REMOTE" "$LOCAL" "$BASE" "$MERGED"'
+  }
+}
+
 export function difftoolArgs(source: DiffSource, tool: string | null): string[] {
-  const args = ['difftool', '-y', ...(tool ? [`--tool=${tool}`] : [])]
+  const command = tool ? TOOL_COMMANDS[tool]?.diff : undefined
+  const args = [
+    ...(command ? ['-c', `difftool.${tool}.cmd=${command}`] : []),
+    'difftool',
+    '-y',
+    ...(tool ? [`--tool=${tool}`] : [])
+  ]
   if (source.kind === 'staged') args.push('--cached')
   if (source.kind === 'commit') args.push(source.parent ?? EMPTY_TREE, source.hash)
   // A renamed file: both paths, so the tool compares its old and new versions.
@@ -80,5 +97,13 @@ export function difftoolArgs(source: DiffSource, tool: string | null): string[] 
 
 /** `git mergetool` arguments to resolve one conflicted file with `tool` (null: the one set in git's config). */
 export function mergetoolArgs(path: string, tool: string | null): string[] {
-  return ['mergetool', '-y', ...(tool ? [`--tool=${tool}`] : []), '--', path]
+  const command = tool ? TOOL_COMMANDS[tool]?.merge : undefined
+  return [
+    ...(command ? ['-c', `mergetool.${tool}.cmd=${command}`] : []),
+    'mergetool',
+    '-y',
+    ...(tool ? [`--tool=${tool}`] : []),
+    '--',
+    path
+  ]
 }
