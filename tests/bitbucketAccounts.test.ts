@@ -18,17 +18,19 @@ vi.mock('electron', () => ({
 
 const API = 'https://api.bitbucket.org/2.0'
 let emailsAllowed = true
+let noUsername = false
 const requests: { url: string; auth?: string }[] = []
 vi.stubGlobal('fetch', async (url: string, init?: { headers?: Record<string, string> }) => {
   requests.push({ url, auth: init?.headers?.Authorization })
   const json = (status: number, body: unknown) => ({ ok: status < 400, status, json: async () => body })
-  if (url === `${API}/user`) return json(200, { username: 'dcervera1', display_name: 'David', nickname: 'dc' })
+  if (url === `${API}/user`)
+    return json(200, { ...(noUsername ? {} : { username: 'dcervera1' }), display_name: 'David', nickname: 'dc' })
   if (url === `${API}/user/emails?pagelen=100`) {
     return emailsAllowed
       ? json(200, { values: [{ email: 'david@studio.example', is_primary: true, is_confirmed: true }] })
       : json(403, {})
   }
-  if (url === `${API}/repositories/studio/game/pullrequests?state=OPEN&pagelen=50`) {
+  if (url === `${API}/repositories/studio/game/pullrequests?state=OPEN&sort=-updated_on&pagelen=50`) {
     return json(200, {
       values: [
         {
@@ -52,6 +54,7 @@ const { git } = await import('../src/main/git/runner')
 
 beforeEach(() => {
   emailsAllowed = true
+  noUsername = false
   for (const account of accounts.listAccounts()) accounts.removeAccount(account.id)
 })
 
@@ -77,6 +80,20 @@ describe('Bitbucket accounts', () => {
       email: 'me@studio.example'
     })
     expect(account).toMatchObject({ username: 'DCervera1', email: 'me@studio.example' })
+  })
+
+  it('ask for the username when Bitbucket does not give it', async () => {
+    noUsername = true
+    await expect(
+      accounts.addAccount({ provider: 'bitbucket', host: 'bitbucket.org', token: 'ATATT-secret' })
+    ).rejects.toThrow('username')
+    const account = await accounts.addAccount({
+      provider: 'bitbucket',
+      host: 'bitbucket.org',
+      token: 'ATATT-secret',
+      username: 'dcervera1'
+    })
+    expect(account.username).toBe('dcervera1')
   })
 
   it('are Bitbucket Cloud only: a Data Center server goes as "Other"', async () => {

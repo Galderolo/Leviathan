@@ -263,7 +263,9 @@ export function AccountsSection() {
             />
           </div>
           {draft.provider === 'bitbucket' && <div className="dim small">{t('accounts.bitbucketHint')}</div>}
-          <div className="dim small">{t('accounts.tokenHint')}</div>
+          <div className="dim small">
+            {draft.provider === 'bitbucket' ? t('accounts.bitbucketTokenHint') : t('accounts.tokenHint')}
+          </div>
           <div className="ssh-actions">
             {tokenUrl && <a onClick={() => openExternal(tokenUrl)}>{t('accounts.createToken')}</a>}
             <span style={{ flex: 1 }} />

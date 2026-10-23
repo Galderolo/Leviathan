@@ -64,7 +64,7 @@ async function request(
     throw new Error(`Could not reach ${host}: ${detail}`)
   }
   if (res.status === 401 || res.status === 403) {
-    const label = `${LABELS[provider]} rejected the token (${res.status})`
+    const label = `${LABELS[provider]} rejected the token (${res.status})${provider === 'bitbucket' ? await missingScopes(res) : ''}`
     throw new Error(
       send
         ? `${label}. It needs permission to change pull requests (GitHub: repo, GitLab: api, Bitbucket: write:pullrequest:bitbucket).`
@@ -155,7 +155,7 @@ export async function listPullRequests(
       : provider === 'github'
         ? '/pulls?state=open&sort=updated&direction=desc&per_page=50'
         : provider === 'bitbucket'
-          ? '/pullrequests?state=OPEN&pagelen=50'
+          ? '/pullrequests?state=OPEN&sort=-updated_on&pagelen=50'
           : '/pulls?state=open&sort=recentupdate&limit=50'
   const body = await getJson(provider, host, projectPath(provider, path) + query, token, fetchFn)
   return items(body).map((r) => toPullRequest(provider, r))
@@ -317,15 +317,17 @@ async function bitbucketIdentity(
   user: Json,
   fetchFn: FetchFn
 ): Promise<{ username: string; name: string; email: string }> {
-  const username = String(user.username ?? user.nickname ?? '')
-  const name = String(user.display_name || username)
+  // A nickname is no username (git refuses it): without one, the user types it.
+  const username = String(user.username ?? '')
+  const name = String(user.display_name || user.nickname || username)
   let email = ''
   try {
     const emails = items(await getJson('bitbucket', host, '/user/emails?pagelen=100', token, fetchFn))
     const primary = emails.find((e) => e.is_primary && e.is_confirmed) ?? emails.find((e) => e.is_confirmed)
     email = String(primary?.email ?? '')
-  } catch {
-    // The token may not read emails: the commit email is asked for instead.
+  } catch (err) {
+    // Only a token that may not read emails falls back to asking for one; any other failure is reported.
+    if (!/rejected the token/.test(err instanceof Error ? err.message : '')) throw err
   }
   return { username, name, email }
 }
@@ -335,7 +337,7 @@ async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Pr
   const workspaces = items(await getJson('bitbucket', host, '/user/workspaces?pagelen=100', token, fetchFn))
     .map((w) => (w.workspace && typeof w.workspace === 'object' ? String((w.workspace as Json).slug ?? '') : ''))
     .filter(Boolean)
-    .slice(0, 20)
+    .slice(0, 50)
   // No role filter: role=member only counts explicit access, which leaves out the repositories of a workspace
   // the user owns. Without it the list is every repository of the workspace the user can see.
   const pages = await Promise.all(
@@ -352,11 +354,11 @@ async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Pr
   return pages
     .flatMap(items)
     .map((r) => {
-      const links = r.links && typeof r.links === 'object' ? ((r.links as Json).clone as Json[] | undefined) : undefined
-      const https = (links ?? []).find((l) => l.name === 'https')
       return {
         fullName: String(r.full_name),
-        cloneUrl: String(https?.href ?? `https://${host}/${String(r.full_name)}.git`),
+        // Not Bitbucket's clone link, which carries the username: git would use it over the account bound to the
+        // repository (a rebind, a username typed in the form, a colleague's link).
+        cloneUrl: `https://${host}/${String(r.full_name)}.git`,
         private: Boolean(r.is_private),
         description: String(r.description ?? ''),
         updatedAt: String(r.updated_on ?? '')
@@ -364,4 +366,16 @@ async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Pr
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 100)
+}
+
+/** Bitbucket's reason for refusing a token, with the permissions it lacks (`error.detail.required`). */
+async function missingScopes(res: Awaited<ReturnType<FetchFn>>): Promise<string> {
+  const body = (await res.json().catch(() => null)) as Json | null
+  const error = body?.error && typeof body.error === 'object' ? (body.error as Json) : null
+  if (!error) return ''
+  const detail = error.detail && typeof error.detail === 'object' ? (error.detail as Json) : null
+  const required = Array.isArray(detail?.required) ? (detail!.required as unknown[]).map(String) : []
+  const message = typeof error.message === 'string' ? error.message : ''
+  if (required.length) return `: it needs ${required.join(', ')}`
+  return message ? `: ${message}` : ''
 }

@@ -119,6 +119,9 @@ export async function addAccount(input: {
     identity = await fetchIdentity(input.provider, host, token)
     // Bitbucket: the username git shows in remote URLs, when the user knows it better than the API.
     if (input.provider === 'bitbucket' && input.username?.trim()) identity.username = input.username.trim()
+    if (!identity.username) {
+      throw new Error('Type your Bitbucket username (the one in your remote URLs): Bitbucket did not give it')
+    }
   }
   // Bitbucket has no no-reply address: without the email from the API, the user gives one.
   if (!input.email?.trim() && !identity.email) {
