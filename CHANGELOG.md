@@ -13,6 +13,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Changed
 
 - Starting Leviathan while it is open brings the open window forward instead of opening a second one.
+- Discarding several files asks with how many there are (and how many are new) instead of listing their paths, which made the dialog huge.
 
 ### Fixed
 

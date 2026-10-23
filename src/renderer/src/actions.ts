@@ -24,7 +24,7 @@ import { isFetchDue } from './autofetch'
 import { coalesce } from './coalesce'
 import { followDiff } from './diffFollow'
 import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
-import { listForDialog } from './fileSelection'
+import { discardSummary } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom } from './pushTarget'
 import { stoppedOperation } from './operationStop'
@@ -1189,15 +1189,18 @@ export function unstageAll(path: string): Promise<boolean> {
   return runOp(path, () => api.unstageAll(path), { log: false })
 }
 
-/** Discards changes after a confirmation that names the files. True when they were discarded. */
+/** Discards changes after a confirmation that names the file, or says how many. True when they were discarded. */
 export async function discardFiles(path: string, files: FileChange[]): Promise<boolean> {
-  let message = t('dlg.discardFile', { name: files[0]?.path ?? '' })
-  if (files.length > 1) {
-    const { shown, more } = listForDialog(files.map((f) => f.path))
-    const list = shown.map((p) => '• ' + p).join('\n') + (more ? '\n' + t('dlg.andMore', { count: more }) : '')
-    message = t('dlg.discardFiles', { count: files.length }) + '\n\n' + list
+  const summary = discardSummary(files)
+  const single = summary.name !== null
+  let message =
+    summary.name !== null
+      ? t('dlg.discardFile', { name: summary.name })
+      : t('dlg.discardFiles', { count: summary.count })
+  if (summary.untracked) {
+    message +=
+      '\n\n' + (single ? t('dlg.discardUntracked') : t('dlg.discardUntrackedCount', { count: summary.untracked }))
   }
-  if (files.some((f) => f.status === '?')) message += '\n\n' + t('dlg.discardUntracked')
   const ok = await confirmDialog({ title: t('menu.discard'), message, confirmText: t('menu.discard'), danger: true })
   if (!ok) return false
   // `git restore` does not move submodules: those go back to the recorded commit instead.
