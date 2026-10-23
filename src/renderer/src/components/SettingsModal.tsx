@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { openExternal, openWhatsNew, saveSettings } from '../actions'
-import { LANGUAGES, useT } from '../i18n'
+import { LANGUAGES, useT, type TKey } from '../i18n'
 import { useStore } from '../store'
+import { cx } from '../utils'
 import type { Settings, ThemeSetting } from '../../../shared/types'
 import { AccountsSection } from './AccountsSection'
 import { ExternalToolsSettings } from './ExternalToolsSettings'
@@ -10,27 +12,25 @@ import { UpdateSettings } from './UpdateNotice'
 
 const REPO_URL = 'https://github.com/Galderolo/Leviathan'
 
+type Section = 'general' | 'tools' | 'accounts' | 'ssh' | 'updates' | 'about'
+
+const SECTIONS: { id: Section; label: TKey }[] = [
+  { id: 'general', label: 'settings.general' },
+  { id: 'tools', label: 'tools.title' },
+  { id: 'accounts', label: 'accounts.title' },
+  { id: 'ssh', label: 'ssh.title' },
+  { id: 'updates', label: 'update.title' },
+  { id: 'about', label: 'settings.about' }
+]
+
+// The section shown last, while the app runs.
+let lastSection: Section = 'general'
+
+/** Settings, by section. Every change is saved at once. */
 export function SettingsModal() {
   const open = useStore((s) => s.settingsOpen)
-  const settings = useStore((s) => s.settings)
-  const versions = useStore((s) => s.versions)
   const t = useT()
-  const [language, setLanguage] = useState<Settings['language']>(settings.language)
-  const [limit, setLimit] = useState(String(settings.commitLimit))
-  const [theme, setTheme] = useState<ThemeSetting>(settings.theme)
-  const [autoFetch, setAutoFetch] = useState(String(settings.autoFetchMinutes))
-  const [autoUpdate, setAutoUpdate] = useState(settings.autoUpdate)
-
-  useEffect(() => {
-    if (open) {
-      setLanguage(settings.language)
-      setLimit(String(settings.commitLimit))
-      setTheme(settings.theme)
-      setAutoFetch(String(settings.autoFetchMinutes))
-      setAutoUpdate(settings.autoUpdate)
-    }
-    // Only when Settings opens: the sections that save at once (external tools) must not reset the rest.
-  }, [open])
+  const [section, setSection] = useState<Section>(lastSection)
 
   // Esc closes Settings wherever the focus is, unless a dialog is open on top of it.
   useEffect(() => {
@@ -44,103 +44,153 @@ export function SettingsModal() {
 
   if (!open) return null
   const close = () => useStore.setState({ settingsOpen: false })
-  const save = async () => {
-    const commitLimit = Math.max(100, Math.min(50000, Number(limit) || settings.commitLimit))
-    await saveSettings({ language, commitLimit, theme, autoFetchMinutes: Number(autoFetch), autoUpdate })
-    close()
+  const show = (id: Section) => {
+    lastSection = id
+    setSection(id)
   }
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <form
-        className="modal wide settings"
-        onSubmit={(e) => {
-          e.preventDefault()
-          void save()
-        }}
-        onKeyDown={(e) => e.key === 'Escape' && close()}
-      >
-        <div className="modal-title">{t('settings.title')}</div>
-        {/* Scrolls on short windows, with the title and the buttons always in view. */}
-        <div className="settings-body">
-          <label className="field">
-            <span>{t('settings.theme')}</span>
-            <select value={theme} onChange={(e) => setTheme(e.target.value as ThemeSetting)}>
-              <option value="system">{t('settings.themeSystem')}</option>
-              <option value="dark">{t('settings.themeDark')}</option>
-              <option value="light">{t('settings.themeLight')}</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>{t('settings.language')}</span>
-            <select value={language} onChange={(e) => setLanguage(e.target.value as Settings['language'])}>
-              <option value="auto">{t('settings.auto')}</option>
-              {LANGUAGES.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>{t('settings.commitLimit')}</span>
-            <input
-              type="number"
-              min={100}
-              max={50000}
-              step={100}
-              value={limit}
-              onChange={(e) => setLimit(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>{t('settings.autoFetch')}</span>
-            <select value={autoFetch} onChange={(e) => setAutoFetch(e.target.value)}>
-              {[0, 1, 5, 10, 30].map((m) => (
-                <option key={m} value={String(m)}>
-                  {m === 0 ? t('settings.autoFetchOff') : t('settings.autoFetchEvery', { count: m })}
-                </option>
-              ))}
-            </select>
-          </label>
-          <UpdateSettings auto={autoUpdate} onAuto={setAutoUpdate} />
-          <ExternalToolsSettings />
-          <AccountsSection />
-          <SshKeysSection />
-          <div className="about">
-            <div>
-              Leviathan {versions.app} · git {versions.git}
-            </div>
-            <div className="dim">{t('settings.license')}</div>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                openWhatsNew()
-              }}
-            >
-              {t('whatsNew.title')}
-            </a>
-            <a
-              href={REPO_URL}
-              onClick={(e) => {
-                e.preventDefault()
-                openExternal(REPO_URL)
-              }}
-            >
-              {REPO_URL.replace('https://', '')}
-            </a>
+      <div className="modal settings" role="dialog" aria-label={t('settings.title')}>
+        <div className="settings-header">
+          <div className="modal-title">{t('settings.title')}</div>
+          <button type="button" className="icon-btn" title={t('common.close')} onClick={close}>
+            <X size={16} />
+          </button>
+        </div>
+        <div className="settings-layout">
+          <nav className="settings-nav">
+            {SECTIONS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={cx('settings-nav-item', section === s.id && 'active')}
+                onClick={() => show(s.id)}
+              >
+                {t(s.label)}
+              </button>
+            ))}
+          </nav>
+          {/* Every section stays mounted (hidden when not shown): a sign-in or a form in progress survives a switch. */}
+          <div className="settings-body" hidden={section !== 'general'}>
+            <GeneralSettings />
+          </div>
+          <div className="settings-body" hidden={section !== 'tools'}>
+            <ExternalToolsSettings />
+          </div>
+          <div className="settings-body" hidden={section !== 'accounts'}>
+            <AccountsSection />
+          </div>
+          <div className="settings-body" hidden={section !== 'ssh'}>
+            <SshKeysSection />
+          </div>
+          <div className="settings-body" hidden={section !== 'updates'}>
+            <AutoUpdateSettings />
+          </div>
+          <div className="settings-body" hidden={section !== 'about'}>
+            <About />
           </div>
         </div>
-        <div className="modal-actions">
-          <button type="button" className="btn" onClick={close}>
-            {t('common.cancel')}
-          </button>
-          <button type="submit" className="btn btn-primary">
-            {t('common.save')}
-          </button>
-        </div>
-      </form>
+      </div>
+    </div>
+  )
+}
+
+function GeneralSettings() {
+  const t = useT()
+  const settings = useStore((s) => s.settings)
+  const [limit, setLimit] = useState(String(settings.commitLimit))
+  const saveLimit = () => {
+    const commitLimit = Math.max(100, Math.min(50000, Number(limit) || settings.commitLimit))
+    setLimit(String(commitLimit))
+    if (commitLimit !== settings.commitLimit) void saveSettings({ commitLimit })
+  }
+  return (
+    <>
+      <label className="field">
+        <span>{t('settings.theme')}</span>
+        <select value={settings.theme} onChange={(e) => void saveSettings({ theme: e.target.value as ThemeSetting })}>
+          <option value="system">{t('settings.themeSystem')}</option>
+          <option value="dark">{t('settings.themeDark')}</option>
+          <option value="light">{t('settings.themeLight')}</option>
+        </select>
+      </label>
+      <label className="field">
+        <span>{t('settings.language')}</span>
+        <select
+          value={settings.language}
+          onChange={(e) => void saveSettings({ language: e.target.value as Settings['language'] })}
+        >
+          <option value="auto">{t('settings.auto')}</option>
+          {LANGUAGES.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        <span>{t('settings.commitLimit')}</span>
+        <input
+          type="number"
+          min={100}
+          max={50000}
+          step={100}
+          value={limit}
+          onChange={(e) => setLimit(e.target.value)}
+          onBlur={saveLimit}
+          onKeyDown={(e) => e.key === 'Enter' && saveLimit()}
+        />
+      </label>
+      <label className="field">
+        <span>{t('settings.autoFetch')}</span>
+        <select
+          value={String(settings.autoFetchMinutes)}
+          onChange={(e) => void saveSettings({ autoFetchMinutes: Number(e.target.value) })}
+        >
+          {[0, 1, 5, 10, 30].map((m) => (
+            <option key={m} value={String(m)}>
+              {m === 0 ? t('settings.autoFetchOff') : t('settings.autoFetchEvery', { count: m })}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  )
+}
+
+function AutoUpdateSettings() {
+  const auto = useStore((s) => s.settings.autoUpdate)
+  return <UpdateSettings auto={auto} onAuto={(value) => void saveSettings({ autoUpdate: value })} />
+}
+
+function About() {
+  const t = useT()
+  const versions = useStore((s) => s.versions)
+  return (
+    <div className="about">
+      <div>
+        Leviathan {versions.app} · git {versions.git}
+      </div>
+      <div className="dim">{t('settings.license')}</div>
+      <a
+        href="#"
+        onClick={(e) => {
+          e.preventDefault()
+          openWhatsNew()
+        }}
+      >
+        {t('whatsNew.title')}
+      </a>
+      <a
+        href={REPO_URL}
+        onClick={(e) => {
+          e.preventDefault()
+          openExternal(REPO_URL)
+        }}
+      >
+        {REPO_URL.replace('https://', '')}
+      </a>
     </div>
   )
 }

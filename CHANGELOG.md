@@ -8,6 +8,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 - **Stash some files**: right-click a file (or several selected ones) in the uncommitted changes → *Stash this file* / *Stash N files*. The toolbar's Stash still stashes everything.
 
+### Changed
+
+- Settings is organized in sections (General, External tools, Accounts, SSH keys, Updates, About), and every change is saved at once: there is no Save button any more.
+
 ## [0.10.0] - 2026-10-23
 
 ### Added
