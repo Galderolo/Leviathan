@@ -10,6 +10,7 @@ const api = window.leviathan
 
 const GITHUB_SSH_URL = 'https://github.com/settings/ssh/new'
 const GITLAB_SSH_URL = 'https://gitlab.com/-/user_settings/ssh_keys'
+const BITBUCKET_SSH_URL = 'https://bitbucket.org/account/settings/ssh-keys/'
 
 export function SshKeysSection() {
   const t = useT()
@@ -97,6 +98,7 @@ export function SshKeysSection() {
         </button>
         <a onClick={() => openExternal(GITHUB_SSH_URL)}>{t('ssh.addGithub')}</a>
         <a onClick={() => openExternal(GITLAB_SSH_URL)}>{t('ssh.addGitlab')}</a>
+        <a onClick={() => openExternal(BITBUCKET_SSH_URL)}>{t('ssh.addBitbucket')}</a>
       </div>
     </div>
   )

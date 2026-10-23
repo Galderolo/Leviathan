@@ -92,6 +92,15 @@ Known minor issues:
 - A renamed submodule's diff in a commit shows "No changes" (git prints no `index` line for a pure rename).
 - `submodule update` paths are validated but not literal (`GIT_LITERAL_PATHSPECS`), and *Open in a new tab* on a submodule deinitialized outside the app focuses the parent instead.
 
+## Bitbucket Cloud (unreleased)
+
+Code: the `bitbucket` branches in `src/main/accounts/providers.ts`, `bitbucketIdentity` / `bitbucketRepos` there, the Bitbucket case of `checkoutPullRequest`. Researched in October 2026:
+- App passwords stopped working in June 2026. Accounts use Atlassian API tokens with scopes (`read:user`, `read:workspace`, `read:repository`, `write:repository`, `read:pullrequest`, `write:pullrequest`, all `:bitbucket`), sent to the API as `Authorization: Bearer`; git takes them as the password of the Bitbucket username (case-sensitive, the one in remote URLs such as `https://user@bitbucket.org/…`), so that username is the account's and the form lets the user type it.
+- Sign-in from the browser would need an OAuth consumer whose secret ships in the app: not done.
+- `/user` gives the username, `/user/emails` the primary confirmed email (Bitbucket has no no-reply address; without that scope the form asks for the email). The account-wide repository list is gone: repositories come from `/user/workspaces`, then `/repositories/{workspace}?role=member` per workspace (at most 20 workspaces, 100 repositories).
+- Pull requests: `/pullrequests?state=OPEN`, created with `source` / `destination` branches (and `draft`), closed with `/decline`; the main branch is `mainbranch.name`. Bitbucket keeps no pull request refs: a same-repository pull request is fetched from its branch (also as `pr/N` when a local branch of that name holds other work); one from a fork asks to add the fork as a remote.
+- Bitbucket Data Center has another API: only `bitbucket.org`; a server goes as "Other".
+
 ## External tools (0.10.0)
 
 Code: `src/shared/externalTools.ts` (editor presets, command templates, `git difftool` / `mergetool` arguments), `src/main/tools.ts` (launching), `src/main/cli.ts` (the command-line folder and the Windows PATH install), `components/ExternalToolsSettings.tsx`.

@@ -839,7 +839,17 @@ export async function checkoutPullRequest(
   }
 
   const branch = `pr/${pr.number}`
-  const source = provider === 'gitlab' ? `refs/merge-requests/${pr.number}/head` : `refs/pull/${pr.number}/head`
+  let source = provider === 'gitlab' ? `refs/merge-requests/${pr.number}/head` : `refs/pull/${pr.number}/head`
+  if (provider === 'bitbucket') {
+    // Bitbucket keeps no pull request refs: only a branch of this same repository can be fetched.
+    if (pr.fromFork) {
+      throw new Error(
+        'This pull request comes from a fork, which Bitbucket does not publish in this repository. Add the fork as a remote to check out its branch.'
+      )
+    }
+    assertSafeArg(pr.sourceBranch, 'branch')
+    source = `refs/heads/${pr.sourceBranch}`
+  }
   // The last version fetched, out of sight of the branch lists, tells whether pr/N has commits of its own.
   const mirror = `refs/leviathan/pulls/${pr.number}`
   const previous = await refValue(repo, mirror)

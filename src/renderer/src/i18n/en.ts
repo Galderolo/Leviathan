@@ -274,6 +274,7 @@ const en = {
   'ssh.created': 'SSH key created. Public key copied to the clipboard.',
   'ssh.addGithub': 'Add to GitHub',
   'ssh.addGitlab': 'Add to GitLab',
+  'ssh.addBitbucket': 'Add to Bitbucket',
 
   'accounts.title': 'Accounts',
   'accounts.none':
@@ -292,6 +293,10 @@ const en = {
   'accounts.token': 'Personal access token',
   'accounts.createToken': 'Create a token',
   'accounts.username': 'Username',
+  'accounts.bitbucketUsername': 'Bitbucket username, as in your remote URLs',
+  'accounts.apiToken': 'Atlassian API token',
+  'accounts.bitbucketHint':
+    'Create it with "Create API token with scopes", app Bitbucket, and these scopes: read:user, read:workspace, read:repository, write:repository, read:pullrequest and write:pullrequest (all ending in :bitbucket).',
   'accounts.name': 'Commit name',
   'accounts.email': 'Commit email',
   'accounts.optional': 'optional',

@@ -139,3 +139,22 @@ describe('checkoutPullRequest', () => {
     await expect(repo.checkoutPullRequest(work, 'origin', dash, 'github')).rejects.toThrow()
   })
 })
+
+describe('checking out a Bitbucket pull request', () => {
+  // Bitbucket keeps no pull request refs: only the branches themselves.
+  beforeEach(async () => {
+    await git(['push', '-q', 'origin', ':refs/pull/3/head', ':refs/pull/7/head'], { cwd: otherDir })
+  })
+
+  it('uses pr/N from the source branch when a local branch with the same name is unrelated', async () => {
+    await repo.createBranch(work, 'feature', null, false)
+    await repo.checkoutPullRequest(work, 'origin', { number: 3, sourceBranch: 'feature', fromFork: false }, 'bitbucket')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'pr/3', hash: await tip(otherDir, 'feature') })
+  })
+
+  it('says a pull request from a fork cannot be fetched from this remote', async () => {
+    await expect(
+      repo.checkoutPullRequest(work, 'origin', { number: 7, sourceBranch: 'fork-work', fromFork: true }, 'bitbucket')
+    ).rejects.toThrow(/fork/)
+  })
+})

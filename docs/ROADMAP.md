@@ -28,7 +28,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 - [x] Sign in to GitLab.com from the browser
 - [ ] Sign in to GitHub Enterprise and self-managed GitLab from the browser (each server needs its own application)
-- [ ] Pull requests on Bitbucket
+- [x] Bitbucket Cloud accounts and pull requests
 - [ ] Review pull requests in the app (diff, comments, approve, merge)
 - [x] Submodule support in the side panel
 - [x] Git LFS: tracked files, locks, patterns, large-file warnings

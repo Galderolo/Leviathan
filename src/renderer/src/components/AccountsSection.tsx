@@ -231,9 +231,13 @@ export function AccountsSection() {
               onChange={(e) => setDraft({ ...draft, host: e.target.value })}
             />
           </div>
-          {draft.provider === 'other' && (
+          {(draft.provider === 'other' || draft.provider === 'bitbucket') && (
             <input
-              placeholder={t('accounts.username')}
+              placeholder={
+                draft.provider === 'bitbucket'
+                  ? `${t('accounts.bitbucketUsername')} (${t('accounts.optional')})`
+                  : t('accounts.username')
+              }
               value={draft.username}
               spellCheck={false}
               onChange={(e) => setDraft({ ...draft, username: e.target.value })}
@@ -241,7 +245,7 @@ export function AccountsSection() {
           )}
           <input
             type="password"
-            placeholder={t('accounts.token')}
+            placeholder={draft.provider === 'bitbucket' ? t('accounts.apiToken') : t('accounts.token')}
             value={draft.token}
             onChange={(e) => setDraft({ ...draft, token: e.target.value })}
           />
@@ -258,6 +262,7 @@ export function AccountsSection() {
               onChange={(e) => setDraft({ ...draft, email: e.target.value })}
             />
           </div>
+          {draft.provider === 'bitbucket' && <div className="dim small">{t('accounts.bitbucketHint')}</div>}
           <div className="dim small">{t('accounts.tokenHint')}</div>
           <div className="ssh-actions">
             {tokenUrl && <a onClick={() => openExternal(tokenUrl)}>{t('accounts.createToken')}</a>}
