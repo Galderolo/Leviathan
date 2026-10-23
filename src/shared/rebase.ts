@@ -1,4 +1,4 @@
-export const REBASE_ACTIONS = ['pick', 'reword', 'squash', 'fixup', 'drop'] as const
+export const REBASE_ACTIONS = ['pick', 'reword', 'edit', 'squash', 'fixup', 'drop'] as const
 export type RebaseAction = (typeof REBASE_ACTIONS)[number]
 
 /** One commit of an interactive rebase, in the order it is applied (oldest first). */
@@ -54,7 +54,7 @@ export function planRebase(
   const groups: Group[] = []
   items.forEach((item, index) => {
     if (item.action === 'drop') return
-    if (item.action === 'pick' || item.action === 'reword') {
+    if (item.action === 'pick' || item.action === 'reword' || item.action === 'edit') {
       const reword = item.action === 'reword'
       groups.push({
         head: index,
@@ -80,10 +80,11 @@ export function planRebase(
     const group = groups.find((g) => g.head === index)
     if (item.action === 'drop') lines.push(`drop ${item.hash}`)
     else if (!group) lines.push(`fixup ${item.hash}`)
-    else if (!group.amend) lines.push(`pick ${item.hash}`)
+    // `edit` stops after applying the commit so the user can change it; the rest goes on with continue.
+    else if (!group.amend) lines.push(`${item.action === 'edit' ? 'edit' : 'pick'} ${item.hash}`)
     else {
       lines.push(`exec git rev-parse HEAD > ${q(`before-${index}`)}`)
-      lines.push(`pick ${item.hash}`)
+      lines.push(`${item.action === 'edit' ? 'edit' : 'pick'} ${item.hash}`)
       lines.push(`exec git rev-parse HEAD > ${q(`after-${index}`)}`)
     }
     const ending = groups.find((g) => g.last === index && g.amend)
@@ -97,4 +98,13 @@ export function planRebase(
     }
   })
   return { todo: lines.join('\n') + '\n', files }
+}
+
+/** `items` with the one at `from` moved to `to` (a drag and drop); out-of-range moves change nothing. */
+export function moveItem<T>(items: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return items
+  const next = [...items]
+  const [moved] = next.splice(from, 1)
+  next.splice(to, 0, moved)
+  return next
 }

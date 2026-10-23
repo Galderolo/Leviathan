@@ -28,7 +28,7 @@ import { discardSummary } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom } from './pushTarget'
 import { stoppedOperation } from './operationStop'
-import { viewAfterCheckout } from './checkoutView'
+import { viewAfterCheckout, wipShown } from './checkoutView'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
@@ -522,7 +522,7 @@ async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
 function fixSelection(path: string): void {
   const view = getRepo(path)
   if (!view?.state) return
-  const hasChanges = changeCount(view) > 0
+  const hasChanges = wipShown(view.state)
   const head = view.state.head.hash
   if (view.selection === null || (view.selection.kind === 'wip' && !hasChanges)) {
     if (hasChanges) selectWip(path, true)
@@ -1042,8 +1042,14 @@ export async function startInteractiveRebase(
   const before = (await api.getState(path).catch(() => null))?.operation ?? null
   try {
     await recordUndo(path, t('undo.interactiveRebase'), 'keep', () => api.interactiveRebase(path, base, items))
-    toast('success', t('toast.rebased'))
     closeInteractiveRebase()
+    // git stops without an error at a commit to edit: say so and show the banner, not "rebased".
+    if ((await api.getState(path).catch(() => null))?.editing) {
+      toast('info', t('toast.rebaseEditStop'))
+      selectWip(path)
+      return 'stopped'
+    }
+    toast('success', t('toast.rebased'))
     return 'done'
   } catch (err) {
     const state = await api.getState(path).catch(() => null)

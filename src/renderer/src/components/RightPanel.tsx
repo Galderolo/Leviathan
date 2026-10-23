@@ -296,7 +296,13 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
           <AlertTriangle size={16} />
           <div className="op-text">
             <strong>{t(`op.${state.operation}`)}</strong>
-            <span>{conflicted.length ? t('op.conflictsHint') : t('op.readyHint')}</span>
+            <span>
+              {conflicted.length
+                ? t('op.conflictsHint')
+                : state.editing
+                  ? t('op.editHint', { hash: state.editing.slice(0, 7) })
+                  : t('op.readyHint')}
+            </span>
           </div>
           <div className="op-actions">
             <button className="btn small" onClick={() => void abortOperation(path)}>

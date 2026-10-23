@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { planRebase, rebaseProblem, shQuote, type RebaseItem } from '../src/shared/rebase'
+import { moveItem, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../src/shared/rebase'
 
 const item = (hash: string, action: RebaseItem['action'], message?: string): RebaseItem => ({ hash, action, message })
 
@@ -31,6 +31,13 @@ describe('planRebase', () => {
       (hash) => original[hash],
       (name) => `/git/${name}`
     )
+
+  it('stops at a commit to edit it, also when commits are melded into it', () => {
+    expect(plan([item('a1', 'pick'), item('b2', 'edit'), item('c3', 'pick')]).todo).toBe('pick a1\nedit b2\npick c3\n')
+    const todo = plan([item('a1', 'edit'), item('b2', 'squash')]).todo.split('\n')
+    expect(todo[1]).toBe('edit a1')
+    expect(todo[3]).toBe('fixup b2')
+  })
 
   it('keeps plain picks, fixups and drops as they are', () => {
     expect(plan([item('a1', 'pick'), item('b2', 'fixup'), item('c3', 'drop')])).toEqual({
@@ -74,5 +81,14 @@ describe('shQuote', () => {
   it('quotes for sh, including single quotes', () => {
     expect(shQuote("it's")).toBe("'it'\\''s'")
     expect(shQuote('C:/My Repo/x')).toBe("'C:/My Repo/x'")
+  })
+})
+
+describe('moveItem', () => {
+  it('moves one item to where it is dropped, the others keeping their order', () => {
+    expect(moveItem(['a', 'b', 'c', 'd'], 0, 2)).toEqual(['b', 'c', 'a', 'd'])
+    expect(moveItem(['a', 'b', 'c', 'd'], 3, 1)).toEqual(['a', 'd', 'b', 'c'])
+    expect(moveItem(['a', 'b'], 1, 1)).toEqual(['a', 'b'])
+    expect(moveItem(['a', 'b'], 0, 5)).toEqual(['a', 'b'])
   })
 })

@@ -138,6 +138,9 @@ const en = {
   'op.continue': 'Continue',
   'op.conflictsHint': 'Resolve the conflicts, mark the files as resolved, then continue.',
   'op.readyHint': 'All conflicts resolved. You can continue.',
+  'toast.rebaseEditStop': 'The rebase stopped at the commit to edit: change it, amend it, then continue.',
+  'op.editHint':
+    'Stopped at {hash} so you can change it: edit the files, commit with "Amend previous commit", then continue.',
 
   'commit.commit': 'commit',
   'commit.parents': 'parents',
@@ -374,9 +377,12 @@ const en = {
 
   'menu.interactiveRebase': 'Interactive rebase from here…',
   'rebase.title': 'Interactive rebase of {branch}',
-  'rebase.hint': 'The commits after {base}, newest first. Squash and fixup meld a commit into the one below it.',
+  'rebase.hint':
+    'The commits after {base}, newest first. Drag one by its grip to move it. Squash and fixup meld a commit into the one below it; Edit stops there so you can change it.',
   'rebase.pick': 'Pick',
   'rebase.reword': 'Reword',
+  'rebase.edit': 'Edit (stop here)',
+  'rebase.drag': 'Drag to move',
   'rebase.squash': 'Squash',
   'rebase.fixup': 'Fixup',
   'rebase.drop': 'Drop',

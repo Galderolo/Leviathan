@@ -199,3 +199,27 @@ describe('leftover files', () => {
     expect(await leftovers()).toBe(false)
   })
 })
+
+describe('editing a commit during an interactive rebase', () => {
+  it('stops at it, says so, and goes on after an amend, with the steps after it applied', async () => {
+    await repo.interactiveRebase(dir, base, [
+      pick('one'),
+      pick('two', 'edit'),
+      pick('three', 'reword', 'three, reworded')
+    ])
+    let state = await repo.getState(dir)
+    expect(state.operation).toBe('rebase')
+    expect(state.editing).toBe(hashes.two)
+
+    writeFileSync(join(dir, 'two.txt'), 'two, edited\n')
+    await repo.stage(dir, ['two.txt'])
+    await repo.commit(dir, 'two, edited', true)
+    await repo.continueOperation(dir)
+
+    state = await repo.getState(dir)
+    expect(state.operation).toBeNull()
+    expect(state.editing).toBeNull()
+    expect(await messages()).toEqual(['three, reworded', 'two, edited', 'one'])
+    expect((await git(['show', 'HEAD~1:two.txt'], { cwd: dir })).stdout).toBe('two, edited\n')
+  })
+})

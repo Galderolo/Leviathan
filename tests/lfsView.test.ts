@@ -19,6 +19,7 @@ function state(hash: string, unstaged: FileChange[], staged: FileChange[] = []):
     remotes: [],
     status: { staged, unstaged, conflicted: [] },
     operation: null,
+    editing: null,
     unpushed: [],
     lfsFiles: [],
     largeFiles: [],
