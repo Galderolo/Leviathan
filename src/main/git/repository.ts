@@ -698,10 +698,16 @@ export async function deleteTag(repo: string, name: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // Stash
 
-export async function stashSave(repo: string, message: string | null): Promise<void> {
+/** Stashes every change (new files too), or only those of `paths`. */
+export async function stashSave(repo: string, message: string | null, paths?: string[]): Promise<void> {
   const args = ['stash', 'push', '--include-untracked']
   if (message && message.trim()) args.push('-m', message.trim())
-  await run(repo, args)
+  if (!paths?.length) {
+    await run(repo, args)
+    return
+  }
+  for (const path of paths) insideRepo(repo, path)
+  await run(repo, [...args, '--', ...paths], { env: LITERAL_PATHS })
 }
 
 function stashRef(index: number): string {

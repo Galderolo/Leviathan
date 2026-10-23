@@ -34,6 +34,7 @@ import {
   openSubmoduleFolder,
   popStash,
   pullBranch,
+  stashFiles,
   push,
   pushTag,
   rebaseOnto,
@@ -248,6 +249,7 @@ export function filesMenu(path: string, files: FileChange[], area: 'unstaged' | 
   if (area === 'staged') {
     return [
       { label: t('menu.unstageCount', { count }), onClick: () => void unstageFiles(path, files) },
+      { label: t('menu.stashCount', { count }), onClick: () => void stashFiles(path, files) },
       { separator: true },
       ...lock,
       copy
@@ -255,6 +257,7 @@ export function filesMenu(path: string, files: FileChange[], area: 'unstaged' | 
   }
   return [
     { label: t('menu.stageCount', { count }), onClick: () => void stageFiles(path, files) },
+    { label: t('menu.stashCount', { count }), onClick: () => void stashFiles(path, files) },
     { label: t('menu.discardCount', { count }), danger: true, onClick: () => void discardFiles(path, files) },
     { separator: true },
     ...lock,
@@ -326,6 +329,7 @@ export function fileMenu(
   if (area === 'unstaged') {
     items.push(
       { label: t('wip.stage'), onClick: () => void stageFiles(path, [file]) },
+      { label: t('menu.stashFile'), onClick: () => void stashFiles(path, [file]) },
       { label: t('menu.discard'), danger: true, onClick: () => void discardFiles(path, [file]) },
       { separator: true }
     )
@@ -340,7 +344,11 @@ export function fileMenu(
       items.push({ separator: true })
     }
   } else if (area === 'staged') {
-    items.push({ label: t('wip.unstage'), onClick: () => void unstageFiles(path, [file]) }, { separator: true })
+    items.push(
+      { label: t('wip.unstage'), onClick: () => void unstageFiles(path, [file]) },
+      { label: t('menu.stashFile'), onClick: () => void stashFiles(path, [file]) },
+      { separator: true }
+    )
   } else if (area === 'conflicted') {
     items.push({ label: t('wip.markResolved'), onClick: () => void stageFiles(path, [file]) }, { separator: true })
   }

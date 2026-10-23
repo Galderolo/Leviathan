@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Stash some files**: right-click a file (or several selected ones) in the uncommitted changes → *Stash this file* / *Stash N files*. The toolbar's Stash still stashes everything.
+
 ## [0.10.0] - 2026-10-23
 
 ### Added
