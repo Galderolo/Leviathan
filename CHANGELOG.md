@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Choose your terminal** (Settings → External tools) for the *Terminal* button: Command Prompt, Windows PowerShell, PowerShell 7, Windows Terminal or Git Bash on Windows; Terminal, iTerm or Warp on macOS; GNOME Terminal, Konsole, Xfce Terminal, kitty, Alacritty or WezTerm on Linux; or any command. It opens in the repository's folder.
+
 ### Changed
 
 - Merging a reviewed pull request offers only the methods the project allows (for example squash when it takes no merge commits), its default first: GitHub's merge settings, GitLab's squash setting, Bitbucket's merge strategies of the target branch, Gitea's merge styles.

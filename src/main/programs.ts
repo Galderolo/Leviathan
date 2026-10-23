@@ -20,15 +20,24 @@ const realFs: ProgramFs = {
 type Env = Record<string, string | undefined>
 
 /**
- * Where the editors Settings offers usually live when their installer did not put them on the PATH (JetBrains'
- * installer and Toolbox, Visual Studio, Sublime Text, Notepad++). A `*` stands for one folder, such as a version.
+ * Where the editors and terminals Settings offers usually live when their installer did not put them on the PATH
+ * (JetBrains' installer and Toolbox, Visual Studio, Sublime Text, Notepad++, Git Bash…). A `*` stands for one
+ * folder, such as a version.
  */
 function installPlaces(program: string, env: Env, platform: NodeJS.Platform): string[] {
   if (platform === 'win32') {
     const local = env.LOCALAPPDATA ?? ''
     const pf = env.ProgramFiles ?? 'C:\\Program Files'
     const pf86 = env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)'
-    switch (program.toLowerCase()) {
+    switch (program.toLowerCase().replace(/\.exe$/, '')) {
+      case 'git-bash':
+        // Git for Windows' own folder (git.exe itself is in its cmd folder, on the PATH).
+        return [`${pf}\\Git\\git-bash.exe`, `${local}\\Programs\\Git\\git-bash.exe`]
+      case 'pwsh':
+        return [`${pf}\\PowerShell\\*\\pwsh.exe`]
+      case 'wt':
+        // An app execution alias, in a folder that is normally on the PATH.
+        return [`${local}\\Microsoft\\WindowsApps\\wt.exe`]
       case 'code':
         return [`${local}\\Programs\\Microsoft VS Code\\bin\\code.cmd`, `${pf}\\Microsoft VS Code\\bin\\code.cmd`]
       case 'cursor':
@@ -106,9 +115,28 @@ async function onPath(program: string, env: Env, platform: NodeJS.Platform, fsx:
 }
 
 /**
- * The program to run for an editor command: the command itself when the PATH finds it (or it is a path), else
- * where its installer usually puts it (Rider, Visual Studio and others are often not on the PATH), else the
- * command unchanged, so starting it reports it as not found.
+ * Where a program is: the command itself when the PATH finds it (or it is a path that exists), else where its
+ * installer usually puts it (Rider, Visual Studio, Git Bash and others are often not on the PATH); null when
+ * nowhere.
+ */
+export async function locateProgram(
+  program: string,
+  env: Env = process.env,
+  platform: NodeJS.Platform = process.platform,
+  fsx: ProgramFs = realFs
+): Promise<string | null> {
+  if (/[\\/]/.test(program)) return (await fsx.exists(program)) ? program : null
+  if (await onPath(program, env, platform, fsx)) return program
+  for (const place of installPlaces(program, env, platform)) {
+    const [found] = await expand(place, platform === 'win32', fsx)
+    if (found) return found
+  }
+  return null
+}
+
+/**
+ * The program to run for an editor command: where `locateProgram` finds it, else the command unchanged, so
+ * starting it reports it as not found.
  */
 export async function findProgram(
   program: string,
@@ -116,10 +144,5 @@ export async function findProgram(
   platform: NodeJS.Platform = process.platform,
   fsx: ProgramFs = realFs
 ): Promise<string> {
-  if (/[\\/]/.test(program) || (await onPath(program, env, platform, fsx))) return program
-  for (const place of installPlaces(program, env, platform)) {
-    const [found] = await expand(place, platform === 'win32', fsx)
-    if (found) return found
-  }
-  return program
+  return (await locateProgram(program, env, platform, fsx)) ?? program
 }

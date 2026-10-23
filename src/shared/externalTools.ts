@@ -1,7 +1,7 @@
 import type { DiffSource } from './types'
 
 /** Editors offered in Settings; `{file}`, `{line}` and `{folder}` are filled in when opening. */
-export const EDITOR_PRESETS: { id: string; label: string; command: string }[] = [
+export const EDITOR_PRESETS: Preset[] = [
   { id: 'vscode', label: 'Visual Studio Code', command: 'code --goto "{file}:{line}"' },
   { id: 'cursor', label: 'Cursor', command: 'cursor --goto "{file}:{line}"' },
   { id: 'rider', label: 'JetBrains Rider', command: 'rider --line {line} "{file}"' },
@@ -9,6 +9,58 @@ export const EDITOR_PRESETS: { id: string; label: string; command: string }[] = 
   { id: 'sublime', label: 'Sublime Text', command: 'subl "{file}:{line}"' },
   { id: 'notepadpp', label: 'Notepad++', command: 'notepad++ -n{line} "{file}"' }
 ]
+
+type Preset = { id: string; label: string; command: string }
+
+/**
+ * Terminals offered in Settings. They start in the repository's folder, and `{folder}` is filled in with its path
+ * (not on Windows, where the command goes through cmd: `-d .` and `--cd=.` take the folder they start in).
+ */
+const TERMINAL_PRESETS: Record<'win32' | 'darwin' | 'linux', Preset[]> = {
+  win32: [
+    { id: 'cmd', label: 'Command Prompt', command: 'cmd' },
+    { id: 'powershell', label: 'Windows PowerShell', command: 'powershell' },
+    { id: 'pwsh', label: 'PowerShell 7', command: 'pwsh' },
+    { id: 'wt', label: 'Windows Terminal', command: 'wt -d .' },
+    { id: 'gitbash', label: 'Git Bash', command: 'git-bash --cd=.' }
+  ],
+  darwin: [
+    { id: 'terminal', label: 'Terminal', command: 'open -a Terminal {folder}' },
+    { id: 'iterm', label: 'iTerm', command: 'open -a iTerm {folder}' },
+    { id: 'warp', label: 'Warp', command: 'open -a Warp {folder}' }
+  ],
+  linux: [
+    { id: 'gnome', label: 'GNOME Terminal', command: 'gnome-terminal --working-directory={folder}' },
+    { id: 'konsole', label: 'Konsole', command: 'konsole --workdir {folder}' },
+    { id: 'xfce', label: 'Xfce Terminal', command: 'xfce4-terminal --working-directory={folder}' },
+    { id: 'kitty', label: 'kitty', command: 'kitty --directory {folder}' },
+    { id: 'alacritty', label: 'Alacritty', command: 'alacritty --working-directory {folder}' },
+    { id: 'wezterm', label: 'WezTerm', command: 'wezterm start --cwd {folder}' }
+  ]
+}
+
+/** The terminals Settings offers on a platform (`process.platform`); other Unixes get Linux's. */
+export function terminalPresets(platform: string): Preset[] {
+  return platform === 'win32' || platform === 'darwin' ? TERMINAL_PRESETS[platform] : TERMINAL_PRESETS.linux
+}
+
+/** The terminal command's arguments, `{folder}` filled in with the repository's folder. */
+export function terminalArgs(template: string, folder: string): string[] {
+  return splitCommand(template).map((a) => a.replaceAll('{folder}', folder))
+}
+
+/**
+ * The cmd.exe arguments that start a program in a window of its own (`start`), which console programs such as
+ * PowerShell need: run verbatim, as cmd reads its command line itself. Arguments with anything but plain path
+ * characters are quoted, so `&`, `|`, `<`, `>` and `^` stay text; a quote cannot be passed at all.
+ */
+export function windowsStartLine(args: string[]): string {
+  const quoted = args.map((a) => {
+    if (a.includes('"')) throw new Error('A terminal command on Windows cannot pass quotes to its program')
+    return /^[\w\-.:\\/=+,@~]+$/.test(a) ? a : `"${a}"`
+  })
+  return `/d /s /c "start "" ${quoted.join(' ')}"`
+}
 
 /** Diff and merge tools git knows by name (`git difftool --tool-help`). */
 export const DIFF_TOOLS = ['vscode', 'meld', 'kdiff3', 'p4merge', 'bc', 'winmerge', 'smerge', 'araxis', 'tkdiff']

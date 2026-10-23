@@ -20,6 +20,7 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 }
 
 const api: Record<string, unknown> = {
+  platform: process.platform,
   onRepoChanged: (cb: (e: RepoChangedEvent) => void) => subscribe(IPC_REPO_CHANGED, cb),
   onProgress: (cb: (e: ProgressEvent) => void) => subscribe(IPC_PROGRESS, cb),
   onAskpass: (cb: (e: AskpassRequest) => void) => subscribe(IPC_ASKPASS, cb),

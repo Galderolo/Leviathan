@@ -9,7 +9,7 @@ vi.mock('../src/main/settings', () => ({ loadSettings: () => settings }))
 
 const { initRepo } = await import('../src/main/git/repository')
 const { git } = await import('../src/main/git/runner')
-const { NO_DIFF_TOOL, openDiffTool, openInEditor, openMergeTool } = await import('../src/main/tools')
+const { NO_DIFF_TOOL, openDiffTool, openInEditor, openMergeTool, openTerminal } = await import('../src/main/tools')
 
 let dir: string
 let log: string
@@ -79,6 +79,18 @@ describe('external tools', () => {
   it('reports an editor that is not installed', async () => {
     settings.editor = 'leviathan-no-such-editor {file}'
     await expect(openInEditor(dir, 'i.txt')).rejects.toThrow('"leviathan-no-such-editor" was not found')
+  })
+
+  it('reports a terminal that is not installed, before anything starts', async () => {
+    settings.terminal = 'leviathan-no-such-terminal {folder}'
+    await expect(openTerminal(dir)).rejects.toThrow('"leviathan-no-such-terminal" was not found')
+  })
+
+  // `open -a iTerm` without iTerm exits with an error at once. (Started the macOS and Linux way: on Windows, start
+  // would open a window.)
+  it('reports a terminal that fails as it starts', async () => {
+    settings.terminal = `"${process.execPath}" -e process.exit(3)`
+    await expect(openTerminal(dir, 'darwin')).rejects.toThrow('could not be started (exit code 3)')
   })
 
   it('uses the merge tool for diffs when no diff tool is set, as git difftool does', async () => {
