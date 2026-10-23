@@ -129,6 +129,7 @@ Still to do: GitLab (needs an *application* on gitlab.com with the `api`, `read_
 
 - Add a Windows `.zip` target (unpack once, starts faster than the portable `.exe`, which unpacks itself on every launch).
 - Optionally bring the UI accent colour (teal) closer to the blue of the new icon.
+- Organize Settings: it holds unrelated things in one long window (general, external tools, accounts, SSH keys, updates, about). Split it into sections or tabs.
 
 ## Known minor issues
 
@@ -184,6 +185,9 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **Diffs**
 - An open conflict view is not closed when the file stops being conflicted (marked resolved from the list, or after Abort).
 - An open diff keeps an outdated untracked flag when the file stays in the same list (`git rm --cached`).
+
+**Stash**
+- Stashing some files (`git stash push -- <paths>`) still keeps a picture of the whole index in the stash: files that were staged appear in it too, though they stay as they were in the working tree.
 
 **File history and blame**
 - File names with quotes, backslashes or tabs (Linux/macOS) come back quoted from `git log` (no `-z`), so their diff is empty.

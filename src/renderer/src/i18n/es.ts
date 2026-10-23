@@ -196,6 +196,8 @@ const es: Record<keyof typeof en, string> = {
   'menu.stashChanges': 'Guardar cambios en stash',
   'menu.stashWithMessage': 'Stash con mensaje…',
   'menu.discard': 'Descartar cambios',
+  'menu.stashFile': 'Guardar este archivo en stash',
+  'menu.stashCount': 'Guardar {count} archivos en stash',
   'menu.discardAll': 'Descartar todos los cambios',
   'menu.openFile': 'Abrir archivo',
   'menu.showInFolder': 'Mostrar en carpeta',

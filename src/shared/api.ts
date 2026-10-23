@@ -122,7 +122,8 @@ export interface LeviathanInvokeApi {
   deleteTag(repo: string, name: string): Promise<void>
 
   // Stash
-  stashSave(repo: string, message: string | null): Promise<void>
+  /** Stashes every change, or only those of `paths`. */
+  stashSave(repo: string, message: string | null, paths?: string[]): Promise<void>
   /** `hash` must match `stash@{index}`; guards against the list changing meanwhile. */
   stashPop(repo: string, index: number, hash: string): Promise<void>
   stashApply(repo: string, index: number, hash: string): Promise<void>
