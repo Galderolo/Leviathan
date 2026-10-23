@@ -16,6 +16,12 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Fixed
 
 - A pull request review leaves nothing behind once it ends: the ref that held its commits (`refs/leviathan/review/N`) is deleted.
+- A review starts even when the ref of an earlier one is locked by another git.
+- A terminal command with `{folder}` refuses, on Windows, a folder whose path has a `%` in it (cmd would have read it as a variable and opened another folder).
+
+### Security
+
+- Windows: a program placed at the root of a repository with the name of one the app starts (`git.exe`, `cmd.exe`, an editor's command) could run instead of it as soon as that repository was opened, because Windows looks in the working folder before the PATH. The app now turns that search off for itself and everything it starts, and starts editors, terminals and cmd by their full path.
 
 ## [0.13.0] - 2026-10-23
 

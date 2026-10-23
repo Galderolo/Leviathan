@@ -208,6 +208,19 @@ describe('reviewing a pull request', () => {
     await repo.endPullRequestReview(work, 3)
   })
 
+  it('starts a review even when the ref of an earlier one cannot be deleted', async () => {
+    await repo.fetchPullRequestRange(work, 'origin', same, 'github')
+    // Someone else holds that ref's lock: deleting it fails.
+    const lock = join(work, '.git', 'refs', 'leviathan', 'review', '3.lock')
+    writeFileSync(lock, '')
+    try {
+      const range = await repo.fetchPullRequestRange(work, 'origin', { ...same, number: 7 }, 'github')
+      expect(range.head).toBe(forkTip)
+    } finally {
+      rmSync(lock)
+    }
+  })
+
   it('takes a Bitbucket pull request from its branch, and refuses one from a fork', async () => {
     await git(['push', '-q', 'origin', ':refs/pull/3/head'], { cwd: otherDir })
     const range = await repo.fetchPullRequestRange(work, 'origin', same, 'bitbucket')

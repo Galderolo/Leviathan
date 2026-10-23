@@ -919,8 +919,9 @@ export async function fetchPullRequestRange(
   const source = pullRequestSource(pr, provider)
   // Not checkout's refs/leviathan/pulls/N: that one tells whether pr/N has commits of its own.
   const review = `${REVIEW_REFS}${pr.number}`
-  // Reviews that did not end here (the app closed while one was open) leave theirs behind.
-  await dropReviewRefs(repo, review)
+  // Reviews that did not end here (the app closed while one was open) leave theirs behind. Tidying up is no reason
+  // for this review to fail (a ref locked by another git): what is left goes next time.
+  await dropReviewRefs(repo, review).catch(() => {})
   const target = `refs/remotes/${remote}/${pr.targetBranch}`
   await git(['fetch', remote, `+${source}:${review}`, `+refs/heads/${pr.targetBranch}:${target}`], { cwd: repo })
   const head = await refValue(repo, review)

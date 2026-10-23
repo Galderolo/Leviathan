@@ -6,6 +6,7 @@ import type { DiffSource } from '../shared/types'
 import { insideRepo } from './git/repository'
 import { git } from './git/runner'
 import { findProgram, locateProgram } from './programs'
+import { commandProcessor } from './programSearch'
 import { loadSettings } from './settings'
 import { openSystemTerminal } from './shell'
 
@@ -62,7 +63,7 @@ export async function openInEditor(repo: string, file: string | null, line?: num
  */
 function startInWindow(args: string[], cwd: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawnDirect('cmd.exe', [windowsStartLine(args)], {
+    const child = spawnDirect(commandProcessor(), [windowsStartLine(args)], {
       cwd,
       detached: true,
       stdio: 'ignore',
@@ -88,8 +89,14 @@ export async function openTerminal(repo: string, platform: NodeJS.Platform = pro
     )
   }
   args[0] = program
-  if (platform === 'win32') await startInWindow(args, repo)
-  else await launch(args, repo, true)
+  if (platform !== 'win32') return launch(args, repo, true)
+  // cmd expands %…% even inside quotes, so such a folder would turn into another one.
+  if (template.includes('{folder}') && repo.includes('%')) {
+    throw new Error(
+      'This folder\'s path has a % in it, which cmd would read as a variable: use "." instead of {folder} in the terminal command.'
+    )
+  }
+  await startInWindow(args, repo)
 }
 
 /** Whether git has a tool set under any of `keys` for this repository. */
