@@ -461,6 +461,7 @@ const es: Record<keyof typeof en, string> = {
   'lfs.patterns': 'Patrones seguidos',
   'lfs.locks': 'Archivos bloqueados',
   'lfs.noLocks': 'No hay archivos bloqueados',
+  'lfs.locksUnsupported': 'Este servidor no ofrece bloqueos de Git LFS (Bitbucket Cloud no los tiene).',
   'lfs.refreshLocks': 'Recargar bloqueos',
   'lfs.unverified': 'El servidor no indica de quién es cada bloqueo',
   'lfs.you': 'tú',

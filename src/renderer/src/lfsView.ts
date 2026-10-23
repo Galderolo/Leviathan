@@ -35,7 +35,8 @@ export function lockedByOthers(locks: LfsLock[], paths: string[]): LfsLock[] {
 /** A pattern as it applies in the repository: with the folder of the attributes file it comes from. */
 export function patternLabel(pattern: LfsPattern): string {
   const dir = pattern.source.slice(0, -'.gitattributes'.length)
-  return dir + pattern.pattern
+  // .gitattributes cannot hold a plain space in a pattern: it writes [[:space:]].
+  return dir + pattern.pattern.split('[[:space:]]').join(' ')
 }
 
 export function formatSize(bytes: number): string {

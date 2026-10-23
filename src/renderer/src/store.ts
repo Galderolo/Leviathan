@@ -83,6 +83,8 @@ export interface LfsView {
   locks: LfsLock[]
   /** The server told which locks are the user's. */
   verified: boolean
+  /** The server has no Git LFS locking API (Bitbucket Cloud): no locks, nothing to lock. */
+  locksUnsupported: boolean
   locksError: string | null
   locksLoading: boolean
 }

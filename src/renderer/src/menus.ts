@@ -238,7 +238,7 @@ export function filesMenu(path: string, files: FileChange[], area: 'unstaged' | 
   const lfs = getRepo(path)?.lfs
   const unlocked = files.filter((f) => !lockFor(lfs?.locks, f.path)).map((f) => f.path)
   const lock: MenuItem[] =
-    lfs?.info.used && lfs.info.version
+    lfs?.info.used && lfs.info.version && !lfs.locksUnsupported
       ? [
           {
             label: t('lfs.lockFiles', { count: unlocked.length }),
@@ -278,7 +278,7 @@ function lfsFileItems(
   if (!lfs?.info.version) return []
   const items: MenuItem[] = []
   // A repository that does not use LFS yet can start from here; locks only make sense once it does.
-  if (lfs.info.used) {
+  if (lfs.info.used && !lfs.locksUnsupported) {
     const lock = lockFor(lfs.locks, file.path)
     if (!lock) items.push({ label: t('lfs.lockFile'), onClick: () => void lockFiles(path, [file.path]) })
     else items.push(...lockItems(path, lock))

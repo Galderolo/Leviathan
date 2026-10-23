@@ -1610,7 +1610,15 @@ export async function loadLfsInfo(path: string): Promise<void> {
     const before = getRepo(path)?.lfs
     if (!getRepo(path)) return
     patchRepo(path, (r) => ({
-      lfs: { locks: [], verified: false, locksError: null, locksLoading: false, ...r.lfs, info }
+      lfs: {
+        locks: [],
+        verified: false,
+        locksUnsupported: false,
+        locksError: null,
+        locksLoading: false,
+        ...r.lfs,
+        info
+      }
     }))
     if (info.used && !before?.info.used) void loadLfsLocks(path, false)
   } catch {
@@ -1626,8 +1634,10 @@ export async function loadLfsLocks(path: string, interactive: boolean): Promise<
   const patchLfs = (patch: Partial<LfsView>) => patchRepo(path, (r) => (r.lfs ? { lfs: { ...r.lfs, ...patch } } : {}))
   patchLfs({ locksLoading: true })
   try {
-    const { locks, verified } = await api.getLfsLocks(path, !interactive)
-    if (lfsSeq[path] === seq) patchLfs({ locks, verified, locksError: null, locksLoading: false })
+    const { locks, verified, unsupported } = await api.getLfsLocks(path, !interactive)
+    if (lfsSeq[path] === seq) {
+      patchLfs({ locks, verified, locksUnsupported: !!unsupported, locksError: null, locksLoading: false })
+    }
   } catch (err) {
     if (lfsSeq[path] === seq) patchLfs({ locksError: errorMessage(err), locksLoading: false })
   }
