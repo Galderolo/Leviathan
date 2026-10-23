@@ -400,23 +400,33 @@ export async function commentOnPullRequest(repo: string, number: number, body: s
   return addPullRequestComment(account.provider, account.host, path, token, number, body.trim())
 }
 
-export async function approveRepoPullRequest(repo: string, number: number): Promise<void> {
-  const { account, path, token } = await requireProject(repo)
-  await approvePullRequest(account.provider, account.host, path, token, number)
-}
-
-/** Merges a pull request, after checking it is still the one the review showed (like closing one). */
-export async function mergeRepoPullRequest(
-  repo: string,
-  number: number,
-  url: string,
-  method: MergeMethod
-): Promise<void> {
-  const { account, path, token } = await requireProject(repo)
-  if (!mergeMethods(account.provider).includes(method)) throw new Error(`This provider cannot merge with ${method}`)
+/** Checks the project resolved now still has the pull request the review showed (a rebinding may change it). */
+async function reviewedProject(repo: string, number: number, url: string) {
+  const project = await requireProject(repo)
+  const { account, path, token } = project
   const current = await getPullRequest(account.provider, account.host, path, token, number)
   if (typeof url !== 'string' || current.url !== url) {
     throw new Error('This pull request is not the one the review showed any more. Open it again.')
   }
-  await mergePullRequest(account.provider, account.host, path, token, number, method)
+  return project
+}
+
+/** Approves the pull request at `head`, the commit the review showed. */
+export async function approveRepoPullRequest(repo: string, number: number, url: string, head: string): Promise<void> {
+  const { account, path, token } = await reviewedProject(repo, number, url)
+  await approvePullRequest(account.provider, account.host, path, token, number, head)
+}
+
+/** Merges a pull request at the reviewed commit, after checking it is still the one the review showed. */
+export async function mergeRepoPullRequest(
+  repo: string,
+  number: number,
+  url: string,
+  method: MergeMethod,
+  head: string
+): Promise<void> {
+  const { account } = await requireProject(repo)
+  if (!mergeMethods(account.provider).includes(method)) throw new Error(`This provider cannot merge with ${method}`)
+  const { path, token } = await reviewedProject(repo, number, url)
+  await mergePullRequest(account.provider, account.host, path, token, number, method, head)
 }

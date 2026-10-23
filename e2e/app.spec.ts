@@ -279,6 +279,7 @@ test('reviews a pull request: its files and diff, its conversation, approving an
         { id: 1, user: { login: 'bo' }, body: 'Can we keep 3 tries?', created_at: '2026-10-22T11:00:00Z' }
       ],
       [`GET ${api}/repos/org/app/pulls/12/comments?per_page=100`]: [],
+      [`GET ${api}/repos/org/app/pulls/12/reviews?per_page=100`]: [],
       [`POST ${api}/repos/org/app/issues/12/comments`]: { id: 3, user: { login: 'me' }, body: 'Fine', created_at: 'x' },
       [`POST ${api}/repos/org/app/pulls/12/reviews`]: {},
       [`PUT ${api}/repos/org/app/pulls/12/merge`]: { merged: true }
@@ -318,9 +319,11 @@ test('reviews a pull request: its files and diff, its conversation, approving an
   const writes = await app!.evaluate(() =>
     ((globalThis as Record<string, unknown>).__calls as string[]).filter((c) => !c.startsWith('GET'))
   )
+  // Approving and merging name the reviewed commit, so the server refuses if the pull request moved on.
+  const head = box.git(contrib, 'rev-parse', 'login')
   expect(writes).toEqual([
     'POST https://api.github.com/repos/org/app/issues/12/comments {"body":"Fine"}',
-    'POST https://api.github.com/repos/org/app/pulls/12/reviews {"event":"APPROVE"}',
-    'PUT https://api.github.com/repos/org/app/pulls/12/merge {"merge_method":"squash"}'
+    `POST https://api.github.com/repos/org/app/pulls/12/reviews {"event":"APPROVE","commit_id":"${head}"}`,
+    `PUT https://api.github.com/repos/org/app/pulls/12/merge {"merge_method":"squash","sha":"${head}"}`
   ])
 })

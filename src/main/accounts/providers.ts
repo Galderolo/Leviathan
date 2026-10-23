@@ -40,7 +40,10 @@ type Json = Record<string, unknown>
 function reason(body: unknown): string | null {
   if (!body || typeof body !== 'object') return null
   const b = body as Json
-  const detail = Array.isArray(b.errors) ? (b.errors as Json[]).map((e) => e?.message).find(Boolean) : null
+  // GitHub sends `errors` as objects with a message, or as plain strings.
+  const detail = Array.isArray(b.errors)
+    ? (b.errors as unknown[]).map((e) => (typeof e === 'string' ? e : (e as Json | null)?.message)).find(Boolean)
+    : null
   const message = Array.isArray(b.message) ? b.message.join(', ') : b.message
   // Bitbucket: { type: 'error', error: { message } }
   const nested = b.error && typeof b.error === 'object' ? (b.error as Json).message : undefined
@@ -71,7 +74,11 @@ async function request(
     throw new Error(`Could not reach ${host}: ${detail}`)
   }
   if (res.status === 401 || res.status === 403) {
-    const label = `${LABELS[provider]} rejected the token (${res.status})${provider === 'bitbucket' ? await missingScopes(res) : ''}`
+    const body = await res.json().catch(() => null)
+    const why = reason(body)
+    // A refused change (approving twice, merging without the right to) is not a bad token: say what the server said.
+    if (send && why && provider !== 'bitbucket') throw new Error(`${LABELS[provider]} refused (${res.status}): ${why}`)
+    const label = `${LABELS[provider]} rejected the token (${res.status})${provider === 'bitbucket' ? missingScopes(body) : ''}`
     throw new Error(
       send
         ? `${label}. It needs permission to change pull requests (GitHub: repo, GitLab: api, Bitbucket: write:pullrequest:bitbucket).`
@@ -82,7 +89,8 @@ async function request(
     const why = send ? reason(await res.json().catch(() => null)) : null
     throw new Error(`${LABELS[provider]} answered with an error (${res.status})${why ? `: ${why}` : ''}`)
   }
-  return res.json()
+  // A change may be answered with no body at all (Gitea's merge, a 204).
+  return send ? res.json().catch(() => null) : res.json()
 }
 
 function getJson(provider: Provider, host: string, path: string, token: string, fetchFn: FetchFn) {
@@ -376,8 +384,8 @@ async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Pr
 }
 
 /** Bitbucket's reason for refusing a token, with the permissions it lacks (`error.detail.required`). */
-async function missingScopes(res: Awaited<ReturnType<FetchFn>>): Promise<string> {
-  const body = (await res.json().catch(() => null)) as Json | null
+function missingScopes(answer: unknown): string {
+  const body = answer && typeof answer === 'object' ? (answer as Json) : null
   const error = body?.error && typeof body.error === 'object' ? (body.error as Json) : null
   if (!error) return ''
   const detail = error.detail && typeof error.detail === 'object' ? (error.detail as Json) : null
@@ -444,16 +452,27 @@ export async function listPullRequestComments(
   let comments: Json[]
   switch (provider) {
     case 'github': {
-      const [general, inline] = await Promise.all([
+      const [general, inline, reviews] = await Promise.all([
         get(`/issues/${number}/comments?per_page=100`),
-        get(`/pulls/${number}/comments?per_page=100`)
+        get(`/pulls/${number}/comments?per_page=100`),
+        get(`/pulls/${number}/reviews?per_page=100`)
       ])
-      comments = [...items(general), ...items(inline)]
+      // Three lists with ids of their own; reviews count when they say something ("Request changes: …").
+      comments = [
+        ...items(general).map((c) => ({ ...c, id: `issue-${c.id}` })),
+        ...items(inline).map((c) => ({ ...c, id: `line-${c.id}` })),
+        ...items(reviews)
+          .filter((r) => typeof r.body === 'string' && r.body.trim())
+          .map((r) => ({ ...r, id: `review-${r.id}`, created_at: r.submitted_at }))
+      ]
       break
     }
     case 'gitlab':
-      // System notes ("added 1 commit", "approved this merge request") are not part of the conversation.
-      comments = items(await get(`/merge_requests/${number}/notes?per_page=100&sort=asc`)).filter((n) => !n.system)
+      // Newest first, so a busy merge request keeps its latest comments within the page; system notes ("added 1
+      // commit", "approved this merge request") are not part of the conversation.
+      comments = items(await get(`/merge_requests/${number}/notes?per_page=100&sort=desc&order_by=created_at`)).filter(
+        (n) => !n.system
+      )
       break
     case 'bitbucket':
       // Deleted comments, and pending ones (drafts of a review not sent yet).
@@ -462,7 +481,7 @@ export async function listPullRequestComments(
       )
       break
     default:
-      comments = items(await get(`/issues/${number}/comments`))
+      comments = items(await get(`/issues/${number}/comments?limit=50`))
   }
   return comments.map((c) => toComment(provider, c)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
@@ -489,27 +508,55 @@ export async function addPullRequestComment(
   return toComment(provider, created as Json)
 }
 
-/** Approves a pull request as the account. */
+function assertCommit(head: string): void {
+  if (!/^[0-9a-f]{7,64}$/i.test(head)) throw new Error(`Invalid commit: "${head}"`)
+}
+
+/** Bitbucket takes no commit with an approval or a merge: check its pull request is still at the reviewed one. */
+async function assertBitbucketHead(
+  host: string,
+  project: string,
+  token: string,
+  number: number,
+  head: string,
+  fetchFn: FetchFn
+) {
+  const pr = (await getJson('bitbucket', host, `${project}/pullrequests/${number}`, token, fetchFn)) as Json
+  const now = String(at(at(pr.source, 'commit'), 'hash') ?? '')
+  if (!now || !head.toLowerCase().startsWith(now.toLowerCase())) throw new Error(CHANGED_SINCE_REVIEW)
+}
+
+const CHANGED_SINCE_REVIEW =
+  'The pull request changed since the review opened: open it again to see its latest version.'
+
+/** Approves a pull request as the account, at `head`, the commit the review showed. */
 export async function approvePullRequest(
   provider: Provider,
   host: string,
   path: string,
   token: string,
   number: number,
+  head: string,
   fetchFn: FetchFn = fetch
 ): Promise<void> {
   assertNumber(number)
+  assertCommit(head)
   const project = projectPath(provider, path)
+  if (provider === 'bitbucket') await assertBitbucketHead(host, project, token, number, head, fetchFn)
+  // The commit goes along, so the provider refuses when the pull request moved on since the review.
   const [route, payload]: [string, Json] =
     provider === 'gitlab'
-      ? [`/merge_requests/${number}/approve`, {}]
+      ? [`/merge_requests/${number}/approve`, { sha: head }]
       : provider === 'bitbucket'
         ? [`/pullrequests/${number}/approve`, {}]
-        : [`/pulls/${number}/reviews`, { event: provider === 'github' ? 'APPROVE' : 'APPROVED' }]
+        : [`/pulls/${number}/reviews`, { event: provider === 'github' ? 'APPROVE' : 'APPROVED', commit_id: head }]
   await request(provider, host, project + route, token, fetchFn, { method: 'POST', body: payload })
 }
 
-/** Merges a pull request on the provider (it needs to be mergeable there: approvals, checks, no conflicts). */
+/**
+ * Merges a pull request on the provider (it needs to be mergeable there: approvals, checks, no conflicts), only
+ * while it is still at `head`, the commit the review showed.
+ */
 export async function mergePullRequest(
   provider: Provider,
   host: string,
@@ -517,15 +564,17 @@ export async function mergePullRequest(
   token: string,
   number: number,
   method: MergeMethod,
+  head: string,
   fetchFn: FetchFn = fetch
 ): Promise<void> {
   assertNumber(number)
+  assertCommit(head)
   const project = projectPath(provider, path)
   switch (provider) {
     case 'github':
       await request(provider, host, `${project}/pulls/${number}/merge`, token, fetchFn, {
         method: 'PUT',
-        body: { merge_method: method }
+        body: { merge_method: method, sha: head }
       })
       return
     case 'gitlab':
@@ -533,10 +582,11 @@ export async function mergePullRequest(
         throw new Error('GitLab merges with a merge commit or a squash: rebase the branch first.')
       await request(provider, host, `${project}/merge_requests/${number}/merge`, token, fetchFn, {
         method: 'PUT',
-        body: { squash: method === 'squash' }
+        body: { squash: method === 'squash', sha: head }
       })
       return
     case 'bitbucket': {
+      await assertBitbucketHead(host, project, token, number, head, fetchFn)
       const strategy = { merge: 'merge_commit', squash: 'squash', rebase: 'rebase_fast_forward' }[method]
       await request(provider, host, `${project}/pullrequests/${number}/merge`, token, fetchFn, {
         method: 'POST',
@@ -547,7 +597,7 @@ export async function mergePullRequest(
     default:
       await request(provider, host, `${project}/pulls/${number}/merge`, token, fetchFn, {
         method: 'POST',
-        body: { Do: method }
+        body: { Do: method, head_commit_id: head }
       })
   }
 }

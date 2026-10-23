@@ -922,8 +922,13 @@ export async function fetchPullRequestRange(
   const target = `refs/remotes/${remote}/${pr.targetBranch}`
   await git(['fetch', remote, `+${source}:${review}`, `+refs/heads/${pr.targetBranch}:${target}`], { cwd: repo })
   const head = (await refValue(repo, review))!
-  const base = (await run(repo, ['merge-base', target, head])).trim()
-  return { base, head }
+  const found = await git(['merge-base', target, head], { cwd: repo, okCodes: [0, 1] })
+  if (found.exitCode !== 0) {
+    throw new Error(
+      `This pull request has no history in common with ${pr.targetBranch} here (unrelated histories, or a shallow clone).`
+    )
+  }
+  return { base: found.stdout.trim(), head }
 }
 
 /** Files changed between two commits (a pull request's review range), renames found. */

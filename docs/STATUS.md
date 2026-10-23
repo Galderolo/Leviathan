@@ -103,7 +103,10 @@ Code: `fetchPullRequestRange` / `getRangeFiles` in `repository.ts`, the review f
 
 Known minor issues:
 - Comments cannot be written on a line yet, and Markdown in comments shows as plain text.
-- At most 100 comments are read (one page).
+- At most one page of comments is read (100; Gitea 50); GitLab keeps the newest.
+- Approving and merging name the reviewed commit (GitHub `commit_id` / `sha`, GitLab `sha`, Gitea `commit_id` / `head_commit_id`; Bitbucket is checked first), so a pull request that moved on is refused.
+- `refs/leviathan/review/N` are not deleted after a review, so their commits stay in the repository until removed by hand.
+- The merge dialog always proposes a merge commit first, even where the project only allows squashing.
 
 ## Syntax highlighting (unreleased)
 

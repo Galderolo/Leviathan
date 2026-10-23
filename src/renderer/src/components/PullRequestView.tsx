@@ -32,9 +32,13 @@ function Review({ path, pr }: { path: string; pr: PullRequest }) {
   const [comments, setComments] = useState<PullRequestComment[] | null>(null)
   const [commentsError, setCommentsError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Here, not in the conversation tab, so a comment being written survives a look at the files.
+  const [draft, setDraft] = useState('')
 
   useEffect(() => {
     let live = true
+    setError(null)
+    setCommentsError(null)
     const { number, sourceBranch, targetBranch, fromFork } = pr
     api
       .reviewPullRequest(path, { number, sourceBranch, targetBranch, fromFork })
@@ -104,15 +108,19 @@ function Review({ path, pr }: { path: string; pr: PullRequest }) {
           </button>
           <button
             className="btn small"
-            disabled={busy}
-            onClick={() => void run(() => approveReviewedPullRequest(path, pr))}
+            disabled={busy || !range}
+            onClick={() => range && void run(() => approveReviewedPullRequest(path, pr, range.head))}
           >
             <Check size={13} /> {t('review.approve')}
           </button>
           <button
             className="btn small btn-primary"
-            disabled={busy || !provider}
-            onClick={() => provider && void run(() => mergeReviewedPullRequest(path, pr, mergeMethods(provider)))}
+            disabled={busy || !provider || !range}
+            onClick={() =>
+              provider &&
+              range &&
+              void run(() => mergeReviewedPullRequest(path, pr, mergeMethods(provider), range.head))
+            }
           >
             <GitMerge size={13} /> {t('review.merge')}
           </button>
@@ -181,6 +189,8 @@ function Review({ path, pr }: { path: string; pr: PullRequest }) {
           comments={comments}
           error={commentsError}
           onAdded={(comment) => setComments((list) => [...(list ?? []), comment])}
+          draft={draft}
+          setDraft={setDraft}
           onShowFile={showFile}
         />
       )}
@@ -201,10 +211,12 @@ function Conversation(props: {
   error: string | null
   onAdded: (comment: PullRequestComment) => void
   onShowFile: (file: string) => void
+  draft: string
+  setDraft: (draft: string) => void
 }) {
   const t = useT()
   const lang = useStore((s) => s.lang)
-  const [draft, setDraft] = useState('')
+  const { draft, setDraft } = props
   const [sending, setSending] = useState(false)
   const send = async () => {
     if (!draft.trim()) return

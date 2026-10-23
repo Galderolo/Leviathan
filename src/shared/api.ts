@@ -200,8 +200,9 @@ export interface LeviathanInvokeApi {
   ): Promise<{ base: string; head: string; files: FileChange[] }>
   getPullRequestComments(repo: string, number: number): Promise<PullRequestComment[]>
   commentOnPullRequest(repo: string, number: number, body: string): Promise<PullRequestComment>
-  approvePullRequest(repo: string, number: number): Promise<void>
-  mergePullRequest(repo: string, number: number, url: string, method: MergeMethod): Promise<void>
+  /** Approves the pull request at `head`, the commit the review showed (refused when it moved on). */
+  approvePullRequest(repo: string, number: number, url: string, head: string): Promise<void>
+  mergePullRequest(repo: string, number: number, url: string, method: MergeMethod, head: string): Promise<void>
   getDefaultBranch(repo: string): Promise<string | null>
   checkoutPullRequest(
     repo: string,
