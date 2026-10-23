@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-23
+
 ### Added
 
 - **Open files in your editor**: pick VS Code, Cursor, Rider, Visual Studio, Sublime Text, Notepad++ or any command in *Settings → External tools*. Files open from their menu (from the diff, at the first changed line) and the repository from the repository menu.
