@@ -1018,6 +1018,28 @@ export async function getFileHistory(
   return history
 }
 
+/**
+ * Commits that changed anything inside a folder, newest first, from HEAD or from `rev`. The files each one
+ * changed come with its details (`getCommitDetails`), when one is picked.
+ */
+export async function getFolderHistory(
+  repo: string,
+  folder: string,
+  rev: string | null = null,
+  limit = 300
+): Promise<Commit[]> {
+  const path = folder.replace(/\\/g, '/').replace(/\/+$/, '')
+  // The whole repository's history is the graph.
+  if (!path || path === '.') throw new Error('Pick a folder of the repository')
+  insideRepo(repo, path)
+  if (rev !== null) assertSafeArg(rev, 'commit')
+  const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 5000) : 300
+  const out = await run(repo, ['log', `-n${count}`, `--format=${LOG_FORMAT}`, ...(rev ? [rev] : []), '--', path], {
+    env: LITERAL_PATHS
+  })
+  return parseLog(out)
+}
+
 const BLAME_MAX_LINES = 20000
 const BLAME_MAX_BYTES = 10 * 1024 * 1024
 

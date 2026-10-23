@@ -67,7 +67,8 @@ export interface RepoView {
   /** Branch picked in the side panel (full ref name): the graph dims commits outside its history. */
   highlight: string | null
   /** File history or blame shown in place of the graph. */
-  fileView: { kind: 'history' | 'blame'; path: string; rev: string | null } | null
+  /** History or blame of a file, or history of a folder (`path`), from HEAD or from commit `rev`. */
+  fileView: { kind: 'history' | 'blame' | 'folder'; path: string; rev: string | null } | null
   /** The pull request under review in the center panel. */
   review: PullRequest | null
   /** Actions that can be undone (newest last) and undone actions that can be redone. */

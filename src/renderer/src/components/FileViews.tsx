@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GitCommitHorizontal, X } from 'lucide-react'
-import type { BlameLine, FileCommit, FileDiff } from '../../../shared/types'
-import { closeFileView, showCommitInGraph } from '../actions'
+import type { BlameLine, Commit, FileChange, FileCommit, FileDiff } from '../../../shared/types'
+import { closeFileView, openFolderHistory, showCommitInGraph } from '../actions'
 import { useT } from '../i18n'
 import { useRepo, useStore } from '../store'
 import { errorMessage } from '../ui'
 import { cx, formatDate, relativeDate, shortHash, splitPath } from '../utils'
-import { historyDiffSource } from '../historyDiff'
-import { Avatar } from './common'
+import { filesInFolder, folderSteps, historyDiffSource } from '../historyDiff'
+import { Avatar, StatusBadge } from './common'
 import { highlightHunks } from '../syntax'
 import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 
@@ -19,21 +19,42 @@ const NOT_COMMITTED = /^0+$/
 export function FileView({ path }: { path: string }) {
   const fileView = useRepo(path)?.fileView
   if (!fileView) return null
+  const key = `${fileView.kind}:${fileView.path}@${fileView.rev}`
+  if (fileView.kind === 'folder')
+    return <FolderHistoryView key={key} path={path} folder={fileView.path} rev={fileView.rev} />
   return fileView.kind === 'history' ? (
-    <FileHistoryView key={`${fileView.path}@${fileView.rev}`} path={path} file={fileView.path} rev={fileView.rev} />
+    <FileHistoryView key={key} path={path} file={fileView.path} rev={fileView.rev} />
   ) : (
-    <BlameView key={`${fileView.path}@${fileView.rev}`} path={path} file={fileView.path} rev={fileView.rev} />
+    <BlameView key={key} path={path} file={fileView.path} rev={fileView.rev} />
   )
 }
 
-function Header(props: { path: string; context: string; file: string; children?: React.ReactNode }) {
+/** The file or folder a view is about; each folder above it opens that folder's history. */
+function Header(props: {
+  path: string
+  context: string
+  file: string
+  rev: string | null
+  children?: React.ReactNode
+}) {
   const t = useT()
-  const { dir, name } = splitPath(props.file)
+  const { name } = splitPath(props.file)
   return (
     <div className="diff-header">
       <div className="diff-title">
         <span className="diff-context">{props.context}</span>
-        <span className="file-dir">{dir}</span>
+        <span className="file-dir">
+          {folderSteps(props.file).map((step) => (
+            <button
+              key={step.folder}
+              className="path-step"
+              title={t('history.ofFolder', { folder: step.folder })}
+              onClick={() => openFolderHistory(props.path, step.folder, props.rev)}
+            >
+              {step.label}
+            </button>
+          ))}
+        </span>
         <span className="file-name">{name}</span>
       </div>
       <div className="diff-actions">
@@ -49,7 +70,6 @@ function Header(props: { path: string; context: string; file: string; children?:
 /** The commits that touched a file (following renames), and its diff in the one picked. */
 function FileHistoryView({ path, file, rev }: { path: string; file: string; rev: string | null }) {
   const t = useT()
-  const lang = useStore((s) => s.lang)
   const [items, setItems] = useState<FileCommit[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [picked, setPicked] = useState(0)
@@ -84,7 +104,7 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
 
   return (
     <div className="diff-view file-view">
-      <Header path={path} context={t('history.title')} file={file}>
+      <Header path={path} context={t('history.title')} file={file} rev={rev}>
         <DiffLayoutToggle />
         {item && (
           <button className="btn small" onClick={() => void showCommitInGraph(path, item.commit.hash)}>
@@ -99,29 +119,171 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
         <div className="history-layout">
           <div className="history-list">
             {items.map((entry, i) => (
-              <div
+              <CommitRow
                 key={entry.commit.hash}
-                className={cx('history-row', i === picked && 'selected')}
-                onClick={() => setPicked(i)}
-                onDoubleClick={() => void showCommitInGraph(path, entry.commit.hash)}
+                path={path}
+                commit={entry.commit}
+                selected={i === picked}
+                onPick={() => setPicked(i)}
                 title={entry.oldPath ? t('history.renamedFrom', { path: entry.oldPath }) : entry.path}
-              >
-                <Avatar name={entry.commit.authorName} email={entry.commit.authorEmail} size={18} />
-                <div className="history-text">
-                  <span className="history-subject">{entry.commit.subject}</span>
-                  <span className="dim small">
-                    {entry.commit.authorName} · {relativeDate(entry.commit.authorDate, lang)} ·{' '}
-                    {shortHash(entry.commit.hash)}
-                    {entry.oldPath && ` · ${t('history.renamedFrom', { path: entry.oldPath })}`}
-                  </span>
-                </div>
-              </div>
+                note={entry.oldPath && t('history.renamedFrom', { path: entry.oldPath })}
+              />
             ))}
           </div>
           <div className="diff-body">
             {diffError && <div className="empty-state error">{diffError}</div>}
             {!diffError && !diff && <div className="empty-state">{t('graph.loading')}</div>}
             {diff && <ReadOnlyDiff data={diff} />}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** A commit in a history list; double-click shows it in the graph. */
+function CommitRow(props: {
+  path: string
+  commit: Commit
+  selected: boolean
+  onPick: () => void
+  title?: string
+  /** Said after its author, date and hash. */
+  note?: string
+}) {
+  const lang = useStore((s) => s.lang)
+  const { commit } = props
+  return (
+    <div
+      className={cx('history-row', props.selected && 'selected')}
+      onClick={props.onPick}
+      onDoubleClick={() => void showCommitInGraph(props.path, commit.hash)}
+      title={props.title}
+    >
+      <Avatar name={commit.authorName} email={commit.authorEmail} size={18} />
+      <div className="history-text">
+        <span className="history-subject">{commit.subject}</span>
+        <span className="dim small">
+          {commit.authorName} · {relativeDate(commit.authorDate, lang)} · {shortHash(commit.hash)}
+          {props.note && ` · ${props.note}`}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** The commits that changed anything in a folder; the files the one picked changed there, and a file's diff. */
+function FolderHistoryView({ path, folder, rev }: { path: string; folder: string; rev: string | null }) {
+  const t = useT()
+  const [commits, setCommits] = useState<Commit[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [picked, setPicked] = useState(0)
+  const [files, setFiles] = useState<FileChange[] | null>(null)
+  const [file, setFile] = useState<FileChange | null>(null)
+  const [diff, setDiff] = useState<FileDiff | null>(null)
+  const [diffError, setDiffError] = useState<string | null>(null)
+  const prefix = `${folder}/`
+
+  useEffect(() => {
+    let live = true
+    api
+      .getFolderHistory(path, folder, rev)
+      .then((list) => live && setCommits(list))
+      .catch((err) => live && setError(errorMessage(err)))
+    return () => {
+      live = false
+    }
+  }, [path, folder, rev])
+
+  const commit = commits?.[picked]
+  useEffect(() => {
+    if (!commit) return
+    let live = true
+    setFiles(null)
+    setFile(null)
+    setDiffError(null)
+    api
+      .getCommitDetails(path, commit.hash)
+      .then((details) => {
+        if (!live) return
+        const inside = filesInFolder(details.files, folder)
+        setFiles(inside)
+        setFile(inside[0] ?? null)
+      })
+      .catch((err) => live && setDiffError(errorMessage(err)))
+    return () => {
+      live = false
+    }
+  }, [path, folder, commit])
+
+  useEffect(() => {
+    if (!commit || !file) return
+    let live = true
+    setDiff(null)
+    setDiffError(null)
+    api
+      .getDiff(path, {
+        kind: 'commit',
+        hash: commit.hash,
+        parent: commit.parents[0] ?? null,
+        path: file.path,
+        // Only a rename compares with the old name (after a copy the original is still there).
+        ...(file.status === 'R' && file.origPath ? { oldPath: file.origPath } : {})
+      })
+      .then((d) => live && setDiff(d))
+      .catch((err) => live && setDiffError(errorMessage(err)))
+    return () => {
+      live = false
+    }
+  }, [path, commit, file])
+
+  return (
+    <div className="diff-view file-view folder-history">
+      <Header path={path} context={t('history.folderTitle')} file={folder} rev={rev}>
+        <DiffLayoutToggle />
+        {commit && (
+          <button className="btn small" onClick={() => void showCommitInGraph(path, commit.hash)}>
+            <GitCommitHorizontal size={13} /> {t('history.showInGraph')}
+          </button>
+        )}
+      </Header>
+      {error && <div className="empty-state error">{error}</div>}
+      {!error && !commits && <div className="empty-state">{t('graph.loading')}</div>}
+      {commits && commits.length === 0 && <div className="empty-state">{t('history.folderEmpty')}</div>}
+      {commits && commits.length > 0 && (
+        <div className="history-layout">
+          <div className="history-list">
+            {commits.map((c, i) => (
+              <CommitRow key={c.hash} path={path} commit={c} selected={i === picked} onPick={() => setPicked(i)} />
+            ))}
+          </div>
+          <div className="folder-commit">
+            <div className="folder-files">
+              {files?.length === 0 && <div className="empty-state small">{t('history.folderNoFiles')}</div>}
+              {files?.map((f) => {
+                // Paths inside the folder, without it; a file moved out of it keeps its whole path.
+                const { dir, name } = splitPath(f.path.startsWith(prefix) ? f.path.slice(prefix.length) : f.path)
+                return (
+                  <div
+                    key={f.path}
+                    className={cx('file-row', file?.path === f.path && 'active')}
+                    title={f.origPath ? `${f.origPath} → ${f.path}` : f.path}
+                    onClick={() => setFile(f)}
+                  >
+                    <StatusBadge status={f.status} />
+                    <span className="file-path">
+                      <span className="file-dir">{dir}</span>
+                      <span className="file-name">{name}</span>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="diff-body">
+              {diffError && <div className="empty-state error">{diffError}</div>}
+              {!diffError && (!files || (file && !diff)) && <div className="empty-state">{t('graph.loading')}</div>}
+              {diff && file && <ReadOnlyDiff data={diff} />}
+            </div>
           </div>
         </div>
       )}
@@ -204,7 +366,7 @@ function BlameView({ path, file, rev }: { path: string; file: string; rev: strin
   const context = rev ? t('blame.at', { hash: shortHash(rev) }) : t('blame.working')
   return (
     <div className="diff-view file-view">
-      <Header path={path} context={`${t('blame.title')} · ${context}`} file={file} />
+      <Header path={path} context={`${t('blame.title')} · ${context}`} file={file} rev={rev} />
       <div className="diff-body">
         {error && <div className="empty-state error">{error}</div>}
         {!error && !lines && <div className="empty-state">{t('graph.loading')}</div>}

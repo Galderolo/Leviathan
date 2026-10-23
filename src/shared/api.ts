@@ -78,6 +78,8 @@ export interface LeviathanInvokeApi {
   getSnapshot(repo: string): Promise<Snapshot>
   /** Commits that touched a file, newest first, following renames. */
   getFileHistory(repo: string, path: string, rev: string | null): Promise<FileCommit[]>
+  /** Commits that changed anything inside a folder, newest first. */
+  getFolderHistory(repo: string, folder: string, rev: string | null): Promise<Commit[]>
   /** Who last changed each line: in the working tree (`rev` null) or in a commit. */
   getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]>
 
@@ -297,6 +299,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getDiff: true,
   getSnapshot: true,
   getFileHistory: true,
+  getFolderHistory: true,
   getBlame: true,
   readWorkingFile: true,
   resolveConflictFile: true,

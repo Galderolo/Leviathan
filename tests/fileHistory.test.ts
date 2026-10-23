@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -110,5 +110,39 @@ describe('history and blame edge cases', () => {
     await repo.commit(dir, 'add blob', false)
     const head = (await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()
     await expect(repo.getBlame(dir, 'blob.bin', head)).rejects.toThrow(/binary/i)
+  })
+})
+
+describe('getFolderHistory', () => {
+  beforeEach(async () => {
+    for (const folder of ['Assets/UI', 'AssetsOld', 'Art[1]', 'Art1']) mkdirSync(join(dir, folder), { recursive: true })
+    await commitAs('Ana', 'add menu', { 'Assets/UI/Menu.cs': 'a\n' })
+    await commitAs('Bo', 'touch root', { 'other.txt': 'y\n' })
+    await commitAs('Bo', 'add hud', { 'Assets/Hud.cs': 'b\n' })
+    // A folder whose name starts the same is another folder.
+    await commitAs('Cy', 'old assets', { 'AssetsOld/x.cs': 'c\n' })
+    await commitAs('Cy', 'art one', { 'Art1/a.png': 'p\n' })
+  })
+
+  const subjects = async (folder: string, rev: string | null = null) =>
+    (await repo.getFolderHistory(dir, folder, rev)).map((c) => c.subject)
+
+  it('lists the commits that changed anything inside a folder, newest first', async () => {
+    expect(await subjects('Assets')).toEqual(['add hud', 'add menu'])
+    expect(await subjects('Assets/UI/')).toEqual(['add menu'])
+    // From another commit, as file history does.
+    expect(await subjects('Assets', hashes['add menu'])).toEqual(['add menu'])
+  })
+
+  it('takes the folder name literally: Art[1] is not a pattern matching Art1', async () => {
+    expect(await subjects('Art[1]')).toEqual([])
+    expect(await subjects('Art1')).toEqual(['art one'])
+  })
+
+  it('refuses the whole repository and folders outside it', async () => {
+    await expect(repo.getFolderHistory(dir, '')).rejects.toThrow()
+    await expect(repo.getFolderHistory(dir, '.')).rejects.toThrow()
+    await expect(repo.getFolderHistory(dir, '../x')).rejects.toThrow(/outside/)
+    await expect(repo.getFolderHistory(dir, 'Assets', '--all')).rejects.toThrow()
   })
 })

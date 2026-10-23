@@ -196,6 +196,34 @@ test('opens the terminal chosen in Settings in the repository folder', async () 
   expect(same(started.folder)).toBe(same(repo))
 })
 
+test("shows a folder's history with the files each commit changed there, and goes up to its parent", async () => {
+  const repo = box.repo('game', { 'Assets/UI/Menu.cs': 'class Menu {}\n', 'README.md': 'game\n' })
+  const commit = (message: string, files: Record<string, string>) => {
+    box.write(repo, files)
+    box.git(repo, 'add', '.')
+    box.git(repo, 'commit', '-q', '-m', message)
+  }
+  commit('Describe the game', { 'README.md': 'a game\n' })
+  commit('Add the HUD', { 'Assets/Hud.cs': 'class Hud {}\n', 'Assets/UI/Menu.cs': 'class Menu { int page; }\n' })
+  box.write(repo, { 'Assets/UI/Menu.cs': 'class Menu { int page = 1; }\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'Menu.cs' }).click({ button: 'right' })
+  await menuItem('Folder history').click()
+  const view = page.locator('.folder-history')
+  await expect(view.locator('.history-subject')).toHaveText(['Add the HUD', 'first'])
+  // Only what changed in Assets/UI, its path inside the folder.
+  await expect(view.locator('.folder-files .file-path')).toHaveText(['Menu.cs'])
+  await expect(view.locator('.diff-line.add .code')).toHaveText(['class Menu { int page; }'])
+
+  await view.locator('.path-step', { hasText: 'Assets/' }).click()
+  await expect(view.locator('.diff-title')).toContainText('Assets')
+  await expect(view.locator('.folder-files .file-path')).toHaveText(['Hud.cs', 'UI/Menu.cs'])
+  await view.locator('.history-row', { hasText: 'first' }).click()
+  await expect(view.locator('.folder-files .file-path')).toHaveText(['UI/Menu.cs'])
+})
+
 test('highlights the code of a diff', async () => {
   const repo = box.repo('game', { 'Assets/Player.cs': 'public class Player\n{\n    int hp = 1;\n}\n' })
   box.write(repo, { 'Assets/Player.cs': 'public class Player\n{\n    int hp = 2; // more\n}\n' })

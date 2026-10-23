@@ -1,6 +1,33 @@
 import { describe, expect, it } from 'vitest'
-import { historyDiffSource } from '../src/renderer/src/historyDiff'
-import type { Commit, FileCommit } from '../src/shared/types'
+import { filesInFolder, folderSteps, historyDiffSource } from '../src/renderer/src/historyDiff'
+import type { Commit, FileChange, FileCommit } from '../src/shared/types'
+
+describe('folder history', () => {
+  it('keeps the files of a commit inside the folder, those moved in or out of it too', () => {
+    const files: FileChange[] = [
+      { path: 'Assets/UI/Menu.cs', status: 'M' },
+      { path: 'AssetsOld/x.cs', status: 'A' },
+      { path: 'Assets/Hud.cs', status: 'R', origPath: 'Old/Hud.cs' },
+      { path: 'Archive/Boss.cs', status: 'R', origPath: 'Assets/Boss.cs' },
+      { path: 'README.md', status: 'M' }
+    ]
+    expect(filesInFolder(files, 'Assets').map((f) => f.path)).toEqual([
+      'Assets/UI/Menu.cs',
+      'Assets/Hud.cs',
+      'Archive/Boss.cs'
+    ])
+    expect(filesInFolder(files, 'Assets/UI/').map((f) => f.path)).toEqual(['Assets/UI/Menu.cs'])
+  })
+
+  it('names the folders above a path, outermost first, for the header to go up to', () => {
+    expect(folderSteps('Assets/UI/Menu.cs')).toEqual([
+      { label: 'Assets/', folder: 'Assets' },
+      { label: 'UI/', folder: 'Assets/UI' }
+    ])
+    expect(folderSteps('Assets/UI')).toEqual([{ label: 'Assets/', folder: 'Assets' }])
+    expect(folderSteps('README.md')).toEqual([])
+  })
+})
 
 const commit = { hash: 'h2', parents: ['h1'] } as Commit
 const entry = (e: Partial<FileCommit>): FileCommit => ({ commit, path: 'b.txt', status: 'M', ...e })

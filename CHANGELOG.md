@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Folder history**: a file's menu → *Folder history* lists the commits that changed something in its folder; pick one to see the files it changed there and their diff. In any history or blame, the folders in the path at the top open their own history, to go up a level.
 - **Choose your terminal** (Settings → External tools) for the *Terminal* button: Command Prompt, Windows PowerShell, PowerShell 7, Windows Terminal or Git Bash on Windows; Terminal, iTerm or Warp on macOS; GNOME Terminal, Konsole, Xfce Terminal, kitty, Alacritty or WezTerm on Linux; or any command. It opens in the repository's folder.
 
 ### Changed

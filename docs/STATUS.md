@@ -231,6 +231,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - History stops at 300 commits and blame at 20 000 lines without saying so; neither view refreshes after a commit or checkout.
 - A global `blame.ignoreRevsFile` pointing to a missing file makes every blame fail with git's message.
 - Rendering 20 000 blame rows ("Show all") is slow; closing the view does not stop a long `log --follow` or blame.
+- Folder history (`getFolderHistory`: `git log -- <folder>`, literal pathspec, 300 commits) loads the picked commit's whole file list (`getCommitDetails`) and keeps the folder's part (`filesInFolder`, moves in and out included), so a commit of 20 000 files costs the same as in the graph. Files compare with the first parent: a merge that brought the folder's changes may list nothing.
 
 **Automatic updates**
 - Nothing proves an installer is ours beyond HTTPS and the GitHub account: set `publisherName` once Windows builds are signed. Each check sends electron-updater's random staging id to github.com.
