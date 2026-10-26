@@ -602,6 +602,8 @@ const es: Record<keyof typeof en, string> = {
   'blame.working': 'archivo de trabajo',
   'blame.at': 'en {hash}',
   'blame.notCommitted': 'Sin confirmar',
+  'blame.before': 'Blame anterior a este cambio',
+  'blame.back': 'Volver',
 
   'diff.unified': 'Una columna',
   'diff.split': 'Lado a lado (antes | después)',

@@ -561,6 +561,36 @@ test('says that a commit only renamed a file', async () => {
   await expect(page.locator('.file-view .diff-body')).toContainText('Renamed from old.txt, with no other change')
 })
 
+test('blames a line as it was before the commit that changed it, and comes back', async () => {
+  const repo = box.repo('game', { 'notes.txt': 'one\ntwo\n' })
+  box.write(repo, { 'notes.txt': 'one\ntwo, edited\n' })
+  box.git(repo, 'commit', '-qam', 'edit two')
+  box.git(repo, 'mv', 'notes.txt', 'docs.txt')
+  box.git(repo, 'commit', '-qm', 'rename')
+  box.write(repo, { 'docs.txt': 'one\ntwo, edited\nthree\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'docs.txt' }).click({ button: 'right' })
+  await menuItem('Blame (who changed each line)').click()
+  await expect(page.locator('.blame-line')).toHaveCount(3)
+  // The first commit has nothing before it.
+  await page.locator('.blame-line', { hasText: 'one' }).hover()
+  await expect(page.locator('.blame-line', { hasText: 'one' }).getByTitle('Blame before this change')).toHaveCount(0)
+
+  const edited = page.locator('.blame-line', { hasText: 'two, edited' })
+  await edited.hover()
+  await edited.getByTitle('Blame before this change').click()
+  // The file under its name then, the line as it was, shown.
+  await expect(page.locator('.file-view .diff-title')).toContainText('notes.txt')
+  await expect(page.locator('.blame-line.target')).toContainText('two')
+  await expect(page.locator('.blame-line')).toHaveText([/one/, /two$/])
+
+  await page.locator('.file-view').getByRole('button', { name: 'Back' }).click()
+  await expect(page.locator('.file-view .diff-title')).toContainText('docs.txt')
+  await expect(page.locator('.blame-line')).toHaveCount(3)
+})
+
 test('says when a blame shows only the first lines of a long file', async () => {
   const repo = box.repo('game', {
     'long.txt': Array.from({ length: 20_005 }, (_, i) => `line ${i + 1}`).join('\n') + '\n'

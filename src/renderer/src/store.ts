@@ -69,9 +69,8 @@ export interface RepoView {
   graphScope: GraphScope
   /** Branch picked in the side panel (full ref name): the graph dims commits outside its history. */
   highlight: string | null
-  /** File history or blame shown in place of the graph. */
   /** History or blame of a file, or history of a folder (`path`), from HEAD or from commit `rev`. */
-  fileView: { kind: 'history' | 'blame' | 'folder'; path: string; rev: string | null } | null
+  fileView: FileView | null
   /** The pull request under review in the center panel. */
   review: PullRequest | null
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
@@ -80,6 +79,17 @@ export interface RepoView {
   /** Git LFS patterns and locks; null until read. */
   lfs: LfsView | null
   submodules: Submodule[]
+}
+
+/** File history, blame or folder history shown in place of the graph. */
+export interface FileView {
+  kind: 'history' | 'blame' | 'folder'
+  path: string
+  rev: string | null
+  /** Blame: the line to show first. */
+  line?: number
+  /** Blames left to look before a change, newest last, to come back to. */
+  back?: FileView[]
 }
 
 export interface LfsView {

@@ -303,6 +303,17 @@ export function parseDiff(out: string, fallbackPath: string): FileDiff {
   return diff
 }
 
+const C_ESCAPES: Record<string, string> = { n: '\n', t: '\t', '"': '"', '\\': '\\' }
+
+/**
+ * A path as git prints it in porcelain output: quoted, C style, when it has quotes, backslashes or control
+ * characters (the app runs git with core.quotepath=false, so other characters come as they are).
+ */
+export function unquotePath(path: string): string {
+  if (!(path.length > 1 && path.startsWith('"') && path.endsWith('"'))) return path
+  return path.slice(1, -1).replace(/\\(.)/g, (whole, c: string) => C_ESCAPES[c] ?? whole)
+}
+
 /** Builds an all-additions diff for an untracked file. */
 export function untrackedDiff(path: string, content: string): FileDiff {
   return contentDiff(path, content, 'add')

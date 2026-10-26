@@ -7,8 +7,18 @@ import {
   parseRemotes,
   parseStashes,
   parseStatus,
+  unquotePath,
   untrackedDiff
 } from '../src/shared/parsers'
+
+describe('unquotePath', () => {
+  it('reads a path git quoted for its special characters, and leaves others alone', () => {
+    expect(unquotePath('"say \\"hi\\".txt"')).toBe('say "hi".txt')
+    expect(unquotePath('"back\\\\slash\\tand tab"')).toBe('back\\slash\tand tab')
+    expect(unquotePath('plain name.txt')).toBe('plain name.txt')
+    expect(unquotePath('café.txt')).toBe('café.txt')
+  })
+})
 
 const F = '\x1f'
 const R = '\x1e'

@@ -593,6 +593,8 @@ const en = {
   'blame.working': 'working tree',
   'blame.at': 'at {hash}',
   'blame.notCommitted': 'Not committed yet',
+  'blame.before': 'Blame before this change',
+  'blame.back': 'Back',
 
   'diff.unified': 'One column',
   'diff.split': 'Side by side (old | new)',

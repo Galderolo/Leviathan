@@ -192,6 +192,10 @@ export interface BlameLine {
   summary: string
   /** 1-based line number in the file. */
   line: number
+  /** Its line number in the file as `hash` left it. */
+  origLine: number
+  /** The commit before `hash` and the file's path there: where to blame the line as it was before that change. */
+  previous?: { hash: string; path: string }
   text: string
 }
 
