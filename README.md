@@ -30,7 +30,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Side panel**: local branches as a folder tree, remotes, stashes and tags, with ahead/behind counters and a filter.
 - **Focus the graph**: hide branches or show only one, highlight the history of a branch, and see which branches have an open pull request.
 - **Staging**: stage or unstage whole files, individual **hunks** or single **lines**; select several files (checkboxes, Ctrl/Shift+click) to stage, unstage or discard them together; discard changes; add files to `.gitignore`.
-- **Commits**: summary and description, amend the last commit, `Ctrl+Enter` to commit.
+- **Commits**: summary and description, started from git's `commit.template` when you have one, amend the last commit, `Ctrl+Enter` to commit.
 - **Diff viewer** for the working tree, the index and any commit, in one column or side by side, the changes alone or within the whole file, with syntax highlighting (C#, shaders, Unity assets and many more) and the words that changed highlighted.
 - **File and folder history, and blame**: every commit that touched a file (following renames) with its diff, every commit that changed something in a folder with the files it changed there, and who last changed each line — then, from a line, who changed it before that, back to where it started.
 - **Branches**: create, checkout (double-click), rename, delete, merge, rebase, push, delete from the remote. **Drag a branch onto another** to merge or rebase.
@@ -136,7 +136,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 - Grafo de commits a color con ramas, merges, tags, stashes y el nodo de trabajo en curso (WIP).
 - Pestañas con varios repositorios abiertos a la vez, que se ordenan arrastrándolas y avisan de los commits por traer o por subir.
-- Preparar (stage) archivos completos, bloques o líneas sueltas, commit, amend, diff con resaltado de sintaxis, solo con los cambios o con el archivo completo.
+- Preparar (stage) archivos completos, bloques o líneas sueltas, commit (con la plantilla `commit.template` de git si la tienes), amend, diff con resaltado de sintaxis, solo con los cambios o con el archivo completo.
 - Arrastrar una rama sobre otra para hacer merge o rebase.
 - Repos privados: usuario/token HTTPS, passphrase SSH y huellas de host se piden en la app; gestión de claves SSH.
 - Iniciar sesión con GitHub o GitLab desde el navegador (sin crear tokens), o varias cuentas (GitHub, GitLab, Bitbucket, Gitea…) con token cifrado: cada repo usa la suya para el autor de los commits (email privado por defecto) y para push/pull sin contraseñas (por defecto, la cuenta dueña del repo o con permiso de escritura); la caja de commit muestra con qué identidad se hará y la cambia en un clic; clonar desde la lista de repos de la cuenta.

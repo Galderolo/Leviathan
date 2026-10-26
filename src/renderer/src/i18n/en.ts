@@ -135,6 +135,7 @@ const en = {
   'wip.commitBtn': 'Commit changes to {count} files',
   'wip.commitBtn_one': 'Commit changes to 1 file',
   'wip.stageToCommit': 'Stage files to commit',
+  'wip.editTemplate': 'Write the message from the template',
   'wip.typeSummary': 'Type a commit summary',
 
   'op.merge': 'Merge in progress',

@@ -14,6 +14,7 @@ import type {
 } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import type { CommitIdentity } from '../../shared/identity'
+import type { CommitDraftText } from '../../shared/commitTemplate'
 import type { LfsInfo, LfsLock } from '../../shared/lfs'
 import type { UpdateState } from '../../shared/updates'
 import type { Lang } from './i18n'
@@ -63,6 +64,8 @@ export interface RepoView {
   account: Account | null
   /** Who the next commit will be by; null until read. */
   identity: CommitIdentity | null
+  /** git's commit.template, the message each commit starts from; null without one. */
+  template: CommitDraftText | null
   /** Open pull requests; null when no account can reach the repository's remote. */
   pullRequests: PullRequestsView | null
   /** Branches left out of the graph, or the only one shown (full ref names). */
@@ -284,6 +287,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     lastFetchError: null,
     account: null,
     identity: null,
+    template: null,
     pullRequests: null,
     fileView: null,
     review: null,

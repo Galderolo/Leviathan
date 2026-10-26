@@ -16,7 +16,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 - [x] Syntax highlighting in diffs
 - [x] Edit the result of a conflict by hand inside the conflict editor
-- [ ] Commit message templates — **good first issue**
+- [x] Commit message templates (git's `commit.template`)
 
 ## History editing
 

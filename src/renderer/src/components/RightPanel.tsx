@@ -471,10 +471,13 @@ function CommitBox({ path }: { path: string }) {
   const pushTarget = pushAfterCommitTarget(view.state!.head, view.state!.remotes)
   const stagedCount = status.staged.length
   const blocked = status.conflicted.length > 0
-  const canCommit = !!summary.trim() && (stagedCount > 0 || amend) && !blocked
+  // Like git, a commit.template left as it is is no message.
+  const asTemplate = !!view.template && summary === view.template.summary && body === view.template.body
+  const canCommit = !!summary.trim() && !asTemplate && (stagedCount > 0 || amend) && !blocked
 
   let label: string
   if (!summary.trim()) label = t('wip.typeSummary')
+  else if (asTemplate) label = t('wip.editTemplate')
   else if (stagedCount > 0) label = t('wip.commitBtn', { count: stagedCount })
   else if (amend) label = t('wip.amend')
   else label = t('wip.stageToCommit')

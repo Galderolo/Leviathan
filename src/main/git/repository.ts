@@ -14,6 +14,7 @@ import {
   unquotePath,
   untrackedDiff
 } from '../../shared/parsers'
+import { parseCommitTemplate, type CommitDraftText } from '../../shared/commitTemplate'
 import { unchangedGaps } from '../../shared/diffGaps'
 import { LARGE_FILE_BYTES } from '../../shared/lfs'
 import type {
@@ -510,6 +511,26 @@ export async function commit(repo: string, message: string, amend: boolean): Pro
 export async function headMessage(repo: string): Promise<string> {
   if (!(await hasHead(repo))) return ''
   return (await run(repo, ['log', '-1', '--format=%B'])).trimEnd()
+}
+
+/** Larger than any commit message template; a bigger file is not one. */
+const TEMPLATE_MAX_BYTES = 64 * 1024
+
+/** The message git's commit.template starts commits with (a path from the repository's folder, ~ expanded). */
+export async function getCommitTemplate(repo: string): Promise<CommitDraftText | null> {
+  const { stdout, exitCode } = await git(['config', '--path', '--get', 'commit.template'], {
+    cwd: repo,
+    okCodes: [0, 1]
+  })
+  const file = exitCode === 0 ? stdout.trim() : ''
+  if (!file) return null
+  try {
+    const full = resolve(repo, file)
+    if ((await fs.stat(full)).size > TEMPLATE_MAX_BYTES) return null
+    return parseCommitTemplate(await fs.readFile(full, 'utf8'))
+  } catch {
+    return null
+  }
 }
 
 export async function ignore(repo: string, pattern: string): Promise<void> {
