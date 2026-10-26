@@ -52,11 +52,14 @@ import { pollDeviceFlow, startDeviceFlow, type DeviceCode } from './oauth'
 
 const cipher: Cipher = {
   // On Linux without a keyring Electron falls back to "basic_text", which only obfuscates: treat as unavailable.
-  available: () =>
-    safeStorage.isEncryptionAvailable() &&
+  available: async () =>
+    (await safeStorage.isAsyncEncryptionAvailable()) &&
     !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text'),
-  encrypt: (text) => safeStorage.encryptString(text),
-  decrypt: (data) => safeStorage.decryptString(data)
+  encrypt: (text) => safeStorage.encryptStringAsync(text),
+  decrypt: async (data) => {
+    const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(data)
+    return { text: result, reseal: shouldReEncrypt }
+  }
 }
 
 let store: AccountStore | null = null

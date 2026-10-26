@@ -5,10 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AccountStore, type Cipher } from '../src/main/accounts/store'
 import { TokenSource } from '../src/main/accounts/tokens'
 
+const reverse = (text: string) => [...text].reverse().join('')
 const fakeCipher: Cipher = {
-  available: () => true,
-  encrypt: (text) => Buffer.from([...text].reverse().join(''), 'utf8'),
-  decrypt: (data) => [...data.toString('utf8')].reverse().join('')
+  available: async () => true,
+  encrypt: async (text) => Buffer.from(reverse(text), 'utf8'),
+  decrypt: async (data) => ({ text: reverse(data.toString('utf8')), reseal: false })
 }
 
 const gitlab = { provider: 'gitlab' as const, host: 'gitlab.com', username: 'bo', name: 'Bo', email: 'bo@x.invalid' }
@@ -25,17 +26,17 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('renewable tokens (GitLab sign-in)', () => {
-  it('keeps the renewal token encrypted next to the access token', () => {
-    const account = store.add(gitlab, 'A1', { refreshToken: 'R1-secret', expiresAt: 5 * HOUR })
-    expect(store.renewal(account.id)).toEqual({ refreshToken: 'R1-secret', expiresAt: 5 * HOUR })
+  it('keeps the renewal token encrypted next to the access token', async () => {
+    const account = await store.add(gitlab, 'A1', { refreshToken: 'R1-secret', expiresAt: 5 * HOUR })
+    expect(await store.renewal(account.id)).toEqual({ refreshToken: 'R1-secret', expiresAt: 5 * HOUR })
     expect(readFileSync(join(dir, 'accounts.json'), 'utf8')).not.toContain('R1-secret')
     // A personal access token pasted later replaces the sign-in: nothing to renew any more.
-    store.setToken(account.id, 'glpat-x')
-    expect(store.renewal(account.id)).toBeNull()
+    await store.setToken(account.id, 'glpat-x')
+    expect(await store.renewal(account.id)).toBeNull()
   })
 
   it('renews a token about to expire, once for everyone asking at the same time, and keeps the new pair', async () => {
-    const account = store.add(gitlab, 'A1', { refreshToken: 'R1', expiresAt: 1 * HOUR })
+    const account = await store.add(gitlab, 'A1', { refreshToken: 'R1', expiresAt: 1 * HOUR })
     let now = 0
     const renewals: string[] = []
     const tokens = new TokenSource(
@@ -53,13 +54,13 @@ describe('renewable tokens (GitLab sign-in)', () => {
     now = 1 * HOUR - 60_000 // a minute left
     expect(await Promise.all([tokens.token(account.id), tokens.token(account.id)])).toEqual(['A2', 'A2'])
     expect(renewals).toEqual(['R1'])
-    expect(store.token(account.id)).toBe('A2')
-    expect(store.renewal(account.id)).toEqual({ refreshToken: 'R2', expiresAt: now + 2 * HOUR })
+    expect(await store.token(account.id)).toBe('A2')
+    expect(await store.renewal(account.id)).toEqual({ refreshToken: 'R2', expiresAt: now + 2 * HOUR })
   })
 
   it('leaves tokens that do not expire alone, and passes on why a renewal failed', async () => {
-    const plain = store.add({ ...gitlab, username: 'cy' }, 'glpat-1')
-    const signedIn = store.add(gitlab, 'A1', { refreshToken: 'R1', expiresAt: 0 })
+    const plain = await store.add({ ...gitlab, username: 'cy' }, 'glpat-1')
+    const signedIn = await store.add(gitlab, 'A1', { refreshToken: 'R1', expiresAt: 0 })
     const tokens = new TokenSource(
       store,
       async () => {

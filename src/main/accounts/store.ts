@@ -4,9 +4,10 @@ import type { Account } from '../../shared/types'
 
 /** Encrypts tokens at rest (Electron's safeStorage in the app). */
 export interface Cipher {
-  available(): boolean
-  encrypt(text: string): Buffer
-  decrypt(data: Buffer): string
+  available(): Promise<boolean>
+  encrypt(text: string): Promise<Buffer>
+  /** `reseal`: the key changed since, the text should be encrypted again. */
+  decrypt(data: Buffer): Promise<{ text: string; reseal: boolean }>
 }
 
 /** What renews an access token that expires (GitLab sign-in). */
@@ -49,34 +50,27 @@ export class AccountStore {
   }
 
   /** null when the account is unknown or its token can no longer be decrypted (e.g. a restored profile). */
-  token(id: string): string | null {
+  async token(id: string): Promise<string | null> {
     const found = this.accounts.find((a) => a.id === id)
     if (!found) return null
-    try {
-      return this.cipher.decrypt(Buffer.from(found.token, 'base64'))
-    } catch {
-      return null
-    }
+    return this.open(found, 'token')
   }
 
   /** Null for tokens that do not expire, or when the renewal token cannot be decrypted. */
-  renewal(id: string): Renewal | null {
+  async renewal(id: string): Promise<Renewal | null> {
     const found = this.accounts.find((a) => a.id === id)
     if (!found?.refresh || found.expiresAt === undefined) return null
-    try {
-      return { refreshToken: this.cipher.decrypt(Buffer.from(found.refresh, 'base64')), expiresAt: found.expiresAt }
-    } catch {
-      return null
-    }
+    const refreshToken = await this.open(found, 'refresh')
+    return refreshToken === null ? null : { refreshToken, expiresAt: found.expiresAt }
   }
 
-  add(account: Omit<Account, 'id'>, token: string, renewal?: Renewal): Account {
-    if (!this.cipher.available()) throw new Error('Secure storage is not available on this system')
+  async add(account: Omit<Account, 'id'>, token: string, renewal?: Renewal): Promise<Account> {
+    await this.assertAvailable()
     const stored: StoredAccount = {
       ...account,
       id: randomUUID(),
-      token: this.cipher.encrypt(token).toString('base64'),
-      ...this.sealed(renewal)
+      token: await this.seal(token),
+      ...(await this.sealed(renewal))
     }
     this.accounts.push(stored)
     this.save()
@@ -84,21 +78,43 @@ export class AccountStore {
   }
 
   /** Replaces the token of an account (signed in again, renewed, or a new token for it). */
-  setToken(id: string, token: string, renewal?: Renewal): Account {
-    if (!this.cipher.available()) throw new Error('Secure storage is not available on this system')
+  async setToken(id: string, token: string, renewal?: Renewal): Promise<Account> {
+    await this.assertAvailable()
     const found = this.accounts.find((a) => a.id === id)
     if (!found) throw new Error('Account not found')
-    found.token = this.cipher.encrypt(token).toString('base64')
-    const sealed = this.sealed(renewal)
+    found.token = await this.seal(token)
+    const sealed = await this.sealed(renewal)
     found.refresh = sealed.refresh
     found.expiresAt = sealed.expiresAt
     this.save()
     return publicPart(found)
   }
 
-  private sealed(renewal?: Renewal): Pick<StoredAccount, 'refresh' | 'expiresAt'> {
+  private async assertAvailable(): Promise<void> {
+    if (!(await this.cipher.available())) throw new Error('Secure storage is not available on this system')
+  }
+
+  private async seal(text: string): Promise<string> {
+    return (await this.cipher.encrypt(text)).toString('base64')
+  }
+
+  /** A stored secret in clear; encrypted again, and saved, when the key changed since. Null when unreadable. */
+  private async open(found: StoredAccount, field: 'token' | 'refresh'): Promise<string | null> {
+    try {
+      const { text, reseal } = await this.cipher.decrypt(Buffer.from(found[field]!, 'base64'))
+      if (reseal) {
+        found[field] = await this.seal(text)
+        this.save()
+      }
+      return text
+    } catch {
+      return null
+    }
+  }
+
+  private async sealed(renewal?: Renewal): Promise<Pick<StoredAccount, 'refresh' | 'expiresAt'>> {
     if (!renewal) return { refresh: undefined, expiresAt: undefined }
-    return { refresh: this.cipher.encrypt(renewal.refreshToken).toString('base64'), expiresAt: renewal.expiresAt }
+    return { refresh: await this.seal(renewal.refreshToken), expiresAt: renewal.expiresAt }
   }
 
   update(id: string, patch: Partial<Pick<Account, 'name' | 'email'>>): Account {

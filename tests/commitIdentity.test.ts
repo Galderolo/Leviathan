@@ -10,10 +10,13 @@ vi.mock('electron', () => ({
   app: { getPath: () => userData },
   BrowserWindow: { getAllWindows: () => [] },
   safeStorage: {
-    isEncryptionAvailable: () => true,
+    isAsyncEncryptionAvailable: async () => true,
     getSelectedStorageBackend: () => 'dpapi',
-    encryptString: (text: string) => Buffer.from(text.split('').reverse().join('')),
-    decryptString: (data: Buffer) => data.toString().split('').reverse().join('')
+    encryptStringAsync: async (text: string) => Buffer.from(text.split('').reverse().join('')),
+    decryptStringAsync: async (data: Buffer) => ({
+      result: data.toString().split('').reverse().join(''),
+      shouldReEncrypt: false
+    })
   }
 }))
 
