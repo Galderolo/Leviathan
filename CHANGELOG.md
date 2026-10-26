@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-26
+
 ### Added
 
 - **Avatars**, off by default (*Settings → General*): the authors' pictures in the graph, commit details and histories, from the repository's server through your account (GitHub, GitLab, Bitbucket or Gitea), GitHub's private emails and Gravatar; the initials stay without one. Turning them on means asking those services about each author's email (the README says what goes where).
