@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
@@ -393,6 +393,68 @@ test('shows the whole file around a change, and still stages its hunk', async ()
   await view.getByRole('button', { name: 'Stage hunk' }).click()
   await expect.poll(() => box.git(repo, 'diff', '--cached', '--name-only')).toBe('f.txt')
   expect(box.git(repo, 'diff', '--name-only')).toBe('')
+})
+
+/** Commits `count` more changes of `file` onto main, in one git process. */
+function commitMany(repo: string, file: string, count: number): void {
+  const head = box.git(repo, 'rev-parse', 'HEAD')
+  const commits = Array.from({ length: count }, (_, i) => {
+    const content = `${i + 1}\n`
+    return [
+      'commit refs/heads/main',
+      `committer E2E <e2e@example.invalid> ${1700000000 + i} +0000`,
+      `data ${`change ${i + 1}`.length}`,
+      `change ${i + 1}`,
+      ...(i === 0 ? [`from ${head}`] : []),
+      `M 100644 inline ${file}`,
+      `data ${content.length}`,
+      content
+    ].join('\n')
+  })
+  execFileSync('git', ['fast-import', '--quiet'], { cwd: repo, env: box.env, input: commits.join('\n') + '\n' })
+  box.git(repo, 'reset', '-q', '--hard')
+}
+
+test('says when a file history shows only its latest commits, and shows more', async () => {
+  const repo = box.repo('game', { 'f.txt': '0\n' })
+  commitMany(repo, 'f.txt', 300)
+  box.write(repo, { 'f.txt': 'mine\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'f.txt' }).click({ button: 'right' })
+  await menuItem('File history').click()
+  await expect(page.locator('.history-row')).toHaveCount(300)
+  await expect(page.locator('.history-more')).toContainText('Showing the latest 300 commits')
+  await page.locator('.history-more').getByRole('button', { name: 'Show more' }).click()
+  await expect(page.locator('.history-row')).toHaveCount(301)
+  await expect(page.locator('.history-more')).toHaveCount(0)
+})
+
+test('says that a commit only renamed a file', async () => {
+  const repo = box.repo('game', { 'old.txt': 'same\n' })
+  box.git(repo, 'mv', 'old.txt', 'new.txt')
+  box.git(repo, 'commit', '-qm', 'rename it')
+  box.write(repo, { 'new.txt': 'same, edited\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'new.txt' }).click({ button: 'right' })
+  await menuItem('File history').click()
+  await expect(page.locator('.history-row').first()).toContainText('rename it')
+  await expect(page.locator('.file-view .diff-body')).toContainText('Renamed from old.txt, with no other change')
+})
+
+test('says when a blame shows only the first lines of a long file', async () => {
+  const repo = box.repo('game', {
+    'long.txt': Array.from({ length: 20_005 }, (_, i) => `line ${i + 1}`).join('\n') + '\n'
+  })
+  await open(repo)
+
+  await commitRows().filter({ hasText: 'first' }).click()
+  await page.locator('.right-panel .file-row', { hasText: 'long.txt' }).click({ button: 'right' })
+  await menuItem('Blame (who changed each line)').click()
+  await expect(page.locator('.blame-more')).toContainText('Showing the first 20,000 lines')
 })
 
 /** A repository with `base` and then commits one, two and three, each adding its own file. */

@@ -127,6 +127,14 @@ describe('getFolderHistory', () => {
   const subjects = async (folder: string, rev: string | null = null) =>
     (await repo.getFolderHistory(dir, folder, rev)).map((c) => c.subject)
 
+  it('lists only the latest commits asked for, of a folder or of a file', async () => {
+    expect((await repo.getFolderHistory(dir, 'Assets', null, 1)).map((c) => c.subject)).toEqual(['add hud'])
+    expect((await repo.getFileHistory(dir, 'docs.txt', null, 2)).map((h) => h.commit.subject)).toEqual([
+      'rename notes',
+      'edit notes'
+    ])
+  })
+
   it('lists the commits that changed anything inside a folder, newest first', async () => {
     expect(await subjects('Assets')).toEqual(['add hud', 'add menu'])
     expect(await subjects('Assets/UI/')).toEqual(['add menu'])

@@ -166,6 +166,12 @@ export interface Submodule {
   dirty: boolean
 }
 
+/** Commits a file or folder history lists at first (and adds each time more are asked for), and at most. */
+export const HISTORY_PAGE = 300
+export const HISTORY_MAX = 5000
+/** Lines a blame shows at most. */
+export const BLAME_MAX_LINES = 20000
+
 /** A commit that touched a file, with the file's path in that commit. */
 export interface FileCommit {
   commit: Commit

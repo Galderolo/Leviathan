@@ -77,10 +77,10 @@ export interface LeviathanInvokeApi {
   /** `fullFile`: also the unchanged lines around the hunks (`FileDiff.gaps`). */
   getDiff(repo: string, source: DiffSource, fullFile?: boolean): Promise<FileDiff>
   getSnapshot(repo: string): Promise<Snapshot>
-  /** Commits that touched a file, newest first, following renames. */
-  getFileHistory(repo: string, path: string, rev: string | null): Promise<FileCommit[]>
-  /** Commits that changed anything inside a folder, newest first. */
-  getFolderHistory(repo: string, folder: string, rev: string | null): Promise<Commit[]>
+  /** Commits that touched a file, newest first, following renames; `limit` of them (`HISTORY_PAGE` by default). */
+  getFileHistory(repo: string, path: string, rev: string | null, limit?: number): Promise<FileCommit[]>
+  /** Commits that changed anything inside a folder, newest first; `limit` of them (`HISTORY_PAGE` by default). */
+  getFolderHistory(repo: string, folder: string, rev: string | null, limit?: number): Promise<Commit[]>
   /** Who last changed each line: in the working tree (`rev` null) or in a commit. */
   getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]>
 

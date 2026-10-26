@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GitCommitHorizontal, X } from 'lucide-react'
 import type { BlameLine, Commit, FileChange, FileCommit, FileDiff } from '../../../shared/types'
+import { BLAME_MAX_LINES, HISTORY_MAX, HISTORY_PAGE } from '../../../shared/types'
 import { closeFileView, openFolderHistory, showCommitInGraph } from '../actions'
 import { useT } from '../i18n'
 import { useRepo, useStore } from '../store'
@@ -75,17 +76,18 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
   const [picked, setPicked] = useState(0)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [diffError, setDiffError] = useState<string | null>(null)
+  const [limit, setLimit] = useState(HISTORY_PAGE)
 
   useEffect(() => {
     let live = true
     api
-      .getFileHistory(path, file, rev)
+      .getFileHistory(path, file, rev, limit)
       .then((list) => live && setItems(list))
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
       live = false
     }
-  }, [path, file, rev])
+  }, [path, file, rev, limit])
 
   const item = items?.[picked]
   useEffect(() => {
@@ -129,6 +131,7 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
                 note={entry.oldPath && t('history.renamedFrom', { path: entry.oldPath })}
               />
             ))}
+            <HistoryMore shown={items.length} limit={limit} onMore={setLimit} />
           </div>
           <div className="diff-body">
             {diffError && <div className="empty-state error">{diffError}</div>}
@@ -136,6 +139,22 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
             {diff && <ReadOnlyDiff data={diff} />}
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+/** Below a history cut at `limit` commits: says so, and asks for more while the app may show more. */
+function HistoryMore(props: { shown: number; limit: number; onMore: (limit: number) => void }) {
+  const t = useT()
+  if (props.shown < props.limit) return null
+  return (
+    <div className="history-more">
+      <span className="dim small">{t('history.more', { count: props.shown })}</span>
+      {props.limit < HISTORY_MAX && (
+        <button className="btn small" onClick={() => props.onMore(Math.min(props.limit + HISTORY_PAGE, HISTORY_MAX))}>
+          {t('history.showMore')}
+        </button>
       )}
     </div>
   )
@@ -183,17 +202,18 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [diffError, setDiffError] = useState<string | null>(null)
   const prefix = `${folder}/`
+  const [limit, setLimit] = useState(HISTORY_PAGE)
 
   useEffect(() => {
     let live = true
     api
-      .getFolderHistory(path, folder, rev)
+      .getFolderHistory(path, folder, rev, limit)
       .then((list) => live && setCommits(list))
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
       live = false
     }
-  }, [path, folder, rev])
+  }, [path, folder, rev, limit])
 
   const commit = commits?.[picked]
   useEffect(() => {
@@ -256,6 +276,7 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
             {commits.map((c, i) => (
               <CommitRow key={c.hash} path={path} commit={c} selected={i === picked} onPick={() => setPicked(i)} />
             ))}
+            <HistoryMore shown={commits.length} limit={limit} onMore={setLimit} />
           </div>
           <div className="folder-commit">
             <div className="folder-files">
@@ -299,7 +320,13 @@ export function ReadOnlyDiff({ data }: { data: FileDiff }) {
   const spansByHunk = useMemo(() => data.hunks.map(wordSpans), [data])
   const syntaxByHunk = useMemo(() => highlightHunks(data.hunks, data.path), [data])
   if (data.binary) return <div className="empty-state">{t('diff.binary')}</div>
-  if (!data.hunks.length) return <div className="empty-state">{t('diff.noChanges')}</div>
+  if (!data.hunks.length) {
+    return (
+      <div className="empty-state">
+        {data.oldPath ? t('diff.renamedOnly', { path: data.oldPath }) : t('diff.noChanges')}
+      </div>
+    )
+  }
   let budget = showAll ? Number.POSITIVE_INFINITY : LINE_LIMIT
   const total = data.hunks.reduce((n, h) => n + h.lines.length, 0)
   return (
@@ -370,6 +397,9 @@ function BlameView({ path, file, rev }: { path: string; file: string; rev: strin
       <div className="diff-body">
         {error && <div className="empty-state error">{error}</div>}
         {!error && !lines && <div className="empty-state">{t('graph.loading')}</div>}
+        {lines && lines.length >= BLAME_MAX_LINES && (
+          <div className="blame-more dim small">{t('blame.more', { count: BLAME_MAX_LINES.toLocaleString(lang) })}</div>
+        )}
         {shown && (
           <div className="blame-lines">
             {shown.map((line, i) => {

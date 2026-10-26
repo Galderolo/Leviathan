@@ -33,6 +33,7 @@ import type {
   SubmoduleChange,
   WorkingFile
 } from '../../shared/types'
+import { BLAME_MAX_LINES, HISTORY_MAX, HISTORY_PAGE } from '../../shared/types'
 import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
 import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
 import { listRefs } from './refs'
@@ -983,11 +984,11 @@ export async function getFileHistory(
   repo: string,
   path: string,
   rev: string | null = null,
-  limit = 300
+  limit = HISTORY_PAGE
 ): Promise<FileCommit[]> {
   insideRepo(repo, path)
   if (rev !== null) assertSafeArg(rev, 'commit')
-  const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 5000) : 300
+  const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), HISTORY_MAX) : HISTORY_PAGE
   const out = await run(
     repo,
     ['log', '--follow', `-n${count}`, `--format=${HISTORY_FORMAT}`, '--name-status', ...(rev ? [rev] : []), '--', path],
@@ -1040,21 +1041,20 @@ export async function getFolderHistory(
   repo: string,
   folder: string,
   rev: string | null = null,
-  limit = 300
+  limit = HISTORY_PAGE
 ): Promise<Commit[]> {
   const path = folder.replace(/\\/g, '/').replace(/\/+$/, '')
   // The whole repository's history is the graph.
   if (!path || path === '.') throw new Error('Pick a folder of the repository')
   insideRepo(repo, path)
   if (rev !== null) assertSafeArg(rev, 'commit')
-  const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 5000) : 300
+  const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), HISTORY_MAX) : HISTORY_PAGE
   const out = await run(repo, ['log', `-n${count}`, `--format=${LOG_FORMAT}`, ...(rev ? [rev] : []), '--', path], {
     env: LITERAL_PATHS
   })
   return parseLog(out)
 }
 
-const BLAME_MAX_LINES = 20000
 const BLAME_MAX_BYTES = 10 * 1024 * 1024
 
 /** Blame of a binary or very large file would only run long and produce noise: refuse it up front. */
