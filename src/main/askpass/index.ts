@@ -5,7 +5,7 @@ import { IPC_ASKPASS } from '../../shared/api'
 import type { AskpassRequest } from '../../shared/types'
 import { answerFromAccounts, type AccountCredentials } from '../accounts/auth'
 import { setGitEnv } from '../git/runner'
-import { startAskpassServer, type AskpassBridge } from './server'
+import { startAskpassServer, type AskpassBridge, type AskpassOptions } from './server'
 
 const TIMEOUT_MS = 5 * 60 * 1000
 const pending = new Map<string, (value: string | null) => void>()
@@ -52,12 +52,17 @@ export function answerAskpass(id: string, value: string | null): void {
   resolve(typeof value === 'string' ? value : null)
 }
 
-/** Routes git/ssh credential prompts of every git command to the app. */
-export async function initAskpass(): Promise<void> {
+/** The askpass scripts, and the executable that runs their Node part. */
+export function askpassScripts(): AskpassOptions {
   // Scripts must be executable from disk, so in packaged builds they live in app.asar.unpacked.
   const scriptDir = join(__dirname, '../../resources/askpass').replace(`app.asar${sep}`, `app.asar.unpacked${sep}`)
+  return { scriptDir, nodePath: process.execPath }
+}
+
+/** Routes git/ssh credential prompts of every git command to the app. */
+export async function initAskpass(): Promise<void> {
   try {
-    bridge = await startAskpassServer(ask, { scriptDir, nodePath: process.execPath })
+    bridge = await startAskpassServer(ask, askpassScripts())
     setGitEnv(bridge.env)
   } catch {
     // Without the bridge git still works with credential helpers and ssh-agent.

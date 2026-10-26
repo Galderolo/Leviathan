@@ -12,7 +12,7 @@ import {
   type IpcResult
 } from '../shared/api'
 import * as accounts from './accounts'
-import { answerAskpass } from './askpass'
+import { answerAskpass, askpassScripts } from './askpass'
 import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
 import * as repo from './git/repository'
@@ -172,7 +172,7 @@ const handlers: LeviathanInvokeApi = {
   endPullRequestReview: (path, number) => repo.endPullRequestReview(path, number),
   getDefaultBranch: (path) => accounts.getDefaultBranch(path),
   checkoutPullRequest: (path, remote, pr, provider) => repo.checkoutPullRequest(path, remote, pr, provider),
-  generateSshKey: (opts) => generateKey(opts),
+  generateSshKey: (opts) => generateKey(opts, askpassScripts()),
   openInEditor: (path, file, line) => tools.openInEditor(path, file, line),
   openDiffTool: (path, source) => tools.openDiffTool(path, source),
   openMergeTool: (path, file) => tools.openMergeTool(path, file),
