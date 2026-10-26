@@ -7,6 +7,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Added
 
 - **Reorder the tabs** by dragging them; the order is kept for the next start.
+- **Tabs show what is waiting on the remote**: the commits the checked-out branch has to pull (↓, blue) and to push (↑, green), the same counts as the Pull and Push buttons, on every tab and not only the one showing. A tab with something to pull is tinted blue, one with only something to push green.
 
 ## [0.14.0] - 2026-10-23
 

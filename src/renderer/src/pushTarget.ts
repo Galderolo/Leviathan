@@ -9,6 +9,14 @@ export function pushCount(state: Pick<RepoState, 'head' | 'unpushed'>): number {
   return state.head.ahead || state.unpushed.length
 }
 
+/** Commits to pull and to push on the checked-out branch, as the toolbar counts them; null when there are none. */
+export function syncCounts(state: Pick<RepoState, 'head' | 'unpushed'> | null): { pull: number; push: number } | null {
+  if (!state) return null
+  const pull = state.head.behind
+  const push = pushCount(state)
+  return pull || push ? { pull, push } : null
+}
+
 /**
  * Remotes the user must pick from before pushing `branch`, or null when there
  * is nothing to ask: the branch already tracks a remote branch, or at most one

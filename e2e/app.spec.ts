@@ -61,6 +61,38 @@ test('reorders the tabs by dragging them, and keeps the order for the next start
   await expect.poll(() => saved().map((path) => path.split(/[\\/]/).pop())).toEqual(['gamma', 'beta', 'alpha'])
 })
 
+test('marks the tabs whose repository has commits to pull or to push', async () => {
+  const origin = join(box.root, 'origin.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  const game = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(game, 'remote', 'add', 'origin', origin)
+  box.git(game, 'push', '-q', '-u', 'origin', 'main')
+  const other = join(box.root, 'other')
+  box.git(box.root, 'clone', '-q', origin, other)
+  box.write(other, { 'b.txt': 'theirs\n' })
+  box.git(other, 'add', '.')
+  box.git(other, 'commit', '-qm', 'theirs')
+  box.git(other, 'push', '-q')
+  box.git(game, 'fetch', '-q')
+  for (const name of ['c', 'd']) {
+    box.write(game, { [`${name}.txt`]: 'mine\n' })
+    box.git(game, 'add', '.')
+    box.git(game, 'commit', '-qm', name)
+  }
+  const tool = box.repo('tool', { 'a.txt': 'one\n' })
+  await open(tool, game)
+
+  // Not the tab showing: it is marked all the same, pulling first.
+  const gameTab = page.locator('.tab', { hasText: 'game' })
+  await expect(gameTab).toHaveClass(/needs-pull/)
+  await expect(gameTab.locator('.ab-badge.behind')).toHaveText('1')
+  await expect(gameTab.locator('.ab-badge.ahead')).toHaveText('2')
+  await expect(gameTab).toHaveAttribute('title', /1 commit to pull\n2 commits to push/)
+  const toolTab = page.locator('.tab', { hasText: 'tool' })
+  await expect(toolTab).not.toHaveClass(/needs-/)
+  await expect(toolTab.locator('.ab-badge')).toHaveCount(0)
+})
+
 test('never runs a git.exe that a repository has at its root', async () => {
   test.skip(process.platform !== 'win32', 'only Windows looks for programs in the working folder')
   const repo = box.repo('game', { 'a.txt': 'one\n' })
