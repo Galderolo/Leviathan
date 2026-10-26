@@ -73,10 +73,11 @@ describe('stopReason', () => {
     )
     const state = await repo.getState(dir)
     expect(stoppedOperation(null, state)).toEqual({ operation: 'rebase', conflicts: 0 })
-    expect(stopReason(error!.message)).toBe(
-      'The following untracked working tree files would be overwritten by merge:\ntwo.txt\n' +
-        'Please move or remove them before you merge.'
-    )
+    // What follows differs between gits: 2.45 adds "Please move or remove them before you merge.", the git of the
+    // macOS CI runner does not.
+    const reason = stopReason(error!.message)
+    expect(reason).toMatch(/^The following untracked working tree files would be overwritten by merge:\ntwo\.txt(\n|$)/)
+    expect(reason).not.toMatch(/hint|git rebase|Could not apply/)
   })
 
   it('drops progress, hints and the lines that name commands', () => {
