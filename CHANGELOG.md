@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- A conflicted file deleted on both sides showed a raw "ENOENT" error in the conflict editor; it now says what happened and what the buttons do.
 - Shift+click on a file's checkbox gives the whole range the state that checkbox takes: a range can now be unchecked that way too, not only checked.
 - *Ignore* on a file whose name has `[`, `*`, `?` or a backslash (`pages/[id].tsx`) ignored other files its name matched as a pattern, not that one: the name is now written literally in .gitignore.
 - A merge, cherry-pick, revert or rebase (by drag and drop or from a menu) that stops for something other than conflicts says what git found, without its hints about commands the app does not offer — as the interactive rebase already did.

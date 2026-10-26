@@ -415,6 +415,8 @@ const en = {
   'dlg.dropChanges': 'Drop changes',
   'conflict.noMarkers':
     'This file has no conflict markers (a binary file, or deleted on one side). Take one of the two versions with the buttons above.',
+  'conflict.missing':
+    'This file is not in the working folder: both sides deleted it (or it was deleted by hand). Take either version with the buttons above; one that deleted it keeps it deleted.',
   'conflict.tooLarge':
     'This file is too large to edit here. Take one of the two versions with the buttons above, or open the file.',
   'conflict.encoding':

@@ -419,6 +419,8 @@ const es: Record<keyof typeof en, string> = {
   'dlg.dropChanges': 'Descartar cambios',
   'conflict.noMarkers':
     'Este archivo no tiene marcadores de conflicto (es binario o se borró en un lado). Elige una de las dos versiones con los botones de arriba.',
+  'conflict.missing':
+    'Este archivo no está en la carpeta de trabajo: los dos lados lo borraron (o se borró a mano). Elige una de las dos versiones con los botones de arriba; la que lo borró lo deja borrado.',
   'conflict.tooLarge':
     'Este archivo es demasiado grande para editarlo aquí. Elige una de las dos versiones con los botones de arriba, o abre el archivo.',
   'conflict.encoding':

@@ -200,7 +200,9 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
                 ? 'conflict.tooLarge'
                 : read?.reason === 'encoding'
                   ? 'conflict.encoding'
-                  : 'conflict.noMarkers'
+                  : read?.reason === 'missing'
+                    ? 'conflict.missing'
+                    : 'conflict.noMarkers'
             )}
           </div>
         )}

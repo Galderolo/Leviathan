@@ -1359,7 +1359,12 @@ export async function applyChange(repo: string, change: RepoChange): Promise<voi
 export async function readWorkingFile(repo: string, path: string): Promise<WorkingFile> {
   const full = insideRepo(repo, path)
   // lstat: never follow a symlink, its target may live outside the repository.
-  const stat = await fs.lstat(full)
+  const stat = await fs.lstat(full).catch((err: NodeJS.ErrnoException) => {
+    // Deleted on both sides (or by hand): nothing to read, the conflict is still there.
+    if (err.code === 'ENOENT') return null
+    throw err
+  })
+  if (!stat) return { text: null, reason: 'missing' }
   if (!stat.isFile()) return { text: null, reason: 'binary' }
   if (stat.size > MAX_FILE_PREVIEW) return { text: null, reason: 'large' }
   const buffer = await fs.readFile(full)
