@@ -675,6 +675,30 @@ test('says when a file history shows only its latest commits, and shows more', a
   await expect(page.locator('.history-more')).toHaveCount(0)
 })
 
+test('refreshes an open file history and blame after a commit', async () => {
+  const repo = box.repo('game', { 'f.txt': 'one\n' })
+  box.write(repo, { 'f.txt': 'one\ntwo\n' })
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'f.txt' }).click({ button: 'right' })
+  await menuItem('Blame (who changed each line)').click()
+  await expect(page.locator('.blame-line', { hasText: 'two' })).toContainText('Not committed yet')
+
+  // Committed from the terminal: the blame shows the new commit without being opened again.
+  box.git(repo, 'commit', '-qam', 'add two')
+  await expect(page.locator('.blame-line', { hasText: 'two' })).not.toContainText('Not committed yet')
+
+  await page.keyboard.press('Escape')
+  box.write(repo, { 'f.txt': 'one\ntwo\nthree\n' })
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'f.txt' }).click({ button: 'right' })
+  await menuItem('File history').click()
+  await expect(page.locator('.history-row')).toHaveCount(2)
+  box.git(repo, 'commit', '-qam', 'add three')
+  await expect(page.locator('.history-row')).toHaveCount(3)
+  await expect(page.locator('.history-row').first()).toContainText('add three')
+})
+
 test('says that a commit only renamed a file', async () => {
   const repo = box.repo('game', { 'old.txt': 'same\n' })
   box.git(repo, 'mv', 'old.txt', 'new.txt')
