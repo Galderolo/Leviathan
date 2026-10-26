@@ -25,7 +25,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 
 ## Features
 
-- **Visual commit graph**: coloured lanes with rounded elbows, lane-coloured row bands, branch and tag labels, author initials, the work-in-progress node and stashes drawn right in the graph. Smooth with thousands of commits.
+- **Visual commit graph**: coloured lanes with rounded elbows, lane-coloured row bands, branch and tag labels, author initials, the work-in-progress node and stashes drawn right in the graph. Resizable branch and graph columns; the author, date and SHA columns can be hidden (right-click the header). Smooth with thousands of commits.
 - **Tabs**: keep several repositories open, drag them into the order you like; they are restored on the next start. Each tab shows the commits its branch has to pull or push.
 - **Side panel**: local branches as a folder tree, remotes, stashes and tags, with ahead/behind counters and a filter.
 - **Focus the graph**: hide branches or show only one, highlight the history of a branch, and see which branches have an open pull request.

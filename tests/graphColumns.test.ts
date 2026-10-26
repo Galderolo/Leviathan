@@ -3,8 +3,11 @@ import {
   DEFAULT_COLUMNS,
   clampGraphScroll,
   clampWidth,
+  gridColumns,
   readGraphColumns,
-  writeGraphColumns
+  readHiddenColumns,
+  writeGraphColumns,
+  writeHiddenColumns
 } from '../src/renderer/src/graphColumns'
 import { graphContentWidth } from '../src/shared/graph'
 
@@ -40,6 +43,27 @@ describe('graph column widths', () => {
     expect(readGraphColumns(store)).toEqual(DEFAULT_COLUMNS)
     store.setItem('leviathan.graphColumns', 'nope')
     expect(readGraphColumns(store)).toEqual(DEFAULT_COLUMNS)
+  })
+})
+
+describe('graph columns shown', () => {
+  const widths = { refs: 200, graph: 120 }
+
+  it('lays out every column, or leaves out the ones hidden', () => {
+    expect(gridColumns(widths, [])).toBe('200px 120px minmax(140px, 1fr) minmax(90px, 150px) minmax(110px, 150px) 70px')
+    expect(gridColumns(widths, ['author', 'sha'])).toBe('200px 120px minmax(140px, 1fr) minmax(110px, 150px)')
+    expect(gridColumns(widths, ['author', 'date', 'sha'])).toBe('200px 120px minmax(140px, 1fr)')
+  })
+
+  it('remembers the columns hidden, and ignores what is not a column that can be', () => {
+    const store = fakeStore()
+    expect(readHiddenColumns(store)).toEqual([])
+    writeHiddenColumns(['sha', 'author'], store)
+    expect(readHiddenColumns(store)).toEqual(['author', 'sha'])
+    store.setItem('leviathan.graphHiddenColumns', '["date","message","graph",3]')
+    expect(readHiddenColumns(store)).toEqual(['date'])
+    store.setItem('leviathan.graphHiddenColumns', 'nope')
+    expect(readHiddenColumns(store)).toEqual([])
   })
 })
 

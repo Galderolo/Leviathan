@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Choose the graph's columns**: right-click its header to hide or show the author, date and SHA columns; the choice is kept for every repository.
 - **Commit message template**: with git's `commit.template` set (for a repository or globally), the commit box starts from it — its first line as the summary, the rest as the description, without its comment lines — and again after each commit. As in git, the template left as it is cannot be committed, and *Amend* from it takes the last commit's message.
 
 ## [0.16.0] - 2026-10-26

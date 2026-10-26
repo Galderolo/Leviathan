@@ -17,11 +17,16 @@ import { useT } from '../i18n'
 import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
 import {
   DEFAULT_COLUMNS,
+  OPTIONAL_COLUMNS,
   clampGraphScroll,
   clampWidth,
+  gridColumns,
   readGraphColumns,
+  readHiddenColumns,
   writeGraphColumns,
-  type GraphColumns
+  writeHiddenColumns,
+  type GraphColumns,
+  type OptionalColumn
 } from '../graphColumns'
 import { useRepo, useStore } from '../store'
 import { wipShown } from '../checkoutView'
@@ -34,6 +39,7 @@ const ROW_H = 30
 const NODE_R = 10
 const GEOMETRY: GraphGeometry = { rowHeight: ROW_H, laneWidth: LANE_WIDTH, padding: GRAPH_PADDING, radius: 8 }
 const OVERSCAN = 12
+const COLUMN_LABELS = { author: 'graph.columnAuthor', date: 'graph.columnDate', sha: 'graph.columnSha' } as const
 
 export function CommitGraph({ path }: { path: string }) {
   const view = useRepo(path)
@@ -66,7 +72,22 @@ export function CommitGraph({ path }: { path: string }) {
   useEffect(() => {
     if (hbarRef.current && hbarRef.current.scrollLeft !== graphOffset) hbarRef.current.scrollLeft = graphOffset
   }, [graphOffset])
-  const columns = `${cols.refs}px ${graphWidth}px minmax(140px, 1fr) minmax(90px, 150px) minmax(110px, 150px) 70px`
+  // Author, date and SHA can be hidden from the header's menu (the same in every repository).
+  const [hidden, setHidden] = useState<OptionalColumn[]>(readHiddenColumns)
+  const columns = gridColumns(cols, hidden)
+  const shown = (column: OptionalColumn) => !hidden.includes(column)
+  const columnsMenu = (e: React.MouseEvent) =>
+    openMenu(
+      e,
+      OPTIONAL_COLUMNS.map((column) => ({
+        label: `${shown(column) ? '✓ ' : ''}${t(COLUMN_LABELS[column])}`,
+        onClick: () => {
+          const next = shown(column) ? [...hidden, column] : hidden.filter((c) => c !== column)
+          setHidden(next)
+          writeHiddenColumns(next)
+        }
+      }))
+    )
 
   const resize = (kind: keyof GraphColumns) => (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -202,6 +223,7 @@ export function CommitGraph({ path }: { path: string }) {
         row={row}
         index={i}
         columns={columns}
+        hidden={hidden}
         graphWidth={graphWidth}
         graphOffset={graphOffset}
         labels={refMap.get(item.hash)}
@@ -238,7 +260,12 @@ export function CommitGraph({ path }: { path: string }) {
           </button>
         </div>
       )}
-      <div className="graph-header" style={{ gridTemplateColumns: columns }}>
+      <div
+        className="graph-header"
+        style={{ gridTemplateColumns: columns }}
+        title={t('graph.columnsHint')}
+        onContextMenu={columnsMenu}
+      >
         <div className="resizable">
           {t('graph.branchTag')}
           <div
@@ -258,9 +285,9 @@ export function CommitGraph({ path }: { path: string }) {
           />
         </div>
         <div>{t('graph.message')}</div>
-        <div>{t('graph.author')}</div>
-        <div>{t('graph.date')}</div>
-        <div>{t('graph.sha')}</div>
+        {shown('author') && <div>{t('graph.author')}</div>}
+        {shown('date') && <div>{t('graph.date')}</div>}
+        {shown('sha') && <div>{t('graph.sha')}</div>}
       </div>
       <div
         className="graph-scroll"
@@ -299,6 +326,8 @@ interface RowProps {
   row: GraphRow
   index: number
   columns: string
+  /** Optional columns left out of the row. */
+  hidden: OptionalColumn[]
   graphWidth: number
   /** How far the graph is scrolled sideways, in px. */
   graphOffset: number
@@ -377,9 +406,9 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
           </span>
         )}
       </div>
-      <div className="cell author-cell">{author}</div>
-      <div className="cell date-cell">{date}</div>
-      <div className="cell sha-cell">{sha}</div>
+      {!props.hidden.includes('author') && <div className="cell author-cell">{author}</div>}
+      {!props.hidden.includes('date') && <div className="cell date-cell">{date}</div>}
+      {!props.hidden.includes('sha') && <div className="cell sha-cell">{sha}</div>}
     </div>
   )
 })

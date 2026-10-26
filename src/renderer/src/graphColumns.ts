@@ -54,6 +54,41 @@ export function writeGraphColumns(columns: GraphColumns, store = browserStore())
   }
 }
 
+/** The graph's columns that can be hidden, in the order they are shown; branch, graph and message always are. */
+export const OPTIONAL_COLUMNS = ['author', 'date', 'sha'] as const
+export type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number]
+
+const OPTIONAL_WIDTHS: Record<OptionalColumn, string> = {
+  author: 'minmax(90px, 150px)',
+  date: 'minmax(110px, 150px)',
+  sha: '70px'
+}
+const HIDDEN_KEY = 'leviathan.graphHiddenColumns'
+
+/** The grid template of the graph's rows and header: the columns shown, at their widths. */
+export function gridColumns(widths: GraphColumns, hidden: OptionalColumn[]): string {
+  const optional = OPTIONAL_COLUMNS.filter((c) => !hidden.includes(c)).map((c) => OPTIONAL_WIDTHS[c])
+  return [`${widths.refs}px`, `${widths.graph}px`, 'minmax(140px, 1fr)', ...optional].join(' ')
+}
+
+/** The columns the user hid (the same in every repository), in the order they are shown. */
+export function readHiddenColumns(store = browserStore()): OptionalColumn[] {
+  try {
+    const saved = JSON.parse(store?.getItem(HIDDEN_KEY) ?? '[]') as unknown
+    return Array.isArray(saved) ? OPTIONAL_COLUMNS.filter((c) => saved.includes(c)) : []
+  } catch {
+    return []
+  }
+}
+
+export function writeHiddenColumns(hidden: OptionalColumn[], store = browserStore()): void {
+  try {
+    store?.setItem(HIDDEN_KEY, JSON.stringify(OPTIONAL_COLUMNS.filter((c) => hidden.includes(c))))
+  } catch {
+    // not critical: the next start shows every column
+  }
+}
+
 /** How far the graph can scroll sideways: from 0 until its last lane reaches the column's edge. */
 export function clampGraphScroll(offset: number, content: number, view: number): number {
   return Math.max(0, Math.min(offset, content - view))

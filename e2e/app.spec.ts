@@ -391,6 +391,28 @@ test("starts each commit message from git's commit.template", async () => {
   await expect(description).toHaveValue('Why: to have two')
 })
 
+test("hides the graph's author, date or SHA column, and keeps it hidden for the next start", async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+  const header = page.locator('.graph-header')
+  await expect(header).toContainText('AUTHOR')
+  await expect(commitRows().first().locator('.cell')).toHaveCount(6)
+
+  await header.click({ button: 'right' })
+  await menuItem('✓ Author').click()
+  await expect(header).not.toContainText('AUTHOR')
+  await expect(commitRows().first().locator('.cell')).toHaveCount(5)
+  // Shown again from the same menu, unticked.
+  await header.click({ button: 'right' })
+  await expect(menuItem('Author')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  await app!.close()
+  ;({ app, page } = await launch(box, [repo]))
+  await expect(page.locator('.graph-header')).not.toContainText('AUTHOR')
+  await expect(page.locator('.graph-header')).toContainText('SHA')
+})
+
 test('asks with a count, not a list, before discarding many files', async () => {
   const files = Object.fromEntries(Array.from({ length: 26 }, (_, i) => [`Packages/dir/file${i}.class`, 'a\n']))
   const repo = box.repo('game', files)
