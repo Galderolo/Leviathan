@@ -103,8 +103,7 @@ function RepoTab({
   return (
     <div
       data-index={index}
-      // Pulling comes first, so it gives the tab its colour when there is both.
-      className={cx('tab', className, sync && (sync.pull ? 'needs-pull' : 'needs-push'))}
+      className={cx('tab', className)}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'

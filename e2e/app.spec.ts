@@ -83,14 +83,15 @@ test('marks the tabs whose repository has commits to pull or to push', async () 
   const tool = box.repo('tool', { 'a.txt': 'one\n' })
   await open(tool, game)
 
-  // Not the tab showing: it is marked all the same, pulling first.
+  // Not the tab showing: it has the counts all the same.
   const gameTab = page.locator('.tab', { hasText: 'game' })
-  await expect(gameTab).toHaveClass(/needs-pull/)
   await expect(gameTab.locator('.ab-badge.behind')).toHaveText('1')
   await expect(gameTab.locator('.ab-badge.ahead')).toHaveText('2')
   await expect(gameTab).toHaveAttribute('title', /1 commit to pull\n2 commits to push/)
+  // Only the tab showing stands out: no tint nor coloured edge that could pass for it.
+  await expect(gameTab).toHaveCSS('background-image', 'none')
+  await expect(gameTab).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)')
   const toolTab = page.locator('.tab', { hasText: 'tool' })
-  await expect(toolTab).not.toHaveClass(/needs-/)
   await expect(toolTab.locator('.ab-badge')).toHaveCount(0)
 })
 
