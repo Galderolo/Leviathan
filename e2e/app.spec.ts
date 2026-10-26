@@ -796,6 +796,31 @@ test("says why an interactive rebase stopped when it was not for conflicts, and 
   expect(box.git(repo, 'log', '--format=%s', '-4')).toBe('untrack two\nthree\ntwo\nfirst')
 })
 
+test("says why a rebase stopped when it was not for conflicts, without git's hints", async () => {
+  const repo = box.repo('game', { 'base.txt': 'base\n' })
+  box.git(repo, 'checkout', '-qb', 'feature')
+  box.write(repo, { 'two.txt': 'two\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'add two')
+  // two.txt leaves the index and stays untracked: replaying "add two" would overwrite it.
+  box.git(repo, 'rm', '-q', '--cached', 'two.txt')
+  box.git(repo, 'commit', '-qm', 'untrack two')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'main.txt': 'main\n' })
+  box.git(repo, 'add', 'main.txt')
+  box.git(repo, 'commit', '-qm', 'main work')
+  box.git(repo, 'checkout', '-q', 'feature')
+  await open(repo)
+
+  await page.locator('.side-row', { has: page.locator('.side-name', { hasText: /^main$/ }) }).click({ button: 'right' })
+  await menuItem('Rebase feature onto main').click()
+  const toast = page.locator('.toast.error')
+  await expect(toast).toContainText('untracked working tree files would be overwritten')
+  await expect(toast).toContainText('two.txt')
+  await expect(toast).not.toContainText('git rebase')
+  await expect(toast).not.toContainText('hint:')
+})
+
 test('reviews a pull request: its files and diff, its conversation, approving and merging it', async () => {
   // Accounts need the system's secure storage, which a Linux runner without a keyring does not have (the app
   // refuses to keep tokens only obfuscated). Windows and macOS cover this test.

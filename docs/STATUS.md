@@ -191,7 +191,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - *Edit by hand* is a plain text box (no highlighting) over the whole file, starting from `draftConflicts` (chosen blocks resolved, the others with their markers as they were). A text box keeps LF only: the save puts back the line ending most of the file had (`lineEnding`, `withLineEnding`), so a file mixing CRLF and LF comes out with one of them. A save refused because the file changed keeps the typed text on screen; *Back to blocks* reads the file again.
 
 **Interactive rebase**
-- A merge, cherry-pick or revert (and a rebase by drag and drop) that stops for something other than conflicts shows git's whole message, hints about commands included; the interactive rebase keeps only git's reason (`stopReason`).
+- A merge, cherry-pick, revert or rebase that stops for something other than conflicts shows only git's reason (`stopReason`: its errors, without progress, hints, or lines naming commands); a line git words differently in another version may still slip through.
 - A rebase that stopped for a conflict and was continued is not undoable.
 - If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
 
