@@ -653,7 +653,7 @@ const en = {
   'settings.avatars': 'Avatars',
   'settings.avatarsShow': "Show the authors' pictures",
   'settings.avatarsHint':
-    "From GitHub (its private emails, your accounts' emails, or its API for a GitHub repository) and Gravatar: they are asked about each author's email, so they learn whose commits you look at. Without one, the initials stay.",
+    "From the repository's server through your account (GitHub, GitLab, Bitbucket, Gitea), GitHub's private emails and Gravatar: they are asked about each author, so they learn whose commits you look at. Without one, the initials stay.",
   'settings.commitLimit': 'Commits loaded at a time',
   'settings.license': 'Free software under the MIT license. Contributions are welcome!'
 }

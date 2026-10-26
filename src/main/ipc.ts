@@ -180,7 +180,7 @@ const handlers: LeviathanInvokeApi = {
     avatarCache ??= new AvatarCache(join(app.getPath('userData'), 'avatars.json'))
     return avatarCache.get(wanted, {
       accounts: accounts.listAccounts(),
-      commitAvatar: typeof path === 'string' ? accounts.commitAvatarFor(path) : undefined
+      authorAvatar: typeof path === 'string' ? accounts.authorAvatarFor(path) : undefined
     })
   },
   startGitHubLogin: () => accounts.startGitHubLogin(),

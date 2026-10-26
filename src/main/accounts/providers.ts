@@ -305,25 +305,37 @@ export async function canPush(
 }
 
 /**
- * The picture of the GitHub user a commit's author email belongs to; null when it belongs to none, the commit cannot be
- * read, or the server is not GitHub (the others' commit APIs give no user for an email).
+ * The picture of the user an author belongs to on the project's server: the user of one of their commits (`hash`) on
+ * GitHub, Gitea and Bitbucket, the user of their email on GitLab. Null when the author is no user there, the commit
+ * cannot be read, or the server has no API.
  */
-export async function commitAuthorAvatar(
+export async function authorAvatar(
   provider: Provider,
   host: string,
   path: string,
-  hash: string,
+  author: { hash?: string; email: string },
   token: string,
   fetchFn: FetchFn = fetch
 ): Promise<string | null> {
-  if (provider !== 'github' || !/^[0-9a-f]{4,64}$/.test(hash)) return null
+  const hash = author.hash && /^[0-9a-f]{4,64}$/.test(author.hash) ? author.hash : null
+  const get = async (apiPath: string) => (await getJson(provider, host, apiPath, token, fetchFn)) as Json
+  const at = (value: unknown, ...keys: string[]) =>
+    keys.reduce<unknown>((v, k) => (v && typeof v === 'object' ? (v as Json)[k] : undefined), value)
+  let url: unknown
   try {
-    const commit = (await getJson(provider, host, `/repos/${path}/commits/${hash}`, token, fetchFn)) as Json
-    const url = (commit.author as Json | null)?.avatar_url
-    return typeof url === 'string' && url.startsWith('https://') ? url : null
+    if (provider === 'gitlab') {
+      url = (await get(`/avatar?email=${encodeURIComponent(author.email)}&size=64`)).avatar_url
+    } else if (hash && provider === 'github') {
+      url = at(await get(`/repos/${path}/commits/${hash}`), 'author', 'avatar_url')
+    } else if (hash && provider === 'gitea') {
+      url = at(await get(`/repos/${path}/git/commits/${hash}`), 'author', 'avatar_url')
+    } else if (hash && provider === 'bitbucket') {
+      url = at(await get(`/repositories/${path}/commit/${hash}`), 'author', 'user', 'links', 'avatar', 'href')
+    }
   } catch {
     return null
   }
+  return typeof url === 'string' && url.startsWith('https://') ? url : null
 }
 
 /** Who the token belongs to, with the provider's no-reply address as commit email. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canPush,
-  commitAuthorAvatar,
+  authorAvatar,
   closePullRequest,
   createPullRequest,
   defaultBranch,
@@ -502,26 +502,50 @@ describe('canPush', () => {
   })
 })
 
-describe('commitAuthorAvatar', () => {
-  it("gives the picture of the GitHub user a commit's author email belongs to", async () => {
-    const { fn } = fakeFetch({
-      'https://api.github.com/repos/studio/game/commits/abc123': {
-        body: { author: { login: 'dee', avatar_url: 'https://avatars.githubusercontent.com/u/7?v=4' } }
+describe('authorAvatar', () => {
+  const author = { hash: 'abc123', email: 'dee@work.example' }
+  const picture = 'https://avatars.example/dee.png'
+
+  it("gives the picture of the user a commit's author belongs to, on GitHub, Gitea and Bitbucket", async () => {
+    const github = fakeFetch({
+      'https://api.github.com/repos/studio/game/commits/abc123': { body: { author: { avatar_url: picture } } }
+    })
+    expect(await authorAvatar('github', 'github.com', 'studio/game', author, TOKEN, github.fn)).toBe(picture)
+    const gitea = fakeFetch({
+      'https://git.example.com/api/v1/repos/studio/game/git/commits/abc123': {
+        body: { author: { avatar_url: picture } }
       }
     })
-    expect(await commitAuthorAvatar('github', 'github.com', 'studio/game', 'abc123', TOKEN, fn)).toBe(
-      'https://avatars.githubusercontent.com/u/7?v=4'
-    )
+    expect(await authorAvatar('gitea', 'git.example.com', 'studio/game', author, TOKEN, gitea.fn)).toBe(picture)
+    const bitbucket = fakeFetch({
+      'https://api.bitbucket.org/2.0/repositories/studio/game/commit/abc123': {
+        body: { author: { raw: 'Dee <dee@work.example>', user: { links: { avatar: { href: picture } } } } }
+      }
+    })
+    expect(await authorAvatar('bitbucket', 'bitbucket.org', 'studio/game', author, TOKEN, bitbucket.fn)).toBe(picture)
   })
 
-  it('is null when the email belongs to no user, the commit is not there, or the server is not GitHub', async () => {
+  it('asks GitLab for the picture of an email', async () => {
+    const { fn } = fakeFetch({
+      [`https://gitlab.com/api/v4/avatar?email=${encodeURIComponent('dee@work.example')}&size=64`]: {
+        body: { avatar_url: picture }
+      }
+    })
+    expect(await authorAvatar('gitlab', 'gitlab.com', 'studio/game', author, TOKEN, fn)).toBe(picture)
+  })
+
+  it('is null when the author is no user there, the commit cannot be read, or the server has no API', async () => {
     const noUser = fakeFetch({ 'https://api.github.com/repos/studio/game/commits/abc123': { body: { author: null } } })
-    expect(await commitAuthorAvatar('github', 'github.com', 'studio/game', 'abc123', TOKEN, noUser.fn)).toBeNull()
+    expect(await authorAvatar('github', 'github.com', 'studio/game', author, TOKEN, noUser.fn)).toBeNull()
+    const noBitbucketUser = fakeFetch({
+      'https://api.bitbucket.org/2.0/repositories/studio/game/commit/abc123': { body: { author: { raw: 'Dee' } } }
+    })
     expect(
-      await commitAuthorAvatar('github', 'github.com', 'studio/game', 'abc123', TOKEN, fakeFetch({}).fn)
+      await authorAvatar('bitbucket', 'bitbucket.org', 'studio/game', author, TOKEN, noBitbucketUser.fn)
     ).toBeNull()
-    const lab = fakeFetch({})
-    expect(await commitAuthorAvatar('gitlab', 'gitlab.com', 'studio/game', 'abc123', TOKEN, lab.fn)).toBeNull()
-    expect(lab.calls).toEqual([])
+    expect(await authorAvatar('github', 'github.com', 'studio/game', author, TOKEN, fakeFetch({}).fn)).toBeNull()
+    const other = fakeFetch({})
+    expect(await authorAvatar('other', 'example.com', 'studio/game', author, TOKEN, other.fn)).toBeNull()
+    expect(other.calls).toEqual([])
   })
 })
