@@ -296,28 +296,6 @@ a:hover {
   border-top-color: var(--accent);
 }
 
-/* Commits to pull (blue) or push (green): a tint over whatever background the tab has. */
-.tab.needs-pull {
-  --sync: var(--blue);
-}
-
-.tab.needs-push {
-  --sync: var(--green);
-}
-
-.tab.needs-pull,
-.tab.needs-push {
-  background-image: linear-gradient(
-    color-mix(in srgb, var(--sync) 14%, transparent),
-    color-mix(in srgb, var(--sync) 14%, transparent)
-  );
-}
-
-.tab.needs-pull:not(.active),
-.tab.needs-push:not(.active) {
-  border-top-color: var(--sync);
-}
-
 .tab .ab-badge {
   flex-shrink: 0;
 }
