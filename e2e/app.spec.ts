@@ -1,4 +1,5 @@
-import { copyFileSync, existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { launch, Sandbox } from './app'
@@ -565,4 +566,30 @@ test('pulls after a background fetch that is running, instead of failing to lock
   await expect.poll(() => box.git(work, 'log', '--format=%s', '-1')).toBe('theirs')
   await expect(page.locator('.toast.error')).toHaveCount(0)
   await expect(page.locator('.status-warning')).toHaveCount(0)
+})
+
+test('generates an SSH key protected by its passphrase', async () => {
+  // The app's home, so the key goes nowhere near the real ~/.ssh.
+  const home = join(box.root, 'home')
+  mkdirSync(home)
+  box.env.HOME = home
+  box.env.USERPROFILE = home
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+
+  await page.locator('.toolbar-right .icon-btn').click()
+  await page.locator('.settings-nav-item', { hasText: 'SSH keys' }).click()
+  await page.getByRole('button', { name: 'Generate new key' }).click()
+  const passphrase = 'correct horse & "battery" %PATH%'
+  await page.getByLabel('Email (key comment)').fill('ana@example.com')
+  await page.getByLabel('Passphrase (optional)').fill(passphrase)
+  await page.getByRole('button', { name: 'Create' }).click()
+
+  const key = join(home, '.ssh', 'id_ed25519')
+  await expect.poll(() => existsSync(`${key}.pub`)).toBe(true)
+  const opens = (given: string) =>
+    spawnSync('ssh-keygen', ['-y', '-P', given, '-f', key], { stdio: 'ignore' }).status === 0
+  expect(opens('')).toBe(false)
+  expect(opens(passphrase)).toBe(true)
+  await expect(page.locator('.toast.error')).toHaveCount(0)
 })
