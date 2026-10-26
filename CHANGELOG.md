@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-10-26
+
 ### Security
 
 - Generating an SSH key with a passphrase no longer puts the passphrase on ssh-keygen's command line, where other users of the computer could read it while the key was being made (Linux, macOS). ssh-keygen now asks the app for it; with an OpenSSH too old for that (before 8.4), no key is created and the app says why, rather than a key without the passphrase.

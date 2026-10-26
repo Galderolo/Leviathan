@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-26, with 0.15.0 released (513 tests, 19 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-26, with 0.15.1 released (527 tests, 27 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -29,6 +29,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.13.0 | 2026-10-23 | Pull request review in the app, rebase drag and drop and edit, syntax highlighting, pull and push when a push is refused, editors found off the PATH, LFS servers without locks |
 | 0.14.0 | 2026-10-23 | Security: no program is started from a repository folder on Windows; choose the terminal, folder history, merge methods the project allows |
 | 0.15.0 | 2026-10-26 | Reorder tabs by dragging, commits to pull and push on each tab, whole file in diffs |
+| 0.15.1 | 2026-10-26 | Security: SSH key passphrase off ssh-keygen's command line; background fetch no longer clashes with pull/push; asks before whole-file conflict takes and drop checkout-merge; rebase stop reasons; history/blame say when cut short; dialogs keep fast typing |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
