@@ -17,6 +17,17 @@ vi.mock('electron', () => ({
   }
 }))
 
+// ssh reads its config for an alias: github-work is github.com, as a ~/.ssh/config `Host github-work` would say.
+vi.mock('node:child_process', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:child_process')>()
+  const execFile = (file: string, args: string[], opts: unknown, done: (err: Error | null, out: string) => void) => {
+    if (file !== 'ssh') return (real.execFile as unknown as (...a: unknown[]) => unknown)(file, args, opts, done)
+    const host = args[args.length - 1]
+    done(null, `user git\nhostname ${host === 'github-work' ? 'github.com' : host}\n`)
+  }
+  return { ...real, execFile }
+})
+
 const asked: string[] = []
 vi.stubGlobal('fetch', async (url: string) => {
   asked.push(url)
@@ -88,6 +99,12 @@ describe('commit identity of a repository', () => {
     await accounts.ensureDefaultIdentity(dir)
     expect(accounts.getRepoAccount(dir)).toBe(ana.id)
     expect(await accounts.getCommitIdentity(dir)).toMatchObject({ source: 'account', email: ana.email })
+  })
+
+  it('finds the account of a remote reached through an SSH alias', async () => {
+    const dir = await repoWith('aliased', 'git@github-work:ana/tool.git')
+    await accounts.ensureDefaultIdentity(dir)
+    expect(accounts.getRepoAccount(dir)).toBe(ana.id)
   })
 
   it('or of an account that may push to it', async () => {

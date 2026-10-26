@@ -16,6 +16,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 - Tabs with commits to pull or push are no longer tinted blue or green: the tint could pass for the tab showing. Only that one stands out; the ↓ and ↑ counts stay.
 
+### Fixed
+
+- A repository whose remote goes through an SSH alias (a `Host` in ~/.ssh/config, the usual way to use two accounts on one server, as in `git@github-work:org/app`) is matched to its account: its pull requests, its default commit identity and its authors' pictures work. The real host is read with `ssh -G`, which connects to nothing.
+
 ## [0.15.1] - 2026-10-26
 
 ### Security
