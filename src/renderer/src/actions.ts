@@ -21,6 +21,7 @@ import { needsPushForPullRequest } from '../../shared/forge'
 import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
+import type { Identity } from '../../shared/identity'
 import { isFetchDue } from './autofetch'
 import { coalesce } from './coalesce'
 import { followDiff } from './diffFollow'
@@ -241,14 +242,58 @@ export async function cloneRepository(
 }
 
 /** Loads which account the repository uses (shown in the toolbar), and its pull requests. */
-export async function loadRepoAccount(path: string): Promise<void> {
+/** The account a repository is bound to, and who its next commit will be by. */
+async function loadAccountAndIdentity(path: string): Promise<void> {
   try {
-    const [id, accounts] = await Promise.all([api.getRepoAccount(path), api.listAccounts()])
-    patchRepo(path, { account: accounts.find((a) => a.id === id) ?? null })
+    const [id, accounts, identity] = await Promise.all([
+      api.getRepoAccount(path),
+      api.listAccounts(),
+      api.getCommitIdentity(path)
+    ])
+    patchRepo(path, { account: accounts.find((a) => a.id === id) ?? null, identity })
   } catch {
-    // not critical: the toolbar just shows no account
+    // not critical: the toolbar just shows no account, the commit box no identity
   }
+}
+
+export async function loadRepoAccount(path: string): Promise<void> {
+  await loadAccountAndIdentity(path)
   void loadPullRequests(path)
+  // A repository with no identity of its own takes the one of the account that owns it or may push to it.
+  void api.ensureDefaultIdentity(path).then(
+    () => loadAccountAndIdentity(path),
+    () => {}
+  )
+}
+
+/** Sets who the repository's next commits are by: an account's identity, one typed, or the global one. */
+export async function chooseCommitIdentity(
+  path: string,
+  choice: { account: string } | Identity | 'global'
+): Promise<void> {
+  try {
+    await api.setCommitIdentity(path, choice)
+    // Identities typed are remembered in the settings.
+    useStore.setState({ settings: await api.getSettings() })
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+  await loadAccountAndIdentity(path)
+  void loadPullRequests(path)
+}
+
+/** Asks for a name and an email for the repository's next commits. */
+export async function askCommitIdentity(path: string): Promise<void> {
+  const current = getRepo(path)?.identity
+  const values = await formDialog({
+    title: t('identity.title'),
+    fields: [
+      { key: 'name', label: t('identity.name'), value: current?.name ?? '' },
+      { key: 'email', label: t('identity.email'), value: current?.email ?? '' }
+    ],
+    confirmText: t('identity.use')
+  })
+  if (values) await chooseCommitIdentity(path, { name: values.name, email: values.email })
 }
 
 const prSeq: Record<string, number> = {}

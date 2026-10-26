@@ -6,6 +6,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Pick who a commit is by**: the commit box shows the identity the next commit will have (and where it comes from: an account, the repository, git's global configuration); a click picks an account's, one typed before, another one, or the global identity, for that repository only.
+- **The right account by default**: a repository with no identity of its own, opened in the app, takes the identity of the account that owns it, or else of an account that may push to it (asked to GitHub, GitLab, Bitbucket or Gitea). An identity the repository already has is never replaced.
 - **Edit a conflicted file by hand** in the conflict editor: *Edit by hand* opens the whole file as text, with the blocks you chose already resolved and the others still marked, to change anything in it (a block, or any other line). Saving warns if conflict markers are left, keeps the file's line endings, and marks it resolved.
 
 ## [0.15.1] - 2026-10-26

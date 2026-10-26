@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { AlertTriangle, Copy, Lock, PencilLine } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Copy, Lock, PencilLine } from 'lucide-react'
 import { lfsPatternFor, type LfsLock } from '../../../shared/lfs'
 import type { DiffSource, FileChange } from '../../../shared/types'
 import {
@@ -39,7 +39,7 @@ import {
 import { useT } from '../i18n'
 import { formatSize, lockFor, lockedByOthers } from '../lfsView'
 import { pushAfterCommitTarget } from '../pushTarget'
-import { fileMenu, filesMenu } from '../menus'
+import { fileMenu, filesMenu, identityMenu } from '../menus'
 import { useRepo, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
 import { cx, formatDate, shortHash, splitPath } from '../utils'
@@ -495,6 +495,7 @@ function CommitBox({ path }: { path: string }) {
           {t('wip.amend')}
         </label>
       </div>
+      <CommitIdentity path={path} view={view} />
       <div className="summary-wrap">
         <input
           className="summary-input"
@@ -529,6 +530,42 @@ function CommitBox({ path }: { path: string }) {
         {label}
       </button>
     </div>
+  )
+}
+
+/** Who the commit will be by, and where that comes from; a click picks another identity for this repository. */
+function CommitIdentity({ path, view }: { path: string; view: RepoView }) {
+  const t = useT()
+  const identity = view.identity
+  if (!identity) return null
+  const account = view.account
+  const from =
+    identity.source === 'account' && account
+      ? t('identity.fromAccount', { account: `${account.username} (${account.host})` })
+      : identity.source === 'repo'
+        ? t('identity.fromRepo')
+        : identity.source === 'global'
+          ? t('identity.fromGlobal')
+          : t('identity.noneHint')
+  return (
+    <button
+      type="button"
+      className={cx('commit-identity', identity.source === 'none' && 'missing')}
+      title={from}
+      onClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        void window.leviathan
+          .listAccounts()
+          .catch(() => [])
+          .then((accounts) => openMenu({ x: rect.left, y: rect.bottom + 4 }, identityMenu(path, accounts)))
+      }}
+    >
+      <span className="dim">{t('identity.as')}</span>
+      <span className="commit-identity-who">
+        {identity.source === 'none' ? t('identity.none') : `${identity.name} <${identity.email}>`}
+      </span>
+      <ChevronDown size={12} />
+    </button>
   )
 }
 

@@ -25,6 +25,7 @@ import type {
   Submodule,
   WorkingFile
 } from './types'
+import type { CommitIdentity, Identity } from './identity'
 import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
 import type { RebaseItem } from './rebase'
 import type { ReleaseNote } from './releaseNotes'
@@ -184,6 +185,12 @@ export interface LeviathanInvokeApi {
   listAccountRepos(id: string): Promise<RemoteRepo[]>
   getRepoAccount(repo: string): Promise<string | null>
   setRepoAccount(repo: string, accountId: string | null): Promise<void>
+  /** Who the next commit of a repository will be by, and where that comes from. */
+  getCommitIdentity(repo: string): Promise<CommitIdentity>
+  /** An account's identity, one typed, or the global one ('global') for the repository's next commits. */
+  setCommitIdentity(repo: string, choice: { account: string } | Identity | 'global'): Promise<void>
+  /** A repository with no identity of its own takes the one of the account that owns it or may push to it. */
+  ensureDefaultIdentity(repo: string): Promise<void>
   /** Sign in to GitHub from the browser: the code to enter there, then the account once authorized. */
   startGitHubLogin(): Promise<{ userCode: string; verificationUri: string; expiresIn: number }>
   finishGitHubLogin(): Promise<Account>
@@ -364,6 +371,9 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   listAccountRepos: true,
   getRepoAccount: true,
   setRepoAccount: true,
+  getCommitIdentity: true,
+  setCommitIdentity: true,
+  ensureDefaultIdentity: true,
   startGitHubLogin: true,
   finishGitHubLogin: true,
   cancelGitHubLogin: true,

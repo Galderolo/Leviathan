@@ -9,7 +9,8 @@ import {
   noreplyEmail,
   withoutAccount
 } from '../../shared/providers'
-import { pickProject } from '../../shared/forge'
+import { defaultIdentityAccount, pickProject } from '../../shared/forge'
+import { commitIdentity, rememberIdentity, type CommitIdentity, type Identity } from '../../shared/identity'
 import { parseRemotes } from '../../shared/parsers'
 import type {
   Account,
@@ -24,12 +25,14 @@ import type {
 import { mergeMethods } from '../../shared/providers'
 import { fetchPullRequestRange, getRangeFiles } from '../git/repository'
 import { setAccountSource } from '../askpass'
+import { readIdentity, writeIdentity } from '../git/identity'
 import { git, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
 import {
   addPullRequestComment,
   allowedMergeMethods,
   approvePullRequest,
+  canPush,
   closePullRequest,
   createPullRequest,
   defaultBranch,
@@ -162,8 +165,7 @@ export async function addAccount(input: {
 }
 
 async function applyIdentity(repo: string, account: Account): Promise<void> {
-  await git(['config', 'user.name', account.name], { cwd: repo })
-  await git(['config', 'user.email', account.email], { cwd: repo })
+  await writeIdentity(repo, { name: account.name, email: account.email })
 }
 
 function boundRepos(accountId: string): string[] {
@@ -173,9 +175,57 @@ function boundRepos(accountId: string): string[] {
 }
 
 export async function updateAccount(id: string, patch: { name?: string; email?: string }): Promise<Account> {
+  const before = requireAccount(id)
   const account = accounts().update(id, patch)
-  for (const repo of boundRepos(id)) await applyIdentity(repo, account).catch(() => {})
+  for (const repo of boundRepos(id)) {
+    // Only where the repository still has the account's identity: one given another keeps it.
+    const { local } = await readIdentity(repo).catch(() => ({ local: null }))
+    if (local?.name === before.name && local.email === before.email) await applyIdentity(repo, account).catch(() => {})
+  }
   return account
+}
+
+/** Who the next commit of a repository will be by, and where that comes from. */
+export async function getCommitIdentity(repo: string): Promise<CommitIdentity> {
+  const { local, effective } = await readIdentity(repo)
+  const id = getRepoAccount(repo)
+  return commitIdentity(local, effective, (id && accounts().get(id)) || null)
+}
+
+/** Repositories no account owns or may push to, this session: the servers are not asked on every opening. */
+const withoutDefaultIdentity = new Set<string>()
+
+/**
+ * Gives a repository that has no identity of its own (and no account) the one of the account that owns its project,
+ * or else of one that may push to it. A repository with an identity of its own is never touched.
+ */
+export async function ensureDefaultIdentity(repo: string): Promise<void> {
+  if (getRepoAccount(repo) || withoutDefaultIdentity.has(repo)) return
+  const { local } = await readIdentity(repo)
+  if (local.name || local.email) return
+  const { stdout } = await git(['remote', '-v'], { cwd: repo })
+  const account = await defaultIdentityAccount(parseRemotes(stdout), accounts().list(), async (a, path) => {
+    const token = await freshToken(a.id).catch(() => null)
+    return !!token && canPush(a.provider, a.host, path, token)
+  })
+  if (account) await setRepoAccount(repo, account.id)
+  else withoutDefaultIdentity.add(repo)
+}
+
+/**
+ * The identity of a repository's next commits: an account's (bound to it, as when picked in Settings), one typed
+ * (remembered to pick again), or the global one (the repository's own is taken away).
+ */
+export async function setCommitIdentity(
+  repo: string,
+  choice: { account: string } | Identity | 'global'
+): Promise<void> {
+  if (choice === 'global') return writeIdentity(repo, null)
+  if ('account' in choice) return setRepoAccount(repo, choice.account)
+  const identity = { name: choice.name.trim(), email: choice.email.trim() }
+  if (!identity.name || !identity.email) throw new Error('A commit identity needs a name and an email.')
+  await writeIdentity(repo, identity)
+  saveSettings({ recentIdentities: rememberIdentity(loadSettings().recentIdentities ?? [], identity) })
 }
 
 export function removeAccount(id: string): void {

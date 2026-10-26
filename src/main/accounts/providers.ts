@@ -274,6 +274,36 @@ export async function defaultBranch(
   return String(project.default_branch ?? main ?? '')
 }
 
+/** GitLab's Developer role: the first that may push. */
+const GITLAB_DEVELOPER = 30
+
+/**
+ * Whether the token's user may push to the project at `path`. False as well when the server cannot be asked or does
+ * not show the project: this only picks a default, it never stops anything.
+ */
+export async function canPush(
+  provider: Provider,
+  host: string,
+  path: string,
+  token: string,
+  fetchFn: FetchFn = fetch
+): Promise<boolean> {
+  try {
+    if (provider === 'bitbucket') {
+      const query = encodeURIComponent(`repository.full_name="${path}"`)
+      const answer = await getJson(provider, host, `/user/permissions/repositories?q=${query}`, token, fetchFn)
+      return items(answer).some((p) => p.permission === 'write' || p.permission === 'admin')
+    }
+    const project = (await getJson(provider, host, projectPath(provider, path), token, fetchFn)) as Json
+    const permissions = (project.permissions ?? {}) as Json
+    if (provider !== 'gitlab') return permissions.push === true
+    const level = (access: unknown) => Number((access as Json | null)?.access_level ?? 0)
+    return Math.max(level(permissions.project_access), level(permissions.group_access)) >= GITLAB_DEVELOPER
+  } catch {
+    return false
+  }
+}
+
 /** Who the token belongs to, with the provider's no-reply address as commit email. */
 export async function fetchIdentity(
   provider: Provider,
