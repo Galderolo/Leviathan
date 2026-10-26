@@ -68,7 +68,7 @@ const handlers: LeviathanInvokeApi = {
   getState: (path) => repo.getState(path),
   getLog: (path, limit, scope) => repo.getLog(path, limit, scope),
   getCommitDetails: (path, hash) => repo.getCommitDetails(path, hash),
-  getDiff: (path, source) => repo.getDiff(path, source),
+  getDiff: (path, source, fullFile) => repo.getDiff(path, source, fullFile === true),
   getSnapshot: (path) => repo.getSnapshot(path),
   getFileHistory: (path, file, rev) => repo.getFileHistory(path, file, rev),
   getFolderHistory: (path, folder, rev) => repo.getFolderHistory(path, folder, rev),

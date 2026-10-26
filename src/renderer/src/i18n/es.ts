@@ -569,6 +569,7 @@ const es: Record<keyof typeof en, string> = {
 
   'diff.unified': 'Una columna',
   'diff.split': 'Lado a lado (antes | después)',
+  'diff.fullFile': 'Archivo completo',
 
   'error.operationInProgress': '{operation}: termínalo o abórtalo antes.',
   'error.stashUntrackedExist':

@@ -158,6 +158,32 @@ describe('repository', () => {
     expect(state.status.unstaged.map((f) => f.path).sort()).toEqual(['new.txt', 'old.txt'])
   })
 
+  it('gives the whole file around the hunks of a diff when asked', async () => {
+    const lines = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`)
+    await commitFile('f.txt', lines.join('\n') + '\n', 'base')
+    lines[9] = 'changed 10'
+    lines[19] = 'changed 20'
+    writeFileSync(join(dir, 'f.txt'), lines.join('\n') + '\n')
+    const gapNumbers = (gaps: { newNo?: number }[][] | undefined) => gaps?.map((gap) => gap.map((l) => l.newNo))
+    const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i)
+    const expected = [range(1, 6), range(14, 16), range(24, 30)]
+
+    const unstaged = await repo.getDiff(dir, { kind: 'unstaged', path: 'f.txt' }, true)
+    expect(unstaged.hunks).toHaveLength(2)
+    expect(gapNumbers(unstaged.gaps)).toEqual(expected)
+    expect(unstaged.gaps?.[0][0].text).toBe('line 1')
+    expect((await repo.getDiff(dir, { kind: 'unstaged', path: 'f.txt' })).gaps).toBeUndefined()
+
+    await repo.stage(dir, ['f.txt'])
+    expect(gapNumbers((await repo.getDiff(dir, { kind: 'staged', path: 'f.txt' }, true)).gaps)).toEqual(expected)
+
+    await repo.commit(dir, 'change', false)
+    const head = (await repo.getState(dir)).head.hash!
+    // Without a parent: `git show`, where a near-INT_MAX context split the file into overlapping hunks.
+    const commit = await repo.getDiff(dir, { kind: 'commit', hash: head, parent: null, path: 'f.txt' }, true)
+    expect(gapNumbers(commit.gaps)).toEqual(expected)
+  })
+
   it('stages and unstages individual lines', async () => {
     await commitFile('f.txt', 'one\ntwo\n', 'base')
     writeFileSync(join(dir, 'f.txt'), 'one\nfirst new\nsecond new\ntwo\n')

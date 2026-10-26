@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import { supportsLineSelection } from '../../../shared/patch'
-import type { FileChange, SubmoduleChange } from '../../../shared/types'
+import type { DiffHunk, FileChange, SubmoduleChange } from '../../../shared/types'
 import { applyHunk, applyLines, closeDiff, discardFiles, openInEditor, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
 import { ConflictView } from './ConflictView'
 import { useRepo, useStore } from '../store'
 import { highlightHunks } from '../syntax'
-import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
+import { DiffFullFileToggle, DiffLayoutToggle, GapLines, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 import { cx, shortHash, splitPath } from '../utils'
 
 const LINE_LIMIT = 3000
@@ -24,6 +24,8 @@ export function DiffView({ path }: { path: string }) {
   const layout = useStore((s) => s.diffLayout)
   const spansByHunk = useMemo(() => data?.hunks.map(wordSpans) ?? [], [data])
   const syntaxByHunk = useMemo(() => (data ? highlightHunks(data.hunks, data.path) : []), [data])
+  // Each gap of unchanged lines is highlighted as a hunk of its own.
+  const syntaxByGap = useMemo(() => (data?.gaps ? highlightHunks(data.gaps.map(gapHunk), data.path) : []), [data])
 
   useEffect(() => {
     setPicked(null)
@@ -76,7 +78,17 @@ export function DiffView({ path }: { path: string }) {
 
   let budget = showAll ? Number.POSITIVE_INFINITY : LINE_LIMIT
   const hasEditor = useStore((s) => !!s.settings.editor.trim())
-  const totalLines = data?.hunks.reduce((n, h) => n + h.lines.length, 0) ?? 0
+  const totalLines =
+    (data?.hunks.reduce((n, h) => n + h.lines.length, 0) ?? 0) +
+    (data?.gaps?.reduce((n, gap) => n + gap.length, 0) ?? 0)
+  /** The unchanged lines before hunk `index` (after the last one for `hunks.length`), when the whole file is shown. */
+  const gap = (index: number) => {
+    const lines = data?.gaps?.[index]
+    if (!lines?.length || budget <= 0) return null
+    const shown = lines.slice(0, budget)
+    budget -= shown.length
+    return <GapLines lines={shown} split={layout === 'split'} syntax={syntaxByGap[index]} />
+  }
 
   return (
     <div className="diff-view">
@@ -108,6 +120,7 @@ export function DiffView({ path }: { path: string }) {
               {t('diff.unstageFile')}
             </button>
           )}
+          <DiffFullFileToggle />
           <DiffLayoutToggle />
           {source.kind !== 'commit' && (
             <button
@@ -136,98 +149,111 @@ export function DiffView({ path }: { path: string }) {
           !data.binary &&
           !data.submodule &&
           data.hunks.map((hunk, hi) => {
-            if (budget <= 0) return null
+            const before = gap(hi)
+            if (budget <= 0) return <Fragment key={hi}>{before}</Fragment>
             const lines = hunk.lines.slice(0, budget)
             budget -= lines.length
             return (
-              <div className="hunk" key={hi}>
-                <div className="hunk-header">
-                  <code>{hunk.header}</code>
-                  {picked?.hunk === hi && hunkMode && (
-                    <span className="hunk-actions">
-                      <button className="btn tiny" onClick={() => setPicked(null)}>
-                        {t('diff.clearSelection')}
-                      </button>
-                      <button
-                        className={cx('btn tiny', hunkMode === 'unstaged' ? 'btn-stage' : 'btn-unstage')}
-                        disabled={view?.applying}
-                        onClick={() =>
-                          void applyLines(path, data, hunk, picked.lines, hunkMode === 'unstaged' ? 'stage' : 'unstage')
-                        }
-                      >
-                        {t(hunkMode === 'unstaged' ? 'diff.stageLines' : 'diff.unstageLines', {
-                          count: picked.lines.size
-                        })}
-                      </button>
-                    </span>
-                  )}
-                  {picked?.hunk !== hi && hunkMode === 'unstaged' && (
-                    <span className="hunk-actions">
-                      <button
-                        className="btn tiny btn-danger-ghost"
-                        disabled={view?.applying}
-                        onClick={() => void applyHunk(path, data, hunk, 'discard')}
-                      >
-                        {t('diff.discardHunk')}
-                      </button>
-                      <button
-                        className="btn tiny btn-stage"
-                        disabled={view?.applying}
-                        onClick={() => void applyHunk(path, data, hunk, 'stage')}
-                      >
-                        {t('diff.stageHunk')}
-                      </button>
-                    </span>
-                  )}
-                  {picked?.hunk !== hi && hunkMode === 'staged' && (
-                    <span className="hunk-actions">
-                      <button
-                        className="btn tiny btn-unstage"
-                        disabled={view?.applying}
-                        onClick={() => void applyHunk(path, data, hunk, 'unstage')}
-                      >
-                        {t('diff.unstageHunk')}
-                      </button>
-                    </span>
+              <Fragment key={hi}>
+                {before}
+                <div className="hunk">
+                  <div className="hunk-header">
+                    <code>{hunk.header}</code>
+                    {picked?.hunk === hi && hunkMode && (
+                      <span className="hunk-actions">
+                        <button className="btn tiny" onClick={() => setPicked(null)}>
+                          {t('diff.clearSelection')}
+                        </button>
+                        <button
+                          className={cx('btn tiny', hunkMode === 'unstaged' ? 'btn-stage' : 'btn-unstage')}
+                          disabled={view?.applying}
+                          onClick={() =>
+                            void applyLines(
+                              path,
+                              data,
+                              hunk,
+                              picked.lines,
+                              hunkMode === 'unstaged' ? 'stage' : 'unstage'
+                            )
+                          }
+                        >
+                          {t(hunkMode === 'unstaged' ? 'diff.stageLines' : 'diff.unstageLines', {
+                            count: picked.lines.size
+                          })}
+                        </button>
+                      </span>
+                    )}
+                    {picked?.hunk !== hi && hunkMode === 'unstaged' && (
+                      <span className="hunk-actions">
+                        <button
+                          className="btn tiny btn-danger-ghost"
+                          disabled={view?.applying}
+                          onClick={() => void applyHunk(path, data, hunk, 'discard')}
+                        >
+                          {t('diff.discardHunk')}
+                        </button>
+                        <button
+                          className="btn tiny btn-stage"
+                          disabled={view?.applying}
+                          onClick={() => void applyHunk(path, data, hunk, 'stage')}
+                        >
+                          {t('diff.stageHunk')}
+                        </button>
+                      </span>
+                    )}
+                    {picked?.hunk !== hi && hunkMode === 'staged' && (
+                      <span className="hunk-actions">
+                        <button
+                          className="btn tiny btn-unstage"
+                          disabled={view?.applying}
+                          onClick={() => void applyHunk(path, data, hunk, 'unstage')}
+                        >
+                          {t('diff.unstageHunk')}
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                  {layout === 'split' ? (
+                    <SplitHunkLines hunk={hunk} limit={lines.length} syntax={syntaxByHunk[hi]} />
+                  ) : (
+                    <div className="hunk-lines">
+                      {lines.map((line, li) => {
+                        const selectable =
+                          !!hunkMode && supportsLineSelection(hunk) && (line.type === 'add' || line.type === 'del')
+                        return (
+                          <div
+                            key={li}
+                            className={cx(
+                              'diff-line',
+                              line.type,
+                              conflictMarker(line.text) && 'marker',
+                              selectable && 'selectable',
+                              picked?.hunk === hi && picked.lines.has(li) && 'picked'
+                            )}
+                          >
+                            <span
+                              className="gutter"
+                              title={selectable ? t('diff.pickLine') : undefined}
+                              onMouseDown={(e) => selectable && e.shiftKey && e.preventDefault()}
+                              onClick={(e) => pickLine(hi, li, e.shiftKey)}
+                            >
+                              <span className="ln">{line.oldNo ?? ''}</span>
+                              <span className="ln">{line.newNo ?? ''}</span>
+                              <span className="sign">
+                                {line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}
+                              </span>
+                            </span>
+                            <LineText line={line} spans={spansByHunk[hi]?.get(li)} syntax={syntaxByHunk[hi]?.get(li)} />
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
-                {layout === 'split' ? (
-                  <SplitHunkLines hunk={hunk} limit={lines.length} syntax={syntaxByHunk[hi]} />
-                ) : (
-                  <div className="hunk-lines">
-                    {lines.map((line, li) => {
-                      const selectable =
-                        !!hunkMode && supportsLineSelection(hunk) && (line.type === 'add' || line.type === 'del')
-                      return (
-                        <div
-                          key={li}
-                          className={cx(
-                            'diff-line',
-                            line.type,
-                            conflictMarker(line.text) && 'marker',
-                            selectable && 'selectable',
-                            picked?.hunk === hi && picked.lines.has(li) && 'picked'
-                          )}
-                        >
-                          <span
-                            className="gutter"
-                            title={selectable ? t('diff.pickLine') : undefined}
-                            onMouseDown={(e) => selectable && e.shiftKey && e.preventDefault()}
-                            onClick={(e) => pickLine(hi, li, e.shiftKey)}
-                          >
-                            <span className="ln">{line.oldNo ?? ''}</span>
-                            <span className="ln">{line.newNo ?? ''}</span>
-                            <span className="sign">{line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}</span>
-                          </span>
-                          <LineText line={line} spans={spansByHunk[hi]?.get(li)} syntax={syntaxByHunk[hi]?.get(li)} />
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+              </Fragment>
             )
           })}
+        {data && !data.binary && !data.submodule && gap(data.hunks.length)}
         {data && !showAll && totalLines > LINE_LIMIT && (
           <div className="show-all">
             <button className="btn" onClick={() => setShowAll(true)}>
@@ -238,6 +264,11 @@ export function DiffView({ path }: { path: string }) {
       </div>
     </div>
   )
+}
+
+/** Unchanged lines as a hunk of context, to highlight them like one. */
+function gapHunk(lines: DiffHunk['lines']): DiffHunk {
+  return { header: '', oldStart: 0, oldLines: 0, newStart: 0, newLines: 0, lines, patch: '' }
 }
 
 function conflictMarker(text: string): boolean {

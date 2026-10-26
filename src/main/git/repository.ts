@@ -13,6 +13,7 @@ import {
   parseStatus,
   untrackedDiff
 } from '../../shared/parsers'
+import { unchangedGaps } from '../../shared/diffGaps'
 import { LARGE_FILE_BYTES } from '../../shared/lfs'
 import type {
   Commit,
@@ -387,13 +388,25 @@ async function submoduleChange(repo: string, diff: FileDiff): Promise<FileDiff> 
   }
 }
 
-export async function getDiff(repo: string, source: DiffSource): Promise<FileDiff> {
-  return submoduleChange(repo, await getFileDiff(repo, source))
+/**
+ * Context that takes in any file as one hunk. git doubles it when joining hunks: near INT_MAX it overflows and
+ * splits the file into overlapping hunks.
+ */
+const WHOLE_FILE = '-U100000000'
+
+/** `fullFile`: also the file's unchanged lines around the hunks (`gaps`), for reading a change in its file. */
+export async function getDiff(repo: string, source: DiffSource, fullFile = false): Promise<FileDiff> {
+  const [diff, whole] = await Promise.all([
+    getFileDiff(repo, source),
+    fullFile ? getFileDiff(repo, source, [WHOLE_FILE]) : null
+  ])
+  const withGaps = whole && !diff.binary ? { ...diff, gaps: unchangedGaps(diff.hunks, whole.hunks) } : diff
+  return submoduleChange(repo, withGaps)
 }
 
-async function getFileDiff(repo: string, source: DiffSource): Promise<FileDiff> {
+async function getFileDiff(repo: string, source: DiffSource, extraArgs: string[] = []): Promise<FileDiff> {
   // A submodule's change as its two commits, whatever diff.submodule the user configured.
-  const diffArgs = ['--no-ext-diff', '-M', '--submodule=short']
+  const diffArgs = ['--no-ext-diff', '-M', '--submodule=short', ...extraArgs]
   switch (source.kind) {
     case 'unstaged': {
       if (source.untracked || source.conflicted) {

@@ -302,6 +302,33 @@ test('highlights the code of a diff', async () => {
   await expect(page.locator('.diff-line.add mark.word-change').first()).toContainText('2')
 })
 
+test('shows the whole file around a change, and still stages its hunk', async () => {
+  const lines = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`)
+  const repo = box.repo('game', { 'f.txt': lines.join('\n') + '\n' })
+  lines[9] = 'changed 10'
+  box.write(repo, { 'f.txt': lines.join('\n') + '\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'f.txt' }).click()
+  const view = page.locator('.diff-view')
+  await expect(view.locator('.hunk .diff-line')).toHaveCount(8)
+  await expect(view.locator('.gap-lines')).toHaveCount(0)
+
+  await view.getByTitle('Whole file').click()
+  // Lines 1-6 before the hunk (7-13), 14-20 after it.
+  await expect(view.locator('.gap-lines')).toHaveCount(2)
+  await expect(view.locator('.gap-lines .diff-line')).toHaveCount(13)
+  await expect(view.locator('.gap-lines .diff-line .code').first()).toHaveText('line 1')
+  await view.getByTitle('Side by side (old | new)').click()
+  await expect(view.locator('.gap-lines .split-row')).toHaveCount(13)
+  await view.getByTitle('One column').click()
+
+  await view.getByRole('button', { name: 'Stage hunk' }).click()
+  await expect.poll(() => box.git(repo, 'diff', '--cached', '--name-only')).toBe('f.txt')
+  expect(box.git(repo, 'diff', '--name-only')).toBe('')
+})
+
 /** A repository with `base` and then commits one, two and three, each adding its own file. */
 function threeCommits(): string {
   const repo = box.repo('game', { 'base.txt': 'base\n' })

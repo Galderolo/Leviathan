@@ -74,7 +74,8 @@ export interface LeviathanInvokeApi {
     scope?: { hidden?: string[]; solo?: string | null }
   ): Promise<{ commits: Commit[]; hasMore: boolean }>
   getCommitDetails(repo: string, hash: string): Promise<CommitDetails>
-  getDiff(repo: string, source: DiffSource): Promise<FileDiff>
+  /** `fullFile`: also the unchanged lines around the hunks (`FileDiff.gaps`). */
+  getDiff(repo: string, source: DiffSource, fullFile?: boolean): Promise<FileDiff>
   getSnapshot(repo: string): Promise<Snapshot>
   /** Commits that touched a file, newest first, following renames. */
   getFileHistory(repo: string, path: string, rev: string | null): Promise<FileCommit[]>

@@ -1,8 +1,9 @@
 import { Fragment, useMemo } from 'react'
-import { Columns2, Rows2 } from 'lucide-react'
+import { Columns2, Rows2, UnfoldVertical } from 'lucide-react'
 import type { DiffHunk, DiffLine } from '../../../shared/types'
 import { mergeSegments, type SyntaxToken } from '../../../shared/syntax'
 import { pairChanges, splitRows, wordDiff, type Span } from '../../../shared/wordDiff'
+import { setDiffFullFile } from '../actions'
 import { useT } from '../i18n'
 import { DIFF_LAYOUT_KEY, useStore, type DiffLayout } from '../store'
 import { cx } from '../utils'
@@ -37,6 +38,59 @@ export function DiffLayoutToggle() {
         <Columns2 size={15} />
       </button>
     </span>
+  )
+}
+
+/** Whole file / changes only switch for diff headers. */
+export function DiffFullFileToggle() {
+  const t = useT()
+  const on = useStore((s) => s.diffFullFile)
+  return (
+    <span className="layout-toggle">
+      <button className={cx('icon-btn', on && 'on')} title={t('diff.fullFile')} onClick={() => setDiffFullFile(!on)}>
+        <UnfoldVertical size={15} />
+      </button>
+    </span>
+  )
+}
+
+/** Unchanged lines of the file between hunks, shown when the diff shows the whole file. */
+export function GapLines({
+  lines,
+  split,
+  syntax
+}: {
+  lines: DiffLine[]
+  split: boolean
+  syntax?: Map<number, SyntaxToken[]> | null
+}) {
+  const cell = (line: DiffLine, i: number, no: number | undefined) => (
+    <div className="split-cell ctx">
+      <span className="ln">{no ?? ''}</span>
+      <span className="sign"> </span>
+      <LineText line={line} syntax={syntax?.get(i)} />
+    </div>
+  )
+  return (
+    <div className={cx('hunk-lines', 'gap-lines', split && 'split')}>
+      {lines.map((line, i) =>
+        split ? (
+          <div key={i} className="split-row">
+            {cell(line, i, line.oldNo)}
+            {cell(line, i, line.newNo)}
+          </div>
+        ) : (
+          <div key={i} className="diff-line ctx">
+            <span className="gutter">
+              <span className="ln">{line.oldNo ?? ''}</span>
+              <span className="ln">{line.newNo ?? ''}</span>
+              <span className="sign"> </span>
+            </span>
+            <LineText line={line} syntax={syntax?.get(i)} />
+          </div>
+        )
+      )}
+    </div>
   )
 }
 

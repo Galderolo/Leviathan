@@ -133,6 +133,8 @@ export interface FileDiff {
   /** Raw file header (`diff --git ...` up to `+++ ...`). */
   header: string
   hunks: DiffHunk[]
+  /** Asked for the whole file: its unchanged lines before each hunk and after the last (`hunks.length + 1`). */
+  gaps?: DiffLine[][]
   /** For a submodule: the commits the change brings or takes away. */
   submodule?: SubmoduleChange
 }
