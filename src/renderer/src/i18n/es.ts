@@ -137,6 +137,7 @@ const es: Record<keyof typeof en, string> = {
   'wip.commitBtn': 'Hacer commit de {count} archivos',
   'wip.commitBtn_one': 'Hacer commit de 1 archivo',
   'wip.stageToCommit': 'Prepara archivos para hacer commit',
+  'wip.editTemplate': 'Escribe el mensaje a partir de la plantilla',
   'wip.typeSummary': 'Escribe un resumen del commit',
 
   'op.merge': 'Merge en curso',

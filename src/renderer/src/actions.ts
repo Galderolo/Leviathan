@@ -290,7 +290,26 @@ async function loadAccountAndIdentity(path: string): Promise<void> {
   }
 }
 
+/** A commit box with nothing typed in it: empty, or the template it was given. */
+function draftUntouched(view: RepoView): boolean {
+  const { summary, body } = view.draft
+  if (!summary.trim() && !body.trim()) return true
+  return !!view.template && summary === view.template.summary && body === view.template.body
+}
+
+/** Reads git's commit.template, and gives it to a commit box with nothing typed in it. */
+async function loadCommitTemplate(path: string): Promise<void> {
+  const template = await api.getCommitTemplate(path).catch(() => null)
+  patchRepo(path, (r) => ({
+    template,
+    ...(template && !r.draft.amend && !r.draft.summary.trim() && !r.draft.body.trim()
+      ? { draft: { ...r.draft, ...template } }
+      : {})
+  }))
+}
+
 export async function loadRepoAccount(path: string): Promise<void> {
+  void loadCommitTemplate(path)
   await loadAccountAndIdentity(path)
   void loadPullRequests(path)
   // A repository with no identity of its own takes the one of the account that owns it or may push to it.
@@ -1559,7 +1578,7 @@ export function updateDraft(path: string, patch: Partial<RepoView['draft']>): vo
 export async function setAmend(path: string, amend: boolean): Promise<void> {
   const view = getRepo(path)
   if (!view) return
-  if (amend && !view.draft.summary.trim() && !view.draft.body.trim()) {
+  if (amend && draftUntouched(view)) {
     const message = await api.headMessage(path).catch(() => '')
     const [summary, ...rest] = message.split('\n')
     updateDraft(path, { amend, summary: summary ?? '', body: rest.join('\n').trim() })
@@ -1578,7 +1597,9 @@ export async function commit(path: string): Promise<boolean> {
     undo: { label: t(amend ? 'undo.amend' : 'undo.commit', { name: summary.trim() }), mode: 'soft' }
   })
   if (ok) {
-    updateDraft(path, { summary: '', body: '', amend: false })
+    // The next commit starts from the template again.
+    const template = getRepo(path)?.template
+    updateDraft(path, { summary: template?.summary ?? '', body: template?.body ?? '', amend: false })
     patchRepo(path, { diff: null })
     const state = getRepo(path)?.state
     if (useStore.getState().settings.pushAfterCommit && state && pushAfterCommitTarget(state.head, state.remotes)) {

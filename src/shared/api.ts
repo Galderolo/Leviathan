@@ -25,6 +25,7 @@ import type {
   Submodule,
   WorkingFile
 } from './types'
+import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
 import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
 import type { RebaseItem } from './rebase'
@@ -185,6 +186,8 @@ export interface LeviathanInvokeApi {
   listAccountRepos(id: string): Promise<RemoteRepo[]>
   getRepoAccount(repo: string): Promise<string | null>
   setRepoAccount(repo: string, accountId: string | null): Promise<void>
+  /** The message git's commit.template starts commits with, or null without one. */
+  getCommitTemplate(repo: string): Promise<CommitDraftText | null>
   /** Who the next commit of a repository will be by, and where that comes from. */
   getCommitIdentity(repo: string): Promise<CommitIdentity>
   /** An account's identity, one typed, or the global one ('global') for the repository's next commits. */
@@ -376,6 +379,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   listAccountRepos: true,
   getRepoAccount: true,
   setRepoAccount: true,
+  getCommitTemplate: true,
   getCommitIdentity: true,
   setCommitIdentity: true,
   ensureDefaultIdentity: true,

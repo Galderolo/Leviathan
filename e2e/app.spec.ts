@@ -361,6 +361,36 @@ test('shows who the commit will be by, and picks another identity for the reposi
   await expect(menuItem('Ana Work <ana@studio.example>')).toBeVisible()
 })
 
+test("starts each commit message from git's commit.template", async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n', '.gitmessage': 'feat: \n\n# Say why, not what.\nWhy:\n' })
+  box.git(repo, 'config', 'commit.template', '.gitmessage')
+  box.write(repo, { 'a.txt': 'two\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  const summary = page.locator('.summary-input')
+  const description = page.locator('.description-input')
+  await expect(summary).toHaveValue('feat: ')
+  await expect(description).toHaveValue('Why:')
+  await page.getByRole('button', { name: 'Stage all changes' }).click()
+  // Like git, the template as it is is not a message.
+  await expect(page.locator('.btn-commit')).toBeDisabled()
+  await expect(page.locator('.btn-commit')).toHaveText('Write the message from the template')
+  await summary.fill('feat: two')
+  await description.fill('Why: to have two')
+  await page.locator('.btn-commit').click()
+  await expect.poll(() => box.git(repo, 'log', '-1', '--format=%B')).toBe('feat: two\n\nWhy: to have two')
+
+  // The next commit starts from the template again.
+  box.write(repo, { 'a.txt': 'three\n' })
+  await page.locator('.graph-row.row-wip').click()
+  await expect(summary).toHaveValue('feat: ')
+  // Amending from the template alone takes the last commit's message, as from an empty box.
+  await page.locator('.commit-box input[type=checkbox]').first().click()
+  await expect(summary).toHaveValue('feat: two')
+  await expect(description).toHaveValue('Why: to have two')
+})
+
 test('asks with a count, not a list, before discarding many files', async () => {
   const files = Object.fromEntries(Array.from({ length: 26 }, (_, i) => [`Packages/dir/file${i}.class`, 'a\n']))
   const repo = box.repo('game', files)
