@@ -516,3 +516,53 @@ test('offers to pull and push again when the remote has commits that are not her
   await expect.poll(() => box.git(origin, 'log', '--format=%s', 'main')).toContain('mine')
   expect(box.git(origin, 'log', '--format=%s', 'main')).toContain('theirs')
 })
+
+test('pulls after a background fetch that is running, instead of failing to lock the refs', async () => {
+  const origin = join(box.root, 'origin.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  const work = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(work, 'remote', 'add', 'origin', origin)
+  box.git(work, 'push', '-q', '-u', 'origin', 'main')
+  const other = join(box.root, 'other')
+  box.git(box.root, 'clone', '-q', origin, other)
+  box.write(other, { 'b.txt': 'theirs\n' })
+  box.git(other, 'add', '.')
+  box.git(other, 'commit', '-qm', 'theirs')
+  box.git(other, 'push', '-q')
+  // A remote that notes when each connection starts and ends, and holds a connection until a second one comes
+  // (6 s at most): two fetches at once run side by side, as in a race that fails to lock refs/remotes/origin/main.
+  const log = join(box.root, 'connections.txt')
+  const fakeSsh = join(box.root, 'slow-ssh.sh')
+  const slashes = (p: string) => p.split('\\').join('/')
+  writeFileSync(
+    fakeSsh,
+    [
+      '#!/bin/sh',
+      `echo start >> "${slashes(log)}"`,
+      'i=0',
+      `while [ "$(grep -c start "${slashes(log)}")" -lt 2 ] && [ $i -lt 60 ]; do sleep 0.1; i=$((i + 1)); done`,
+      `git upload-pack "${slashes(origin)}"`,
+      'status=$?',
+      `echo done >> "${slashes(log)}"`,
+      'exit $status',
+      ''
+    ].join('\n')
+  )
+  box.env.GIT_SSH_COMMAND = `sh "${slashes(fakeSsh)}"`
+  box.git(work, 'remote', 'set-url', 'origin', 'git@example.invalid:game.git')
+  // No `ssh -G` probe before each connection: it would count as one.
+  box.git(work, 'config', 'ssh.variant', 'ssh')
+  ;({ app, page } = await launch(box, [work], { autoFetchMinutes: 1 }))
+
+  // The first background fetch starts a few seconds after the window.
+  await expect.poll(() => existsSync(log), { timeout: 20_000 }).toBe(true)
+  await toolbarButton('Pull').click()
+
+  const steps = () => readFileSync(log, 'utf8').split('\n').filter(Boolean)
+  await expect.poll(() => steps().length, { timeout: 20_000 }).toBe(4)
+  // The pull's fetch waited for the background one.
+  expect(steps()).toEqual(['start', 'done', 'start', 'done'])
+  await expect.poll(() => box.git(work, 'log', '--format=%s', '-1')).toBe('theirs')
+  await expect(page.locator('.toast.error')).toHaveCount(0)
+  await expect(page.locator('.status-warning')).toHaveCount(0)
+})

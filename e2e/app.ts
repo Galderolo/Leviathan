@@ -87,8 +87,12 @@ export class Sandbox {
   }
 }
 
-/** Starts the built app (`npm run build` first) with `repos` open, the first one showing. */
-export async function launch(box: Sandbox, repos: string[]): Promise<{ app: ElectronApplication; page: Page }> {
+/** Starts the built app (`npm run build` first) with `repos` open, the first one showing, and `settings` on top. */
+export async function launch(
+  box: Sandbox,
+  repos: string[],
+  settings: Record<string, unknown> = {}
+): Promise<{ app: ElectronApplication; page: Page }> {
   writeFileSync(
     join(box.profile, 'settings.json'),
     JSON.stringify({
@@ -99,7 +103,8 @@ export async function launch(box: Sandbox, repos: string[]): Promise<{ app: Elec
       autoFetchMinutes: 0,
       autoUpdate: false,
       // Not a new version for this profile: no "What's new" on top.
-      lastSeenVersion: VERSION
+      lastSeenVersion: VERSION,
+      ...settings
     })
   )
   const app = await electron.launch({
