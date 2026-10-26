@@ -30,6 +30,7 @@ import { branchStartOptions } from './branchStart'
 import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom, pushNeedsPull } from './pushTarget'
 import { stoppedOperation } from './operationStop'
 import { viewAfterCheckout, wipShown } from './checkoutView'
+import { moveTab } from './tabOrder'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
@@ -141,6 +142,15 @@ export function setActiveTab(id: string): void {
   persistTabs()
   const tab = useStore.getState().tabs.find((x) => x.id === id)
   if (tab?.path) void refreshRepo(tab.path)
+}
+
+/** Moves tab `id` into gap `gap` of the tab bar (0 = first place). */
+export function reorderTab(id: string, gap: number): void {
+  const { tabs } = useStore.getState()
+  const next = moveTab(tabs, id, gap)
+  if (next === tabs) return
+  useStore.setState({ tabs: next })
+  persistTabs()
 }
 
 export function cycleTab(delta: number): void {

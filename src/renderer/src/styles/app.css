@@ -296,6 +296,18 @@ a:hover {
   border-top-color: var(--accent);
 }
 
+.tab.dragging {
+  opacity: 0.5;
+}
+
+.tab.drop-before {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tab.drop-after {
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+
 .tab-title {
   flex: 1;
   overflow: hidden;
