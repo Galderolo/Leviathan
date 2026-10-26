@@ -129,6 +129,21 @@ describe('edits to a conflicted file', () => {
   })
 })
 
+describe('a file both sides deleted', () => {
+  it('reads as missing rather than failing, and resolves by keeping it deleted', async () => {
+    await commitFile('gone.txt', 'base\n', 'base')
+    const blob = (await git(['rev-parse', ':gone.txt'], { cwd: dir })).stdout.trim()
+    // Only the base is left in the index, and nothing in the working tree: git's "deleted by both".
+    await git(['rm', '-q', 'gone.txt'], { cwd: dir })
+    await git(['update-index', '--index-info'], { cwd: dir, input: `100644 ${blob} 1\tgone.txt\n` })
+    expect((await repo.getState(dir)).status.conflicted.map((f) => f.path)).toEqual(['gone.txt'])
+
+    expect(await repo.readWorkingFile(dir, 'gone.txt')).toEqual({ text: null, reason: 'missing' })
+    await repo.resolveConflictWith(dir, 'gone.txt', 'ours')
+    expect((await repo.getState(dir)).status.conflicted).toEqual([])
+  })
+})
+
 describe('conflict resolution safety', () => {
   it('refuses to edit a file too large to read whole', async () => {
     writeFileSync(join(dir, 'big.txt'), 'x'.repeat(3 * 1024 * 1024))
