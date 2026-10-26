@@ -3,9 +3,31 @@ import {
   amendsPushedCommit,
   pushAfterCommitTarget,
   pushNeedsPull,
-  remotesToChooseFrom
+  remotesToChooseFrom,
+  syncCounts
 } from '../src/renderer/src/pushTarget'
 import type { GitRef, HeadInfo, Remote } from '../src/shared/types'
+
+describe('syncCounts', () => {
+  const state = (ahead: number, behind: number, unpushed: string[] = []) => ({
+    head: { branch: 'main', hash: 'h', detached: false, upstream: 'origin/main', ahead, behind },
+    unpushed
+  })
+
+  it('counts the commits to pull and to push', () => {
+    expect(syncCounts(state(2, 3, ['a', 'b']))).toEqual({ pull: 3, push: 2 })
+    expect(syncCounts(state(0, 1))).toEqual({ pull: 1, push: 0 })
+  })
+
+  it('counts the commits of a branch never pushed as commits to push', () => {
+    expect(syncCounts(state(0, 0, ['a', 'b', 'c']))).toEqual({ pull: 0, push: 3 })
+  })
+
+  it('is null when there is nothing to pull or push, or the repository is not read yet', () => {
+    expect(syncCounts(state(0, 0))).toBeNull()
+    expect(syncCounts(null)).toBeNull()
+  })
+})
 
 describe('pushAfterCommitTarget', () => {
   const info = (branch: string | null, upstream: string | null): HeadInfo => ({

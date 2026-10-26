@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type React from 'react'
-import { FolderGit2, Plus, Sparkles, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, FolderGit2, Plus, Sparkles, X } from 'lucide-react'
 import { closeTab, newTab, reorderTab, setActiveTab } from '../actions'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { syncCounts } from '../pushTarget'
+import { useStore, type Tab } from '../store'
 import { basename, cx } from '../utils'
 
 export function TabBar() {
@@ -52,48 +53,96 @@ export function TabBar() {
         }}
       >
         {tabs.map((tab, index) => (
-          <div
+          <RepoTab
             key={tab.id}
-            data-index={index}
+            tab={tab}
+            index={index}
             className={cx(
-              'tab',
               tab.id === activeTab && 'active',
               tab.id === dragging && 'dragging',
               marker === index && 'drop-before',
               marker === tabs.length && index === tabs.length - 1 && 'drop-after'
             )}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = 'move'
-              e.dataTransfer.setData('text/plain', tab.path ?? '')
-              setDragging(tab.id)
-            }}
+            onDragStart={() => setDragging(tab.id)}
             onDragEnd={endDrag}
-            onMouseDown={(e) => {
-              if (e.button === 1) {
-                e.preventDefault()
-                closeTab(tab.id)
-              } else if (e.button === 0) setActiveTab(tab.id)
-            }}
-            title={tab.path ?? t('tab.newTab')}
-          >
-            {tab.path ? <FolderGit2 size={14} /> : <Sparkles size={14} />}
-            <span className="tab-title">{tab.path ? basename(tab.path) : t('tab.newTab')}</span>
-            <button
-              className="tab-close"
-              title={t('tab.close')}
-              draggable={false}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={() => closeTab(tab.id)}
-            >
-              <X size={12} />
-            </button>
-          </div>
+          />
         ))}
         <button className="tab-new" title={`${t('tab.newTab')} (Ctrl+T)`} onClick={newTab}>
           <Plus size={16} />
         </button>
       </div>
+    </div>
+  )
+}
+
+/** One tab, with the commits its repository has to pull and to push. */
+function RepoTab({
+  tab,
+  index,
+  className,
+  onDragStart,
+  onDragEnd
+}: {
+  tab: Tab
+  index: number
+  className: string
+  onDragStart: () => void
+  onDragEnd: () => void
+}) {
+  const t = useT()
+  const state = useStore((s) => (tab.path ? s.repos[tab.path]?.state : undefined))
+  const sync = syncCounts(state ?? null)
+  const title = [
+    tab.path ?? t('tab.newTab'),
+    sync?.pull ? t('tab.toPull', { count: sync.pull }) : '',
+    sync?.push ? t('tab.toPush', { count: sync.push }) : ''
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  return (
+    <div
+      data-index={index}
+      // Pulling comes first, so it gives the tab its colour when there is both.
+      className={cx('tab', className, sync && (sync.pull ? 'needs-pull' : 'needs-push'))}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', tab.path ?? '')
+        onDragStart()
+      }}
+      onDragEnd={onDragEnd}
+      onMouseDown={(e) => {
+        if (e.button === 1) {
+          e.preventDefault()
+          closeTab(tab.id)
+        } else if (e.button === 0) setActiveTab(tab.id)
+      }}
+      title={title}
+    >
+      {tab.path ? <FolderGit2 size={14} /> : <Sparkles size={14} />}
+      <span className="tab-title">{tab.path ? basename(tab.path) : t('tab.newTab')}</span>
+      {!!sync?.pull && (
+        <span className="ab-badge behind">
+          <ArrowDown size={10} strokeWidth={3} />
+          {sync.pull}
+        </span>
+      )}
+      {!!sync?.push && (
+        <span className="ab-badge ahead">
+          <ArrowUp size={10} strokeWidth={3} />
+          {sync.push}
+        </span>
+      )}
+      <button
+        className="tab-close"
+        title={t('tab.close')}
+        draggable={false}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={() => closeTab(tab.id)}
+      >
+        <X size={12} />
+      </button>
     </div>
   )
 }

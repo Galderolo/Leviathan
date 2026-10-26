@@ -3,6 +3,10 @@ import type en from './en'
 const es: Record<keyof typeof en, string> = {
   'tab.newTab': 'Nueva pestaña',
   'tab.close': 'Cerrar pestaña',
+  'tab.toPull': '{count} commits por traer',
+  'tab.toPull_one': '1 commit por traer',
+  'tab.toPush': '{count} commits por subir',
+  'tab.toPush_one': '1 commit por subir',
 
   'welcome.tagline': 'Cliente Git libre y de código abierto. Sin anuncios, sin cuentas, sin pagos.',
   'welcome.open': 'Abrir repositorio',

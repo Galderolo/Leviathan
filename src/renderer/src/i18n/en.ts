@@ -1,6 +1,10 @@
 const en = {
   'tab.newTab': 'New tab',
   'tab.close': 'Close tab',
+  'tab.toPull': '{count} commits to pull',
+  'tab.toPull_one': '1 commit to pull',
+  'tab.toPush': '{count} commits to push',
+  'tab.toPush_one': '1 commit to push',
 
   'welcome.tagline': 'Free and open source Git client. No ads, no accounts, no paywalls.',
   'welcome.open': 'Open repository',
