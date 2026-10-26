@@ -672,9 +672,11 @@ test('generates an SSH key protected by its passphrase', async () => {
   await page.getByLabel('Email (key comment)').fill('ana@example.com')
   await page.getByLabel('Passphrase (optional)').fill(passphrase)
   await page.getByRole('button', { name: 'Create' }).click()
+  // The toast says how it went: on failure, its text is the reason.
+  await expect(page.locator('.toasts')).toContainText('SSH key created', { timeout: 30_000 })
 
   const key = join(home, '.ssh', 'id_ed25519')
-  await expect.poll(() => existsSync(`${key}.pub`)).toBe(true)
+  expect(existsSync(`${key}.pub`)).toBe(true)
   const opens = (given: string) =>
     spawnSync('ssh-keygen', ['-y', '-P', given, '-f', key], { stdio: 'ignore' }).status === 0
   expect(opens('')).toBe(false)
