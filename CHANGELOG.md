@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- *Ignore* on a file whose name has `[`, `*`, `?` or a backslash (`pages/[id].tsx`) ignored other files its name matched as a pattern, not that one: the name is now written literally in .gitignore.
 - A merge, cherry-pick, revert or rebase (by drag and drop or from a menu) that stops for something other than conflicts says what git found, without its hints about commands the app does not offer — as the interactive rebase already did.
 - A conflicted file marked resolved from the list (its button or menu) left the conflict editor showing it; the staged result is shown instead. Going from the conflict editor to a plain diff in the same pane could also leave the window blank.
 

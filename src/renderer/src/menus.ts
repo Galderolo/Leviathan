@@ -1,4 +1,5 @@
 import { lfsPatternFor, type LfsLock, type LfsPattern } from '../../shared/lfs'
+import { ignoreExtension, ignoreFile } from '../../shared/gitignore'
 import type { Identity } from '../../shared/identity'
 import type { Account, DiffSource, FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
 import {
@@ -372,9 +373,14 @@ export function fileMenu(
       const ext = name.includes('.') ? name.split('.').pop() : null
       items.push({
         label: t('menu.ignore', { name: file.path }),
-        onClick: () => void ignorePattern(path, `/${file.path}`)
+        onClick: () => void ignorePattern(path, ignoreFile(file.path))
       })
-      if (ext) items.push({ label: t('menu.ignoreExt', { ext }), onClick: () => void ignorePattern(path, `*.${ext}`) })
+      if (ext) {
+        items.push({
+          label: t('menu.ignoreExt', { ext }),
+          onClick: () => void ignorePattern(path, ignoreExtension(ext))
+        })
+      }
       items.push({ separator: true })
     }
   } else if (area === 'staged') {
