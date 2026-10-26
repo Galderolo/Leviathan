@@ -234,7 +234,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Diffs**
 - *Whole file* asks git for the same diff twice: as usual (the hunks that stage, unstage and discard) and with `-U100000000` (`WHOLE_FILE`), whose context lines fill the gaps (`unchangedGaps`, by old line number). Near INT_MAX git splits the file into overlapping hunks (it doubles the context when joining them). Each gap is highlighted on its own, so a comment opened in a gap is not known in the next hunk.
-- An open conflict view is not closed when the file stops being conflicted (marked resolved from the list, or after Abort).
 - An open diff keeps an outdated untracked flag when the file stays in the same list (`git rm --cached`).
 
 **Stash**
