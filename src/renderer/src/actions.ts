@@ -31,6 +31,7 @@ import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom, pushNee
 import { stoppedOperation } from './operationStop'
 import { viewAfterCheckout, wipShown } from './checkoutView'
 import { moveTab } from './tabOrder'
+import { inFlight } from './inFlight'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
@@ -365,7 +366,8 @@ export async function checkoutPullRequest(path: string, pr: PullRequest): Promis
         { number: pr.number, sourceBranch: pr.sourceBranch, fromFork: pr.fromFork },
         provider
       ),
-    { undo: { label: t('undo.checkout', { name: '#' + pr.number }) } }
+    // It fetches the pull request's branch first.
+    { busy: 'fetch', undo: { label: t('undo.checkout', { name: '#' + pr.number }) } }
   )
   if (ok) showAfterCheckout(path)
   return ok
@@ -790,6 +792,8 @@ async function runOp(
   if (opts.busy) patchRepo(path, { busy: opts.busy, progress: null })
   const before = getRepo(path)?.state?.operation ?? null
   try {
+    // Busy marks network work: it starts once a background fetch of the repository is over.
+    if (opts.busy) await backgroundFetches.idle(path)
     if (opts.undo) await recordUndo(path, opts.undo.label, opts.undo.mode ?? 'keep', fn)
     else await fn()
     if (opts.success) toast('success', opts.success)
@@ -826,20 +830,28 @@ export async function fetchAll(path: string): Promise<boolean> {
   return ok
 }
 
+/**
+ * Background fetches running, per repository. Network operations wait for them: two fetches at once fail with
+ * "cannot lock ref".
+ */
+const backgroundFetches = inFlight()
+
 /** Quiet fetch used by auto-fetch: no prompts, no toasts; errors go to the status bar. */
 export async function fetchInBackground(path: string): Promise<void> {
   const view = getRepo(path)
   if (!view?.state?.remotes.length || view.busy) return
-  patchRepo(path, { lastFetchAt: Date.now() })
-  try {
-    await api.fetch(path, true)
-    patchRepo(path, { lastFetchError: null })
-    await refreshRepo(path)
-    void loadPullRequests(path)
-    void loadLfsLocks(path, false)
-  } catch (err) {
-    patchRepo(path, { lastFetchError: errorMessage(err) })
-  }
+  await backgroundFetches.run(path, async () => {
+    patchRepo(path, { lastFetchAt: Date.now() })
+    try {
+      await api.fetch(path, true)
+      patchRepo(path, { lastFetchError: null })
+      await refreshRepo(path)
+      void loadPullRequests(path)
+      void loadLfsLocks(path, false)
+    } catch (err) {
+      patchRepo(path, { lastFetchError: errorMessage(err) })
+    }
+  })
 }
 
 /** Runs due background fetches for every open repository. */

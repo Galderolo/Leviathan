@@ -244,7 +244,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - The Linux release builds AppImage and .deb from the same folder; a CI check that the AppImage has no `package-type` file would guard the updater choice.
 
 **Older items**
-- Background fetch does not mark the repository busy, so a manual pull at the same moment can hit "cannot lock ref".
 - Checkout-and-merge from drag and drop has no confirmation.
 - The SSH key passphrase is passed on the command line when generating a key.
 - "Ignore file" does not escape glob characters.
