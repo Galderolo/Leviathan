@@ -26,7 +26,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 ## Features
 
 - **Visual commit graph**: coloured lanes with rounded elbows, lane-coloured row bands, branch and tag labels, author initials, the work-in-progress node and stashes drawn right in the graph. Smooth with thousands of commits.
-- **Tabs**: keep several repositories open; they are restored on the next start.
+- **Tabs**: keep several repositories open, drag them into the order you like; they are restored on the next start.
 - **Side panel**: local branches as a folder tree, remotes, stashes and tags, with ahead/behind counters and a filter.
 - **Focus the graph**: hide branches or show only one, highlight the history of a branch, and see which branches have an open pull request.
 - **Staging**: stage or unstage whole files, individual **hunks** or single **lines**; select several files (checkboxes, Ctrl/Shift+click) to stage, unstage or discard them together; discard changes; add files to `.gitignore`.
@@ -134,7 +134,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 **Leviathan** es un cliente Git gratuito y de código abierto, con un grafo de commits visual. Sin anuncios, sin cuentas y sin pagos.
 
 - Grafo de commits a color con ramas, merges, tags, stashes y el nodo de trabajo en curso (WIP).
-- Pestañas con varios repositorios abiertos a la vez.
+- Pestañas con varios repositorios abiertos a la vez, que se ordenan arrastrándolas.
 - Preparar (stage) archivos completos, bloques o líneas sueltas, commit, amend, diff con resaltado de sintaxis.
 - Arrastrar una rama sobre otra para hacer merge o rebase.
 - Repos privados: usuario/token HTTPS, passphrase SSH y huellas de host se piden en la app; gestión de claves SSH.

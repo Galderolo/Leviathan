@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Reorder the tabs** by dragging them; the order is kept for the next start.
+
 ## [0.14.0] - 2026-10-23
 
 ### Added

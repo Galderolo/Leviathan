@@ -44,6 +44,23 @@ test('opens a repository with its history and its uncommitted changes', async ()
   await expect(unstaged().locator('.file-row')).toHaveCount(2)
 })
 
+test('reorders the tabs by dragging them, and keeps the order for the next start', async () => {
+  const repos = ['alpha', 'beta', 'gamma'].map((name) => box.repo(name, { 'a.txt': `${name}\n` }))
+  await open(...repos)
+
+  const tab = (name: string) => page.locator('.tab', { hasText: name })
+  const gamma = await tab('gamma').boundingBox()
+  // Onto the right half of the last tab: after it.
+  await tab('alpha').dragTo(tab('gamma'), { targetPosition: { x: gamma!.width - 5, y: gamma!.height / 2 } })
+  await expect(page.locator('.tab-title')).toHaveText(['beta', 'gamma', 'alpha'])
+  // Onto the left half of the first tab: before it.
+  await tab('gamma').dragTo(tab('beta'), { targetPosition: { x: 5, y: gamma!.height / 2 } })
+  await expect(page.locator('.tab-title')).toHaveText(['gamma', 'beta', 'alpha'])
+
+  const saved = () => JSON.parse(readFileSync(join(box.profile, 'settings.json'), 'utf8')).openTabs as string[]
+  await expect.poll(() => saved().map((path) => path.split(/[\\/]/).pop())).toEqual(['gamma', 'beta', 'alpha'])
+})
+
 test('never runs a git.exe that a repository has at its root', async () => {
   test.skip(process.platform !== 'win32', 'only Windows looks for programs in the working folder')
   const repo = box.repo('game', { 'a.txt': 'one\n' })
