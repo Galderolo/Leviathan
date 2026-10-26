@@ -76,18 +76,18 @@ describe('AvatarCache', () => {
     expect(existsSync(join(dir, 'avatars.json'))).toBe(true)
   })
 
-  it("asks the repository's server who wrote a commit, before Gravatar", async () => {
+  it("asks the repository's server for the author's picture, by a commit of theirs and their email, before Gravatar", async () => {
     const images = fakeImages(['https://avatars.githubusercontent.com/u/7?v=4&s=64'])
     const cache = new AvatarCache(join(dir, 'avatars.json'), images.fn)
-    const byCommit: string[] = []
-    const found = await cache.get([{ email: 'dee@work.example', hash: 'abc123' }], {
+    const asked: { hash?: string; email: string }[] = []
+    const found = await cache.get([{ email: 'Dee@work.example', hash: 'abc123' }], {
       accounts: [],
-      commitAvatar: async (hash) => {
-        byCommit.push(hash)
+      authorAvatar: async (author) => {
+        asked.push(author)
         return 'https://avatars.githubusercontent.com/u/7?v=4'
       }
     })
-    expect(byCommit).toEqual(['abc123'])
+    expect(asked).toEqual([{ hash: 'abc123', email: 'dee@work.example' }])
     expect(found['dee@work.example']).toBe(dataUrl('https://avatars.githubusercontent.com/u/7?v=4&s=64'))
   })
 

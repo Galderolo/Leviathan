@@ -35,7 +35,7 @@ import {
   approvePullRequest,
   canPush,
   closePullRequest,
-  commitAuthorAvatar,
+  authorAvatar,
   createPullRequest,
   defaultBranch,
   fetchIdentity,
@@ -187,14 +187,14 @@ export async function updateAccount(id: string, patch: { name?: string; email?: 
   return account
 }
 
-/** The picture the repository's server (GitHub) has for the author of one of its commits, through its account. */
-export function commitAvatarFor(repo: string): (hash: string) => Promise<string | null> {
+/** The picture the repository's server has for one of its authors, asked through the account that reaches it. */
+export function authorAvatarFor(repo: string): (author: { hash?: string; email: string }) => Promise<string | null> {
   let project: ReturnType<typeof repoProject> | null = null
-  return async (hash) => {
+  return async (author) => {
     project ??= repoProject(repo).catch(() => null)
     const found = await project
     if (!found) return null
-    return commitAuthorAvatar(found.account.provider, found.account.host, found.path, hash, found.token)
+    return authorAvatar(found.account.provider, found.account.host, found.path, author, found.token)
   }
 }
 

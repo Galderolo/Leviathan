@@ -46,8 +46,8 @@ export function avatarSources(email: string, accounts: Account[]): string[] {
 
 export interface AvatarContext {
   accounts: Account[]
-  /** The picture the repository's server has for the author of a commit (GitHub's API), when it can say. */
-  commitAvatar?: (hash: string) => Promise<string | null>
+  /** The picture the repository's server has for an author (a commit of theirs, their email), when it can say. */
+  authorAvatar?: (author: { hash?: string; email: string }) => Promise<string | null>
 }
 
 interface Entry {
@@ -113,8 +113,8 @@ export class AvatarCache {
       const data = await tryUrl(url)
       if (data) return { data, reached }
     }
-    if (hash && ctx.commitAvatar) {
-      const url = await ctx.commitAvatar(hash).catch(() => null)
+    if (ctx.authorAvatar) {
+      const url = await ctx.authorAvatar({ hash, email }).catch(() => null)
       const data = url && (await tryUrl(sized(url)))
       if (data) return { data, reached }
     }
