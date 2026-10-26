@@ -214,6 +214,36 @@ test('takes one side of a conflicted file at once, but asks first when the file 
   await expect.poll(() => box.read(repo, 'b.txt')).toBe('theirs\n')
 })
 
+test('asks before a dropped branch switches to another one to merge into it', async () => {
+  const repo = box.repo('game', { 'a.txt': 'base\n' })
+  box.git(repo, 'branch', 'target')
+  box.git(repo, 'checkout', '-qb', 'feature')
+  box.write(repo, { 'b.txt': 'feature\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'feature work')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'a.txt': 'mine, not committed\n' })
+  await open(repo)
+
+  const branch = (name: string) => page.locator('.side-row', { has: page.locator('.side-name', { hasText: name }) })
+  const dropFeatureOnTarget = async () => {
+    await branch('feature').dragTo(branch('target'))
+    await menuItem('Checkout target and merge feature into it').click()
+  }
+  await dropFeatureOnTarget()
+  const dialog = page.locator('.modal')
+  await expect(dialog).toContainText('You are on main')
+  await expect(dialog).toContainText('go along to target')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  expect(box.branch(repo)).toBe('main')
+
+  await dropFeatureOnTarget()
+  await dialog.getByRole('button', { name: 'Checkout and merge' }).click()
+  await expect.poll(() => box.branch(repo)).toBe('target')
+  await expect.poll(() => box.git(repo, 'log', '--format=%s', '-1')).toBe('feature work')
+  expect(box.read(repo, 'a.txt')).toBe('mine, not committed\n')
+})
+
 test('asks with a count, not a list, before discarding many files', async () => {
   const files = Object.fromEntries(Array.from({ length: 26 }, (_, i) => [`Packages/dir/file${i}.class`, 'a\n']))
   const repo = box.repo('game', files)

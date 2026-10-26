@@ -1107,7 +1107,18 @@ export function mergeRef(path: string, name: string): Promise<boolean> {
 }
 
 /** Checks out the local branch `into` and merges `from` into it. */
-export function checkoutAndMerge(path: string, into: string, from: string): Promise<boolean> {
+/** Checks out `into` and merges `from` into it, once the user agreed to leave the current branch. */
+export async function checkoutAndMerge(path: string, into: string, from: string): Promise<boolean> {
+  const state = getRepo(path)?.state
+  const changes = state ? state.status.staged.length + state.status.unstaged.length : 0
+  const ok = await confirmDialog({
+    title: t('menu.checkoutMerge', { into, from }),
+    message:
+      t('dlg.checkoutMerge', { current: state?.head.branch ?? 'HEAD', into, from }) +
+      (changes ? '\n\n' + t('dlg.checkoutMergeChanges', { into }) : ''),
+    confirmText: t('dlg.checkoutMergeConfirm')
+  })
+  if (!ok) return false
   return runOp(
     path,
     async () => {
