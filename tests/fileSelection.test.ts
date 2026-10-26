@@ -44,6 +44,16 @@ describe('clickSelection', () => {
     expect(paths(clickSelection(sel(['a', 'd'], 'd'), order, 'e', both))).toEqual(['a', 'd', 'e'])
   })
 
+  it('Shift on a checkbox gives the whole range the state that checkbox takes, checked or not', () => {
+    const box = { shift: true, toggle: true, checkbox: true }
+    // c was checked: unchecking it with Shift unchecks a to c.
+    const unchecked = clickSelection(sel(['a', 'b', 'c', 'd'], 'a'), order, 'c', box)
+    expect(paths(unchecked)).toEqual(['d'])
+    expect(unchecked.anchor).toBe('c')
+    // c was not: checking it with Shift checks a to c, keeping what else was checked.
+    expect(paths(clickSelection(sel(['a', 'e'], 'a'), order, 'c', box))).toEqual(['a', 'b', 'c', 'e'])
+  })
+
   it('Shift without a previous click selects only that file, and starts there', () => {
     const next = clickSelection(emptySelection(), order, 'c', shift)
     expect(paths(next)).toEqual(['c'])

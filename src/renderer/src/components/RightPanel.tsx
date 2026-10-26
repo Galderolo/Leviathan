@@ -219,7 +219,8 @@ function useFileSelection(files: FileChange[]) {
           ? focusSelection(selection, file.path)
           : clickSelection(selection, order, file.path, {
               shift: e.shiftKey,
-              toggle: fromCheckbox || e.ctrlKey || e.metaKey
+              toggle: fromCheckbox || e.ctrlKey || e.metaKey,
+              checkbox: fromCheckbox
             })
       ),
     all: files.length > 0 && selected.length === files.length,

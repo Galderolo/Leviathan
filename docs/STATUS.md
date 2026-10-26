@@ -227,7 +227,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Adding by token an account that already exists renews its token but ignores a name/email typed in the form, and the toast says "added".
 
 **Multi-file selection**
-- Shift+click on a checkbox only adds the range; a range cannot be unchecked that way.
 - The divider: no keyboard support, a right-button press also drags, every move re-renders the panel (may stutter with huge lists).
 - Checked rows lose the hover highlight; in Spanish at the minimum panel width the header buttons can crowd the title.
 - Checkboxes in the staged list do not exclude files from the commit (unlike GitHub Desktop); "Quitar selección" can read as "deselect".
