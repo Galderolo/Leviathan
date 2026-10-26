@@ -183,7 +183,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Conflict editor**
 - `=======` inside the current side is read as the separator (git and other editors share this ambiguity).
-- Whole-file buttons discard manual edits of the working file without asking.
+- Whole-file buttons ask first when the file is not what git left (`conflictFileEdited`: git's result made again with `git merge-file --object-id` from the index stages, compared without marker labels or CRs). Before git 2.43 (no `--object-id`), a merge driver, `-X` options or LFS files it cannot be made again, so they always ask.
 - A file deleted on both sides shows a raw `ENOENT` error (the buttons still work).
 - No line limit: up to 2 MB is rendered as one element per line.
 

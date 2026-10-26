@@ -79,6 +79,56 @@ describe('conflict resolution', () => {
   })
 })
 
+describe('edits to a conflicted file', () => {
+  it('sees a file as git left it, and one edited since', async () => {
+    await conflictOnA()
+    expect(await repo.conflictFileEdited(dir, 'a.txt')).toBe(false)
+    writeFileSync(join(dir, 'a.txt'), readFileSync(join(dir, 'a.txt'), 'utf8') + 'a line of mine\n')
+    expect(await repo.conflictFileEdited(dir, 'a.txt')).toBe(true)
+  })
+
+  it('sees a block resolved by hand as an edit', async () => {
+    await conflictOnA()
+    writeFileSync(join(dir, 'a.txt'), 'ours\n')
+    expect(await repo.conflictFileEdited(dir, 'a.txt')).toBe(true)
+  })
+
+  it('reads a file left with Windows line endings, or with the base in the markers, as untouched', async () => {
+    await git(['config', 'core.autocrlf', 'true'], { cwd: dir })
+    await git(['config', 'merge.conflictStyle', 'diff3'], { cwd: dir })
+    await conflictOnA()
+    expect(readFileSync(join(dir, 'a.txt'), 'utf8')).toMatch(/\|{7}/)
+    expect(await repo.conflictFileEdited(dir, 'a.txt')).toBe(false)
+  })
+
+  it('compares with the side that kept the file when the other deleted it', async () => {
+    await commitFile('a.txt', 'base\n', 'base')
+    await repo.createBranch(dir, 'other', null, true)
+    await git(['rm', '-q', 'a.txt'], { cwd: dir })
+    await repo.commit(dir, 'delete a', false)
+    await repo.checkout(dir, 'main')
+    await commitFile('a.txt', 'changed here\n', 'edit a')
+    await repo.merge(dir, 'other').catch(() => {})
+    expect(await repo.conflictFileEdited(dir, 'a.txt')).toBe(false)
+    writeFileSync(join(dir, 'a.txt'), 'changed again\n')
+    expect(await repo.conflictFileEdited(dir, 'a.txt')).toBe(true)
+  })
+
+  it('sees a file both sides added, and a binary file, as untouched', async () => {
+    await commitFile('readme.txt', 'base\n', 'base')
+    await repo.createBranch(dir, 'other', null, true)
+    await commitFile('new.txt', 'theirs\n', 'add there')
+    await commitFile('pic.bin', Buffer.from([0, 1, 2, 3, 0, 9]).toString('latin1'), 'binary there')
+    await repo.checkout(dir, 'main')
+    await commitFile('new.txt', 'ours\n', 'add here')
+    await commitFile('pic.bin', Buffer.from([0, 7, 7, 7, 0, 9]).toString('latin1'), 'binary here')
+    await repo.merge(dir, 'other').catch(() => {})
+    expect((await repo.getState(dir)).status.conflicted.map((f) => f.path).sort()).toEqual(['new.txt', 'pic.bin'])
+    expect(await repo.conflictFileEdited(dir, 'new.txt')).toBe(false)
+    expect(await repo.conflictFileEdited(dir, 'pic.bin')).toBe(false)
+  })
+})
+
 describe('conflict resolution safety', () => {
   it('refuses to edit a file too large to read whole', async () => {
     writeFileSync(join(dir, 'big.txt'), 'x'.repeat(3 * 1024 * 1024))

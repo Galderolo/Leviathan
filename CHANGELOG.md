@@ -10,6 +10,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- *Take current file* and *Take incoming file* in the conflict editor ask first when the file was edited since git left it in conflict (by hand, or in an editor), instead of replacing those edits without a word.
 - An interactive rebase that stops for something other than conflicts (an untracked file in the way, a step that failed) says what git found, instead of "usually for conflicts".
 - A pull, push or fetch started while the automatic fetch was running could fail with "cannot lock ref" (or make the automatic fetch fail): it now waits for the automatic fetch to end. Checking out a pull request waits too.
 
