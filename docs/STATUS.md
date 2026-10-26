@@ -146,16 +146,15 @@ Known minor issues:
 
 ## Next steps
 
-### 1. Keep an eye on 0.3.0
+### 1. Pull requests on real servers
 
-Pull requests were tested for real on a private GitHub repository (create as draft, list, check out by double-click). Still untested with a real server: GitLab merge requests and Gitea. Note that deleting a pull request's branch does not close it on GitHub; there is no "close pull request" action in the app yet.
+Pull requests were tested for real on a private GitHub repository (create as draft, list, check out by double-click, close). Still untested with a real server: GitLab merge requests and Gitea. Deleting a pull request's branch does not close it on GitHub: *Close pull request…* in its menu does.
 
 ### 2. Releasing the next version
 
-1. Set the version in `package.json` (and `package-lock.json`).
-2. Rename `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - <date>` and add an empty `[Unreleased]` above it.
-3. Commit, then tag and push: `git tag vx.y.z && git push origin main vx.y.z`.
-4. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again.
+1. On a `release/x.y.z` branch: set the version in `package.json` and `package-lock.json` (`npm version x.y.z --no-git-tag-version`), rename `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - <date>` with an empty `[Unreleased]` above it, and add the version to the table above and to the line at the top. Commit as `release: x.y.z`.
+2. Push the branch, merge it into `main` with `--no-ff` once CI on `main` is green, and tag the merge: `git tag vx.y.z && git push origin main vx.y.z`.
+3. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again.
 
 ### 3. Sign in with the browser
 
