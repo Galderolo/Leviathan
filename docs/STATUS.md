@@ -208,6 +208,9 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - More than 50 open PRs are not paginated; fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 - A local branch named `pr` blocks `pr/N`.
 
+**SSH aliases**
+- `SshHosts` (`src/main/git/sshHosts.ts`) rewrites SSH remote URLs with the host `ssh -G <alias>` reports (once per name per session; names that could read as an option are never passed) before the accounts module looks for the account of a repository (pull requests, default identity, avatars). The renderer's "this account's host is not among the remotes" hint after binding an account still compares the alias.
+
 **Avatars**
 - Off by default (`settings.avatars`): `getAvatars` in the main process asks nothing until then. Sources per email (`avatarSources`, `src/main/avatars.ts`): GitHub no-reply address -> `avatars.githubusercontent.com/u/<id>`, an own GitHub account's email -> `github.com/<user>.png`, then in a GitHub repository its API for one commit of that author (`commitAuthorAvatar`), then Gravatar (SHA-256, `d=404`). Pictures come to the window as data: URLs (its CSP allows no remote images), cached in `avatars.json` in the profile: found for 7 days, none for 1 day, an unreachable server not at all. Asked once per email per session; the GitLab, Bitbucket and Gitea APIs are not asked.
 

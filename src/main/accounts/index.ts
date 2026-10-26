@@ -26,6 +26,7 @@ import { mergeMethods } from '../../shared/providers'
 import { fetchPullRequestRange, getRangeFiles } from '../git/repository'
 import { setAccountSource } from '../askpass'
 import { readIdentity, writeIdentity } from '../git/identity'
+import { SshHosts } from '../git/sshHosts'
 import { git, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
 import {
@@ -215,8 +216,7 @@ export async function ensureDefaultIdentity(repo: string): Promise<void> {
   if (getRepoAccount(repo) || withoutDefaultIdentity.has(repo)) return
   const { local } = await readIdentity(repo)
   if (local.name || local.email) return
-  const { stdout } = await git(['remote', '-v'], { cwd: repo })
-  const account = await defaultIdentityAccount(parseRemotes(stdout), accounts().list(), async (a, path) => {
+  const account = await defaultIdentityAccount(await repoRemotes(repo), accounts().list(), async (a, path) => {
     const token = await freshToken(a.id).catch(() => null)
     return !!token && canPush(a.provider, a.host, path, token)
   })
@@ -274,10 +274,17 @@ export async function setRepoAccount(repo: string, accountId: string | null): Pr
   saveSettings({ repoAccounts: map })
 }
 
+const sshHosts = new SshHosts()
+
+/** A repository's remotes, with the real host behind an SSH alias in their URLs (to find the account for them). */
+async function repoRemotes(repo: string) {
+  const { stdout } = await git(['remote', '-v'], { cwd: repo })
+  return sshHosts.resolve(parseRemotes(stdout))
+}
+
 /** The hosted project of a repository and the account (with its token) to reach it. */
 async function repoProject(repo: string) {
-  const { stdout } = await git(['remote', '-v'], { cwd: repo })
-  const project = pickProject(parseRemotes(stdout), accounts().list(), getRepoAccount(repo))
+  const project = pickProject(await repoRemotes(repo), accounts().list(), getRepoAccount(repo))
   const token = project && (await freshToken(project.account.id))
   return project && token ? { ...project, token } : null
 }
