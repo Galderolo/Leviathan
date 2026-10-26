@@ -411,7 +411,9 @@ const es: Record<keyof typeof en, string> = {
   'undo.interactiveRebase': 'rebase interactivo',
   'toast.rebased': 'Rebase terminado',
   'toast.rebaseStopped':
-    'El rebase se ha parado antes de acabar, normalmente por conflictos: resuélvelos y pulsa Continuar en el aviso.',
+    'El rebase se ha parado antes de acabar: arregla lo que lo ha parado y pulsa Continuar en el aviso.',
+  'toast.rebaseStoppedFor':
+    'El rebase se ha parado antes de acabar:\n{reason}\n\nArréglalo y pulsa Continuar en el aviso (o Abortar).',
   'toast.stoppedForConflicts': 'Git se ha parado por conflictos: resuélvelos y pulsa Continuar en el aviso.',
 
   'left.pullRequests': 'PULL REQUESTS',

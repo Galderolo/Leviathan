@@ -28,7 +28,7 @@ import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
 import { discardSummary } from './fileSelection'
 import { branchStartOptions } from './branchStart'
 import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom, pushNeedsPull } from './pushTarget'
-import { stoppedOperation } from './operationStop'
+import { stopReason, stoppedOperation } from './operationStop'
 import { viewAfterCheckout, wipShown } from './checkoutView'
 import { moveTab } from './tabOrder'
 import { inFlight } from './inFlight'
@@ -1166,10 +1166,13 @@ export async function startInteractiveRebase(
     toast('success', t('toast.rebased'))
     return 'done'
   } catch (err) {
-    const state = await api.getState(path).catch(() => null)
-    if (!before && state?.operation === 'rebase') {
-      // git's own output here is long and mentions commands the app does not offer.
-      toast('info', t('toast.rebaseStopped'))
+    const stopped = stoppedOperation(before, await api.getState(path).catch(() => null))
+    if (stopped?.operation === 'rebase') {
+      // git's own output here is long and mentions commands the app does not offer: only its reason is kept.
+      const reason = stopReason(errorMessage(err))
+      if (stopped.conflicts) toast('info', t('toast.stoppedForConflicts'))
+      else if (reason) toast('error', t('toast.rebaseStoppedFor', { reason }))
+      else toast('info', t('toast.rebaseStopped'))
       closeInteractiveRebase()
       // Show the banner and the conflicted files.
       selectWip(path)
