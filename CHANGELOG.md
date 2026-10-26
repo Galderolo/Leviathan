@@ -9,6 +9,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 - **Choose the graph's columns**: right-click its header to hide or show the author, date and SHA columns; the choice is kept for every repository.
 - **Commit message template**: with git's `commit.template` set (for a repository or globally), the commit box starts from it — its first line as the summary, the rest as the description, without its comment lines — and again after each commit. As in git, the template left as it is cannot be committed, and *Amend* from it takes the last commit's message.
 
+### Fixed
+
+- A conflicted file marked resolved from the list (its button or menu) left the conflict editor showing it; the staged result is shown instead. Going from the conflict editor to a plain diff in the same pane could also leave the window blank.
+
 ## [0.16.0] - 2026-10-26
 
 ### Added

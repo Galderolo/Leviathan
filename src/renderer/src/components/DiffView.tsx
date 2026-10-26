@@ -22,6 +22,8 @@ export function DiffView({ path }: { path: string }) {
   const diff = view?.diff
   const data = diff?.data
   const layout = useStore((s) => s.diffLayout)
+  // Every hook before the early returns: the same view goes from a conflict to a plain diff once it is resolved.
+  const hasEditor = useStore((s) => !!s.settings.editor.trim())
   const spansByHunk = useMemo(() => data?.hunks.map(wordSpans) ?? [], [data])
   const syntaxByHunk = useMemo(() => (data ? highlightHunks(data.hunks, data.path) : []), [data])
   // Each gap of unchanged lines is highlighted as a hunk of its own.
@@ -77,7 +79,6 @@ export function DiffView({ path }: { path: string }) {
   }
 
   let budget = showAll ? Number.POSITIVE_INFINITY : LINE_LIMIT
-  const hasEditor = useStore((s) => !!s.settings.editor.trim())
   const totalLines =
     (data?.hunks.reduce((n, h) => n + h.lines.length, 0) ?? 0) +
     (data?.gaps?.reduce((n, gap) => n + gap.length, 0) ?? 0)

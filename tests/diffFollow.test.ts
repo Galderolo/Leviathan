@@ -33,4 +33,14 @@ describe('followDiff', () => {
     const conflicted = { kind: 'unstaged' as const, path: 'c.txt', conflicted: true }
     expect(followDiff(conflicted, status({ conflicted: [file('c.txt', 'U')] }))).toBe(conflicted)
   })
+
+  it('leaves the conflict editor once the file is no longer in conflict', () => {
+    const conflicted = { kind: 'unstaged' as const, path: 'c.txt', conflicted: true }
+    // Marked resolved from the list: the staged result.
+    expect(followDiff(conflicted, status({ staged: [file('c.txt')] }))).toEqual({ kind: 'staged', path: 'c.txt' })
+    // Resolved in an editor and not staged yet: the change in the working tree.
+    expect(followDiff(conflicted, status({ unstaged: [file('c.txt')] }))).toEqual({ kind: 'unstaged', path: 'c.txt' })
+    // The merge was aborted: nothing left to show.
+    expect(followDiff(conflicted, status({}))).toBeNull()
+  })
 })

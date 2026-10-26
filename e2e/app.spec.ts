@@ -180,6 +180,19 @@ test('shows a merge stopped by a conflict, and aborts it', async () => {
   expect(box.read(repo, 'a.txt')).toBe('ours\n')
 })
 
+test('leaves the conflict editor for the staged file when it is marked resolved from the list', async () => {
+  const repo = twoConflicts()
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await page.locator('.file-row', { hasText: 'a.txt' }).first().click()
+  await expect(page.locator('.conflict-block')).toHaveCount(2)
+
+  await page.locator('.file-row', { hasText: 'a.txt' }).first().click({ button: 'right' })
+  await menuItem('Mark resolved').click()
+  await expect(page.locator('.conflict-block')).toHaveCount(0)
+  await expect(page.locator('.diff-view .diff-context')).toHaveText('Staged')
+})
+
 test('takes one side of a conflicted file at once, but asks first when the file was edited', async () => {
   const repo = box.repo('game', { 'a.txt': 'base\n', 'b.txt': 'base\n' })
   box.git(repo, 'checkout', '-qb', 'other')
