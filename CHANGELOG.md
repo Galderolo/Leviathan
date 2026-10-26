@@ -10,6 +10,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- File and folder history said nothing when they stopped at the latest 300 commits: they now say so, with *Show more* (up to 5 000). A blame cut at 20 000 lines says so too.
+- A commit that only renamed a file shows "Renamed from …, with no other change" instead of "No changes to show".
 - Typing into a dialog the moment it opened could lose its other fields (*Generate new key* then failed with "Cannot read properties of undefined").
 - Dropping a branch onto another one that is not checked out, then *Checkout … and merge … into it*, asks first: it says which branch you will be left on, and that your uncommitted changes go along.
 - *Take current file* and *Take incoming file* in the conflict editor ask first when the file was edited since git left it in conflict (by hand, or in an editor), instead of replacing those edits without a word.

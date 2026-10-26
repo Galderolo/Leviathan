@@ -143,7 +143,9 @@ export function DiffView({ path }: { path: string }) {
         {data?.binary && <div className="empty-state">{t('diff.binary')}</div>}
         {data?.submodule && <SubmoduleSummary change={data.submodule} />}
         {data && !data.binary && !data.submodule && data.hunks.length === 0 && (
-          <div className="empty-state">{t('diff.noChanges')}</div>
+          <div className="empty-state">
+            {data.oldPath ? t('diff.renamedOnly', { path: data.oldPath }) : t('diff.noChanges')}
+          </div>
         )}
         {data &&
           !data.binary &&

@@ -70,8 +70,9 @@ const handlers: LeviathanInvokeApi = {
   getCommitDetails: (path, hash) => repo.getCommitDetails(path, hash),
   getDiff: (path, source, fullFile) => repo.getDiff(path, source, fullFile === true),
   getSnapshot: (path) => repo.getSnapshot(path),
-  getFileHistory: (path, file, rev) => repo.getFileHistory(path, file, rev),
-  getFolderHistory: (path, folder, rev) => repo.getFolderHistory(path, folder, rev),
+  // A limit that is not a whole number falls back to the first page there.
+  getFileHistory: (path, file, rev, limit) => repo.getFileHistory(path, file, rev, limit),
+  getFolderHistory: (path, folder, rev, limit) => repo.getFolderHistory(path, folder, rev, limit),
   getBlame: (path, file, rev) => repo.getBlame(path, file, rev),
   readWorkingFile: (path, file) => repo.readWorkingFile(path, file),
   resolveConflictFile: (path, file, content, original) => repo.resolveConflictFile(path, file, content, original),
