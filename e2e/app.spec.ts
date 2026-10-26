@@ -426,6 +426,24 @@ test("hides the graph's author, date or SHA column, and keeps it hidden for the 
   await expect(page.locator('.graph-header')).toContainText('SHA')
 })
 
+test('checks and unchecks a range of files with Shift on their checkboxes', async () => {
+  const repo = box.repo('game', { 'keep.txt': 'x\n' })
+  box.write(repo, { 'a.txt': 'a\n', 'b.txt': 'b\n', 'c.txt': 'c\n', 'd.txt': 'd\n' })
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  const checkbox = (name: string) => unstaged().locator('.file-row', { hasText: name }).locator('input[type=checkbox]')
+  const checked = () => unstaged().locator('.file-row input[type=checkbox]:checked')
+
+  await checkbox('a.txt').click()
+  await checkbox('d.txt').click({ modifiers: ['Shift'] })
+  await expect(checked()).toHaveCount(4)
+  // Unchecking c with Shift unchecks c and d (from the last one clicked).
+  await checkbox('c.txt').click({ modifiers: ['Shift'] })
+  await expect(checked()).toHaveCount(2)
+  await expect(checkbox('a.txt')).toBeChecked()
+  await expect(checkbox('b.txt')).toBeChecked()
+})
+
 test('asks with a count, not a list, before discarding many files', async () => {
   const files = Object.fromEntries(Array.from({ length: 26 }, (_, i) => [`Packages/dir/file${i}.class`, 'a\n']))
   const repo = box.repo('game', files)

@@ -10,18 +10,29 @@ export const emptySelection = (): FileSelection => ({ paths: new Set(), anchor: 
  * Selection after clicking `clicked` in a list shown in `order`, as in a file
  * manager: a plain click selects only that file, `toggle` (Ctrl/Cmd, or its
  * checkbox) adds or removes it, `shift` selects the range from the last click.
+ * Shift on a checkbox gives the range the state that checkbox takes, so a range
+ * can be unchecked too.
  */
 export function clickSelection(
   selection: FileSelection,
   order: string[],
   clicked: string,
-  mods: { shift: boolean; toggle: boolean }
+  mods: { shift: boolean; toggle: boolean; checkbox?: boolean }
 ): FileSelection {
   if (mods.shift) {
     const from = selection.anchor ? order.indexOf(selection.anchor) : -1
     const to = order.indexOf(clicked)
     // No file to start from (none clicked yet, or it left the list): just this one, never a jump to the top.
     const range = from < 0 ? [clicked] : order.slice(Math.min(from, to), Math.max(from, to) + 1)
+    if (mods.checkbox) {
+      const check = !selection.paths.has(clicked)
+      const paths = new Set(selection.paths)
+      for (const path of range) {
+        if (check) paths.add(path)
+        else paths.delete(path)
+      }
+      return { paths, anchor: clicked }
+    }
     const paths = new Set(mods.toggle ? [...selection.paths, ...range] : range)
     return { paths, anchor: from < 0 ? clicked : selection.anchor }
   }
