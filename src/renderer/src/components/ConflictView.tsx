@@ -1,10 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
-import { conflictCount, parseConflicts, resolveConflicts, type Choice, type Segment } from '../../../shared/conflicts'
+import {
+  conflictCount,
+  draftConflicts,
+  lineEnding,
+  parseConflicts,
+  resolveConflicts,
+  withLineEnding,
+  type Choice,
+  type Segment
+} from '../../../shared/conflicts'
 import type { WorkingFile } from '../../../shared/types'
 import { closeDiff, openFile, resolveWithContent, resolveWithSide } from '../actions'
 import { useT } from '../i18n'
-import { errorMessage } from '../ui'
+import { confirmDialog, errorMessage } from '../ui'
 import { cx, splitPath } from '../utils'
 
 const api = window.leviathan
@@ -28,6 +37,36 @@ function Lines({ lines }: { lines: string[] }) {
   )
 }
 
+/** A plain text editor with line numbers for a whole file; Tab types a tab. */
+function HandEditor({ value, onChange }: { value: string; onChange: (text: string) => void }) {
+  const gutter = useRef<HTMLPreElement>(null)
+  const count = value.split('\n').length
+  const numbers = useMemo(() => Array.from({ length: count }, (_, i) => i + 1).join('\n'), [count])
+  return (
+    <div className="conflict-editor">
+      <pre className="conflict-editor-gutter" ref={gutter} aria-hidden>
+        {numbers}
+      </pre>
+      <textarea
+        value={value}
+        spellCheck={false}
+        wrap="off"
+        autoFocus
+        onChange={(e) => onChange(e.target.value)}
+        onScroll={(e) => {
+          if (gutter.current) gutter.current.scrollTop = e.currentTarget.scrollTop
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return
+          e.preventDefault()
+          // Through the editing commands, so Ctrl+Z still undoes it.
+          document.execCommand('insertText', false, '\t')
+        }}
+      />
+    </div>
+  )
+}
+
 /** Resolves a conflicted file block by block, or by taking one side of the whole file. */
 export function ConflictView({ path, file }: { path: string; file: string }) {
   const t = useT()
@@ -38,12 +77,15 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
   const [busy, setBusy] = useState(false)
   // Bumped to read the file again, e.g. after a save refused because it changed.
   const [version, setVersion] = useState(0)
+  // The whole file being edited by hand (LF line ends, as a text box keeps them), and what it started as.
+  const [draft, setDraft] = useState<{ text: string; start: string } | null>(null)
   const { dir, name } = splitPath(file)
 
   useEffect(() => {
     let live = true
     setSegments(null)
     setError(null)
+    setDraft(null)
     api
       .readWorkingFile(path, file)
       .then((result) => {
@@ -67,13 +109,55 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
 
   const save = async (content: string, original: string) => {
     setBusy(true)
-    if (!(await resolveWithContent(path, file, content, original))) setVersion((v) => v + 1)
+    // Text typed by hand stays on screen when the save is refused; the blocks are read again.
+    if (!(await resolveWithContent(path, file, content, original)) && !draft) setVersion((v) => v + 1)
     setBusy(false)
+  }
+
+  const editByHand = () => {
+    if (!segments) return
+    const text = draftConflicts(segments, choices).replace(/\r\n/g, '\n')
+    setDraft({ text, start: text })
+  }
+
+  const saveDraft = async () => {
+    if (!draft || read?.text == null) return
+    const left = conflictCount(parseConflicts(draft.text))
+    if (
+      left &&
+      !(await confirmDialog({
+        title: t('conflict.save'),
+        message: t('dlg.saveWithMarkers', { count: left }),
+        confirmText: t('dlg.saveAnyway'),
+        danger: true
+      }))
+    ) {
+      return
+    }
+    await save(withLineEnding(draft.text, lineEnding(read.text)), read.text)
+  }
+
+  const backToBlocks = async () => {
+    if (
+      draft &&
+      draft.text !== draft.start &&
+      !(await confirmDialog({
+        title: t('conflict.backToBlocks'),
+        message: t('dlg.dropHandEdits'),
+        confirmText: t('dlg.dropChanges'),
+        danger: true
+      }))
+    ) {
+      return
+    }
+    // The file again, as it is now.
+    setVersion((v) => v + 1)
   }
 
   const total = segments ? conflictCount(segments) : 0
   const done = choices.filter(Boolean).length
   const result = segments ? resolveConflicts(segments, choices) : null
+  const markersLeft = draft ? conflictCount(parseConflicts(draft.text)) : 0
   const firstConflict = segments?.find((s) => s.kind === 'conflict')
   const oursLabel = firstConflict?.kind === 'conflict' ? firstConflict.oursLabel : ''
   const theirsLabel = firstConflict?.kind === 'conflict' ? firstConflict.theirsLabel : ''
@@ -88,11 +172,11 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
           <span className="file-name">{name}</span>
         </div>
         <div className="diff-actions">
-          <button className="btn small" disabled={busy} onClick={() => void takeSide('ours')}>
+          <button className="btn small" disabled={busy || !!draft} onClick={() => void takeSide('ours')}>
             {t('conflict.takeCurrent')}
             {oursLabel && <span className="dim"> ({oursLabel})</span>}
           </button>
-          <button className="btn small" disabled={busy} onClick={() => void takeSide('theirs')}>
+          <button className="btn small" disabled={busy || !!draft} onClick={() => void takeSide('theirs')}>
             {t('conflict.takeIncoming')}
             {theirsLabel && <span className="dim"> ({theirsLabel})</span>}
           </button>
@@ -105,7 +189,8 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
         </div>
       </div>
 
-      <div className="diff-body conflict-body">
+      {draft && <HandEditor value={draft.text} onChange={(text) => setDraft((d) => d && { ...d, text })} />}
+      <div className="diff-body conflict-body" hidden={!!draft}>
         {error && <div className="empty-state error">{error}</div>}
         {!error && !segments && <div className="empty-state">{t('graph.loading')}</div>}
         {segments && total === 0 && (
@@ -165,18 +250,38 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
           })}
       </div>
 
-      {segments && total > 0 && (
+      {draft && (
+        <div className="conflict-footer">
+          <span className="dim">
+            {markersLeft ? t('conflict.markersLeft', { count: markersLeft }) : t('conflict.noMarkersLeft')}
+          </span>
+          <span className="conflict-footer-actions">
+            <button className="btn" disabled={busy} onClick={() => void backToBlocks()}>
+              {t('conflict.backToBlocks')}
+            </button>
+            <button className="btn btn-primary" disabled={busy} onClick={() => void saveDraft()}>
+              {t('conflict.save')}
+            </button>
+          </span>
+        </div>
+      )}
+      {!draft && segments && total > 0 && (
         <div className="conflict-footer">
           <span className="dim">{t('conflict.progress', { done, count: total })}</span>
-          <button
-            className="btn btn-primary"
-            disabled={result === null || busy}
-            onClick={() => {
-              if (result !== null && read?.text != null) void save(result, read.text)
-            }}
-          >
-            {t('conflict.save')}
-          </button>
+          <span className="conflict-footer-actions">
+            <button className="btn" disabled={busy || read?.text == null} onClick={editByHand}>
+              {t('conflict.editByHand')}
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={result === null || busy}
+              onClick={() => {
+                if (result !== null && read?.text != null) void save(result, read.text)
+              }}
+            >
+              {t('conflict.save')}
+            </button>
+          </span>
         </div>
       )}
     </div>

@@ -9,6 +9,8 @@ export type Segment =
       theirs: string[]
       oursLabel: string
       theirsLabel: string
+      /** The block as it is in the file, markers included. */
+      raw: string[]
     }
 
 export type Choice = 'ours' | 'theirs' | 'ours-theirs' | 'theirs-ours' | null
@@ -61,8 +63,8 @@ export function parseConflicts(text: string): Segment[] {
     } else if (block.stage !== 'theirs' && isMarker(line, '=')) {
       block.stage = 'theirs'
     } else if (block.stage === 'theirs' && isMarker(line, '>')) {
-      const { ours, base, theirs, oursLabel } = block
-      segments.push({ kind: 'conflict', ours, base, theirs, oursLabel, theirsLabel: label(line) })
+      const { ours, base, theirs, oursLabel, raw } = block
+      segments.push({ kind: 'conflict', ours, base, theirs, oursLabel, theirsLabel: label(line), raw })
       block = null
     } else {
       ;(block.stage === 'ours' ? block.ours : block.stage === 'base' ? block.base! : block.theirs).push(line)
@@ -78,6 +80,20 @@ export function conflictCount(segments: Segment[]): number {
   return segments.filter((s) => s.kind === 'conflict').length
 }
 
+/** The text a block becomes with `choice`; null without one. */
+function chosen(segment: Extract<Segment, { kind: 'conflict' }>, choice: Choice): string | null {
+  if (!choice) return null
+  const ours = segment.ours.join('')
+  const theirs = segment.theirs.join('')
+  return choice === 'ours'
+    ? ours
+    : choice === 'theirs'
+      ? theirs
+      : choice === 'ours-theirs'
+        ? ours + theirs
+        : theirs + ours
+}
+
 /** The resolved file, or null while some conflict has no choice yet. */
 export function resolveConflicts(segments: Segment[], choices: Choice[]): string | null {
   let out = ''
@@ -87,12 +103,34 @@ export function resolveConflicts(segments: Segment[], choices: Choice[]): string
       out += segment.lines.join('')
       continue
     }
-    const choice = choices[index++] ?? null
-    if (!choice) return null
-    const ours = segment.ours.join('')
-    const theirs = segment.theirs.join('')
-    out +=
-      choice === 'ours' ? ours : choice === 'theirs' ? theirs : choice === 'ours-theirs' ? ours + theirs : theirs + ours
+    const text = chosen(segment, choices[index++] ?? null)
+    if (text === null) return null
+    out += text
   }
   return out
+}
+
+/** The file to edit by hand: each block with a choice resolved, the others as they are, markers and all. */
+export function draftConflicts(segments: Segment[], choices: Choice[]): string {
+  let index = 0
+  return segments
+    .map((segment) =>
+      segment.kind === 'common'
+        ? segment.lines.join('')
+        : (chosen(segment, choices[index++] ?? null) ?? segment.raw.join(''))
+    )
+    .join('')
+}
+
+/** The line ending most of the text's lines have (LF when there is none). */
+export function lineEnding(text: string): '\r\n' | '\n' {
+  const crlf = text.match(/\r\n/g)?.length ?? 0
+  const lf = (text.match(/\n/g)?.length ?? 0) - crlf
+  return crlf > lf ? '\r\n' : '\n'
+}
+
+/** `text` with every line ending as `eol` (a text box gives back LF only). */
+export function withLineEnding(text: string, eol: '\r\n' | '\n'): string {
+  const lf = text.replace(/\r\n/g, '\n')
+  return eol === '\n' ? lf : lf.replace(/\n/g, '\r\n')
 }

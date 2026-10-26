@@ -186,6 +186,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Whole-file buttons ask first when the file is not what git left (`conflictFileEdited`: git's result made again with `git merge-file --object-id` from the index stages, compared without marker labels or CRs). Before git 2.43 (no `--object-id`), a merge driver, `-X` options or LFS files it cannot be made again, so they always ask.
 - A file deleted on both sides shows a raw `ENOENT` error (the buttons still work).
 - No line limit: up to 2 MB is rendered as one element per line.
+- *Edit by hand* is a plain text box (no highlighting) over the whole file, starting from `draftConflicts` (chosen blocks resolved, the others with their markers as they were). A text box keeps LF only: the save puts back the line ending most of the file had (`lineEnding`, `withLineEnding`), so a file mixing CRLF and LF comes out with one of them. A save refused because the file changed keeps the typed text on screen; *Back to blocks* reads the file again.
 
 **Interactive rebase**
 - A merge, cherry-pick or revert (and a rebase by drag and drop) that stops for something other than conflicts shows git's whole message, hints about commands included; the interactive rebase keeps only git's reason (`stopReason`).

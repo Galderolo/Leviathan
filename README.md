@@ -38,7 +38,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Remotes**: fetch, pull (fast-forward, fast-forward only, rebase), push and force-push with lease, add and remove remotes, choose the remote when publishing a branch, **automatic background fetch**.
 - **Private repositories**: HTTPS usernames/tokens, SSH key passphrases and unknown host keys are asked in the app; your credential helper (for example Git Credential Manager) keeps working. List, copy and generate **SSH keys** from Settings.
 - **Stash**: save (including untracked files), apply, pop, delete.
-- **Conflicts**: a banner during merge/rebase/cherry-pick with *Abort* and *Continue*, and a conflict editor that shows current and incoming versions side by side so you can pick one, the other or both per block — or take a whole side of the file.
+- **Conflicts**: a banner during merge/rebase/cherry-pick with *Abort* and *Continue*, and a conflict editor that shows current and incoming versions side by side so you can pick one, the other or both per block, then edit the whole file by hand if you like — or take a whole side of the file.
 - **Clone, init and open** repositories; recent repositories list.
 - **Search** commits by message, author or SHA.
 - **Live refresh** when files change on disk.
@@ -140,7 +140,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Repos privados: usuario/token HTTPS, passphrase SSH y huellas de host se piden en la app; gestión de claves SSH.
 - Iniciar sesión con GitHub o GitLab desde el navegador (sin crear tokens), o varias cuentas (GitHub, GitLab, Bitbucket, Gitea…) con token cifrado: cada repo usa la suya para el autor de los commits (email privado por defecto) y para push/pull sin contraseñas; clonar desde la lista de repos de la cuenta.
 - Pull requests (merge requests en GitLab) en el panel lateral: verlas, revisarlas (archivos, diff y comentarios; comentar, aprobar, mergear), hacer checkout y crear una desde una rama, en GitHub, GitLab, Bitbucket y Gitea.
-- Editor de conflictos: versión actual y entrante lado a lado, eligiendo por bloque o el archivo entero.
+- Editor de conflictos: versión actual y entrante lado a lado, eligiendo por bloque o el archivo entero, y editando a mano el archivo completo.
 - Git LFS: ver qué archivos van por LFS, bloquear y desbloquear archivos, seguir patrones y avisos antes de hacer commit de un binario grande fuera de LFS o de un archivo que otra persona tiene bloqueado.
 - Submódulos: su estado en el panel lateral, inicializarlos y actualizarlos, abrirlos en una pestaña, ver qué commits trae un cambio de submódulo y clonar con ellos.
 - Herramientas externas: abrir archivos en tu editor (VS Code, Rider, Visual Studio… o cualquier comando), un cambio en tu herramienta de diff, un conflicto en la de merge y el repositorio en tu terminal (PowerShell, Windows Terminal, Git Bash, iTerm…); y `leviathan .` en una terminal abre el repositorio en el que estás.
