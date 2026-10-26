@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- An open file history, folder history or blame is read again after a commit, checkout or pull (in the app or outside it), keeping the commit picked; it used to show what it found when opened.
 - A conflicted file deleted on both sides showed a raw "ENOENT" error in the conflict editor; it now says what happened and what the buttons do.
 - Shift+click on a file's checkbox gives the whole range the state that checkbox takes: a range can now be unchecked that way too, not only checked.
 - *Ignore* on a file whose name has `[`, `*`, `?` or a backslash (`pages/[id].tsx`) ignored other files its name matched as a pattern, not that one: the name is now written literally in .gitignore.

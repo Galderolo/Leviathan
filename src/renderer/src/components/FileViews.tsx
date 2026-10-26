@@ -17,6 +17,15 @@ const api = window.leviathan
 const LINE_LIMIT = 3000
 const NOT_COMMITTED = /^0+$/
 
+/**
+ * What a view from HEAD or the working tree (`rev` null) must be read again for: the commit HEAD is at, so a commit,
+ * checkout or pull shows up in it. Null for a view of a given commit, which never changes.
+ */
+function useHeadKey(path: string, rev: string | null): string | null {
+  const head = useRepo(path)?.state?.head.hash ?? null
+  return rev === null ? head : null
+}
+
 /** File history or blame, in place of the graph, when one is open. */
 export function FileView({ path }: { path: string }) {
   const fileView = useRepo(path)?.fileView
@@ -82,10 +91,12 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
   const t = useT()
   const [items, setItems] = useState<FileCommit[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [picked, setPicked] = useState(0)
+  // The commit picked, by hash: it stays picked when the list is read again with a new commit on top.
+  const [pickedHash, setPickedHash] = useState<string | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [diffError, setDiffError] = useState<string | null>(null)
   const [limit, setLimit] = useState(HISTORY_PAGE)
+  const head = useHeadKey(path, rev)
 
   useEffect(() => {
     let live = true
@@ -103,8 +114,9 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
     return () => {
       live = false
     }
-  }, [path, file, rev, limit])
+  }, [path, file, rev, limit, head])
 
+  const picked = Math.max(0, items?.findIndex((entry) => entry.commit.hash === pickedHash) ?? 0)
   const item = items?.[picked]
   useEffect(() => {
     if (!item) return
@@ -142,7 +154,7 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
                 path={path}
                 commit={entry.commit}
                 selected={i === picked}
-                onPick={() => setPicked(i)}
+                onPick={() => setPickedHash(entry.commit.hash)}
                 title={entry.oldPath ? t('history.renamedFrom', { path: entry.oldPath }) : entry.path}
                 note={entry.oldPath && t('history.renamedFrom', { path: entry.oldPath })}
               />
@@ -212,13 +224,14 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
   const t = useT()
   const [commits, setCommits] = useState<Commit[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [picked, setPicked] = useState(0)
+  const [pickedHash, setPickedHash] = useState<string | null>(null)
   const [files, setFiles] = useState<FileChange[] | null>(null)
   const [file, setFile] = useState<FileChange | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [diffError, setDiffError] = useState<string | null>(null)
   const prefix = `${folder}/`
   const [limit, setLimit] = useState(HISTORY_PAGE)
+  const head = useHeadKey(path, rev)
 
   useEffect(() => {
     let live = true
@@ -233,8 +246,9 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
     return () => {
       live = false
     }
-  }, [path, folder, rev, limit])
+  }, [path, folder, rev, limit, head])
 
+  const picked = Math.max(0, commits?.findIndex((c) => c.hash === pickedHash) ?? 0)
   const commit = commits?.[picked]
   useEffect(() => {
     if (!commit) return
@@ -294,7 +308,13 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
         <div className="history-layout">
           <div className="history-list">
             {commits.map((c, i) => (
-              <CommitRow key={c.hash} path={path} commit={c} selected={i === picked} onPick={() => setPicked(i)} />
+              <CommitRow
+                key={c.hash}
+                path={path}
+                commit={c}
+                selected={i === picked}
+                onPick={() => setPickedHash(c.hash)}
+              />
             ))}
             <HistoryMore shown={commits.length} limit={limit} onMore={setLimit} />
           </div>
@@ -407,6 +427,7 @@ function BlameView(props: {
   // A target further down than the first lines shows them all.
   const [showAll, setShowAll] = useState((target ?? 0) > LINE_LIMIT)
   const body = useRef<HTMLDivElement>(null)
+  const head = useHeadKey(path, rev)
 
   useEffect(() => {
     let live = true
@@ -417,7 +438,7 @@ function BlameView(props: {
     return () => {
       live = false
     }
-  }, [path, file, rev])
+  }, [path, file, rev, head])
 
   useEffect(() => {
     if (lines && target) body.current?.querySelector('.blame-line.target')?.scrollIntoView({ block: 'center' })
