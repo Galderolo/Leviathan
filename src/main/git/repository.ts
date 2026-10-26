@@ -1376,6 +1376,43 @@ export async function resolveConflictFile(
   await run(repo, ['add', '--', path], { env: LITERAL_PATHS })
 }
 
+/** A conflicted file's text with LF line ends and bare markers: how git left it, whatever it named the sides. */
+function conflictShape(text: string): string {
+  return text.replace(/\r\n/g, '\n').replace(/^(<{7}|\|{7}|>{7}) .*$/gm, '$1')
+}
+
+/**
+ * Whether a conflicted file is no longer what git left in it (edited by hand since, or not known to be untouched):
+ * taking a whole side would lose those edits. What git left is made again from the index stages.
+ */
+export async function conflictFileEdited(repo: string, path: string): Promise<boolean> {
+  const stages = await conflictStages(repo, path)
+  const stage = (n: string) => stages.find((s) => s.stage === n)
+  const [base, ours, theirs] = [stage('1'), stage('2'), stage('3')]
+  // A submodule has no file to edit.
+  if ([base, ours, theirs].some((s) => s?.mode === '160000')) return false
+  const working = await fs.readFile(insideRepo(repo, path), 'utf8').catch(() => null)
+  const blob = (hash: string) => run(repo, ['cat-file', 'blob', hash])
+  let left: string | null = null
+  if (ours && theirs) {
+    // Both sides added the file: git merges them against an empty base.
+    const baseHash =
+      base?.hash ?? (await run(repo, ['hash-object', '-w', '-t', 'blob', '--stdin'], { input: '' })).trim()
+    const merged = await git(['merge-file', '--object-id', '-p', ours.hash, baseHash, theirs.hash], {
+      cwd: repo,
+      // The exit code is the number of conflicts.
+      okCodes: Array.from({ length: 128 }, (_, i) => i)
+    }).catch(() => null)
+    // Binary files cannot be merged: git leaves the checked-out side.
+    left = merged ? merged.stdout : await blob(ours.hash)
+  } else if (ours ?? theirs) {
+    // One side deleted the file: git leaves the other side's version.
+    left = await blob((ours ?? theirs)!.hash)
+  }
+  if (working === null || left === null) return working !== left
+  return conflictShape(working) !== conflictShape(left)
+}
+
 /**
  * Resolves a conflict with one side of the whole file. When that side deleted
  * the file (no index stage for it), the deletion is taken.

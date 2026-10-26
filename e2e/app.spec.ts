@@ -179,6 +179,41 @@ test('shows a merge stopped by a conflict, and aborts it', async () => {
   expect(box.read(repo, 'a.txt')).toBe('ours\n')
 })
 
+test('takes one side of a conflicted file at once, but asks first when the file was edited', async () => {
+  const repo = box.repo('game', { 'a.txt': 'base\n', 'b.txt': 'base\n' })
+  box.git(repo, 'checkout', '-qb', 'other')
+  box.write(repo, { 'a.txt': 'theirs\n', 'b.txt': 'theirs\n' })
+  box.git(repo, 'commit', '-qam', 'theirs')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'a.txt': 'ours\n', 'b.txt': 'ours\n' })
+  box.git(repo, 'commit', '-qam', 'ours')
+  try {
+    box.git(repo, 'merge', 'other')
+  } catch {
+    // stops for the conflicts
+  }
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  const take = (label: string) => page.locator('.diff-actions').getByRole('button', { name: label })
+
+  // As git left it: nothing to lose.
+  await page.locator('.file-row', { hasText: 'a.txt' }).first().click()
+  await take('Take current file').click()
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe('ours\n')
+  await expect(page.locator('.modal')).toHaveCount(0)
+
+  box.write(repo, { 'b.txt': 'resolved by hand\n' })
+  await page.locator('.file-row', { hasText: 'b.txt' }).first().click()
+  await take('Take incoming file').click()
+  await expect(page.locator('.modal')).toContainText('changed after git left it in conflict')
+  await page.locator('.modal').getByRole('button', { name: 'Cancel' }).click()
+  expect(box.read(repo, 'b.txt')).toBe('resolved by hand\n')
+
+  await take('Take incoming file').click()
+  await page.locator('.modal .btn-danger').click()
+  await expect.poll(() => box.read(repo, 'b.txt')).toBe('theirs\n')
+})
+
 test('asks with a count, not a list, before discarding many files', async () => {
   const files = Object.fromEntries(Array.from({ length: 26 }, (_, i) => [`Packages/dir/file${i}.class`, 'a\n']))
   const repo = box.repo('game', files)

@@ -1491,8 +1491,20 @@ export async function resolveWithContent(
   return ok
 }
 
-/** Resolves a conflict with one side of the whole file (or its deletion). */
+/** Resolves a conflict with one side of the whole file (or its deletion), after asking when that loses edits. */
 export async function resolveWithSide(path: string, file: string, side: 'ours' | 'theirs'): Promise<boolean> {
+  const edited = await api.conflictFileEdited(path, file).catch(() => true)
+  if (
+    edited &&
+    !(await confirmDialog({
+      title: t(side === 'ours' ? 'conflict.takeCurrent' : 'conflict.takeIncoming'),
+      message: t('dlg.takeSideLosesEdits', { name: file }),
+      confirmText: t(side === 'ours' ? 'conflict.takeCurrent' : 'conflict.takeIncoming'),
+      danger: true
+    }))
+  ) {
+    return false
+  }
   const ok = await runOp(path, () => api.resolveConflictWith(path, file, side), {
     log: false,
     success: t('toast.resolved', { name: file })

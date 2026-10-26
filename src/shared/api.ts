@@ -89,6 +89,8 @@ export interface LeviathanInvokeApi {
   /** Refused when the file no longer holds `original`, the text the resolution was made from. */
   resolveConflictFile(repo: string, path: string, content: string, original: string): Promise<void>
   resolveConflictWith(repo: string, path: string, side: 'ours' | 'theirs'): Promise<void>
+  /** Whether a conflicted file was edited since git left it (or cannot be known untouched). */
+  conflictFileEdited(repo: string, path: string): Promise<boolean>
   /** Applies a recorded change; refuses when the repository no longer matches its starting state. */
   applyChange(repo: string, change: RepoChange): Promise<void>
 
@@ -305,6 +307,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   readWorkingFile: true,
   resolveConflictFile: true,
   resolveConflictWith: true,
+  conflictFileEdited: true,
   applyChange: true,
   getRebaseCommits: true,
   interactiveRebase: true,

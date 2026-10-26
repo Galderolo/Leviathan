@@ -380,6 +380,8 @@ const es: Record<keyof typeof en, string> = {
   'conflict.useBothReversed': 'Ambas (entrante primero)',
   'conflict.takeCurrent': 'Tomar archivo actual',
   'conflict.takeIncoming': 'Tomar archivo entrante',
+  'dlg.takeSideLosesEdits':
+    '{name} ha cambiado desde que git lo dejó en conflicto (editado a mano o en un editor). Tomar una versión del archivo entero lo sustituye y esos cambios se pierden.',
   'conflict.progress': '{done} de {count} conflictos resueltos',
   'conflict.save': 'Guardar y marcar resuelto',
   'conflict.noMarkers':

@@ -76,6 +76,7 @@ const handlers: LeviathanInvokeApi = {
   readWorkingFile: (path, file) => repo.readWorkingFile(path, file),
   resolveConflictFile: (path, file, content, original) => repo.resolveConflictFile(path, file, content, original),
   resolveConflictWith: (path, file, side) => repo.resolveConflictWith(path, file, side),
+  conflictFileEdited: (path, file) => repo.conflictFileEdited(path, file),
   applyChange: (path, change) => repo.applyChange(path, change),
   getRebaseCommits: (path, base) => repo.getRebaseCommits(path, base),
   interactiveRebase: (path, base, items) => repo.interactiveRebase(path, base, items),

@@ -377,6 +377,8 @@ const en = {
   'conflict.useBothReversed': 'Both (incoming first)',
   'conflict.takeCurrent': 'Take current file',
   'conflict.takeIncoming': 'Take incoming file',
+  'dlg.takeSideLosesEdits':
+    '{name} was changed after git left it in conflict (edited by hand or in an editor). Taking one side of the whole file replaces it, and those changes are lost.',
   'conflict.progress': '{done} of {count} conflicts resolved',
   'conflict.save': 'Save and mark resolved',
   'conflict.noMarkers':
