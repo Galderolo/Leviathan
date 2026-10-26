@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Edit a conflicted file by hand** in the conflict editor: *Edit by hand* opens the whole file as text, with the blocks you chose already resolved and the others still marked, to change anything in it (a block, or any other line). Saving warns if conflict markers are left, keeps the file's line endings, and marks it resolved.
+
 ## [0.15.1] - 2026-10-26
 
 ### Security

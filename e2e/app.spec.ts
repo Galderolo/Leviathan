@@ -214,6 +214,89 @@ test('takes one side of a conflicted file at once, but asks first when the file 
   await expect.poll(() => box.read(repo, 'b.txt')).toBe('theirs\n')
 })
 
+/**
+ * a.txt changed in two places on main and on `other`, then main merges other: two conflict blocks. `crlf`: the
+ * working tree has Windows line endings (core.autocrlf).
+ */
+function twoConflicts(crlf = false): string {
+  const file = (x: string, y: string) =>
+    ['top', `x = ${x}`, 'one', 'two', 'three', 'four', 'five', `y = ${y}`, ''].join('\n')
+  const repo = box.repo('game', { 'a.txt': file('1', '1') })
+  if (crlf) box.git(repo, 'config', 'core.autocrlf', 'true')
+  box.git(repo, 'checkout', '-qb', 'other')
+  box.write(repo, { 'a.txt': file('2', '2') })
+  box.git(repo, 'commit', '-qam', 'theirs')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'a.txt': file('3', '3') })
+  box.git(repo, 'commit', '-qam', 'ours')
+  try {
+    box.git(repo, 'merge', 'other')
+  } catch {
+    // stops for the conflicts
+  }
+  return repo
+}
+
+test('edits a conflicted file by hand, anywhere in it, starting from the blocks chosen', async () => {
+  const repo = twoConflicts()
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await page.locator('.file-row', { hasText: 'a.txt' }).first().click()
+  await expect(page.locator('.conflict-block')).toHaveCount(2)
+  await page.locator('.conflict-block').first().getByRole('button', { name: 'Use current' }).click()
+
+  await page.getByRole('button', { name: 'Edit by hand' }).click()
+  const editor = page.locator('.conflict-editor textarea')
+  // The first block as chosen, the second one still marked.
+  await expect(editor).toHaveValue(/^top\nx = 3\none\n[\s\S]*<<<<<<< HEAD\ny = 3\n=======\ny = 2\n>>>>>>> other\n$/)
+  const mine = ['top', 'x = 3', 'z = 0', 'one', 'two', 'three', 'four', 'five', 'y = 2', ''].join('\n')
+  await editor.fill(mine)
+  await page.getByRole('button', { name: 'Save and mark resolved' }).click()
+
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe(mine)
+  await expect.poll(() => box.git(repo, 'diff', '--name-only', '--diff-filter=U')).toBe('')
+})
+
+test('keeps the Windows line endings of a conflicted file edited by hand', async () => {
+  const repo = twoConflicts(true)
+  expect(box.read(repo, 'a.txt')).toContain('\r\n')
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await page.locator('.file-row', { hasText: 'a.txt' }).first().click()
+  await page.locator('.conflict-block').first().getByRole('button', { name: 'Use current' }).click()
+  await page.locator('.conflict-block').nth(1).getByRole('button', { name: 'Use incoming' }).click()
+  await page.getByRole('button', { name: 'Edit by hand' }).click()
+  const editor = page.locator('.conflict-editor textarea')
+  await editor.press('Control+Home')
+  await editor.pressSequentially('// note\n')
+  await page.getByRole('button', { name: 'Save and mark resolved' }).click()
+
+  const crlf = ['// note', 'top', 'x = 3', 'one', 'two', 'three', 'four', 'five', 'y = 2', ''].join('\r\n')
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe(crlf)
+})
+
+test('asks before saving a file edited by hand that still has conflict markers, or dropping the edits', async () => {
+  const repo = twoConflicts()
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await page.locator('.file-row', { hasText: 'a.txt' }).first().click()
+  await page.getByRole('button', { name: 'Edit by hand' }).click()
+  const editor = page.locator('.conflict-editor textarea')
+  await editor.press('Control+Home')
+  await editor.pressSequentially('// note\n')
+
+  await page.getByRole('button', { name: 'Save and mark resolved' }).click()
+  await expect(page.locator('.modal')).toContainText('still has 2 conflicts')
+  await page.locator('.modal').getByRole('button', { name: 'Cancel' }).click()
+  await expect(editor).toHaveValue(/^\/\/ note\ntop\n/)
+  expect(box.read(repo, 'a.txt')).toContain('<<<<<<<')
+
+  await page.getByRole('button', { name: 'Back to blocks' }).click()
+  await expect(page.locator('.modal')).toContainText('changes you made by hand')
+  await page.locator('.modal .btn-danger').click()
+  await expect(page.locator('.conflict-block')).toHaveCount(2)
+})
+
 test('asks before a dropped branch switches to another one to merge into it', async () => {
   const repo = box.repo('game', { 'a.txt': 'base\n' })
   box.git(repo, 'branch', 'target')

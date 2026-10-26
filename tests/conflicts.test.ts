@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { conflictCount, parseConflicts, resolveConflicts } from '../src/shared/conflicts'
+import {
+  conflictCount,
+  draftConflicts,
+  lineEnding,
+  parseConflicts,
+  resolveConflicts,
+  withLineEnding
+} from '../src/shared/conflicts'
 
 const SIMPLE = ['top\n', '<<<<<<< HEAD\n', 'mine\n', '=======\n', 'theirs\n', '>>>>>>> feature\n', 'bottom\n'].join('')
 
@@ -13,7 +20,8 @@ describe('parseConflicts', () => {
         base: null,
         theirs: ['theirs\n'],
         oursLabel: 'HEAD',
-        theirsLabel: 'feature'
+        theirsLabel: 'feature',
+        raw: ['<<<<<<< HEAD\n', 'mine\n', '=======\n', 'theirs\n', '>>>>>>> feature\n']
       },
       { kind: 'common', lines: ['bottom\n'] }
     ])
@@ -54,5 +62,34 @@ describe('resolveConflicts', () => {
 
   it('returns null while a conflict is unresolved', () => {
     expect(resolveConflicts(parseConflicts(SIMPLE), [null])).toBeNull()
+  })
+})
+
+describe('draftConflicts', () => {
+  it('writes the choice of each resolved block and leaves the others with their markers', () => {
+    const two = SIMPLE + '<<<<<<< HEAD\nm2\n=======\nt2\n>>>>>>> feature\n'
+    expect(draftConflicts(parseConflicts(two), ['ours', null])).toBe(
+      'top\nmine\nbottom\n<<<<<<< HEAD\nm2\n=======\nt2\n>>>>>>> feature\n'
+    )
+    expect(draftConflicts(parseConflicts(two), ['theirs', 'ours'])).toBe('top\ntheirs\nbottom\nm2\n')
+  })
+
+  it('leaves an unresolved block exactly as it was: base, labels and CRLF', () => {
+    const text = 'a\r\n<<<<<<< HEAD\r\nx\r\n||||||| merged common ancestors\r\no\r\n=======\r\ny\r\n>>>>>>> b\r\nz\r\n'
+    expect(draftConflicts(parseConflicts(text), [null])).toBe(text)
+  })
+})
+
+describe('line endings', () => {
+  it("reads a file's line ending from most of its lines", () => {
+    expect(lineEnding('a\r\nb\r\nc\n')).toBe('\r\n')
+    expect(lineEnding('a\nb\nc\r\n')).toBe('\n')
+    expect(lineEnding('one line')).toBe('\n')
+  })
+
+  it('gives text the line ending of a file, without doubling those it has', () => {
+    expect(withLineEnding('a\nb\n', '\r\n')).toBe('a\r\nb\r\n')
+    expect(withLineEnding('a\r\nb\n', '\r\n')).toBe('a\r\nb\r\n')
+    expect(withLineEnding('a\r\nb\n', '\n')).toBe('a\nb\n')
   })
 })

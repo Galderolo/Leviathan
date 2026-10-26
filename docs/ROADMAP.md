@@ -15,7 +15,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 ## Working tree
 
 - [x] Syntax highlighting in diffs
-- [ ] Edit the result of a conflict by hand inside the conflict editor
+- [x] Edit the result of a conflict by hand inside the conflict editor
 - [ ] Commit message templates — **good first issue**
 
 ## History editing

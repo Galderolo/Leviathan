@@ -1856,6 +1856,47 @@ a:hover {
   flex-shrink: 0;
 }
 
+.conflict-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* The whole conflicted file, edited by hand: line numbers beside a plain text box, scrolled together. */
+.conflict-editor {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+
+.conflict-editor-gutter {
+  margin: 0;
+  padding: 8px 10px 8px 12px;
+  overflow: hidden;
+  text-align: right;
+  color: var(--ln);
+  background: var(--ln-bg);
+  user-select: none;
+  font: inherit;
+}
+
+.conflict-editor textarea {
+  flex: 1;
+  margin: 0;
+  padding: 8px 12px;
+  border: none;
+  outline: none;
+  resize: none;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 4;
+  color: var(--text);
+  background: var(--bg-0);
+  font: inherit;
+}
+
 .show-all {
   padding: 12px;
   text-align: center;

@@ -384,6 +384,18 @@ const en = {
     '{name} was changed after git left it in conflict (edited by hand or in an editor). Taking one side of the whole file replaces it, and those changes are lost.',
   'conflict.progress': '{done} of {count} conflicts resolved',
   'conflict.save': 'Save and mark resolved',
+  'conflict.editByHand': 'Edit by hand',
+  'conflict.backToBlocks': 'Back to blocks',
+  'conflict.markersLeft': '{count} conflicts still marked',
+  'conflict.markersLeft_one': '1 conflict still marked',
+  'conflict.noMarkersLeft': 'No conflict markers left',
+  'dlg.saveWithMarkers':
+    'The file still has {count} conflicts marked with <<<<<<< and >>>>>>>. Save it like that and mark it resolved?',
+  'dlg.saveWithMarkers_one':
+    'The file still has 1 conflict marked with <<<<<<< and >>>>>>>. Save it like that and mark it resolved?',
+  'dlg.saveAnyway': 'Save anyway',
+  'dlg.dropHandEdits': 'Drop the changes you made by hand and go back to the blocks?',
+  'dlg.dropChanges': 'Drop changes',
   'conflict.noMarkers':
     'This file has no conflict markers (a binary file, or deleted on one side). Take one of the two versions with the buttons above.',
   'conflict.tooLarge':

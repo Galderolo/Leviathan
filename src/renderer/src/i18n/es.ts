@@ -388,6 +388,18 @@ const es: Record<keyof typeof en, string> = {
     '{name} ha cambiado desde que git lo dejó en conflicto (editado a mano o en un editor). Tomar una versión del archivo entero lo sustituye y esos cambios se pierden.',
   'conflict.progress': '{done} de {count} conflictos resueltos',
   'conflict.save': 'Guardar y marcar resuelto',
+  'conflict.editByHand': 'Editar a mano',
+  'conflict.backToBlocks': 'Volver a los bloques',
+  'conflict.markersLeft': 'Quedan {count} conflictos marcados',
+  'conflict.markersLeft_one': 'Queda 1 conflicto marcado',
+  'conflict.noMarkersLeft': 'No quedan marcadores de conflicto',
+  'dlg.saveWithMarkers':
+    'El archivo aún tiene {count} conflictos marcados con <<<<<<< y >>>>>>>. ¿Guardarlo así y marcarlo como resuelto?',
+  'dlg.saveWithMarkers_one':
+    'El archivo aún tiene 1 conflicto marcado con <<<<<<< y >>>>>>>. ¿Guardarlo así y marcarlo como resuelto?',
+  'dlg.saveAnyway': 'Guardar igualmente',
+  'dlg.dropHandEdits': '¿Descartar los cambios que hiciste a mano y volver a los bloques?',
+  'dlg.dropChanges': 'Descartar cambios',
   'conflict.noMarkers':
     'Este archivo no tiene marcadores de conflicto (es binario o se borró en un lado). Elige una de las dos versiones con los botones de arriba.',
   'conflict.tooLarge':
