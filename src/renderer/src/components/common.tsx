@@ -115,7 +115,8 @@ export function Dialog() {
   const firstInput = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null>(null)
   const confirmBtn = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
+  // Before the dialog is painted: a value typed at once must not be overwritten by the first values.
+  useLayoutEffect(() => {
     if (!dialog) return
     setValues(Object.fromEntries(dialog.fields.map((f) => [f.key, f.value ?? ''])))
     setTimeout(() => {
@@ -129,6 +130,8 @@ export function Dialog() {
   if (!dialog) return null
   const submit = () => dialog.resolve(values)
   const cancel = () => dialog.resolve(null)
+  // Added to the latest values, not to those of the render the handler came from: quick typing loses nothing.
+  const setField = (key: string, value: string) => setValues((v) => ({ ...v, [key]: value }))
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
@@ -152,7 +155,7 @@ export function Dialog() {
               <select
                 ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
                 value={values[field.key] ?? ''}
-                onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
+                onChange={(e) => setField(field.key, e.target.value)}
               >
                 {field.options?.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -166,7 +169,7 @@ export function Dialog() {
                 rows={4}
                 value={values[field.key] ?? ''}
                 placeholder={field.placeholder}
-                onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
+                onChange={(e) => setField(field.key, e.target.value)}
               />
             ) : (
               <input
@@ -175,7 +178,7 @@ export function Dialog() {
                 value={values[field.key] ?? ''}
                 placeholder={field.placeholder}
                 spellCheck={false}
-                onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
+                onChange={(e) => setField(field.key, e.target.value)}
               />
             )}
           </label>

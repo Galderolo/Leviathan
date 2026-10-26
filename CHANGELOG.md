@@ -10,6 +10,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- Typing into a dialog the moment it opened could lose its other fields (*Generate new key* then failed with "Cannot read properties of undefined").
 - Dropping a branch onto another one that is not checked out, then *Checkout … and merge … into it*, asks first: it says which branch you will be left on, and that your uncommitted changes go along.
 - *Take current file* and *Take incoming file* in the conflict editor ask first when the file was edited since git left it in conflict (by hand, or in an editor), instead of replacing those edits without a word.
 - An interactive rebase that stops for something other than conflicts (an untracked file in the way, a step that failed) says what git found, instead of "usually for conflicts".
