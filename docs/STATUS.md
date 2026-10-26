@@ -245,7 +245,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Older items**
 - A new SSH key's passphrase reaches ssh-keygen through a one-off askpass bridge (`keygenWithPassphrase` in `src/main/ssh.ts`; `askpass.cmd` for Windows' own OpenSSH, which cannot run `askpass.sh`), then the key is checked to refuse an empty passphrase. Tried with OpenSSH for Windows 9.5; Git for Windows' own ssh-keygen (when it comes first in the PATH) running the `.cmd` is untested — if it cannot, the key is refused, not left unprotected.
-- Checkout-and-merge from drag and drop has no confirmation.
 - "Ignore file" does not escape glob characters.
 - Pushing with `--set-upstream` replaces a deliberately different upstream.
 - The locale test does nothing without a translated git.

@@ -250,6 +250,10 @@ const es: Record<keyof typeof en, string> = {
   'dlg.remoteName': 'Nombre',
   'dlg.remoteUrl': 'URL',
   'dlg.removeRemote': '¿Quitar el remoto "{name}"? Se borrarán localmente sus ramas remotas.',
+  'dlg.checkoutMerge':
+    'Estás en {current}. Esto hace checkout de {into}, hace merge de {from} en ella y te deja en {into}.',
+  'dlg.checkoutMergeChanges': 'Tus cambios sin commit se van contigo a {into}.',
+  'dlg.checkoutMergeConfirm': 'Checkout y merge',
   'dlg.create': 'Crear',
   'dlg.rename': 'Renombrar',
   'dlg.delete': 'Borrar',
