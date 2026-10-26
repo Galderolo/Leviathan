@@ -236,6 +236,8 @@ export interface AppState {
   diffFullFile: boolean
   /** Newer Leviathan releases, as the main process last reported. */
   update: UpdateState | null
+  /** Authors' pictures (lowercased email -> data: URL, null when there is none), when Settings shows avatars. */
+  avatars: Record<string, string | null>
 }
 
 export const useStore = create<AppState>(() => ({
@@ -256,7 +258,8 @@ export const useStore = create<AppState>(() => ({
   versions: { app: '', git: '' },
   diffLayout: initialDiffLayout(),
   diffFullFile: initialDiffFullFile(),
-  update: null
+  update: null,
+  avatars: {}
 }))
 
 export function newRepoView(path: string, limit: number): RepoView {

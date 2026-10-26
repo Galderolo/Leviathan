@@ -393,6 +393,50 @@ test('offers to stash my changes when a stash to pop changes the same files', as
   expect(box.git(repo, 'show', 'stash@{0}:SlotInfo.cs')).toBe('mine')
 })
 
+test("shows the authors' pictures only once Settings asks for them", async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.write(repo, { 'a.txt': 'two\n' })
+  box.git(
+    repo,
+    '-c',
+    'user.name=Ana',
+    '-c',
+    'user.email=12345+ana@users.noreply.github.com',
+    'commit',
+    '-qam',
+    'by ana'
+  )
+  await open(repo)
+  // Nothing leaves the machine: GitHub has a picture for its user 12345, Gravatar has none.
+  await app!.evaluate(() => {
+    const calls: string[] = []
+    ;(globalThis as Record<string, unknown>).__pictureCalls = calls
+    globalThis.fetch = (async (url: string) => {
+      calls.push(url)
+      const png = url.startsWith('https://avatars.githubusercontent.com/u/12345')
+      return {
+        ok: png,
+        status: png ? 200 : 404,
+        headers: { get: (name: string) => (png && name.toLowerCase() === 'content-type' ? 'image/png' : null) },
+        arrayBuffer: async () => Uint8Array.from([137, 80, 78, 71]).buffer
+      }
+    }) as unknown as typeof fetch
+  })
+  const calls = () => app!.evaluate(() => ((globalThis as Record<string, unknown>).__pictureCalls as string[]).length)
+  const byAna = commitRows().filter({ hasText: 'by ana' })
+  await expect(commitRows()).toHaveCount(2)
+  await expect(byAna.locator('img.avatar')).toHaveCount(0)
+  expect(await calls()).toBe(0)
+
+  await page.locator('.toolbar-right .icon-btn').click()
+  await page.getByLabel("Show the authors' pictures").check()
+  await page.keyboard.press('Escape')
+  await expect(byAna.locator('img.avatar')).toHaveCount(1)
+  // No picture anywhere for the sandbox's author: the initials stay.
+  await expect(commitRows().filter({ hasText: 'first' }).locator('img.avatar')).toHaveCount(0)
+  await expect(commitRows().filter({ hasText: 'first' }).locator('.avatar')).toHaveText('E')
+})
+
 test('keeps Settings in sections and saves each change at once', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   await open(repo)

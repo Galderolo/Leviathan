@@ -34,6 +34,7 @@ import {
   approvePullRequest,
   canPush,
   closePullRequest,
+  commitAuthorAvatar,
   createPullRequest,
   defaultBranch,
   fetchIdentity,
@@ -183,6 +184,17 @@ export async function updateAccount(id: string, patch: { name?: string; email?: 
     if (local?.name === before.name && local.email === before.email) await applyIdentity(repo, account).catch(() => {})
   }
   return account
+}
+
+/** The picture the repository's server (GitHub) has for the author of one of its commits, through its account. */
+export function commitAvatarFor(repo: string): (hash: string) => Promise<string | null> {
+  let project: ReturnType<typeof repoProject> | null = null
+  return async (hash) => {
+    project ??= repoProject(repo).catch(() => null)
+    const found = await project
+    if (!found) return null
+    return commitAuthorAvatar(found.account.provider, found.account.host, found.path, hash, found.token)
+  }
 }
 
 /** Who the next commit of a repository will be by, and where that comes from. */

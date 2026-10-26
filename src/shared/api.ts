@@ -191,6 +191,11 @@ export interface LeviathanInvokeApi {
   setCommitIdentity(repo: string, choice: { account: string } | Identity | 'global'): Promise<void>
   /** A repository with no identity of its own takes the one of the account that owns it or may push to it. */
   ensureDefaultIdentity(repo: string): Promise<void>
+  /**
+   * Authors' pictures (lowercased email -> data: URL, or null when there is none), when Settings shows avatars; a
+   * commit of each (`hash`) lets the repository's server say who it is.
+   */
+  getAvatars(repo: string | null, people: { email: string; hash?: string }[]): Promise<Record<string, string | null>>
   /** Sign in to GitHub from the browser: the code to enter there, then the account once authorized. */
   startGitHubLogin(): Promise<{ userCode: string; verificationUri: string; expiresIn: number }>
   finishGitHubLogin(): Promise<Account>
@@ -374,6 +379,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getCommitIdentity: true,
   setCommitIdentity: true,
   ensureDefaultIdentity: true,
+  getAvatars: true,
   startGitHubLogin: true,
   finishGitHubLogin: true,
   cancelGitHubLogin: true,

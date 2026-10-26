@@ -6,7 +6,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Graph and history
 
-- [ ] Optional Gravatar avatars (off by default for privacy)
+- [x] Optional avatars from GitHub and Gravatar (off by default for privacy)
 - [x] Blame of an older version from a line ("blame before this commit")
 - [x] File history for a folder
 - [ ] Column chooser for the graph (hide author, date or SHA) — **good first issue**
