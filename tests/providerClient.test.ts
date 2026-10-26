@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canPush,
+  commitAuthorAvatar,
   closePullRequest,
   createPullRequest,
   defaultBranch,
@@ -498,5 +499,29 @@ describe('canPush', () => {
     }
     expect(await canPush('github', 'github.com', 'studio/game', TOKEN, down)).toBe(false)
     expect(await canPush('other', 'example.com', 'studio/game', TOKEN, fakeFetch({}).fn)).toBe(false)
+  })
+})
+
+describe('commitAuthorAvatar', () => {
+  it("gives the picture of the GitHub user a commit's author email belongs to", async () => {
+    const { fn } = fakeFetch({
+      'https://api.github.com/repos/studio/game/commits/abc123': {
+        body: { author: { login: 'dee', avatar_url: 'https://avatars.githubusercontent.com/u/7?v=4' } }
+      }
+    })
+    expect(await commitAuthorAvatar('github', 'github.com', 'studio/game', 'abc123', TOKEN, fn)).toBe(
+      'https://avatars.githubusercontent.com/u/7?v=4'
+    )
+  })
+
+  it('is null when the email belongs to no user, the commit is not there, or the server is not GitHub', async () => {
+    const noUser = fakeFetch({ 'https://api.github.com/repos/studio/game/commits/abc123': { body: { author: null } } })
+    expect(await commitAuthorAvatar('github', 'github.com', 'studio/game', 'abc123', TOKEN, noUser.fn)).toBeNull()
+    expect(
+      await commitAuthorAvatar('github', 'github.com', 'studio/game', 'abc123', TOKEN, fakeFetch({}).fn)
+    ).toBeNull()
+    const lab = fakeFetch({})
+    expect(await commitAuthorAvatar('gitlab', 'gitlab.com', 'studio/game', 'abc123', TOKEN, lab.fn)).toBeNull()
+    expect(lab.calls).toEqual([])
   })
 })

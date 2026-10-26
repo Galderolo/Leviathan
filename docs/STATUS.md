@@ -208,6 +208,9 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - More than 50 open PRs are not paginated; fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 - A local branch named `pr` blocks `pr/N`.
 
+**Avatars**
+- Off by default (`settings.avatars`): `getAvatars` in the main process asks nothing until then. Sources per email (`avatarSources`, `src/main/avatars.ts`): GitHub no-reply address -> `avatars.githubusercontent.com/u/<id>`, an own GitHub account's email -> `github.com/<user>.png`, then in a GitHub repository its API for one commit of that author (`commitAuthorAvatar`), then Gravatar (SHA-256, `d=404`). Pictures come to the window as data: URLs (its CSP allows no remote images), cached in `avatars.json` in the profile: found for 7 days, none for 1 day, an unreachable server not at all. Asked once per email per session; the GitLab, Bitbucket and Gitea APIs are not asked.
+
 **Accounts**
 - Commit identity (`getCommitIdentity`, `setCommitIdentity`, `ensureDefaultIdentity` in `src/main/accounts/index.ts`, `src/main/git/identity.ts`, `src/shared/identity.ts`): a repository without a local `user.name`/`user.email` and not bound to an account is bound, when opened, to the account that owns its project (first path part = username, no request) or else the first on that host whose token may push (`canPush`: GitHub/Gitea `permissions.push`, GitLab Developer or above, Bitbucket write/admin). Nothing found is remembered for the session only. A local identity is never replaced; renaming an account only updates the repositories that still have its old identity. Picking an identity typed or the global one keeps the binding (its token still serves push and pull).
 - Usernames with `%` or `@` in the askpass prompt; `*.ghe.com` API base and no-reply emails for hosts with a port.

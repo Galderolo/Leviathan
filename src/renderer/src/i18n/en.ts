@@ -650,6 +650,10 @@ const en = {
   'settings.autoFetchOff': 'Never',
   'settings.autoFetchEvery': 'Every {count} minutes',
   'settings.autoFetchEvery_one': 'Every minute',
+  'settings.avatars': 'Avatars',
+  'settings.avatarsShow': "Show the authors' pictures",
+  'settings.avatarsHint':
+    "From GitHub (its private emails, your accounts' emails, or its API for a GitHub repository) and Gravatar: they are asked about each author's email, so they learn whose commits you look at. Without one, the initials stay.",
   'settings.commitLimit': 'Commits loaded at a time',
   'settings.license': 'Free software under the MIT license. Contributions are welcome!'
 }

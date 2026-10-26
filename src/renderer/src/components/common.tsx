@@ -7,12 +7,18 @@ import { useStore } from '../store'
 import { closeMenu, dismissToast } from '../ui'
 import { cx, hashColor, initials } from '../utils'
 
+/** The author's picture when Settings shows avatars and one was found; their initials otherwise. */
 export function Avatar({ name, email, size = 22 }: { name: string; email: string; size?: number }) {
+  const picture = useStore((s) => s.avatars[email.trim().toLowerCase()])
+  const title = `${name} <${email}>`
+  if (picture) {
+    return <img className="avatar" src={picture} width={size} height={size} alt="" title={title} draggable={false} />
+  }
   return (
     <span
       className="avatar"
       style={{ width: size, height: size, fontSize: size * 0.4, background: hashColor(email || name) }}
-      title={`${name} <${email}>`}
+      title={title}
     >
       {initials(name)}
     </span>

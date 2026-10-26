@@ -114,6 +114,7 @@ Leviathan collects no telemetry or usage data, has no accounts of its own and sh
 - **The hosting services of the accounts you add** (GitHub, GitLab, Gitea…), to list repositories and pull requests and to sign you in. Tokens are stored encrypted on your computer and are only sent to the service they belong to. While you sign in to GitLab, the app listens on 127.0.0.1:47231 (your own computer only) for the browser to come back.
 - **The Git LFS servers of your repositories**, to list and change file locks.
 - **github.com, to look for new Leviathan releases**, shortly after start, every half hour and when you come back to the app (at most every ten minutes). It sends nothing about you or your repositories, and can be turned off in *Settings → Updates*. Opening *What's new* also reads the list of releases from github.com.
+- **Only if you turn on avatars** (*Settings → General*, off by default): GitHub's picture servers, its API for the authors of a GitHub repository (with your account), and Gravatar, which receives a SHA-256 hash of each author's email. Pictures are kept on your computer for a week.
 
 ## Contributing
 
@@ -152,7 +153,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 - Cherry-pick, revert, reset, tags, stash, fetch/pull/push, clonar y crear repositorios.
 - Interfaz en español e inglés.
 
-Los instaladores aún no están firmados: si Windows muestra "Windows protegió su PC", pulsa **Más información** y luego **Ejecutar de todas formas** (solo pasa al instalar; las actualizaciones desde la app no vuelven a avisar). Leviathan no recoge telemetría: solo se conecta a tus remotos, a los servicios de las cuentas que añadas, a los servidores LFS de tus repos y a github.com para buscar versiones nuevas (se puede desactivar en Ajustes).
+Los instaladores aún no están firmados: si Windows muestra "Windows protegió su PC", pulsa **Más información** y luego **Ejecutar de todas formas** (solo pasa al instalar; las actualizaciones desde la app no vuelven a avisar). Leviathan no recoge telemetría: solo se conecta a tus remotos, a los servicios de las cuentas que añadas, a los servidores LFS de tus repos, a github.com para buscar versiones nuevas (se puede desactivar en Ajustes) y, solo si activas los avatares (desactivados por defecto), a GitHub y Gravatar para las fotos de los autores.
 
 Para compilarlo necesitas Node.js 22.12+ y Git: `npm install` y después `npm run dev`.
 

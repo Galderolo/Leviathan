@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { openExternal, openWhatsNew, saveSettings } from '../actions'
+import { openExternal, openWhatsNew, saveSettings, setAvatars } from '../actions'
 import { LANGUAGES, useT, type TKey } from '../i18n'
 import { useStore, type SettingsSection } from '../store'
 import { cx } from '../utils'
@@ -147,6 +147,14 @@ function GeneralSettings() {
           ))}
         </select>
       </label>
+      <div className="field">
+        <span>{t('settings.avatars')}</span>
+        <label className="checkbox-row">
+          <input type="checkbox" checked={settings.avatars} onChange={(e) => void setAvatars(e.target.checked)} />
+          {t('settings.avatarsShow')}
+        </label>
+        <div className="dim small">{t('settings.avatarsHint')}</div>
+      </div>
     </>
   )
 }

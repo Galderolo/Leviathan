@@ -12,6 +12,7 @@ import {
   type IpcResult
 } from '../shared/api'
 import * as accounts from './accounts'
+import { AvatarCache } from './avatars'
 import { answerAskpass, askpassScripts } from './askpass'
 import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
@@ -30,6 +31,8 @@ function broadcast(channel: string, payload: unknown): void {
     if (!win.isDestroyed()) win.webContents.send(channel, payload)
   }
 }
+
+let avatarCache: AvatarCache | null = null
 
 function progress(path: string) {
   return (line: string) => broadcast(IPC_PROGRESS, { repo: path, line })
@@ -168,6 +171,18 @@ const handlers: LeviathanInvokeApi = {
   getCommitIdentity: (path) => accounts.getCommitIdentity(path),
   setCommitIdentity: (path, choice) => accounts.setCommitIdentity(path, identityChoice(choice)),
   ensureDefaultIdentity: (path) => accounts.ensureDefaultIdentity(path),
+  getAvatars: async (path, people) => {
+    // Off by default: nothing is asked to GitHub or Gravatar until Settings says so.
+    if (!loadSettings().avatars || !Array.isArray(people)) return {}
+    const wanted = people
+      .filter((p) => typeof p?.email === 'string')
+      .map((p) => ({ email: p.email, hash: typeof p.hash === 'string' ? p.hash : undefined }))
+    avatarCache ??= new AvatarCache(join(app.getPath('userData'), 'avatars.json'))
+    return avatarCache.get(wanted, {
+      accounts: accounts.listAccounts(),
+      commitAvatar: typeof path === 'string' ? accounts.commitAvatarFor(path) : undefined
+    })
+  },
   startGitHubLogin: () => accounts.startGitHubLogin(),
   finishGitHubLogin: () => accounts.finishGitHubLogin(),
   cancelGitHubLogin: async () => accounts.cancelGitHubLogin(),

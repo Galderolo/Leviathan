@@ -1,6 +1,7 @@
 import type {
   AskpassRequest,
   BlameLine,
+  Commit,
   DiffHunk,
   DiffSource,
   FileChange,
@@ -243,6 +244,38 @@ export async function cloneRepository(
 }
 
 /** Loads which account the repository uses (shown in the toolbar), and its pull requests. */
+/** Authors already asked for this session (whatever the answer): each is asked once. */
+const avatarsAsked = new Set<string>()
+
+/** The pictures of the authors of `commits` not asked for yet, when Settings shows avatars. */
+export async function loadAvatars(path: string | null, commits: Pick<Commit, 'authorEmail' | 'hash'>[]): Promise<void> {
+  if (!useStore.getState().settings.avatars) return
+  const people: { email: string; hash: string }[] = []
+  for (const c of commits) {
+    const email = c.authorEmail.trim().toLowerCase()
+    if (!email || avatarsAsked.has(email)) continue
+    avatarsAsked.add(email)
+    people.push({ email, hash: c.hash })
+  }
+  if (!people.length) return
+  try {
+    const found = await api.getAvatars(path, people)
+    useStore.setState((s) => ({ avatars: { ...s.avatars, ...found } }))
+  } catch {
+    // Asked again with the next commits shown.
+    for (const p of people) avatarsAsked.delete(p.email)
+  }
+}
+
+/** Shows avatars, or stops: the pictures of the commits already shown are fetched, or dropped. */
+export async function setAvatars(on: boolean): Promise<void> {
+  await saveSettings({ avatars: on })
+  avatarsAsked.clear()
+  useStore.setState({ avatars: {} })
+  if (!on) return
+  for (const view of Object.values(useStore.getState().repos)) void loadAvatars(view.path, view.commits)
+}
+
 /** The account a repository is bound to, and who its next commit will be by. */
 async function loadAccountAndIdentity(path: string): Promise<void> {
   try {
@@ -618,6 +651,7 @@ async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
         (log) => {
           if (logSeq[path] !== lSeq || !getRepo(path)) return
           patchRepo(path, { commits: log.commits, hasMore: log.hasMore })
+          void loadAvatars(path, log.commits)
           // A commit that disappeared (undo, reset, amend...) must not stay selected.
           const selection = getRepo(path)?.selection
           if (selection?.kind === 'commit' && !log.commits.some((c) => c.hash === selection.hash)) {

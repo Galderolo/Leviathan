@@ -970,6 +970,11 @@ a:hover {
   flex-shrink: 0;
 }
 
+img.avatar {
+  object-fit: cover;
+  background: var(--bg-3);
+}
+
 .empty-state {
   padding: 48px 24px;
   text-align: center;

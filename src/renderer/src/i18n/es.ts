@@ -659,6 +659,10 @@ const es: Record<keyof typeof en, string> = {
   'settings.autoFetchOff': 'Nunca',
   'settings.autoFetchEvery': 'Cada {count} minutos',
   'settings.autoFetchEvery_one': 'Cada minuto',
+  'settings.avatars': 'Avatares',
+  'settings.avatarsShow': 'Mostrar las fotos de los autores',
+  'settings.avatarsHint':
+    'De GitHub (sus emails privados, los emails de tus cuentas o su API en un repositorio de GitHub) y de Gravatar: se les pregunta por el email de cada autor, así que saben de quién son los commits que miras. Sin foto, se quedan las iniciales.',
   'settings.commitLimit': 'Commits cargados cada vez',
   'settings.license': 'Software libre bajo licencia MIT. ¡Las contribuciones son bienvenidas!'
 }

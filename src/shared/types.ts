@@ -298,6 +298,8 @@ export interface Settings {
   repoAccounts: Record<string, string>
   /** Commit identities typed for a repository, newest first, to pick again. */
   recentIdentities: { name: string; email: string }[]
+  /** Show authors' pictures (from GitHub and Gravatar), which asks those services about each author's email. */
+  avatars: boolean
   window?: { width: number; height: number; x?: number; y?: number; maximized?: boolean }
 }
 
@@ -320,7 +322,8 @@ export const DEFAULT_SETTINGS: Settings = {
   diffTool: '',
   terminal: '',
   repoAccounts: {},
-  recentIdentities: []
+  recentIdentities: [],
+  avatars: false
 }
 
 export type Provider = 'github' | 'gitlab' | 'bitbucket' | 'gitea' | 'other'

@@ -3,7 +3,7 @@ import type React from 'react'
 import { ArrowLeft, GitCommitHorizontal, History, X } from 'lucide-react'
 import type { BlameLine, Commit, FileChange, FileCommit, FileDiff } from '../../../shared/types'
 import { BLAME_MAX_LINES, HISTORY_MAX, HISTORY_PAGE } from '../../../shared/types'
-import { blameBefore, closeFileView, fileViewBack, openFolderHistory, showCommitInGraph } from '../actions'
+import { blameBefore, closeFileView, fileViewBack, loadAvatars, openFolderHistory, showCommitInGraph } from '../actions'
 import { useT } from '../i18n'
 import { useRepo, useStore } from '../store'
 import { errorMessage, openMenu } from '../ui'
@@ -91,7 +91,14 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
     let live = true
     api
       .getFileHistory(path, file, rev, limit)
-      .then((list) => live && setItems(list))
+      .then((list) => {
+        if (!live) return
+        setItems(list)
+        void loadAvatars(
+          path,
+          list.map((entry) => entry.commit)
+        )
+      })
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
       live = false
@@ -217,7 +224,11 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
     let live = true
     api
       .getFolderHistory(path, folder, rev, limit)
-      .then((list) => live && setCommits(list))
+      .then((list) => {
+        if (!live) return
+        setCommits(list)
+        void loadAvatars(path, list)
+      })
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
       live = false

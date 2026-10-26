@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Avatars**, off by default (*Settings → General*): the authors' pictures in the graph, commit details and histories, from GitHub (its private emails, your accounts' emails, or its API for a GitHub repository's authors) and Gravatar; the initials stay without one. Turning them on means asking those services about each author's email (the README says what goes where).
 - **Blame before a change**: in a blame, the button on a commit's lines (or a line's right-click menu) opens the blame of the file as it was just before that commit, under the name it had then, at the place of that line. Go on back in time from there, and *Back* returns step by step.
 - **Pick who a commit is by**: the commit box shows the identity the next commit will have (and where it comes from: an account, the repository, git's global configuration); a click picks an account's, one typed before, another one, or the global identity, for that repository only.
 - **The right account by default**: a repository with no identity of its own, opened in the app, takes the identity of the account that owns it, or else of an account that may push to it (asked to GitHub, GitLab, Bitbucket or Gitea). An identity the repository already has is never replaced.

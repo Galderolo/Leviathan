@@ -304,6 +304,28 @@ export async function canPush(
   }
 }
 
+/**
+ * The picture of the GitHub user a commit's author email belongs to; null when it belongs to none, the commit cannot be
+ * read, or the server is not GitHub (the others' commit APIs give no user for an email).
+ */
+export async function commitAuthorAvatar(
+  provider: Provider,
+  host: string,
+  path: string,
+  hash: string,
+  token: string,
+  fetchFn: FetchFn = fetch
+): Promise<string | null> {
+  if (provider !== 'github' || !/^[0-9a-f]{4,64}$/.test(hash)) return null
+  try {
+    const commit = (await getJson(provider, host, `/repos/${path}/commits/${hash}`, token, fetchFn)) as Json
+    const url = (commit.author as Json | null)?.avatar_url
+    return typeof url === 'string' && url.startsWith('https://') ? url : null
+  } catch {
+    return null
+  }
+}
+
 /** Who the token belongs to, with the provider's no-reply address as commit email. */
 export async function fetchIdentity(
   provider: Provider,
