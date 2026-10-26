@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { launch, Sandbox } from './app'
@@ -388,6 +388,29 @@ test('stops at a commit to edit it, and goes on after amending it', async () => 
   await expect(page.locator('.op-banner')).toHaveCount(0)
   expect(box.git(repo, 'log', '--format=%s', '-3')).toBe('three\ntwo, edited\none')
   expect(box.git(repo, 'show', 'HEAD~1:two.txt')).toBe('two, edited')
+})
+
+test("says why an interactive rebase stopped when it was not for conflicts, and goes on once that's fixed", async () => {
+  const repo = threeCommits()
+  // two.txt leaves the index and stays untracked: picking "two" again would overwrite it.
+  box.git(repo, 'rm', '-q', '--cached', 'two.txt')
+  box.git(repo, 'commit', '-qm', 'untrack two')
+  await open(repo)
+  await commitRows().filter({ hasText: 'first' }).click({ button: 'right' })
+  await menuItem('Interactive rebase from here…').click()
+  await page.locator('.rebase-row', { hasText: 'one' }).locator('select').selectOption('drop')
+  await page.getByRole('button', { name: 'Start rebase' }).click()
+
+  const toast = page.locator('.toast.error')
+  await expect(toast).toContainText('untracked working tree files would be overwritten by merge')
+  await expect(toast).toContainText('two.txt')
+  await expect(toast).not.toContainText('git rebase')
+  await expect(page.locator('.op-banner')).toBeVisible()
+
+  rmSync(join(repo, 'two.txt'))
+  await page.locator('.op-banner').getByRole('button', { name: 'Continue' }).click()
+  await expect(page.locator('.op-banner')).toHaveCount(0)
+  expect(box.git(repo, 'log', '--format=%s', '-4')).toBe('untrack two\nthree\ntwo\nfirst')
 })
 
 test('reviews a pull request: its files and diff, its conversation, approving and merging it', async () => {

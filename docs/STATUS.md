@@ -188,7 +188,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - No line limit: up to 2 MB is rendered as one element per line.
 
 **Interactive rebase**
-- When a rebase stops for something other than conflicts (an untracked file in the way, a failed step), the message still says "usually for conflicts" and drops git's reason.
+- A merge, cherry-pick or revert (and a rebase by drag and drop) that stops for something other than conflicts shows git's whole message, hints about commands included; the interactive rebase keeps only git's reason (`stopReason`).
 - A rebase that stopped for a conflict and was continued is not undoable.
 - If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
 

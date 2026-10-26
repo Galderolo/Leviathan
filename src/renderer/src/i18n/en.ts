@@ -406,8 +406,9 @@ const en = {
   'rebase.problem.noMessage': 'A reworded commit needs a message.',
   'undo.interactiveRebase': 'interactive rebase',
   'toast.rebased': 'Rebase finished',
-  'toast.rebaseStopped':
-    'The rebase stopped before the end, usually for conflicts: resolve them, then press Continue in the banner.',
+  'toast.rebaseStopped': 'The rebase stopped before the end: fix what stopped it, then press Continue in the banner.',
+  'toast.rebaseStoppedFor':
+    'The rebase stopped before the end:\n{reason}\n\nFix that, then press Continue in the banner (or Abort).',
   'toast.stoppedForConflicts': 'Git stopped for conflicts: resolve them, then press Continue in the banner.',
 
   'left.pullRequests': 'PULL REQUESTS',

@@ -10,6 +10,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- An interactive rebase that stops for something other than conflicts (an untracked file in the way, a step that failed) says what git found, instead of "usually for conflicts".
 - A pull, push or fetch started while the automatic fetch was running could fail with "cannot lock ref" (or make the automatic fetch fail): it now waits for the automatic fetch to end. Checking out a pull request waits too.
 
 ## [0.15.0] - 2026-10-26
