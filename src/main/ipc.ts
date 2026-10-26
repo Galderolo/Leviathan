@@ -35,6 +35,15 @@ function progress(path: string) {
   return (line: string) => broadcast(IPC_PROGRESS, { repo: path, line })
 }
 
+/** A commit identity choice from the window, checked: an account id, a name and an email, or 'global'. */
+function identityChoice(choice: unknown): Parameters<typeof accounts.setCommitIdentity>[1] {
+  if (choice === 'global') return choice
+  const c = (choice ?? {}) as Record<string, unknown>
+  if (typeof c.account === 'string') return { account: c.account }
+  if (typeof c.name === 'string' && typeof c.email === 'string') return { name: c.name, email: c.email }
+  throw new Error('Invalid commit identity')
+}
+
 const handlers: LeviathanInvokeApi = {
   getSettings: async () => loadSettings(),
   saveSettings: async (patch) => saveSettings(patch),
@@ -156,6 +165,9 @@ const handlers: LeviathanInvokeApi = {
   listAccountRepos: (id) => accounts.listAccountRepos(id),
   getRepoAccount: async (path) => accounts.getRepoAccount(path),
   setRepoAccount: (path, id) => accounts.setRepoAccount(path, id),
+  getCommitIdentity: (path) => accounts.getCommitIdentity(path),
+  setCommitIdentity: (path, choice) => accounts.setCommitIdentity(path, identityChoice(choice)),
+  ensureDefaultIdentity: (path) => accounts.ensureDefaultIdentity(path),
   startGitHubLogin: () => accounts.startGitHubLogin(),
   finishGitHubLogin: () => accounts.finishGitHubLogin(),
   cancelGitHubLogin: async () => accounts.cancelGitHubLogin(),

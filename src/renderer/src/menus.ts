@@ -1,9 +1,12 @@
 import { lfsPatternFor, type LfsLock, type LfsPattern } from '../../shared/lfs'
-import type { DiffSource, FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
+import type { Identity } from '../../shared/identity'
+import type { Account, DiffSource, FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
 import {
   applyStash,
+  askCommitIdentity,
   checkoutAndMerge,
   checkoutCommit,
+  chooseCommitIdentity,
   checkoutPullRequest,
   closePullRequest,
   checkoutRef,
@@ -60,6 +63,34 @@ import { t } from './i18n'
 import { lockFor } from './lfsView'
 import { getRepo, useStore, type MenuItem } from './store'
 import { copyText } from './ui'
+
+/**
+ * Who the repository's next commits can be by: the accounts' identities, those typed before, another one, or the
+ * global identity. The one in use is ticked.
+ */
+export function identityMenu(path: string, accounts: Account[]): MenuItem[] {
+  const identity = getRepo(path)?.identity
+  const label = (i: Identity) => `${i.name} <${i.email}>`
+  const same = (a: Identity, b: Identity) => a.name === b.name && a.email.toLowerCase() === b.email.toLowerCase()
+  const inUse = (i: Identity) => !!identity && identity.source !== 'global' && same(i, identity)
+  const tick = (i: Identity) => (inUse(i) ? `✓ ${label(i)}` : label(i))
+  const recent = (useStore.getState().settings.recentIdentities ?? []).filter((r) => !accounts.some((a) => same(a, r)))
+  const items: MenuItem[] = accounts.map((a) => ({
+    label: tick(a),
+    hint: `${a.username} · ${a.host}`,
+    onClick: () => void chooseCommitIdentity(path, { account: a.id })
+  }))
+  if (items.length && recent.length) items.push({ separator: true })
+  for (const r of recent) items.push({ label: tick(r), onClick: () => void chooseCommitIdentity(path, r) })
+  if (items.length) items.push({ separator: true })
+  items.push({ label: t('identity.other'), onClick: () => void askCommitIdentity(path) })
+  items.push({
+    label: t('identity.global'),
+    disabled: !identity || identity.source === 'global' || identity.source === 'none',
+    onClick: () => void chooseCommitIdentity(path, 'global')
+  })
+  return items
+}
 
 function current(path: string): { branch: string | null; head: string | null } {
   const head = getRepo(path)?.state?.head

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canPush,
   closePullRequest,
   createPullRequest,
   defaultBranch,
@@ -445,5 +446,57 @@ describe('Bitbucket Cloud', () => {
     await expect(createPullRequest('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, input, fn)).rejects.toThrow(
       'There are no changes to be pulled'
     )
+  })
+})
+
+describe('canPush', () => {
+  it('reads the push permission GitHub and Gitea give the token on a repository', async () => {
+    const github = fakeFetch({ 'https://api.github.com/repos/studio/game': { body: { permissions: { push: true } } } })
+    expect(await canPush('github', 'github.com', 'studio/game', TOKEN, github.fn)).toBe(true)
+    const readOnly = fakeFetch({
+      'https://api.github.com/repos/studio/game': { body: { permissions: { push: false } } }
+    })
+    expect(await canPush('github', 'github.com', 'studio/game', TOKEN, readOnly.fn)).toBe(false)
+    const gitea = fakeFetch({
+      'https://git.example.com/api/v1/repos/studio/game': { body: { permissions: { push: true } } }
+    })
+    expect(await canPush('gitea', 'git.example.com', 'studio/game', TOKEN, gitea.fn)).toBe(true)
+  })
+
+  it('counts GitLab developers and above, by project or by group', async () => {
+    const url = 'https://gitlab.com/api/v4/projects/studio%2Fgame'
+    const level = (project: number | null, group: number | null) =>
+      fakeFetch({
+        [url]: {
+          body: {
+            permissions: {
+              project_access: project === null ? null : { access_level: project },
+              group_access: group === null ? null : { access_level: group }
+            }
+          }
+        }
+      }).fn
+    expect(await canPush('gitlab', 'gitlab.com', 'studio/game', TOKEN, level(30, null))).toBe(true)
+    expect(await canPush('gitlab', 'gitlab.com', 'studio/game', TOKEN, level(null, 40))).toBe(true)
+    expect(await canPush('gitlab', 'gitlab.com', 'studio/game', TOKEN, level(20, 10))).toBe(false)
+  })
+
+  it('asks Bitbucket for the permission of the user on the repository', async () => {
+    const url =
+      'https://api.bitbucket.org/2.0/user/permissions/repositories?q=' +
+      encodeURIComponent('repository.full_name="studio/game"')
+    const as = (permission: string) => fakeFetch({ [url]: { body: { values: [{ permission }] } } }).fn
+    expect(await canPush('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, as('write'))).toBe(true)
+    expect(await canPush('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, as('admin'))).toBe(true)
+    expect(await canPush('bitbucket', 'bitbucket.org', 'studio/game', TOKEN, as('read'))).toBe(false)
+  })
+
+  it('is false when the server does not show the repository, or cannot be reached', async () => {
+    expect(await canPush('github', 'github.com', 'studio/game', TOKEN, fakeFetch({}).fn)).toBe(false)
+    const down: FetchFn = async () => {
+      throw new Error('offline')
+    }
+    expect(await canPush('github', 'github.com', 'studio/game', TOKEN, down)).toBe(false)
+    expect(await canPush('other', 'example.com', 'studio/game', TOKEN, fakeFetch({}).fn)).toBe(false)
   })
 })

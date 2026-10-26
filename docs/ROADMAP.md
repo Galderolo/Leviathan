@@ -39,6 +39,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [x] Open the app with a repository path from the command line (`leviathan .`)
 - [x] Configurable external editor and diff/merge tool
 - [x] Configurable terminal
+- [x] Pick the commit identity of a repository in the commit box; by default, the account that owns it or may push to it
 - [ ] Profiles: different author name/email per repository group
 - [ ] Code signing for Windows and macOS releases
 - [ ] Auto-update on macOS (needs code signing)

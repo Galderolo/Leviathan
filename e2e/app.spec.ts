@@ -327,6 +327,39 @@ test('asks before a dropped branch switches to another one to merge into it', as
   expect(box.read(repo, 'a.txt')).toBe('mine, not committed\n')
 })
 
+test('shows who the commit will be by, and picks another identity for the repository', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.write(repo, { 'a.txt': 'two\n' })
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  const who = page.locator('.commit-identity')
+  // The sandbox's global identity.
+  await expect(who).toContainText('E2E <e2e@example.invalid>')
+
+  await who.click()
+  await menuItem('Another identity…').click()
+  await page.getByLabel('Name').fill('Ana Work')
+  await page.getByLabel('Email').fill('ana@studio.example')
+  await page.locator('.modal .btn-primary').click()
+  await expect(who).toContainText('Ana Work <ana@studio.example>')
+  expect(box.git(repo, 'config', '--local', 'user.email')).toBe('ana@studio.example')
+
+  await page.getByRole('button', { name: 'Stage all changes' }).click()
+  await page.locator('.summary-input').fill('by ana')
+  await page.locator('.btn-commit').click()
+  await expect.poll(() => box.git(repo, 'log', '-1', '--format=%an <%ae>')).toBe('Ana Work <ana@studio.example>')
+
+  // The commit box is there again with something new to commit.
+  box.write(repo, { 'a.txt': 'three\n' })
+  await page.locator('.graph-row.row-wip').click()
+  await who.click()
+  await menuItem('Use the global identity').click()
+  await expect(who).toContainText('E2E <e2e@example.invalid>')
+  // The identity typed stays in the menu, to pick again.
+  await who.click()
+  await expect(menuItem('Ana Work <ana@studio.example>')).toBeVisible()
+})
+
 test('asks with a count, not a list, before discarding many files', async () => {
   const files = Object.fromEntries(Array.from({ length: 26 }, (_, i) => [`Packages/dir/file${i}.class`, 'a\n']))
   const repo = box.repo('game', files)

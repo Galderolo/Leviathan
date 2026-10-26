@@ -25,6 +25,32 @@ export function parseRemoteUrl(url: string): { host: string; path: string } | nu
   return { host: host.toLowerCase(), path }
 }
 
+function originFirst(remotes: Remote[]): Remote[] {
+  return [...remotes.filter((r) => r.name === 'origin'), ...remotes.filter((r) => r.name !== 'origin')]
+}
+
+/**
+ * The account whose identity a repository's commits take by default: on the first remote (origin first) with
+ * accounts on its host, the one that owns the project (its user is the first part of the path), or else the first
+ * that `canPush` to it. Null when none does.
+ */
+export async function defaultIdentityAccount(
+  remotes: Remote[],
+  accounts: Account[],
+  canPush: (account: Account, path: string) => Promise<boolean>
+): Promise<Account | null> {
+  for (const remote of originFirst(remotes)) {
+    const project = parseRemoteUrl(remote.fetchUrl)
+    if (!project) continue
+    const onHost = accounts.filter((a) => a.provider !== 'other' && a.host.toLowerCase() === project.host)
+    const owner = project.path.split('/')[0].toLowerCase()
+    const owning = onHost.find((a) => a.username.toLowerCase() === owner)
+    if (owning) return owning
+    for (const account of onHost) if (await canPush(account, project.path)) return account
+  }
+  return null
+}
+
 /**
  * The hosted project to use for pull requests: the first remote (origin first)
  * on a host with an account that has API support, with the account the
@@ -35,8 +61,7 @@ export function pickProject(
   accounts: Account[],
   boundId: string | null
 ): { remote: string; account: Account; path: string } | null {
-  const ordered = [...remotes.filter((r) => r.name === 'origin'), ...remotes.filter((r) => r.name !== 'origin')]
-  for (const remote of ordered) {
+  for (const remote of originFirst(remotes)) {
     const project = parseRemoteUrl(remote.fetchUrl)
     if (!project) continue
     const onHost = accounts.filter((a) => a.provider !== 'other' && a.host.toLowerCase() === project.host)

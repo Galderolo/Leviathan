@@ -13,6 +13,7 @@ import type {
   Submodule
 } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
+import type { CommitIdentity } from '../../shared/identity'
 import type { LfsInfo, LfsLock } from '../../shared/lfs'
 import type { UpdateState } from '../../shared/updates'
 import type { Lang } from './i18n'
@@ -60,6 +61,8 @@ export interface RepoView {
   lastFetchError: string | null
   /** Account bound to this repository, if any. */
   account: Account | null
+  /** Who the next commit will be by; null until read. */
+  identity: CommitIdentity | null
   /** Open pull requests; null when no account can reach the repository's remote. */
   pullRequests: PullRequestsView | null
   /** Branches left out of the graph, or the only one shown (full ref names). */
@@ -267,6 +270,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     lastFetchAt: null,
     lastFetchError: null,
     account: null,
+    identity: null,
     pullRequests: null,
     fileView: null,
     review: null,

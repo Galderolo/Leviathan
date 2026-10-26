@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { needsPushForPullRequest, parseRemoteUrl, pickProject } from '../src/shared/forge'
+import { defaultIdentityAccount, needsPushForPullRequest, parseRemoteUrl, pickProject } from '../src/shared/forge'
 import type { Account, Remote } from '../src/shared/types'
 
 describe('parseRemoteUrl', () => {
@@ -40,6 +40,47 @@ const account = (id: string, host: string, provider: Account['provider'] = 'gith
   email: `${id}@example.com`
 })
 const remote = (name: string, url: string): Remote => ({ name, fetchUrl: url, pushUrl: url })
+
+describe('defaultIdentityAccount', () => {
+  const work = account('work', 'github.com')
+  const personal = account('Personal', 'github.com')
+  const lab = account('lab', 'gitlab.com', 'gitlab')
+  const origin = (url: string) => [remote('origin', url)]
+  /** Asked which accounts may push where; `allowed` lists "account:path". */
+  const pushes = (...allowed: string[]) => {
+    const asked: string[] = []
+    const fn = async (a: Account, path: string) => {
+      asked.push(`${a.id}:${path}`)
+      return allowed.includes(`${a.id}:${path}`)
+    }
+    return { fn, asked }
+  }
+
+  it('takes the account that owns the project, without asking the server', async () => {
+    const { fn, asked } = pushes()
+    expect(await defaultIdentityAccount(origin('git@github.com:personal/game.git'), [work, personal], fn)).toBe(
+      personal
+    )
+    expect(asked).toEqual([])
+  })
+
+  it('takes an account that may push when none owns the project', async () => {
+    const { fn, asked } = pushes('work:studio/game')
+    expect(await defaultIdentityAccount(origin('https://github.com/studio/game'), [personal, work], fn)).toBe(work)
+    expect(asked).toEqual(['Personal:studio/game', 'work:studio/game'])
+  })
+
+  it('looks at origin first, and only at accounts on the same host', async () => {
+    const remotes = [remote('fork', 'https://gitlab.com/lab/game'), remote('origin', 'https://github.com/work/game')]
+    expect(await defaultIdentityAccount(remotes, [lab, work], pushes().fn)).toBe(work)
+    expect(await defaultIdentityAccount([remotes[0]], [work], pushes().fn)).toBeNull()
+  })
+
+  it('is null when no account owns the project or may push to it', async () => {
+    expect(await defaultIdentityAccount(origin('https://github.com/someone/lib'), [work], pushes().fn)).toBeNull()
+    expect(await defaultIdentityAccount([], [work], pushes().fn)).toBeNull()
+  })
+})
 
 describe('pickProject', () => {
   const work = account('work', 'github.com')
