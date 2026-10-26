@@ -168,8 +168,9 @@ Still to do: GitHub Enterprise and self-managed GitLab (each server needs its ow
 
 ### 4. Small decisions pending
 
-- Add a Windows `.zip` target (unpack once, starts faster than the portable `.exe`, which unpacks itself on every launch).
 - Optionally bring the UI accent colour (teal) closer to the blue of the new icon.
+
+Set aside on 2026-10-26, not to be brought up again unless asked: a Windows `.zip` target; commit messages written by AI; author profiles per group of repositories (the commit identity picker and the owning account's identity by default cover it); translations by the maintainer (more languages come from native speakers).
 
 ## Known minor issues
 

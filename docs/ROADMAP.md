@@ -35,12 +35,11 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 
 ## Application
 
-- [ ] More languages (French, Portuguese, German, Italian...) — **good first issue**
+- [ ] More languages (French, Portuguese, German, Italian...), translated by native speakers — **good first issue**
 - [x] Open the app with a repository path from the command line (`leviathan .`)
 - [x] Configurable external editor and diff/merge tool
 - [x] Configurable terminal
 - [x] Pick the commit identity of a repository in the commit box; by default, the account that owns it or may push to it
-- [ ] Profiles: different author name/email per repository group
 - [ ] Code signing for Windows and macOS releases
 - [ ] Auto-update on macOS (needs code signing)
 - [x] End-to-end UI tests with Playwright (in CI)
