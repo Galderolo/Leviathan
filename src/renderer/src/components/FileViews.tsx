@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { GitCommitHorizontal, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type React from 'react'
+import { ArrowLeft, GitCommitHorizontal, History, X } from 'lucide-react'
 import type { BlameLine, Commit, FileChange, FileCommit, FileDiff } from '../../../shared/types'
 import { BLAME_MAX_LINES, HISTORY_MAX, HISTORY_PAGE } from '../../../shared/types'
-import { closeFileView, openFolderHistory, showCommitInGraph } from '../actions'
+import { blameBefore, closeFileView, fileViewBack, openFolderHistory, showCommitInGraph } from '../actions'
 import { useT } from '../i18n'
 import { useRepo, useStore } from '../store'
-import { errorMessage } from '../ui'
+import { errorMessage, openMenu } from '../ui'
 import { cx, formatDate, relativeDate, shortHash, splitPath } from '../utils'
 import { filesInFolder, folderSteps, historyDiffSource } from '../historyDiff'
 import { Avatar, StatusBadge } from './common'
@@ -20,13 +21,21 @@ const NOT_COMMITTED = /^0+$/
 export function FileView({ path }: { path: string }) {
   const fileView = useRepo(path)?.fileView
   if (!fileView) return null
-  const key = `${fileView.kind}:${fileView.path}@${fileView.rev}`
+  // Each step back in a blame is a view of its own.
+  const key = `${fileView.kind}:${fileView.path}@${fileView.rev}#${fileView.back?.length ?? 0}`
   if (fileView.kind === 'folder')
     return <FolderHistoryView key={key} path={path} folder={fileView.path} rev={fileView.rev} />
   return fileView.kind === 'history' ? (
     <FileHistoryView key={key} path={path} file={fileView.path} rev={fileView.rev} />
   ) : (
-    <BlameView key={key} path={path} file={fileView.path} rev={fileView.rev} />
+    <BlameView
+      key={key}
+      path={path}
+      file={fileView.path}
+      rev={fileView.rev}
+      target={fileView.line ?? null}
+      canGoBack={!!fileView.back?.length}
+    />
   )
 }
 
@@ -371,12 +380,22 @@ export function ReadOnlyDiff({ data }: { data: FileDiff }) {
 }
 
 /** Who last changed each line, grouped by commit; a click on a group shows its commit. */
-function BlameView({ path, file, rev }: { path: string; file: string; rev: string | null }) {
+function BlameView(props: {
+  path: string
+  file: string
+  rev: string | null
+  /** The line to show first (where a line was, when looking before a change). */
+  target: number | null
+  canGoBack: boolean
+}) {
+  const { path, file, rev, target } = props
   const t = useT()
   const lang = useStore((s) => s.lang)
   const [lines, setLines] = useState<BlameLine[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showAll, setShowAll] = useState(false)
+  // A target further down than the first lines shows them all.
+  const [showAll, setShowAll] = useState((target ?? 0) > LINE_LIMIT)
+  const body = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let live = true
@@ -389,12 +408,32 @@ function BlameView({ path, file, rev }: { path: string; file: string; rev: strin
     }
   }, [path, file, rev])
 
+  useEffect(() => {
+    if (lines && target) body.current?.querySelector('.blame-line.target')?.scrollIntoView({ block: 'center' })
+  }, [lines, target])
+
+  const lineMenu = (e: React.MouseEvent, line: BlameLine) =>
+    openMenu(e, [
+      { label: t('blame.before'), disabled: !line.previous, onClick: () => blameBefore(path, line) },
+      {
+        label: t('history.showInGraph'),
+        disabled: NOT_COMMITTED.test(line.hash),
+        onClick: () => void showCommitInGraph(path, line.hash)
+      }
+    ])
+
   const shown = lines && !showAll ? lines.slice(0, LINE_LIMIT) : lines
   const context = rev ? t('blame.at', { hash: shortHash(rev) }) : t('blame.working')
   return (
     <div className="diff-view file-view">
-      <Header path={path} context={`${t('blame.title')} · ${context}`} file={file} rev={rev} />
-      <div className="diff-body">
+      <Header path={path} context={`${t('blame.title')} · ${context}`} file={file} rev={rev}>
+        {props.canGoBack && (
+          <button className="btn small" onClick={() => fileViewBack(path)}>
+            <ArrowLeft size={13} /> {t('blame.back')}
+          </button>
+        )}
+      </Header>
+      <div className="diff-body" ref={body}>
         {error && <div className="empty-state error">{error}</div>}
         {!error && !lines && <div className="empty-state">{t('graph.loading')}</div>}
         {lines && lines.length >= BLAME_MAX_LINES && (
@@ -406,7 +445,11 @@ function BlameView({ path, file, rev }: { path: string; file: string; rev: strin
               const first = i === 0 || shown[i - 1].hash !== line.hash
               const pending = NOT_COMMITTED.test(line.hash)
               return (
-                <div key={i} className={cx('blame-line', first && 'block-start')}>
+                <div
+                  key={i}
+                  className={cx('blame-line', first && 'block-start', line.line === target && 'target')}
+                  onContextMenu={(e) => lineMenu(e, line)}
+                >
                   <span
                     className={cx('blame-info', !pending && 'link')}
                     title={pending ? undefined : `${line.summary}\n${line.author} · ${formatDate(line.date, lang)}`}
@@ -420,6 +463,18 @@ function BlameView({ path, file, rev }: { path: string; file: string; rev: strin
                           <span className="blame-hash">{shortHash(line.hash)}</span>
                           <span className="blame-author">{line.author}</span>
                           <span className="dim">{relativeDate(line.date, lang)}</span>
+                          {line.previous && (
+                            <button
+                              className="icon-btn blame-before"
+                              title={t('blame.before')}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                blameBefore(path, line)
+                              }}
+                            >
+                              <History size={12} />
+                            </button>
+                          )}
                         </>
                       ))}
                   </span>

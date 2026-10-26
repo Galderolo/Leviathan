@@ -1,5 +1,6 @@
 import type {
   AskpassRequest,
+  BlameLine,
   DiffHunk,
   DiffSource,
   FileChange,
@@ -678,6 +679,32 @@ export function openFolderHistory(path: string, folder: string, rev: string | nu
 /** Blame of a file in the working tree (`rev` null) or as it was in a commit. */
 export function openBlame(path: string, file: string, rev: string | null): void {
   patchRepo(path, { fileView: { kind: 'blame', path: file, rev }, diff: null, review: null })
+}
+
+/**
+ * Blame of the file as it was before the commit that last changed `line` (in that commit's parent, under the name
+ * the file had there), showing where the line was. Back returns to this blame, at this line.
+ */
+export function blameBefore(path: string, line: BlameLine): void {
+  const view = getRepo(path)?.fileView
+  if (!line.previous || view?.kind !== 'blame') return
+  const here = { ...view, line: line.line, back: undefined }
+  patchRepo(path, {
+    fileView: {
+      kind: 'blame',
+      path: line.previous.path,
+      rev: line.previous.hash,
+      line: line.origLine,
+      back: [...(view.back ?? []), here]
+    }
+  })
+}
+
+/** Back to the blame looked before (see `blameBefore`). */
+export function fileViewBack(path: string): void {
+  const back = getRepo(path)?.fileView?.back
+  if (!back?.length) return
+  patchRepo(path, { fileView: { ...back[back.length - 1], back: back.slice(0, -1) } })
 }
 
 export function closeFileView(path: string): void {

@@ -11,6 +11,7 @@ import {
   parseRemotes,
   parseStashes,
   parseStatus,
+  unquotePath,
   untrackedDiff
 } from '../../shared/parsers'
 import { unchangedGaps } from '../../shared/diffGaps'
@@ -1093,9 +1094,9 @@ export async function getBlame(repo: string, path: string, rev: string | null): 
   await assertBlameable(repo, full, path, rev)
   const out = await run(repo, ['blame', '--porcelain', ...(rev ? [rev] : []), '--', path])
   if (out.includes('\0')) throw new Error('This is a binary file: it has no lines to blame.')
-  const info = new Map<string, { author: string; date: number; summary: string }>()
+  const info = new Map<string, Pick<BlameLine, 'author' | 'date' | 'summary' | 'previous'>>()
   const lines: BlameLine[] = []
-  let current: { hash: string; line: number } | null = null
+  let current: { hash: string; line: number; origLine: number } | null = null
   for (const raw of out.split('\n')) {
     if (raw.startsWith('\t')) {
       if (current) {
@@ -1106,9 +1107,10 @@ export async function getBlame(repo: string, path: string, rev: string | null): 
       current = null
       continue
     }
-    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)/.exec(raw)
+    // <hash> <line in that commit> <line now> [<lines in the group>]
+    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) (\d+) (\d+)/.exec(raw)
     if (!current && header) {
-      current = { hash: header[1], line: Number(header[2]) }
+      current = { hash: header[1], origLine: Number(header[2]), line: Number(header[3]) }
       if (!info.has(current.hash)) info.set(current.hash, { author: '', date: 0, summary: '' })
       continue
     }
@@ -1120,6 +1122,11 @@ export async function getBlame(repo: string, path: string, rev: string | null): 
     if (key === 'author') meta.author = value
     else if (key === 'author-time') meta.date = Number(value)
     else if (key === 'summary') meta.summary = value
+    else if (key === 'previous') {
+      // previous <hash> <path>: the path may have spaces.
+      const gap = value.indexOf(' ')
+      if (gap > 0) meta.previous = { hash: value.slice(0, gap), path: unquotePath(value.slice(gap + 1)) }
+    }
   }
   return lines
 }

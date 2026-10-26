@@ -65,6 +65,21 @@ describe('getFileHistory', () => {
 })
 
 describe('getBlame', () => {
+  it('says where each line was before the commit that changed it last, across a rename', async () => {
+    const lines = await repo.getBlame(dir, 'docs.txt', null)
+    expect(lines[1]).toMatchObject({
+      hash: hashes['edit notes'],
+      origLine: 2,
+      // The parent of that commit, and the name the file had there.
+      previous: { hash: hashes['other file'], path: 'notes.txt' }
+    })
+    // The commit that added the file has nothing before it.
+    expect(lines[0].previous).toBeUndefined()
+    // The blame of that earlier version shows the line as it was.
+    const before = await repo.getBlame(dir, lines[1].previous!.path, lines[1].previous!.hash)
+    expect(before[1]).toMatchObject({ text: 'two', author: 'Ana' })
+  })
+
   it('says who wrote each line, with uncommitted lines on their own', async () => {
     writeFileSync(join(dir, 'docs.txt'), 'one\ntwo, edited\nthree, not committed\n')
     const lines = await repo.getBlame(dir, 'docs.txt', null)
