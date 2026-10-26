@@ -22,13 +22,19 @@ export class TokenSource {
   async token(id: string): Promise<string | null> {
     const account = this.store.get(id)
     if (!account) return null
-    const renewal = this.store.renewal(id)
-    if (!renewal || renewal.expiresAt - this.now() > MARGIN_MS) return this.store.token(id)
+    // Joins a renewal under way before reading anything: it is about to replace the tokens.
     let pending = this.renewing.get(id)
+    if (pending) return pending
+    const renewal = await this.store.renewal(id)
+    if (!renewal || renewal.expiresAt - this.now() > MARGIN_MS) return this.store.token(id)
+    pending = this.renewing.get(id)
     if (!pending) {
       pending = this.renew(account, renewal.refreshToken)
-        .then((next) => {
-          this.store.setToken(id, next.accessToken, { refreshToken: next.refreshToken, expiresAt: next.expiresAt })
+        .then(async (next) => {
+          await this.store.setToken(id, next.accessToken, {
+            refreshToken: next.refreshToken,
+            expiresAt: next.expiresAt
+          })
           return next.accessToken
         })
         .finally(() => this.renewing.delete(id))

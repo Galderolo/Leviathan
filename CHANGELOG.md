@@ -14,6 +14,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Changed
 
+- Account tokens are encrypted and read with Electron's newer secure storage calls (the old ones are going away); tokens saved by earlier versions still open, and a token whose key the system rotated is encrypted again with the new one.
 - Tabs with commits to pull or push are no longer tinted blue or green: the tint could pass for the tab showing. Only that one stands out; the ↓ and ↑ counts stay.
 
 ### Fixed
