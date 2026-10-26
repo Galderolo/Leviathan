@@ -928,7 +928,13 @@ async function runOp(
     // (git's own message mentions commands the app does not offer).
     const stopped = stoppedOperation(before, await api.getState(path).catch(() => null))
     if (stopped?.conflicts) toast('info', t('toast.stoppedForConflicts'))
-    else if (!opts.quiet?.(err)) toast('error', opts.errorText ?? errorMessage(err))
+    else if (opts.quiet?.(err)) {
+      // the caller says what happened
+    } else if (stopped) {
+      // Stopped for something else: git's reason, without its hints about commands the app does not offer.
+      const reason = stopReason(errorMessage(err))
+      toast('error', reason ? t('toast.stoppedFor', { reason }) : errorMessage(err))
+    } else toast('error', opts.errorText ?? errorMessage(err))
     // Show the banner and the conflicted files.
     if (stopped) selectWip(path)
     return false

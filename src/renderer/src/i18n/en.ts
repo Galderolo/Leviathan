@@ -441,6 +441,8 @@ const en = {
   'undo.interactiveRebase': 'interactive rebase',
   'toast.rebased': 'Rebase finished',
   'toast.rebaseStopped': 'The rebase stopped before the end: fix what stopped it, then press Continue in the banner.',
+  'toast.stoppedFor':
+    'Git stopped before the end:\n{reason}\n\nFix that, then press Continue in the banner (or Abort).',
   'toast.rebaseStoppedFor':
     'The rebase stopped before the end:\n{reason}\n\nFix that, then press Continue in the banner (or Abort).',
   'toast.stoppedForConflicts': 'Git stopped for conflicts: resolve them, then press Continue in the banner.',
