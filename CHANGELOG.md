@@ -7,6 +7,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Added
 
 - **Reorder the tabs** by dragging them; the order is kept for the next start.
+- **Whole file in diffs**: the new button next to the layout switch fills the space between hunks with the file's unchanged lines, to read a change in its context. Hunks keep their stage, unstage and discard buttons and line selection; works in one column and side by side, for the working tree, the index and commits. The choice is remembered.
 - **Tabs show what is waiting on the remote**: the commits the checked-out branch has to pull (↓, blue) and to push (↑, green), the same counts as the Pull and Push buttons, on every tab and not only the one showing. A tab with something to pull is tinted blue, one with only something to push green.
 
 ## [0.14.0] - 2026-10-23

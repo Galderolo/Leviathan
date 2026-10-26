@@ -562,6 +562,7 @@ const en = {
 
   'diff.unified': 'One column',
   'diff.split': 'Side by side (old | new)',
+  'diff.fullFile': 'Whole file',
 
   'error.operationInProgress': '{operation}: finish or abort it first.',
   'error.stashUntrackedExist':

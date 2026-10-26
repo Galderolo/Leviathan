@@ -140,6 +140,16 @@ function initialDiffLayout(): DiffLayout {
   }
 }
 
+export const DIFF_FULL_FILE_KEY = 'leviathan.diffFullFile'
+
+function initialDiffFullFile(): boolean {
+  try {
+    return localStorage.getItem(DIFF_FULL_FILE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export interface Tab {
   id: string
   /** null for a "new tab" (welcome screen). */
@@ -209,6 +219,8 @@ export interface AppState {
   versions: { app: string; git: string }
   /** How diffs are shown: one column, or old and new side by side. */
   diffLayout: DiffLayout
+  /** Diffs show the whole file, not only the lines around each change. */
+  diffFullFile: boolean
   /** Newer Leviathan releases, as the main process last reported. */
   update: UpdateState | null
 }
@@ -230,6 +242,7 @@ export const useStore = create<AppState>(() => ({
   cloneProgress: null,
   versions: { app: '', git: '' },
   diffLayout: initialDiffLayout(),
+  diffFullFile: initialDiffFullFile(),
   update: null
 }))
 

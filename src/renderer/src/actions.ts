@@ -34,6 +34,7 @@ import { moveTab } from './tabOrder'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
+  DIFF_FULL_FILE_KEY,
   getRepo,
   newRepoView,
   patchRepo,
@@ -725,7 +726,7 @@ async function loadDiff(path: string, source: DiffSource): Promise<void> {
   const seq = (diffSeq[path] = (diffSeq[path] ?? 0) + 1)
   const isCurrent = (r: RepoView) => diffSeq[path] === seq && !!r.diff && sameSource(r.diff.source, source)
   try {
-    const data = await api.getDiff(path, source)
+    const data = await api.getDiff(path, source, useStore.getState().diffFullFile)
     patchRepo(path, (r) => (isCurrent(r) ? { diff: { source, data } } : {}))
   } catch (err) {
     patchRepo(path, (r) => (isCurrent(r) ? { diff: { source, data: null, error: errorMessage(err) } } : {}))
@@ -735,6 +736,17 @@ async function loadDiff(path: string, source: DiffSource): Promise<void> {
 async function reloadDiff(path: string): Promise<void> {
   const diff = getRepo(path)?.diff
   if (diff) await loadDiff(path, diff.source)
+}
+
+/** Shows the whole file in diffs, or only the lines around each change; open diffs reload. */
+export function setDiffFullFile(on: boolean): void {
+  useStore.setState({ diffFullFile: on })
+  try {
+    localStorage.setItem(DIFF_FULL_FILE_KEY, on ? '1' : '0')
+  } catch {
+    // not critical: the next start shows only the changes
+  }
+  for (const path of Object.keys(useStore.getState().repos)) void reloadDiff(path)
 }
 
 export function closeDiff(path: string): void {

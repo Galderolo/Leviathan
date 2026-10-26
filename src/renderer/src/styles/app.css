@@ -1576,6 +1576,12 @@ a:hover {
   min-width: fit-content;
 }
 
+/* Unchanged lines between hunks (whole file shown): in line with the hunks' content, outside their boxes. */
+.gap-lines {
+  margin: 0 11px;
+  min-width: fit-content;
+}
+
 .hunk-header {
   display: flex;
   align-items: center;
