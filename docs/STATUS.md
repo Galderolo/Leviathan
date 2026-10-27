@@ -195,7 +195,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
 
 **Git LFS**
-- Pattern info has no sequence counter: two quick checkouts can leave the older patterns on screen until the next change.
 - Locks are not loaded when git-lfs is installed while the app runs, until the next checkout or reopening the tab.
 - Loading locks can take up to four git-lfs runs (verify, then without it), and an interactive reload without a credential helper may ask several times. A host without the locks API (Bitbucket Cloud) is told apart by git-lfs's message (`NO_LOCKING_API` in `src/main/git/lfs.ts`: "not found", "not supported", 404), so a different wording from a server would show as an error again (0.13.0).
 - An own lock on a file deleted locally (deletion not committed) is released by id, skipping git-lfs's uncommitted-changes check.

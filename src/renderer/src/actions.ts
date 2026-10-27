@@ -1810,6 +1810,7 @@ export function repoName(path: string): string {
 // Git LFS
 
 const lfsSeq: Record<string, number> = {}
+const lfsInfoSeq: Record<string, number> = {}
 const lfsKeys: Record<string, string> = {}
 
 export const LFS_DOWNLOAD_URL = 'https://git-lfs.com'
@@ -1824,10 +1825,12 @@ function followLfs(path: string, state: RepoState): void {
 }
 
 export async function loadLfsInfo(path: string): Promise<void> {
+  // Two quick checkouts: the patterns of the first must not land after those of the second.
+  const seq = (lfsInfoSeq[path] = (lfsInfoSeq[path] ?? 0) + 1)
   try {
     const info = await api.getLfsInfo(path)
     const before = getRepo(path)?.lfs
-    if (!getRepo(path)) return
+    if (lfsInfoSeq[path] !== seq || !getRepo(path)) return
     patchRepo(path, (r) => ({
       lfs: {
         locks: [],
