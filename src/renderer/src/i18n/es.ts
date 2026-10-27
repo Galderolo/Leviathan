@@ -344,6 +344,7 @@ const es: Record<keyof typeof en, string> = {
   'accounts.removeConfirm':
     '¿Quitar la cuenta {name}? Los repos que la usan vuelven a tus credenciales normales de git.',
   'accounts.added': 'Cuenta {name} añadida',
+  'accounts.renewed': 'Cuenta {name} actualizada con el token nuevo',
   'accounts.noneOption': 'Ninguna (credenciales normales de git)',
   'menu.repoAccount': 'Cuenta de este repositorio…',
   'dlg.repoAccount': 'Cuenta para {repo}',

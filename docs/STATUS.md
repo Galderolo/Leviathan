@@ -223,7 +223,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - A clone that succeeds but fails to bind to the account is reported as a failed clone.
 - `other` accounts get an invented default email.
 - GitHub sign-in: one network error while waiting ends the sign-in (no retry); no local deadline besides GitHub's `expired_token`; secure storage is only checked after the browser step; a cancel pressed after GitHub issued the token still adds the account.
-- Adding by token an account that already exists renews its token but ignores a name/email typed in the form, and the toast says "added".
 
 **Multi-file selection**
 - The divider: no keyboard support, a right-button press also drags, every move re-renders the panel (may stutter with huge lists).

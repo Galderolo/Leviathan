@@ -340,6 +340,7 @@ const en = {
   'accounts.removeConfirm':
     'Remove the account {name}? Repositories that use it go back to your normal git credentials.',
   'accounts.added': 'Account {name} added',
+  'accounts.renewed': 'Account {name} updated with the new token',
   'accounts.noneOption': 'None (normal git credentials)',
   'menu.repoAccount': 'Account for this repository…',
   'dlg.repoAccount': 'Account for {repo}',

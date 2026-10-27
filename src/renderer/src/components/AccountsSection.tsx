@@ -57,6 +57,15 @@ export function AccountsSection() {
     reloadAllPullRequests()
   }
 
+  // An account added again is kept with the new token: say which of the two happened.
+  const announce = (account: Account) =>
+    toast(
+      'success',
+      t(accounts?.some((a) => a.id === account.id) ? 'accounts.renewed' : 'accounts.added', {
+        name: `${account.username}@${account.host}`
+      })
+    )
+
   useEffect(() => {
     void load()
   }, [])
@@ -80,7 +89,7 @@ export function AccountsSection() {
       if (!current()) return
       setLogin(started)
       const account = await api.finishGitHubLogin()
-      toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
+      announce(account)
       await changed()
     } catch (err) {
       if (current() && !/cancelled/i.test(errorMessage(err))) toast('error', errorMessage(err))
@@ -105,7 +114,7 @@ export function AccountsSection() {
       setGitlab(started)
       openExternal(started.url)
       const account = await api.finishGitLabLogin()
-      toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
+      announce(account)
       await changed()
     } catch (err) {
       if (current() && !/cancelled/i.test(errorMessage(err))) toast('error', errorMessage(err))
@@ -134,7 +143,7 @@ export function AccountsSection() {
         name: draft.name || undefined,
         email: draft.email || undefined
       })
-      toast('success', t('accounts.added', { name: `${account.username}@${account.host}` }))
+      announce(account)
       setDraft(null)
       await changed()
     } catch (err) {

@@ -70,6 +70,25 @@ describe('Bitbucket accounts', () => {
     expect(requests.at(-1)?.auth).toBe('Bearer ATATT-secret')
   })
 
+  it('added again keep the account, with the new token and the name and email typed', async () => {
+    const first = await accounts.addAccount({ provider: 'bitbucket', host: 'bitbucket.org', token: 'ATATT-old' })
+    const again = await accounts.addAccount({
+      provider: 'bitbucket',
+      host: 'bitbucket.org',
+      token: 'ATATT-new',
+      name: 'David C.',
+      email: 'dc@studio.example'
+    })
+    expect(again).toMatchObject({ id: first.id, name: 'David C.', email: 'dc@studio.example' })
+    expect(accounts.listAccounts()).toHaveLength(1)
+    await accounts.listAccountRepos(first.id).catch(() => [])
+    expect(requests.at(-1)?.auth).toBe('Bearer ATATT-new')
+
+    // Nothing typed: the name and email stay as they were.
+    const third = await accounts.addAccount({ provider: 'bitbucket', host: 'bitbucket.org', token: 'ATATT-third' })
+    expect(third).toMatchObject({ name: 'David C.', email: 'dc@studio.example' })
+  })
+
   it('ask for the commit email when the token may not read it, and take the username typed', async () => {
     emailsAllowed = false
     await expect(

@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- Adding an account that is already there (by token, or signing in again) renewed its token but dropped the name and email typed in the form, and said the account was added: it now takes them, as editing the account would, and says the account was updated.
 - Pushing a branch that follows another one on purpose (`git branch -u origin/develop`) made it track the pushed branch instead; once the branch is published, that upstream is kept and the push goes where the branch already is, even when it follows another remote's branch. A first publish still tracks the new branch, as `git push -u` does, and a branch started from another remote's branch (`upstream/main`) asks which remote to publish it to when there are several. *Create pull request* accepts a branch that follows another one, if the branch of its name on the remote has its commits.
 - An open file history, folder history or blame is read again after a commit, checkout or pull (in the app or outside it), keeping the commit picked; it used to show what it found when opened.
 - A conflicted file deleted on both sides showed a raw "ENOENT" error in the conflict editor; it now says what happened and what the buttons do.

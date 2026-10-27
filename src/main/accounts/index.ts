@@ -151,11 +151,18 @@ export async function addAccount(input: {
   if (!input.email?.trim() && !identity.email) {
     throw new Error('Enter the commit email: this token cannot read the email addresses of the account')
   }
-  // The same account again (signed in once more, or a new token): keep it, with the new token.
+  // The same account again (signed in once more, or a new token): keep it, with the new token
+  // and the name or email typed in the form, as an edit would take them.
   const existing = accounts()
     .list()
     .find((a) => a.provider === input.provider && a.host === host && a.username === identity.username)
-  if (existing) return accounts().setToken(existing.id, token, input.renewal)
+  if (existing) {
+    const renewed = await accounts().setToken(existing.id, token, input.renewal)
+    const name = input.name?.trim() || renewed.name
+    const email = input.email?.trim() || renewed.email
+    if (name === renewed.name && email === renewed.email) return renewed
+    return updateAccount(existing.id, { name, email })
+  }
   return accounts().add(
     {
       provider: input.provider,
