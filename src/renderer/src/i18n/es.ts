@@ -534,6 +534,19 @@ const es: Record<keyof typeof en, string> = {
   'lfs.notSetUp':
     'Git LFS no está configurado aquí: los archivos grandes pueden no descargarse, ni subirse al hacer push.',
   'lfs.install': 'Descargar Git LFS',
+  'lfs.installNow': 'Instalar git-lfs',
+  'lfs.copyCommand': 'Copiar comando',
+  'lfs.missingTitle': 'Git LFS no está instalado',
+  'dlg.lfsMissing':
+    '{repo} guarda sus archivos grandes (texturas, modelos, audio…) con Git LFS, pero git-lfs no está instalado en este equipo. Sin él verás pequeños archivos de texto en lugar de los archivos reales.',
+  'dlg.lfsHow.zip': '¿Instalarlo ahora? Se descarga el git-lfs oficial y se instala solo para tu usuario.',
+  'dlg.lfsHow.brew': '¿Instalarlo ahora? Se instala con Homebrew.',
+  'dlg.lfsHow.package':
+    '¿Instalarlo ahora? Se instala con el gestor de paquetes del sistema, que te pedirá tu contraseña.',
+  'dlg.lfsHow.download': 'Descárgalo de git-lfs.com e instálalo: la app lo notará cuando vuelvas.',
+  'dlg.lfsHow.command': 'Instálalo desde un terminal con: {command}',
+  'toast.lfsInstalled': 'git-lfs {version} instalado',
+  'toast.lfsInstallFailed': 'No se pudo instalar git-lfs: {error}. «{link}» en la sección LFS lo descarga a mano.',
   'lfs.setup': 'Configurar Git LFS',
   'lfs.track': 'Guardar archivos con Git LFS',
   'lfs.trackBtn': 'Seguir',

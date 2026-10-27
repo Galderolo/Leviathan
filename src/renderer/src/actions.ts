@@ -80,6 +80,8 @@ export async function initApp(): Promise<void> {
     versions: { app: appVersion, git: gitVersion.replace(/^git version /, '') }
   })
   if (!gitVersion) toast('error', t('error.noGit'))
+  // Before the tabs load: a repository that needs git-lfs asks to install it the way this computer can.
+  await loadLfsOffer()
   // First start of a new version (not of the app itself): show what changed, once.
   if (settings.lastSeenVersion !== appVersion) {
     if (settings.lastSeenVersion) useStore.setState({ whatsNewOpen: true })
@@ -1913,6 +1915,35 @@ export async function unlockFile(path: string, lock: LfsLock): Promise<void> {
   } finally {
     await loadLfsLocks(path, true)
   }
+}
+
+/** How this computer can get git-lfs: asked once, for the question and the LFS section's button. */
+export async function loadLfsOffer(): Promise<void> {
+  const lfsOffer = await api.getLfsInstallOffer().catch(() => null)
+  useStore.setState({ lfsOffer })
+}
+
+/**
+ * Installs git-lfs (its progress on `path`), then sets `path` up (its real files replace the pointers) and reads
+ * the LFS info of every open repository again: they all use the same git-lfs.
+ */
+export async function installGitLfs(path: string): Promise<boolean> {
+  if (useStore.getState().lfsInstalling) return false
+  useStore.setState({ lfsInstalling: true })
+  patchRepo(path, { busy: 'lfs', progress: null })
+  try {
+    const version = await api.installGitLfs(path)
+    toast('success', t('toast.lfsInstalled', { version }))
+  } catch (err) {
+    toast('error', t('toast.lfsInstallFailed', { error: errorMessage(err), link: t('lfs.install') }))
+    return false
+  } finally {
+    patchRepo(path, { busy: null, progress: null })
+    useStore.setState({ lfsInstalling: false })
+  }
+  await runOp(path, () => api.setupLfs(path), { busy: 'lfs', log: false, success: t('toast.lfsReady') })
+  await Promise.all(Object.keys(useStore.getState().repos).map((repo) => loadLfsInfo(repo)))
+  return true
 }
 
 /** Asks for a pattern (e.g. `*.psd`) and sends matching files through LFS from now on. */
