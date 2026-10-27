@@ -1068,6 +1068,12 @@ export async function getFileHistory(
     }
     current = first
   }
+  if (rev === null && !history.length) {
+    // A rename staged but not committed yet: HEAD has the file under its old name.
+    const staged = parseNameStatus(await run(repo, ['diff', '--cached', '--name-status', '-z', '-M', '--']))
+    const renamed = staged.find((f) => f.status === 'R' && f.path === path.replace(/\\/g, '/'))
+    if (renamed?.origPath) return getFileHistory(repo, renamed.origPath, null, limit)
+  }
   return history
 }
 

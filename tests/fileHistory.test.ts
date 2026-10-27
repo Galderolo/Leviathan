@@ -59,6 +59,15 @@ describe('getFileHistory', () => {
     expect(history[1].commit.hash).toBe(hashes['edit notes'])
   })
 
+  it('follows a rename that is staged but not committed back to the name HEAD has', async () => {
+    await git(['mv', 'docs.txt', 'guide.txt'], { cwd: dir })
+    const history = await repo.getFileHistory(dir, 'guide.txt')
+    expect(history.map((h) => h.commit.subject)).toEqual(['rename notes', 'edit notes', 'add notes'])
+    expect(history[0]).toMatchObject({ path: 'docs.txt', oldPath: 'notes.txt', status: 'R' })
+    // Only from the working tree: in a given commit the name is what it is.
+    expect(await repo.getFileHistory(dir, 'guide.txt', hashes['rename notes'])).toEqual([])
+  })
+
   it('refuses paths outside the repository', async () => {
     await expect(repo.getFileHistory(dir, '../escape.txt')).rejects.toThrow(/outside/)
   })
