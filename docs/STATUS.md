@@ -207,7 +207,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - A token that can no longer be decrypted hides the section without a hint.
 - 403 messages are generic (no Gitea scope). A 401 in the side panel says the token stopped working and links to Settings → Accounts (0.13.0), matched on the "rejected the token" text.
 - More than 50 open PRs are not paginated; fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
-- A local branch named `pr` blocks `pr/N`.
 
 **SSH aliases**
 - `SshHosts` (`src/main/git/sshHosts.ts`) rewrites SSH remote URLs with the host `ssh -G <alias>` reports (once per name per session; names that could read as an option are never passed) before the accounts module looks for the account of a repository (pull requests, default identity, avatars). The renderer's "this account's host is not among the remotes" hint after binding an account still compares the alias.
