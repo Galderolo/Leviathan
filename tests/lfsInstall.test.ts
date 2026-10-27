@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canInstall,
   checksumFor,
   installOffer,
   packageArgs,
@@ -60,6 +61,15 @@ describe('installing git-lfs', () => {
       command: 'sudo apt-get install git-lfs'
     })
     expect(installOffer('linux', { ...none, pkexec: '/usr/bin/pkexec' })).toEqual({ method: 'download' })
+    // Only these three install from the app; the others leave it to the person.
+    expect(['zip', 'brew', 'package', 'download', 'command'].map((method) => canInstall({ method } as never))).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false
+    ])
+    expect(canInstall(null)).toBe(false)
   })
 
   it('installs non-interactively with each package manager', () => {

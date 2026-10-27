@@ -68,3 +68,8 @@ export function installOffer(
   if (!found.manager) return { method: 'download' }
   return found.pkexec ? { method: 'package' } : { method: 'command', command: sudoCommand(found.manager) }
 }
+
+/** The app installs git-lfs itself (the other offers leave it to the person). */
+export function canInstall(offer: LfsInstallOffer | null): boolean {
+  return offer?.method === 'zip' || offer?.method === 'brew' || offer?.method === 'package'
+}

@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode, 
 import { useShallow } from 'zustand/react/shallow'
 import { AlertTriangle, ChevronDown, Copy, Lock, PencilLine } from 'lucide-react'
 import { lfsPatternFor, type LfsLock } from '../../../shared/lfs'
+import { canInstall } from '../../../shared/lfsInstall'
 import type { DiffSource, FileChange } from '../../../shared/types'
 import {
   abortOperation,
@@ -10,6 +11,7 @@ import {
   continueOperation,
   discardFiles,
   dropStash,
+  installGitLfs,
   moveToLfs,
   restageLfs,
   saveSettings,
@@ -577,6 +579,8 @@ function CommitIdentity({ path, view }: { path: string; view: RepoView }) {
 function LfsWarnings({ path, view }: { path: string; view: RepoView }) {
   const t = useT()
   const [running, setRunning] = useState(false)
+  const lfsOffer = useStore((s) => s.lfsOffer)
+  const lfsInstalling = useStore((s) => s.lfsInstalling)
   const state = view.state!
   const info = view.lfs?.info
   const large = state.largeFiles
@@ -593,6 +597,17 @@ function LfsWarnings({ path, view }: { path: string; view: RepoView }) {
   const fix = (label: string, action: () => Promise<void>): ReactNode => {
     if (!info) return null
     if (!info.version) {
+      if (canInstall(lfsOffer)) {
+        return (
+          <button
+            className="btn small btn-primary"
+            disabled={lfsInstalling || !!view.busy}
+            onClick={() => void installGitLfs(path)}
+          >
+            {t('lfs.installNow')}
+          </button>
+        )
+      }
       return (
         <button className="btn small" onClick={() => openExternal(LFS_DOWNLOAD_URL)}>
           {t('lfs.install')}

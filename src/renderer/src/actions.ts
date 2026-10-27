@@ -17,6 +17,7 @@ import type {
   Submodule
 } from '../../shared/types'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
+import { canInstall } from '../../shared/lfsInstall'
 import type { ReleaseNote } from '../../shared/releaseNotes'
 import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
@@ -50,7 +51,7 @@ import {
   type RepoView,
   type Tab
 } from './store'
-import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
+import { confirmDialog, copyText, errorMessage, formDialog, promptText, toast } from './ui'
 import { basename } from './utils'
 
 const api = window.leviathan
@@ -149,6 +150,8 @@ export function setActiveTab(id: string): void {
   persistTabs()
   const tab = useStore.getState().tabs.find((x) => x.id === id)
   if (tab?.path) void refreshRepo(tab.path)
+  // Its LFS info, when already read, is not read again: ask from what is known.
+  if (tab?.path) void askToInstallGitLfs(tab.path)
 }
 
 /** Moves tab `id` into gap `gap` of the tab bar (0 = first place). */
@@ -1849,10 +1852,47 @@ export async function loadLfsInfo(path: string): Promise<void> {
         info
       }
     }))
-    if (info.used && !before?.info.used) void loadLfsLocks(path, false)
+    // Locks need git-lfs: load them once the repository uses LFS and git-lfs is there (it may come later).
+    if (info.used && info.version && !(before?.info.used && before.info.version)) void loadLfsLocks(path, false)
+    void askToInstallGitLfs(path)
   } catch {
     // not critical: the LFS section and badges stay hidden
   }
+}
+
+// Repositories already asked about installing git-lfs in this session, and whether a question is on screen.
+const lfsAsked = new Set<string>()
+let lfsAsking = false
+
+/**
+ * Offers to install git-lfs when the repository showing uses LFS and git-lfs is missing: once per repository
+ * per session, one question at a time, never during an install.
+ */
+export async function askToInstallGitLfs(path: string): Promise<void> {
+  const { activeTab, tabs, lfsOffer, lfsInstalling } = useStore.getState()
+  const info = getRepo(path)?.lfs?.info
+  const showing = tabs.find((tab) => tab.id === activeTab)?.path === path
+  if (!showing || !info?.used || info.version || !lfsOffer || lfsInstalling || lfsAsking || lfsAsked.has(path)) {
+    return
+  }
+  lfsAsked.add(path)
+  lfsAsking = true
+  const { method, command } = lfsOffer
+  const installs = canInstall(lfsOffer)
+  let ok: boolean
+  try {
+    ok = await confirmDialog({
+      title: t('lfs.missingTitle'),
+      message: `${t('dlg.lfsMissing', { repo: repoName(path) })}\n\n${t(`dlg.lfsHow.${method}`, { command: command ?? '' })}`,
+      confirmText: t(installs ? 'lfs.installNow' : method === 'command' ? 'lfs.copyCommand' : 'lfs.install')
+    })
+  } finally {
+    lfsAsking = false
+  }
+  if (!ok) return
+  if (installs) await installGitLfs(path)
+  else if (method === 'command') await copyText(command ?? '', t('toast.copied'))
+  else openExternal(LFS_DOWNLOAD_URL)
 }
 
 /** Loads the locks from the LFS server; `interactive` may ask for credentials. */

@@ -27,11 +27,13 @@ import {
   X
 } from 'lucide-react'
 import type { GitRef, Stash } from '../../../shared/types'
+import { canInstall } from '../../../shared/lfsInstall'
 import {
   LFS_DOWNLOAD_URL,
   addRemote,
   checkoutPullRequest,
   checkoutRef,
+  installGitLfs,
   loadLfsLocks,
   openExternal,
   openSubmodule,
@@ -79,6 +81,8 @@ export function LeftPanel({ path }: { path: string }) {
   )
   const t = useT()
   const lang = useStore((s) => s.lang)
+  const lfsOffer = useStore((s) => s.lfsOffer)
+  const lfsInstalling = useStore((s) => s.lfsInstalling)
   const [filter, setFilter] = useState('')
   // Remembered per repository: switching tabs (or restarting) keeps folders as the user left them.
   const [collapsed, setCollapsed] = useState<Collapsed>(() => readCollapsed(path))
@@ -399,6 +403,14 @@ export function LeftPanel({ path }: { path: string }) {
             {!lfs.info.version ? (
               <div className="side-note error">
                 {t('lfs.notInstalled')}{' '}
+                {canInstall(lfsOffer) && (
+                  <>
+                    <a className="side-link" onClick={() => !lfsInstalling && !view?.busy && void installGitLfs(path)}>
+                      {t('lfs.installNow')}
+                    </a>
+                    {' · '}
+                  </>
+                )}
                 <a className="side-link" onClick={() => openExternal(LFS_DOWNLOAD_URL)}>
                   {t('lfs.install')}
                 </a>
