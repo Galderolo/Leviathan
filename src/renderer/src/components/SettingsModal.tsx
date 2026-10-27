@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { openExternal, openWhatsNew, saveSettings, setAvatars } from '../actions'
 import { LANGUAGES, useT, type TKey } from '../i18n'
+import { SHORTCUT_GROUPS, keysLabel } from '../shortcuts'
 import { useStore, type SettingsSection } from '../store'
 import { cx } from '../utils'
 import type { Settings, ThemeSetting } from '../../../shared/types'
@@ -18,6 +19,7 @@ const SECTIONS: { id: SettingsSection; label: TKey }[] = [
   { id: 'accounts', label: 'accounts.title' },
   { id: 'ssh', label: 'ssh.title' },
   { id: 'updates', label: 'update.title' },
+  { id: 'shortcuts', label: 'keys.title' },
   { id: 'about', label: 'settings.about' }
 ]
 
@@ -78,6 +80,9 @@ export function SettingsModal() {
           </div>
           <div className="settings-body" hidden={section !== 'updates'}>
             <AutoUpdateSettings />
+          </div>
+          <div className="settings-body" hidden={section !== 'shortcuts'}>
+            <ShortcutsList />
           </div>
           <div className="settings-body" hidden={section !== 'about'}>
             <About />
@@ -162,6 +167,29 @@ function GeneralSettings() {
 function AutoUpdateSettings() {
   const auto = useStore((s) => s.settings.autoUpdate)
   return <UpdateSettings auto={auto} onAuto={(value) => void saveSettings({ autoUpdate: value })} />
+}
+
+/** Every keyboard shortcut, as this system writes its keys. */
+function ShortcutsList() {
+  const t = useT()
+  const mac = window.leviathan.platform === 'darwin'
+  const names = { Space: t('keys.space'), Delete: t('keys.delete') }
+  const keys = (k: string[]) => keysLabel(k, mac, names)
+  return (
+    <div className="shortcuts">
+      {SHORTCUT_GROUPS.map((group) => (
+        <section key={group.title}>
+          <div className="shortcuts-title">{t(group.title)}</div>
+          {group.items.map((item) => (
+            <div key={item.label} className="shortcut">
+              <kbd>{keys(mac && item.macKeys ? item.macKeys : item.keys)}</kbd>
+              <span>{t(item.label, { keys: keys(['Mod', '/']) })}</span>
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  )
 }
 
 function About() {

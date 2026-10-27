@@ -42,11 +42,12 @@ import { useT } from '../i18n'
 import { formatSize, lockFor, lockedByOthers } from '../lfsView'
 import { pushAfterCommitTarget } from '../pushTarget'
 import { fileMenu, filesMenu, identityMenu } from '../menus'
-import { useRepo, useStore, type RepoView } from '../store'
+import { fileKey, nextAfter, neighbour } from '../shortcuts'
+import { getRepo, useRepo, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
 import { cx, formatDate, shortHash, splitPath } from '../utils'
 import { Avatar, LockIcon, StatusBadge } from './common'
-import { FILE_ROW_HEIGHT, VirtualRows } from './VirtualRows'
+import { FILE_ROW_HEIGHT, VirtualRows, revealRow } from './VirtualRows'
 
 export function RightPanel({ path }: { path: string }) {
   const view = useRepo(path)
@@ -174,6 +175,8 @@ function FileSection(props: {
   sectionRef?: Ref<HTMLDivElement>
   /** Checkbox that selects every file of the list (or none). */
   selectAll?: { all: boolean; some: boolean; toggle: () => void; title: string }
+  /** Keys pressed in the list, once clicked (it takes the focus then). */
+  onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void
 }) {
   const selectAll = props.selectAll
   return (
@@ -196,7 +199,9 @@ function FileSection(props: {
         </span>
         {props.count > 0 && <span className="file-section-actions">{props.action}</span>}
       </div>
-      <div className="file-list">{props.children}</div>
+      <div className="file-list" tabIndex={props.onKeyDown ? 0 : undefined} onKeyDown={props.onKeyDown}>
+        {props.children}
+      </div>
     </div>
   )
 }
@@ -225,6 +230,8 @@ function useFileSelection(files: FileChange[]) {
               checkbox: fromCheckbox
             })
       ),
+    /** The file reached with the arrow keys: as a plain click, it only opens it. */
+    focus: (file: FileChange) => setState(focusSelection(selection, file.path)),
     all: files.length > 0 && selected.length === files.length,
     some: selected.length > 0,
     toggleAll: () => setState(toggleAll(selection, order)),
@@ -262,6 +269,60 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
   const stagedSel = useFileSelection(staged)
   const lfsFiles = new Set(state.lfsFiles)
   const locks = view.lfs?.locks
+
+  /**
+   * Keys in a file list: the arrows go through its files with their diff; Space stages (or unstages) the files
+   * checked, or the one open, then opens the next one; Delete discards them, after asking.
+   */
+  const listKeys =
+    (kind: 'unstaged' | 'staged', sel: ReturnType<typeof useFileSelection>) =>
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // A checkbox or button in the list keeps its own keys.
+      if (e.target !== e.currentTarget) return
+      const action = fileKey(e, window.leviathan.platform === 'darwin')
+      if (!action || (action === 'discard' && kind !== 'unstaged')) return
+      e.preventDefault()
+      const list = e.currentTarget
+      const files = state.status[kind]
+      const order = files.map((f) => f.path)
+      const open = view.diff?.source.kind === kind ? view.diff.source.path : null
+      const show = (file: FileChange | undefined) => {
+        if (!file) return
+        sel.focus(file)
+        void openDiff(path, { kind, path: file.path, untracked: kind === 'unstaged' && file.status === '?' })
+        const now = getRepo(path)?.state?.status[kind] ?? files
+        revealRow(
+          list,
+          now.findIndex((f) => f.path === file.path)
+        )
+      }
+      if (action === 'previous' || action === 'next') {
+        const to = neighbour(order, open, action === 'next' ? 1 : -1)
+        return show(files.find((f) => f.path === to))
+      }
+      const chosen = sel.selected.length ? sel.selected : files.filter((f) => f.path === open)
+      if (!chosen.length) return
+      const next = files.find(
+        (f) =>
+          f.path ===
+          nextAfter(
+            order,
+            chosen.map((f) => f.path),
+            open ?? chosen[0].path
+          )
+      )
+      const run =
+        action === 'discard'
+          ? discardFiles(path, chosen)
+          : kind === 'unstaged'
+            ? stageFiles(path, chosen)
+            : unstageFiles(path, chosen)
+      void run.then((ok) => {
+        if (!ok) return
+        sel.clear()
+        show(next)
+      })
+    }
 
   // Draggable divider between the unstaged and staged lists; the share is remembered.
   const [split, setSplit] = useState(readSplit)
@@ -349,6 +410,7 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
           count={unstaged.length}
           style={{ flex: `${split} 1 0` }}
           sectionRef={unstagedRef}
+          onKeyDown={listKeys('unstaged', unstagedSel)}
           selectAll={{
             all: unstagedSel.all,
             some: unstagedSel.some,
@@ -412,6 +474,7 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
           count={staged.length}
           style={{ flex: `${1 - split} 1 0` }}
           sectionRef={stagedRef}
+          onKeyDown={listKeys('staged', stagedSel)}
           selectAll={{
             all: stagedSel.all,
             some: stagedSel.some,

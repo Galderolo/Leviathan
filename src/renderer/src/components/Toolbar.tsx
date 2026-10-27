@@ -36,6 +36,7 @@ import {
 } from '../actions'
 import { useT } from '../i18n'
 import { pushCount } from '../pushTarget'
+import { keysLabel } from '../shortcuts'
 import { getRepo, useRepo, useStore, type MenuItem } from '../store'
 import { openMenuBelow } from '../ui'
 import { basename, cx, matchesFilter, shortHash } from '../utils'
@@ -91,6 +92,9 @@ export function Toolbar({ path }: { path: string }) {
   const view = useRepo(path)
   const t = useT()
   const pullMode = useStore((s) => s.settings.pullMode)
+  // Each button's shortcut in its tooltip, as this system writes the keys.
+  const withKeys = (title: string, keys: string[]) =>
+    `${title} (${keysLabel(keys, window.leviathan.platform === 'darwin')})`
   const state = view?.state
   const head = state?.head
   const toPush = state ? pushCount(state) : 0
@@ -195,7 +199,7 @@ export function Toolbar({ path }: { path: string }) {
         <ToolButton
           icon={RefreshCw}
           label={t('toolbar.fetch')}
-          title={t('pull.fetchAll')}
+          title={withKeys(t('pull.fetchAll'), ['Mod', 'Shift', 'F'])}
           onClick={() => void fetchAll(path)}
           busy={busy === 'fetch'}
           disabled={remoteBusy}
@@ -203,7 +207,7 @@ export function Toolbar({ path }: { path: string }) {
         <ToolButton
           icon={ArrowDownToLine}
           label={t('toolbar.pull')}
-          title={pullLabels[pullMode]}
+          title={withKeys(pullLabels[pullMode], ['Mod', 'L'])}
           onClick={() => void pull(path)}
           onCaret={pullMenu}
           busy={busy === 'pull'}
@@ -213,6 +217,7 @@ export function Toolbar({ path }: { path: string }) {
         <ToolButton
           icon={ArrowUpToLine}
           label={t('toolbar.push')}
+          title={withKeys(t('toolbar.push'), ['Mod', 'P'])}
           onClick={() => void push(path)}
           onCaret={pushMenu}
           busy={busy === 'push'}
@@ -220,10 +225,16 @@ export function Toolbar({ path }: { path: string }) {
           badge={toPush ? String(toPush) : undefined}
         />
         <div className="toolbar-sep" />
-        <ToolButton icon={GitBranchPlus} label={t('toolbar.branchBtn')} onClick={() => void createBranch(path, null)} />
+        <ToolButton
+          icon={GitBranchPlus}
+          label={t('toolbar.branchBtn')}
+          title={withKeys(t('keys.newBranch'), ['Mod', 'B'])}
+          onClick={() => void createBranch(path, null)}
+        />
         <ToolButton
           icon={Archive}
           label={t('toolbar.stash')}
+          title={withKeys(t('keys.stash'), ['Mod', 'Shift', 'S'])}
           onClick={() => void stashChanges(path)}
           onCaret={(e) =>
             openMenuBelow(e, [{ label: t('menu.stashWithMessage'), onClick: () => void stashChanges(path, true) }])

@@ -189,7 +189,7 @@ export interface MenuState {
   items: MenuItem[]
 }
 
-export type SettingsSection = 'general' | 'tools' | 'accounts' | 'ssh' | 'updates' | 'about'
+export type SettingsSection = 'general' | 'tools' | 'accounts' | 'ssh' | 'updates' | 'shortcuts' | 'about'
 
 export interface FormField {
   key: string
