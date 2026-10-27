@@ -205,7 +205,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.
 - A token that can no longer be decrypted hides the section without a hint.
 - 403 messages are generic (no Gitea scope). A 401 in the side panel says the token stopped working and links to Settings → Accounts (0.13.0), matched on the "rejected the token" text.
-- More than 50 open PRs are not paginated; fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
+- Up to 500 open PRs are listed (`PULL_REQUESTS_MAX`), asked 100 at a time (50 on Bitbucket and Gitea) until a page is not full: a Gitea server whose page limit is below 50 lists only its first page. Fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 
 **SSH aliases**
 - `SshHosts` (`src/main/git/sshHosts.ts`) rewrites SSH remote URLs with the host `ssh -G <alias>` reports (once per name per session; names that could read as an option are never passed) before the accounts module looks for the account of a repository (pull requests, default identity, avatars). The renderer's "this account's host is not among the remotes" hint after binding an account still compares the alias.
