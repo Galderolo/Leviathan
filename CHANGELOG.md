@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- Pressing *Undo* (or *Redo*) again before the first one finished applied the same change twice; a press while one is being applied is now ignored.
 - The pull request list stopped at the 50 most recently updated: it now reads the next pages too, up to 500.
 - A clone with an account that succeeded but could not be set to use that account was reported as a failed clone, and not opened. It now opens, and says the account has to be picked again.
 - Two quick checkouts could leave the LFS patterns of the first one on screen until the next change.
