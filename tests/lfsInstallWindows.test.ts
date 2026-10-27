@@ -72,7 +72,7 @@ describe('installWindowsZip', () => {
     expect(await installWindowsZip((line) => lines.push(line), d)).toBe(installDir)
     expect(existsSync(join(installDir, 'git-lfs.exe'))).toBe(true)
     expect(d.addToUserPath).toHaveBeenCalledWith(installDir)
-    expect(process.env.PATH?.split(delimiter)[0]).toBe(installDir)
+    expect(process.env.PATH?.split(delimiter).at(-1)).toBe(installDir)
     expect(lines.some((l) => l.includes('3.8.1'))).toBe(true)
   })
 

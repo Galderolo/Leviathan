@@ -17,7 +17,7 @@ import {
 import { addToUserPath } from './cli'
 import { lfsVersion } from './git/lfs'
 import { git } from './git/runner'
-import { prependToPath } from './pathEnv'
+import { addToPath } from './pathEnv'
 import { locateProgram } from './programs'
 
 const LATEST_RELEASE = 'https://api.github.com/repos/git-lfs/git-lfs/releases/latest'
@@ -110,7 +110,7 @@ export async function installWindowsZip(onProgress: (line: string) => void, deps
     await fs.mkdir(deps.installDir, { recursive: true })
     await fs.copyFile(exe, join(deps.installDir, 'git-lfs.exe'))
     await deps.addToUserPath(deps.installDir)
-    prependToPath(deps.installDir)
+    addToPath(deps.installDir)
     return deps.installDir
   } finally {
     await fs.rm(temp, { recursive: true, force: true })
@@ -201,7 +201,7 @@ export async function installGitLfs(
       onProgress('brew install git-lfs')
       const { exitCode, stderr } = await d.run(brew, ['install', 'git-lfs'], onProgress)
       if (exitCode !== 0) throw new Error(`Homebrew could not install git-lfs: ${lastLine(stderr)}`)
-      prependToPath(dirname(brew))
+      addToPath(dirname(brew))
     } else if (offer.method === 'package') {
       const manager = (await findManager(d))!
       const pkexec = (await d.locate('pkexec'))!
