@@ -153,7 +153,6 @@ function realDeps(): PlatformDeps {
         child.on('error', reject)
         child.on('close', (code) => resolve({ exitCode: code ?? 1, stderr }))
       }),
-    // Outside any repository: only the user's own git configuration is set up.
     git: async (args) => {
       await git(args, { cwd: homedir() })
     },
@@ -215,7 +214,8 @@ export async function installGitLfs(
     } else {
       throw new Error('This system needs git-lfs installed by hand')
     }
-    await d.git(['lfs', 'install'])
+    // Only the user's git configuration: no hooks into whatever repository the folder git runs in may be.
+    await d.git(['lfs', 'install', '--skip-repo'])
     const version = await d.version()
     if (!version) throw new Error('git-lfs was installed but cannot be found')
     return version

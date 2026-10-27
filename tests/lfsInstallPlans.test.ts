@@ -39,7 +39,7 @@ describe('installGitLfs', () => {
     expect(await getLfsInstallOffer(mac.deps)).toEqual({ method: 'brew' })
     expect(await installGitLfs(() => {}, mac.deps)).toBe('3.8.1')
     expect(mac.calls).toEqual([['/opt/homebrew/bin/brew', ['install', 'git-lfs']]])
-    expect(mac.git).toEqual([['lfs', 'install']])
+    expect(mac.git).toEqual([['lfs', 'install', '--skip-repo']])
   })
 
   it('installs with the package manager through pkexec', async () => {
@@ -47,7 +47,7 @@ describe('installGitLfs', () => {
     expect(await getLfsInstallOffer(linux.deps)).toEqual({ method: 'package' })
     expect(await installGitLfs(() => {}, linux.deps)).toBe('3.8.1')
     expect(linux.calls).toEqual([['/usr/bin/pkexec', ['/usr/bin/apt-get', 'install', '-y', 'git-lfs']]])
-    expect(linux.git).toEqual([['lfs', 'install']])
+    expect(linux.git).toEqual([['lfs', 'install', '--skip-repo']])
   })
 
   it('turns a dismissed or impossible password prompt into the command to run', async () => {
