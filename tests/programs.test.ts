@@ -106,6 +106,18 @@ describe('locateProgram', () => {
     )
   })
 
+  it('finds git-lfs where its installer puts it', async () => {
+    const user = fakeFs(['C:\\Users\\a\\AppData\\Local\\Programs\\Git LFS\\git-lfs.exe'])
+    const env = { LOCALAPPDATA: 'C:\\Users\\a\\AppData\\Local', PATH: '' }
+    expect(await locateProgram('git-lfs', env, 'win32', user)).toBe(
+      'C:\\Users\\a\\AppData\\Local\\Programs\\Git LFS\\git-lfs.exe'
+    )
+    // Homebrew's folders are not on the PATH of an app opened from the Finder.
+    const mac = fakeFs(['/opt/homebrew/bin/git-lfs', '/usr/local/bin/brew'], false)
+    expect(await locateProgram('git-lfs', { PATH: '/usr/bin:/bin' }, 'darwin', mac)).toBe('/opt/homebrew/bin/git-lfs')
+    expect(await locateProgram('brew', { PATH: '/usr/bin:/bin' }, 'darwin', mac)).toBe('/usr/local/bin/brew')
+  })
+
   it('says when a program is nowhere, a path included', async () => {
     const fs = fakeFs(['C:\\Windows\\system32\\cmd.exe'])
     expect(await locateProgram('cmd', winEnv, 'win32', fs)).toBe('C:\\Windows\\system32\\cmd.exe')

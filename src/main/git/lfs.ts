@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { lfsPatternFor, parseAttributes, parseLocks, parseMacros, parseVerifiedLocks } from '../../shared/lfs'
 import type { LfsInfo, LfsLock, LfsPattern } from '../../shared/lfs'
+import { prependToPath } from '../pathEnv'
+import { locateProgram } from '../programs'
 import { insideRepo, type ProgressFn } from './repository'
 import { NON_INTERACTIVE_ENV, git, type RunOptions } from './runner'
 import { lfsFilesAmong, plainLfs, stagedBlobs, type StagedBlob } from './staged'
@@ -23,14 +25,25 @@ let version: string | null = null
 
 /** Installed git-lfs version, or null when it is missing (looked up again until found). */
 export async function lfsVersion(): Promise<string | null> {
+  // Only for the end-to-end tests: git for Windows ships git-lfs next to git, so it cannot be hidden from them.
+  if (process.env.LEVIATHAN_E2E_NO_GIT_LFS) return null
   if (version) return version
+  version = await askVersion()
+  if (version) return version
+  // Installed where the app's PATH does not look (Homebrew for an app opened from the Finder, a per-user
+  // install this process started before): use it from there.
+  const found = await locateProgram('git-lfs')
+  if (found && prependToPath(dirname(found))) version = await askVersion()
+  return version
+}
+
+async function askVersion(): Promise<string | null> {
   try {
-    const out = await run(process.cwd(), ['lfs', 'version'])
-    version = /git-lfs\/(\S+)/.exec(out)?.[1] ?? null
+    return /git-lfs\/(\S+)/.exec(await run(process.cwd(), ['lfs', 'version']))?.[1] ?? null
   } catch {
     // git-lfs is not installed
+    return null
   }
-  return version
 }
 
 async function filtersConfigured(repo: string): Promise<boolean> {

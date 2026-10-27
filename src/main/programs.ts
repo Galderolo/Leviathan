@@ -58,6 +58,9 @@ function installPlaces(program: string, env: Env, platform: NodeJS.Platform): st
         return [`${pf}\\Sublime Text\\subl.exe`, `${pf}\\Sublime Text 3\\subl.exe`]
       case 'notepad++':
         return [`${pf}\\Notepad++\\notepad++.exe`, `${pf86}\\Notepad++\\notepad++.exe`]
+      case 'git-lfs':
+        // Its installer (and the app's own install) for the user only, or for the whole machine.
+        return [`${local}\\Programs\\Git LFS\\git-lfs.exe`, `${pf}\\Git LFS\\git-lfs.exe`]
       default:
         return []
     }
@@ -77,6 +80,10 @@ function installPlaces(program: string, env: Env, platform: NodeJS.Platform): st
         return app('Rider.app', 'Contents/MacOS/rider')
       case 'subl':
         return app('Sublime Text.app', 'Contents/SharedSupport/bin/subl')
+      // Homebrew (Apple silicon, then Intel): not on the PATH of an app opened from the Finder.
+      case 'git-lfs':
+      case 'brew':
+        return [`/opt/homebrew/bin/${program}`, `/usr/local/bin/${program}`]
       default:
         return []
     }
