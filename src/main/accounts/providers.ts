@@ -156,6 +156,9 @@ function toPullRequest(provider: Provider, r: Json): PullRequest {
   }
 }
 
+/** Open pull requests listed at most, asked page by page. */
+export const PULL_REQUESTS_MAX = 500
+
 /** Open pull requests (merge requests on GitLab), most recently updated first. */
 export async function listPullRequests(
   provider: Provider,
@@ -164,16 +167,25 @@ export async function listPullRequests(
   token: string,
   fetchFn: FetchFn = fetch
 ): Promise<PullRequest[]> {
-  const query =
+  // The largest page each provider gives (Bitbucket and Gitea: 50).
+  const [query, size] =
     provider === 'gitlab'
-      ? '/merge_requests?state=opened&order_by=updated_at&per_page=50'
+      ? ['/merge_requests?state=opened&order_by=updated_at&per_page=100', 100]
       : provider === 'github'
-        ? '/pulls?state=open&sort=updated&direction=desc&per_page=50'
+        ? ['/pulls?state=open&sort=updated&direction=desc&per_page=100', 100]
         : provider === 'bitbucket'
-          ? '/pullrequests?state=OPEN&sort=-updated_on&pagelen=50'
-          : '/pulls?state=open&sort=recentupdate&limit=50'
-  const body = await getJson(provider, host, projectPath(provider, path) + query, token, fetchFn)
-  return items(body).map((r) => toPullRequest(provider, r))
+          ? ['/pullrequests?state=OPEN&sort=-updated_on&pagelen=50', 50]
+          : ['/pulls?state=open&sort=recentupdate&limit=50', 50]
+  const found = new Map<number, PullRequest>()
+  for (let page = 1; found.size < PULL_REQUESTS_MAX; page++) {
+    const url = projectPath(provider, path) + query + (page > 1 ? `&page=${page}` : '')
+    const rows = items(await getJson(provider, host, url, token, fetchFn))
+    // One updated while the pages are read moves to the first: it may come twice.
+    for (const pr of rows.map((r) => toPullRequest(provider, r))) if (!found.has(pr.number)) found.set(pr.number, pr)
+    // A page that is not full is the last one.
+    if (rows.length < size) break
+  }
+  return [...found.values()].slice(0, PULL_REQUESTS_MAX)
 }
 
 /** Opens a pull request; GitLab and Gitea mark drafts with a title prefix. */

@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- The pull request list stopped at the 50 most recently updated: it now reads the next pages too, up to 500.
 - A clone with an account that succeeded but could not be set to use that account was reported as a failed clone, and not opened. It now opens, and says the account has to be picked again.
 - Two quick checkouts could leave the LFS patterns of the first one on screen until the next change.
 - Checking out a pull request failed with git's "cannot lock ref" when a local branch was in the way of its name: one named `pr` (for `pr/7`), or `feature/old` for a pull request from `feature`. It is now checked out as `pr-7`, or as `pr/N` like a branch name taken by other work.

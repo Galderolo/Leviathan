@@ -8,6 +8,7 @@ import {
   fetchIdentity,
   listPullRequests,
   listRepos,
+  PULL_REQUESTS_MAX,
   type FetchFn
 } from '../src/main/accounts/providers'
 
@@ -143,14 +144,39 @@ describe('pull requests', () => {
 
   it('lists GitHub pull requests, marking the ones from forks', async () => {
     const { fn } = fakeFetch({
-      'https://api.github.com/repos/org/app/pulls?state=open&sort=updated&direction=desc&per_page=50': { body: [ghPr] }
+      'https://api.github.com/repos/org/app/pulls?state=open&sort=updated&direction=desc&per_page=100': { body: [ghPr] }
     })
     expect(await listPullRequests('github', 'github.com', 'org/app', TOKEN, fn)).toEqual([ghExpected])
   })
 
+  it('asks for the next pages while they are full, once for each pull request', async () => {
+    const prs = (from: number, count: number) =>
+      Array.from({ length: count }, (_, i) => ({ ...ghPr, number: from + i }))
+    const list = 'https://api.github.com/repos/org/app/pulls?state=open&sort=updated&direction=desc&per_page=100'
+    const { fn, calls } = fakeFetch({
+      [list]: { body: prs(1, 100) },
+      // Pull request 100 was updated meanwhile: it moved to the first page, and 1 slid into this one.
+      [`${list}&page=2`]: { body: prs(100, 1).concat(prs(101, 99)) },
+      [`${list}&page=3`]: { body: prs(200, 3) }
+    })
+    const listed = await listPullRequests('github', 'github.com', 'org/app', TOKEN, fn)
+    expect(listed.map((pr) => pr.number)).toEqual(prs(1, 202).map((pr) => pr.number))
+    expect(calls).toHaveLength(3)
+  })
+
+  it(`stops at ${PULL_REQUESTS_MAX} pull requests`, async () => {
+    const list = 'https://api.github.com/repos/org/app/pulls?state=open&sort=updated&direction=desc&per_page=100'
+    const fn: FetchFn = async (url) => {
+      const page = Number(new URL(url).searchParams.get('page') ?? 1)
+      const body = Array.from({ length: 100 }, (_, i) => ({ ...ghPr, number: (page - 1) * 100 + i + 1 }))
+      return { ok: url.startsWith(list), status: 200, json: async () => body }
+    }
+    expect(await listPullRequests('github', 'github.com', 'org/app', TOKEN, fn)).toHaveLength(PULL_REQUESTS_MAX)
+  })
+
   it('lists GitLab merge requests of a project in a subgroup', async () => {
     const { fn } = fakeFetch({
-      [`https://gitlab.com/api/v4/projects/${glPath}/merge_requests?state=opened&order_by=updated_at&per_page=50`]: {
+      [`https://gitlab.com/api/v4/projects/${glPath}/merge_requests?state=opened&order_by=updated_at&per_page=100`]: {
         body: [
           {
             iid: 3,
