@@ -1,6 +1,32 @@
 import { describe, expect, it } from 'vitest'
-import { followDiff } from '../src/renderer/src/diffFollow'
-import type { FileChange, WorkingStatus } from '../src/shared/types'
+import { followDiff, sameDiff } from '../src/renderer/src/diffFollow'
+import type { FileChange, FileDiff, WorkingStatus } from '../src/shared/types'
+
+describe('sameDiff', () => {
+  const diff = (text: string): FileDiff => ({
+    path: 'a.txt',
+    binary: false,
+    header: 'diff --git a/a.txt b/a.txt',
+    hunks: [
+      {
+        header: '@@ -0,0 +1 @@',
+        oldStart: 0,
+        oldLines: 0,
+        newStart: 1,
+        newLines: 1,
+        lines: [{ type: 'add', newNo: 1, text }],
+        patch: `@@ -0,0 +1 @@\n+${text}\n`
+      }
+    ]
+  })
+
+  it('tells a diff read again unchanged from one whose file changed', () => {
+    expect(sameDiff(diff('two'), diff('two'))).toBe(true)
+    expect(sameDiff(diff('two'), diff('TWO'))).toBe(false)
+    expect(sameDiff(null, diff('two'))).toBe(false)
+    expect(sameDiff(diff('two'), null)).toBe(false)
+  })
+})
 
 const file = (path: string, status = 'M'): FileChange => ({ path, status }) as FileChange
 const status = (s: Partial<WorkingStatus>): WorkingStatus => ({ staged: [], unstaged: [], conflicted: [], ...s })

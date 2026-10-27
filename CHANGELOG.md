@@ -13,6 +13,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- Lines picked in a diff (to stage or unstage them on their own) were let go as soon as the repository was read again — coming back to the window, which a click from another app does, or any file changing on disk — although the diff had not changed. They now stay picked; they are still let go when the file itself changes, since its lines may have moved.
 - In a narrow window the side panels could squeeze the graph between them to nothing. They now narrow first (their widths come back when the window is wider), the graph keeps room to be seen and scrolls sideways when its columns do not fit, instead of cutting the last ones off, and the toolbar keeps its buttons' icons, with their names in the tooltips, instead of running the repository's name over them.
 - git-lfs installed where the app did not look (Homebrew's folders, for an app opened from the Finder on macOS; a per-user install on Windows) was reported as missing: it is now found there.
 - Installing git-lfs while the app was open was only noticed after the next checkout, so locks did not load until then: coming back to the window now notices it.

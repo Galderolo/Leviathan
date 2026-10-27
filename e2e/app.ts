@@ -114,7 +114,13 @@ export async function launch(
     timeout: 60_000
   })
   const page = await app.firstWindow()
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setBounds({ width: 1400, height: 900 }))
+  await app.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    win?.setBounds({ width: 1400, height: 900 })
+    // Run on a desktop in use, the real mouse moving over the window tells it the button is up and drops a drag the
+    // test has started. The test's own input does not go through the system, so it still arrives.
+    win?.setIgnoreMouseEvents(true)
+  })
   if (repos.length) await page.waitForSelector('.graph-row')
   return { app, page }
 }

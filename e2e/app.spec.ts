@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 import { launch, Sandbox } from './app'
 
 let box: Sandbox
@@ -31,6 +31,28 @@ const unstaged = () => page.locator('.file-section').nth(0)
 const toolbarButton = (label: string) => page.locator('.tool-button', { hasText: label }).locator('.tool-main')
 const menuItem = (label: string | RegExp) => page.locator('.context-menu').getByText(label, { exact: true })
 
+/**
+ * Drags `source` (which takes the class `dragging` once its drag starts) onto `target`, at `at` within it. Pressing a
+ * tab shows its repository: a window busy with that takes the moves late, all at once, with the release right behind,
+ * and no drag starts. So it nudges until the drag has started, then goes on, as a hand would.
+ */
+async function dragByMouse(source: Locator, target: Locator, at: { x: number; y: number }): Promise<void> {
+  const from = (await source.boundingBox())!
+  const x = from.x + from.width / 2
+  const y = from.y + from.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  let nudge = 0
+  await expect(async () => {
+    nudge += 6
+    await page.mouse.move(x + nudge, y, { steps: 2 })
+    await expect(source).toHaveClass(/dragging/, { timeout: 500 })
+  }).toPass({ timeout: 10_000 })
+  const to = (await target.boundingBox())!
+  await page.mouse.move(to.x + at.x, to.y + at.y, { steps: 5 })
+  await page.mouse.up()
+}
+
 test('opens a repository with its history and its uncommitted changes', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   box.write(repo, { 'a.txt': 'two\n' })
@@ -50,17 +72,12 @@ test('reorders the tabs by dragging them, and keeps the order for the next start
   await open(...repos)
 
   const tab = (name: string) => page.locator('.tab', { hasText: name })
-  const gamma = await tab('gamma').boundingBox()
+  const gamma = (await tab('gamma').boundingBox())!
   // Onto the right half of the last tab: after it.
-  await tab('alpha').dragTo(tab('gamma'), { targetPosition: { x: gamma!.width - 5, y: gamma!.height / 2 } })
+  await dragByMouse(tab('alpha'), tab('gamma'), { x: gamma.width - 5, y: gamma.height / 2 })
   await expect(page.locator('.tab-title')).toHaveText(['beta', 'gamma', 'alpha'])
-  // Pressing a tab shows its repository. Shown first, so that loading it is not under way while dragging: Playwright
-  // only waits one timer tick for the drag to start, and misses one that a busy window starts later.
-  await tab('gamma').click()
-  await expect(page.locator('.toolbar-repo .field-value').first()).toHaveText('gamma')
-  await expect(page.locator('.graph-row.row-commit')).toHaveCount(1)
   // Onto the left half of the first tab: before it.
-  await tab('gamma').dragTo(tab('beta'), { targetPosition: { x: 5, y: gamma!.height / 2 } })
+  await dragByMouse(tab('gamma'), tab('beta'), { x: 5, y: gamma.height / 2 })
   await expect(page.locator('.tab-title')).toHaveText(['gamma', 'beta', 'alpha'])
 
   const saved = () => JSON.parse(readFileSync(join(box.profile, 'settings.json'), 'utf8')).openTabs as string[]
@@ -509,6 +526,30 @@ test("resizes the graph's author, date and SHA columns, and scrolls sideways whe
   await expect
     .poll(async () => Math.round((await commitRows().first().locator('.sha-cell').boundingBox())!.x))
     .toBe(Math.round((await sha.boundingBox())!.x))
+})
+
+test("keeps the diff's picked lines when the repository is read again and the file has not changed", async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\ntwo\nthree\n' })
+  box.write(repo, { 'a.txt': 'one\nTWO\nthree\nfour\n' })
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'a.txt' }).click()
+  const added = page.locator('.diff-line.add.selectable')
+  await expect(added).toHaveCount(2)
+  await added.first().locator('.gutter').click()
+  await expect(page.locator('.diff-line.picked')).toHaveCount(1)
+
+  // Coming back to the window reads the repository again (as a change on disk elsewhere would).
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  // Another file changing on disk: the open diff is read again, the same.
+  box.write(repo, { 'b.txt': 'new\n' })
+  await expect(unstaged().locator('.file-row')).toHaveCount(2)
+  await expect(page.locator('.diff-line.picked')).toHaveCount(1)
+
+  // The file itself changed: its lines may have moved, so nothing stays picked.
+  box.write(repo, { 'a.txt': 'zero\none\nTWO\nthree\nfour\n' })
+  await expect(page.locator('.diff-line.add.selectable')).toHaveCount(3)
+  await expect(page.locator('.diff-line.picked')).toHaveCount(0)
 })
 
 test('stages and unstages files from the keyboard, going on to the next file', async () => {
@@ -1164,7 +1205,10 @@ test('asks where to publish a branch started from another remote, then keeps the
   await toolbarButton('Push').click()
   await expect(page.locator('.modal')).toContainText('Publish feature to')
   await page.locator('.modal .btn-primary').click()
-  await expect.poll(() => box.git(repo, 'rev-parse', '--abbrev-ref', 'feature@{upstream}')).toBe('origin/feature')
+  // Until the push sets it, git fails to name an upstream: poll for an answer, not an error.
+  const upstreamOf = () =>
+    spawnSync('git', ['rev-parse', '--abbrev-ref', 'feature@{upstream}'], { cwd: repo, encoding: 'utf8' }).stdout.trim()
+  await expect.poll(upstreamOf).toBe('origin/feature')
   expect(box.git(origin, 'rev-parse', 'feature')).toBe(box.git(repo, 'rev-parse', 'feature'))
   expect(spawnSync('git', ['rev-parse', '--verify', '-q', 'refs/heads/feature'], { cwd: upstream }).status).not.toBe(0)
 
