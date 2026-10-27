@@ -108,9 +108,14 @@ export async function installCommandLine(
 ): Promise<'added' | 'present'> {
   await fs.mkdir(binDir, { recursive: true })
   await fs.writeFile(join(binDir, 'leviathan.cmd'), commandShim(exe, process.env), 'utf8')
+  return addToUserPath(binDir, envKey)
+}
+
+/** Windows: adds `dir` to the user's PATH, and tells other programs it changed. `envKey`: another key in tests. */
+export async function addToUserPath(dir: string, envKey = USER_ENV_KEY): Promise<'added' | 'present'> {
   const encoded = (await powershell(READ_PATH, { LEVIATHAN_ENV_KEY: envKey })).trim()
   const current = Buffer.from(encoded, 'base64').toString('utf16le')
-  const next = addToPathList(current, binDir)
+  const next = addToPathList(current, dir)
   if (next === null) return 'present'
   await powershell(WRITE_PATH, { LEVIATHAN_ENV_KEY: envKey, LEVIATHAN_NEW_PATH: next })
   // Only for the real PATH: tests write elsewhere and must not touch the user's environment.
