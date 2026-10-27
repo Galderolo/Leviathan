@@ -13,6 +13,7 @@ import {
 } from '../shared/api'
 import * as accounts from './accounts'
 import { AvatarCache } from './avatars'
+import { cloneWithAccount } from './clone'
 import { answerAskpass, askpassScripts } from './askpass'
 import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
@@ -66,14 +67,8 @@ const handlers: LeviathanInvokeApi = {
 
   openRepo: (path) => repo.openRepo(path),
   initRepo: (path, branch) => repo.initRepo(path, branch),
-  cloneRepo: async (url, dest, accountId, recurseSubmodules) => {
-    const args = accountId ? accounts.cloneArgsFor(accountId) : []
-    const path = await repo.cloneRepo(url, dest, progress(dest), args)
-    // Bound first, so private submodules on the same host are fetched with that account too.
-    if (accountId) await accounts.setRepoAccount(path, accountId)
-    const submoduleError = recurseSubmodules ? await submodules.initSubmodules(path, progress(dest)) : null
-    return { path, submoduleError }
-  },
+  cloneRepo: (url, dest, accountId, recurseSubmodules) =>
+    cloneWithAccount(url, dest, accountId, recurseSubmodules, progress(dest)),
   watchRepo: async (path) => watchRepo(path, (e) => broadcast(IPC_REPO_CHANGED, e)),
   unwatchRepo: async (path) => unwatchRepo(path),
 

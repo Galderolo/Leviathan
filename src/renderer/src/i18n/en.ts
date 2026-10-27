@@ -500,6 +500,8 @@ const en = {
   'toast.submodulesUpdated': 'Submodules updated',
   'toast.submodulesNotCloned':
     'Cloned, but some submodules could not be fetched (they show as not initialized): {error}',
+  'toast.accountNotBound':
+    'Cloned, but the repository could not be set to use the account (pick it again in "Account for this repository…"): {error}',
   'diff.submoduleMoved': 'Submodule: {from} → {to}',
   'diff.submoduleAdded': 'New submodule at {to}',
   'diff.submoduleRemoved': 'Submodule removed (it was at {from})',
