@@ -28,6 +28,7 @@ import type {
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
 import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
+import type { LfsInstallOffer } from './lfsInstall'
 import type { RebaseItem } from './rebase'
 import type { ReleaseNote } from './releaseNotes'
 import type { RepoChange, Snapshot } from './undo'
@@ -270,6 +271,10 @@ export interface LeviathanInvokeApi {
   lfsRestage(repo: string, paths: string[]): Promise<void>
   /** Runs `git lfs install` and downloads the repository's LFS files. */
   setupLfs(repo: string): Promise<void>
+  /** How the app can install git-lfs on this computer. */
+  getLfsInstallOffer(): Promise<LfsInstallOffer>
+  /** Installs git-lfs (its progress shows on `repo`) and gives its version. */
+  installGitLfs(repo: string): Promise<string>
 
   // Submodules
   getSubmodules(repo: string): Promise<Submodule[]>
@@ -419,6 +424,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   lfsMoveFiles: true,
   lfsRestage: true,
   setupLfs: true,
+  getLfsInstallOffer: true,
+  installGitLfs: true,
   getSubmodules: true,
   updateSubmodules: true
 }

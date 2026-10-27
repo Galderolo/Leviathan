@@ -16,6 +16,7 @@ import { DEFAULT_SETTINGS } from '../../shared/types'
 import type { CommitIdentity } from '../../shared/identity'
 import type { CommitDraftText } from '../../shared/commitTemplate'
 import type { LfsInfo, LfsLock } from '../../shared/lfs'
+import type { LfsInstallOffer } from '../../shared/lfsInstall'
 import type { UpdateState } from '../../shared/updates'
 import type { Lang } from './i18n'
 import type { UndoEntry } from './undoStack'
@@ -241,6 +242,10 @@ export interface AppState {
   update: UpdateState | null
   /** Authors' pictures (lowercased email -> data: URL, null when there is none), when Settings shows avatars. */
   avatars: Record<string, string | null>
+  /** How the app can install git-lfs on this computer (asked once). */
+  lfsOffer: LfsInstallOffer | null
+  /** git-lfs is being installed (for any repository). */
+  lfsInstalling: boolean
 }
 
 export const useStore = create<AppState>(() => ({
@@ -262,7 +267,9 @@ export const useStore = create<AppState>(() => ({
   diffLayout: initialDiffLayout(),
   diffFullFile: initialDiffFullFile(),
   update: null,
-  avatars: {}
+  avatars: {},
+  lfsOffer: null,
+  lfsInstalling: false
 }))
 
 export function newRepoView(path: string, limit: number): RepoView {

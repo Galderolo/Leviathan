@@ -6,11 +6,14 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Install git-lfs from the app**: a repository that keeps its large files in Git LFS, opened or cloned on a computer without git-lfs, asks once whether to install it, and the LFS section offers it too. On Windows the official git-lfs is downloaded, checked against its published checksum and installed for the user only, without administrator rights; on macOS it is installed with Homebrew, and on Linux with the system's package manager, which asks for the password (where the app cannot install it, it says how). The repository is then set up and its real files replace the small pointers, without restarting the app.
 - **Choose the graph's columns**: right-click its header to hide or show the author, date and SHA columns; the choice is kept for every repository.
 - **Commit message template**: with git's `commit.template` set (for a repository or globally), the commit box starts from it — its first line as the summary, the rest as the description, without its comment lines — and again after each commit. As in git, the template left as it is cannot be committed, and *Amend* from it takes the last commit's message.
 
 ### Fixed
 
+- git-lfs installed where the app did not look (Homebrew's folders, for an app opened from the Finder on macOS; a per-user install on Windows) was reported as missing: it is now found there.
+- Installing git-lfs while the app was open was only noticed after the next checkout, so locks did not load until then: coming back to the window now notices it.
 - An account whose token cannot be read on this computer (a profile copied from another computer or user account) made the pull requests section disappear without a word. The section now says so and links to Settings → Accounts, where signing in again or a new token fixes it.
 - The history of a file renamed and staged, but not committed yet, was empty: it now follows the file back from the name it has in the last commit.
 - The history of a file whose name has quotes, backslashes or tabs (possible on Linux and macOS) showed an empty diff for each commit: git writes those names quoted, and they are now read back as they are.

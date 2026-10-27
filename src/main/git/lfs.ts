@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { lfsPatternFor, parseAttributes, parseLocks, parseMacros, parseVerifiedLocks } from '../../shared/lfs'
 import type { LfsInfo, LfsLock, LfsPattern } from '../../shared/lfs'
+import { addToPath } from '../pathEnv'
+import { locateProgram } from '../programs'
 import { insideRepo, type ProgressFn } from './repository'
 import { NON_INTERACTIVE_ENV, git, type RunOptions } from './runner'
 import { lfsFilesAmong, plainLfs, stagedBlobs, type StagedBlob } from './staged'
@@ -19,18 +21,55 @@ function assertPattern(pattern: string): void {
   if (!pattern.trim() || /[\r\n\0]/.test(pattern)) throw new Error(`Invalid pattern: "${pattern}"`)
 }
 
-let version: string | null = null
+/**
+ * Looks for git-lfs: on the PATH (`ask`), else where its installer puts it (`locate`), whose folder then goes on the
+ * PATH (`add`) — Homebrew for an app opened from the Finder, a per-user install this process started before.
+ * Callers asking at the same time share one lookup; a version found is kept, a missing one is looked for again.
+ */
+export function gitLfsFinder(
+  ask: () => Promise<string | null>,
+  locate: () => Promise<string | null>,
+  add: (dir: string) => boolean
+): () => Promise<string | null> {
+  let found: string | null = null
+  let lookup: Promise<string | null> | null = null
+  const look = async () => {
+    const version = await ask()
+    if (version) return version
+    const exe = await locate()
+    if (!exe) return null
+    add(dirname(exe))
+    return ask()
+  }
+  return async () => {
+    if (found) return found
+    lookup ??= look().finally(() => (lookup = null))
+    const version = await lookup
+    if (version) found = version
+    return version
+  }
+}
+
+const findVersion = gitLfsFinder(
+  () => askVersion(),
+  () => locateProgram('git-lfs'),
+  (dir) => addToPath(dir)
+)
 
 /** Installed git-lfs version, or null when it is missing (looked up again until found). */
 export async function lfsVersion(): Promise<string | null> {
-  if (version) return version
+  // Only for the end-to-end tests: git for Windows ships git-lfs next to git, so it cannot be hidden from them.
+  if (process.env.LEVIATHAN_E2E_NO_GIT_LFS) return null
+  return findVersion()
+}
+
+async function askVersion(): Promise<string | null> {
   try {
-    const out = await run(process.cwd(), ['lfs', 'version'])
-    version = /git-lfs\/(\S+)/.exec(out)?.[1] ?? null
+    return /git-lfs\/(\S+)/.exec(await run(process.cwd(), ['lfs', 'version']))?.[1] ?? null
   } catch {
     // git-lfs is not installed
+    return null
   }
-  return version
 }
 
 async function filtersConfigured(repo: string): Promise<boolean> {

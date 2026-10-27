@@ -17,6 +17,7 @@ import type {
   Submodule
 } from '../../shared/types'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
+import { canInstall } from '../../shared/lfsInstall'
 import type { ReleaseNote } from '../../shared/releaseNotes'
 import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
@@ -50,7 +51,7 @@ import {
   type RepoView,
   type Tab
 } from './store'
-import { confirmDialog, errorMessage, formDialog, promptText, toast } from './ui'
+import { confirmDialog, copyText, errorMessage, formDialog, promptText, toast } from './ui'
 import { basename } from './utils'
 
 const api = window.leviathan
@@ -80,6 +81,8 @@ export async function initApp(): Promise<void> {
     versions: { app: appVersion, git: gitVersion.replace(/^git version /, '') }
   })
   if (!gitVersion) toast('error', t('error.noGit'))
+  // Before the tabs load: a repository that needs git-lfs asks to install it the way this computer can.
+  await loadLfsOffer()
   // First start of a new version (not of the app itself): show what changed, once.
   if (settings.lastSeenVersion !== appVersion) {
     if (settings.lastSeenVersion) useStore.setState({ whatsNewOpen: true })
@@ -147,6 +150,8 @@ export function setActiveTab(id: string): void {
   persistTabs()
   const tab = useStore.getState().tabs.find((x) => x.id === id)
   if (tab?.path) void refreshRepo(tab.path)
+  // Its LFS info, when already read, is not read again: ask from what is known.
+  if (tab?.path) void askToInstallGitLfs(tab.path)
 }
 
 /** Moves tab `id` into gap `gap` of the tab bar (0 = first place). */
@@ -1847,10 +1852,62 @@ export async function loadLfsInfo(path: string): Promise<void> {
         info
       }
     }))
-    if (info.used && !before?.info.used) void loadLfsLocks(path, false)
+    // Locks need git-lfs: load them once the repository uses LFS and git-lfs is there (it may come later).
+    if (info.used && info.version && !(before?.info.used && before.info.version)) void loadLfsLocks(path, false)
+    void askToInstallGitLfs(path)
   } catch {
     // not critical: the LFS section and badges stay hidden
   }
+}
+
+const LFS_RECHECK_MS = 10_000
+let lastLfsRecheck = 0
+
+/**
+ * Back in the window: git-lfs may have been installed by hand meanwhile. Repositories that miss it read their LFS
+ * info again (which loads their locks once it is there), at most every few seconds.
+ */
+export function recheckGitLfs(now = Date.now()): void {
+  if (now - lastLfsRecheck < LFS_RECHECK_MS) return
+  lastLfsRecheck = now
+  for (const [path, view] of Object.entries(useStore.getState().repos)) {
+    if (view.lfs?.info.used && !view.lfs.info.version) void loadLfsInfo(path)
+  }
+}
+
+// Repositories already asked about installing git-lfs in this session, and whether a question is on screen.
+const lfsAsked = new Set<string>()
+let lfsAsking = false
+
+/**
+ * Offers to install git-lfs when the repository showing uses LFS and git-lfs is missing: once per repository
+ * per session, one question at a time, never during an install.
+ */
+export async function askToInstallGitLfs(path: string): Promise<void> {
+  const { activeTab, tabs, lfsOffer, lfsInstalling } = useStore.getState()
+  const info = getRepo(path)?.lfs?.info
+  const showing = tabs.find((tab) => tab.id === activeTab)?.path === path
+  if (!showing || !info?.used || info.version || !lfsOffer || lfsInstalling || lfsAsking || lfsAsked.has(path)) {
+    return
+  }
+  lfsAsked.add(path)
+  lfsAsking = true
+  const { method, command } = lfsOffer
+  const installs = canInstall(lfsOffer)
+  let ok: boolean
+  try {
+    ok = await confirmDialog({
+      title: t('lfs.missingTitle'),
+      message: `${t('dlg.lfsMissing', { repo: repoName(path) })}\n\n${t(`dlg.lfsHow.${method}`, { command: command ?? '' })}`,
+      confirmText: t(installs ? 'lfs.installNow' : method === 'command' ? 'lfs.copyCommand' : 'lfs.install')
+    })
+  } finally {
+    lfsAsking = false
+  }
+  if (!ok) return
+  if (installs) await installGitLfs(path)
+  else if (method === 'command') await copyText(command ?? '', t('toast.copied'))
+  else openExternal(LFS_DOWNLOAD_URL)
 }
 
 /** Loads the locks from the LFS server; `interactive` may ask for credentials. */
@@ -1913,6 +1970,49 @@ export async function unlockFile(path: string, lock: LfsLock): Promise<void> {
   } finally {
     await loadLfsLocks(path, true)
   }
+}
+
+/** How this computer can get git-lfs: asked once, for the question and the LFS section's button. */
+export async function loadLfsOffer(): Promise<void> {
+  const lfsOffer = await api.getLfsInstallOffer().catch(() => null)
+  useStore.setState({ lfsOffer })
+}
+
+/**
+ * Installs git-lfs (its progress on `path`), then sets `path` up (its real files replace the pointers) and reads
+ * the LFS info of every open repository again: they all use the same git-lfs.
+ */
+export async function installGitLfs(path: string): Promise<boolean> {
+  if (useStore.getState().lfsInstalling) return false
+  useStore.setState({ lfsInstalling: true })
+  patchRepo(path, { busy: 'lfs', progress: null })
+  try {
+    const version = await api.installGitLfs(path)
+    toast('success', t('toast.lfsInstalled', { version }))
+  } catch (err) {
+    // The app may have learnt it cannot install it here (Linux without a password prompt): then, the command.
+    await loadLfsOffer()
+    const offer = useStore.getState().lfsOffer
+    if (offer?.method === 'command') void showLfsCommand(offer.command ?? '')
+    else toast('error', t('toast.lfsInstallFailed', { error: errorMessage(err), link: t('lfs.install') }))
+    return false
+  } finally {
+    patchRepo(path, { busy: null, progress: null })
+    useStore.setState({ lfsInstalling: false })
+  }
+  await runOp(path, () => api.setupLfs(path), { busy: 'lfs', log: false, success: t('toast.lfsReady') })
+  await Promise.all(Object.keys(useStore.getState().repos).map((repo) => loadLfsInfo(repo)))
+  return true
+}
+
+/** The command that installs git-lfs here, to copy into a terminal. */
+async function showLfsCommand(command: string): Promise<void> {
+  const ok = await confirmDialog({
+    title: t('lfs.missingTitle'),
+    message: t('dlg.lfsHow.command', { command }),
+    confirmText: t('lfs.copyCommand')
+  })
+  if (ok) await copyText(command, t('toast.copied'))
 }
 
 /** Asks for a pattern (e.g. `*.psd`) and sends matching files through LFS from now on. */

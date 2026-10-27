@@ -61,6 +61,13 @@ Things worth knowing about git-lfs (3.5):
 - Staged blob sizes are cached by hash in the main process (`src/main/git/staged.ts`), so a refresh with thousands of staged files does not ask git for every size again.
 - Attribute macros (`[attr]lfs filter=lfs …`) are expanded when defined in the root `.gitattributes`, as git does.
 
+Installing git-lfs from the app (code: `src/main/lfsInstall.ts`, pure helpers in `src/shared/lfsInstall.ts`; the question and the actions in `askToInstallGitLfs` / `installGitLfs` in `actions.ts`):
+- The active tab's repository asks once per session when it uses LFS and git-lfs is missing (`lfsAsked`); the LFS section and `LfsWarnings` offer the same install. What the app can do is asked once at start (`getLfsInstallOffer`): Windows the official zip; macOS Homebrew (else the download page); Linux `pkexec` with apt-get, dnf, zypper or pacman (without pkexec, the command to type; pkexec exiting 126/127 turns into that command too).
+- Windows: `git-lfs-windows-<arch>-v<version>.zip` from the latest release on GitHub, checked against the release's `sha256sums.asc` (trust is HTTPS to GitHub: the file's PGP signature is not verified), extracted with Windows' own `tar.exe` into `%LOCALAPPDATA%\Programs\Git LFS` and added to the user's PATH (`addToUserPath` in `cli.ts`). It is not in Windows' installed apps; removing it is deleting that folder. The official `.exe` installer is not used: run without questions it refuses a git outside Program Files (a per-user Git for Windows, Scoop).
+- After installing: `git lfs install` for the user, then the repository is set up (`setupLfs`: hooks, real files instead of pointers) and every open repository reads its LFS info again; nothing needs a restart, since git is spawned with the main process's PATH, which gains the new folder.
+- git-lfs installed where the app's PATH does not look (Homebrew's folders for an app opened from the Finder, the per-user folder before the PATH change reaches this process) is found by `lfsVersion` through `locateProgram('git-lfs')`. Coming back to the window re-reads the LFS info of repositories that miss git-lfs (`recheckGitLfs`, every 10 s at most), so one installed by hand is noticed and its locks load.
+- `LEVIATHAN_E2E_NO_GIT_LFS` makes the main process act as if git-lfs were missing, for the end-to-end test only (git for Windows ships git-lfs next to git).
+
 ## Big repositories (0.7.0)
 
 Measured on real Unity projects (read-only, fingerprinted before and after) and on a synthetic repository (30 000 commits, 20 000 files, 1 500 branches with upstreams, 1 500 tags; generator kept outside the repo). What changed and why:
@@ -195,7 +202,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
 
 **Git LFS**
-- Locks are not loaded when git-lfs is installed while the app runs, until the next checkout or reopening the tab.
 - Loading locks can take up to four git-lfs runs (verify, then without it), and an interactive reload without a credential helper may ask several times. A host without the locks API (Bitbucket Cloud) is told apart by git-lfs's message (`NO_LOCKING_API` in `src/main/git/lfs.ts`: "not found", "not supported", 404), so a different wording from a server would show as an error again (0.13.0).
 - An own lock on a file deleted locally (deletion not committed) is released by id, skipping git-lfs's uncommitted-changes check.
 - Lock lookups per file row are linear in the number of locks (fine for hundreds).

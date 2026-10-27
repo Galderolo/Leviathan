@@ -54,6 +54,11 @@ test('reorders the tabs by dragging them, and keeps the order for the next start
   // Onto the right half of the last tab: after it.
   await tab('alpha').dragTo(tab('gamma'), { targetPosition: { x: gamma!.width - 5, y: gamma!.height / 2 } })
   await expect(page.locator('.tab-title')).toHaveText(['beta', 'gamma', 'alpha'])
+  // Pressing a tab shows its repository. Shown first, so that loading it is not under way while dragging: Playwright
+  // only waits one timer tick for the drag to start, and misses one that a busy window starts later.
+  await tab('gamma').click()
+  await expect(page.locator('.toolbar-repo .field-value').first()).toHaveText('gamma')
+  await expect(page.locator('.graph-row.row-commit')).toHaveCount(1)
   // Onto the left half of the first tab: before it.
   await tab('gamma').dragTo(tab('beta'), { targetPosition: { x: 5, y: gamma!.height / 2 } })
   await expect(page.locator('.tab-title')).toHaveText(['gamma', 'beta', 'alpha'])
@@ -1135,4 +1140,29 @@ test('generates an SSH key protected by its passphrase', async () => {
   expect(opens('')).toBe(false)
   expect(opens(passphrase)).toBe(true)
   await expect(page.locator('.toast.error')).toHaveCount(0)
+})
+
+test('asks once to install git-lfs for a repository that uses it, and offers it in the LFS section', async () => {
+  // git for Windows ships git-lfs next to git: the app is told to act as if it were missing.
+  box.env.LEVIATHAN_E2E_NO_GIT_LFS = '1'
+  const game = box.repo('game', { '.gitattributes': '*.psd filter=lfs diff=lfs merge=lfs -text\n', 'a.txt': 'one\n' })
+  const tool = box.repo('tool', { 'a.txt': 'one\n' })
+  await open(game, tool)
+
+  const modal = page.locator('.modal')
+  await expect(modal).toContainText('Git LFS is not installed')
+  await expect(modal).toContainText('game keeps its large files')
+  await modal.getByRole('button', { name: 'Cancel' }).click()
+  await expect(modal).toHaveCount(0)
+
+  // Once per repository and session: coming back to it does not ask again.
+  await page.locator('.tab', { hasText: 'tool' }).click()
+  await page.locator('.tab', { hasText: 'game' }).click()
+  await expect(page.locator('.left-panel')).toContainText('git-lfs is not installed')
+  await expect(modal).toHaveCount(0)
+
+  const lfs = page.locator('.left-panel .side-link')
+  await expect(lfs.filter({ hasText: 'Get Git LFS' })).toHaveCount(1)
+  // Windows always installs from the app; what Linux and macOS offer depends on the machine.
+  if (process.platform === 'win32') await expect(lfs.filter({ hasText: 'Install git-lfs' })).toHaveCount(1)
 })
