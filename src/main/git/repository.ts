@@ -1197,11 +1197,27 @@ export async function push(
     args.push(upstreamRemote, `refs/heads/${branch}:refs/heads/${branch}`)
   } else {
     const remotes = parseRemotes(await run(repo, ['remote', '-v'])).map((r) => r.name)
+    if (!remotes.length) throw new Error('This repository has no remotes. Add one first.')
+    // The branch itself (is its upstream gone?) and the remote branches of its name.
+    const lines = (
+      await run(repo, [
+        'for-each-ref',
+        '--format=%(refname) %(upstream:track)',
+        `refs/heads/${branch}`,
+        ...remotes.map((r) => `refs/remotes/${r}/${branch}`)
+      ])
+    ).split('\n')
+    const has = (r: string) => lines.some((l) => l.split(' ')[0] === `refs/remotes/${r}/${branch}`)
+    const gone = lines.some((l) => l.startsWith(`refs/heads/${branch} `) && l.trim().endsWith('[gone]'))
+    // A branch already published goes back where it is, even when it follows a branch of another remote.
+    const published = [upstreamRemote, 'origin', ...remotes].find((r) => r && remotes.includes(r) && has(r))
     const preferred = upstreamRemote && remotes.includes(upstreamRemote) ? upstreamRemote : null
-    const remote = opts.remote ?? preferred ?? (remotes.includes('origin') ? 'origin' : remotes[0])
-    if (!remote) throw new Error('This repository has no remotes. Add one first.')
+    const remote = opts.remote ?? published ?? preferred ?? (remotes.includes('origin') ? 'origin' : remotes[0])
     assertSafeArg(remote, 'remote')
-    args.push('--set-upstream', remote, `refs/heads/${branch}:refs/heads/${branch}`)
+    // Once the branch is published, an upstream with another name was set on purpose (`git branch -u
+    // origin/develop`): keep it. A first publish tracks the new branch, as `git push -u` would.
+    if (!upstreamRemote || !upstreamMerge || gone || !has(remote)) args.push('--set-upstream')
+    args.push(remote, `refs/heads/${branch}:refs/heads/${branch}`)
   }
   await git(args, { cwd: repo, onProgress })
 }

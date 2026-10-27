@@ -357,6 +357,73 @@ describe('repository', () => {
     expect((await git(['rev-parse', 'main'], { cwd: remoteDir })).stdout.trim()).toBe(mainBefore)
     const feature = await git(['rev-parse', '--verify', 'refs/heads/feature'], { cwd: remoteDir, okCodes: [0, 128] })
     expect(feature.exitCode).toBe(0)
+    // A first publish tracks the published branch, as `git push -u` would.
+    expect((await repo.getState(dir)).head.upstream).toBe('origin/feature')
+  })
+
+  it('keeps an upstream set on purpose once the branch is published', async () => {
+    const remoteDir = join(dir, '..', 'remote.git')
+    await git(['init', '-q', '--bare', '--initial-branch=main', remoteDir], { cwd: join(dir, '..') })
+    await commitFile('a.txt', 'a\n', 'base')
+    await repo.addRemote(dir, 'origin', remoteDir)
+    await repo.push(dir, { force: false }, () => {})
+    const mainBefore = (await git(['rev-parse', 'main'], { cwd: remoteDir })).stdout.trim()
+    await repo.createBranch(dir, 'feature', null, true)
+    await commitFile('b.txt', 'b\n', 'feature work')
+    await repo.push(dir, { force: false }, () => {})
+
+    await git(['branch', '-q', '--set-upstream-to=origin/main'], { cwd: dir })
+    await commitFile('c.txt', 'c\n', 'more work')
+    await repo.push(dir, { force: false }, () => {})
+
+    const tip = (await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()
+    expect((await git(['rev-parse', 'feature'], { cwd: remoteDir })).stdout.trim()).toBe(tip)
+    expect((await git(['rev-parse', 'main'], { cwd: remoteDir })).stdout.trim()).toBe(mainBefore)
+    expect((await repo.getState(dir)).head.upstream).toBe('origin/main')
+  })
+
+  it('tracks the published branch again when the upstream it had is gone', async () => {
+    const remoteDir = join(dir, '..', 'remote.git')
+    await git(['init', '-q', '--bare', '--initial-branch=main', remoteDir], { cwd: join(dir, '..') })
+    await commitFile('a.txt', 'a\n', 'base')
+    await repo.addRemote(dir, 'origin', remoteDir)
+    await repo.push(dir, { force: false }, () => {})
+    await git(['push', '-q', 'origin', 'main:develop'], { cwd: dir })
+    await repo.createBranch(dir, 'feature', null, true)
+    await repo.push(dir, { force: false }, () => {})
+    await git(['branch', '-q', '--set-upstream-to=origin/develop'], { cwd: dir })
+    await git(['push', '-q', 'origin', '--delete', 'develop'], { cwd: dir })
+
+    await commitFile('b.txt', 'b\n', 'feature work')
+    await repo.push(dir, { force: false }, () => {})
+    expect((await repo.getState(dir)).head.upstream).toBe('origin/feature')
+  })
+
+  it('pushes a published branch to the remote that has it, not to the remote of its upstream', async () => {
+    const parent = join(dir, '..')
+    for (const name of ['origin.git', 'upstream.git']) {
+      await git(['init', '-q', '--bare', '--initial-branch=main', join(parent, name)], { cwd: parent })
+    }
+    await commitFile('a.txt', 'a\n', 'base')
+    await repo.addRemote(dir, 'origin', join(parent, 'origin.git'))
+    await repo.addRemote(dir, 'upstream', join(parent, 'upstream.git'))
+    await git(['push', '-q', 'upstream', 'main'], { cwd: dir })
+    await repo.createBranch(dir, 'feature', null, true)
+    await repo.push(dir, { force: false, remote: 'origin' }, () => {})
+    // A fork's branch that follows the original repository's main.
+    await git(['branch', '-q', '--set-upstream-to=upstream/main'], { cwd: dir })
+
+    await commitFile('b.txt', 'b\n', 'feature work')
+    await repo.push(dir, { force: false }, () => {})
+
+    const tip = (await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()
+    expect((await git(['rev-parse', 'feature'], { cwd: join(parent, 'origin.git') })).stdout.trim()).toBe(tip)
+    const inUpstream = await git(['rev-parse', '--verify', 'refs/heads/feature'], {
+      cwd: join(parent, 'upstream.git'),
+      okCodes: [0, 128]
+    })
+    expect(inUpstream.exitCode).toBe(128)
+    expect((await repo.getState(dir)).head.upstream).toBe('upstream/main')
   })
 
   it('pushes to and pulls from a remote', async () => {

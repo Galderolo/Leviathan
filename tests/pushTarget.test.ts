@@ -80,6 +80,22 @@ describe('remotesToChooseFrom', () => {
     expect(remotesToChooseFrom('main', [head('main', 'origin/main')], [remote('origin'), remote('fork')])).toBeNull()
   })
 
+  it('asks when the branch follows the branch it started from and is on no remote yet', () => {
+    const remotes = [remote('origin'), remote('upstream')]
+    expect(remotesToChooseFrom('feature', [head('feature', 'upstream/main')], remotes)).toEqual(['origin', 'upstream'])
+  })
+
+  it('does not ask when the branch is already on a remote', () => {
+    const published: GitRef = {
+      name: 'origin/feature',
+      fullName: 'refs/remotes/origin/feature',
+      type: 'remote',
+      hash: 'h'
+    }
+    const remotes = [remote('origin'), remote('upstream')]
+    expect(remotesToChooseFrom('feature', [head('feature', 'upstream/main'), published], remotes)).toBeNull()
+  })
+
   it('does not ask when there is only one remote (or none)', () => {
     expect(remotesToChooseFrom('topic', [head('topic')], [remote('origin')])).toBeNull()
     expect(remotesToChooseFrom('topic', [head('topic')], [])).toBeNull()

@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- Pushing a branch that follows another one on purpose (`git branch -u origin/develop`) made it track the pushed branch instead; once the branch is published, that upstream is kept and the push goes where the branch already is, even when it follows another remote's branch. A first publish still tracks the new branch, as `git push -u` does, and a branch started from another remote's branch (`upstream/main`) asks which remote to publish it to when there are several. *Create pull request* accepts a branch that follows another one, if the branch of its name on the remote has its commits.
 - An open file history, folder history or blame is read again after a commit, checkout or pull (in the app or outside it), keeping the commit picked; it used to show what it found when opened.
 - A conflicted file deleted on both sides showed a raw "ENOENT" error in the conflict editor; it now says what happened and what the buttons do.
 - Shift+click on a file's checkbox gives the whole range the state that checkbox takes: a range can now be unchecked that way too, not only checked.

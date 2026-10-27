@@ -74,11 +74,15 @@ export function pickProject(
 /**
  * Whether a branch has to be pushed before a pull request can be opened from it:
  * the pull request takes the branch of the same name on `remote`, so that one
- * must exist and hold all of the local commits.
+ * must exist and hold all of the local commits. A branch that follows another
+ * branch on purpose (`origin/develop`) is compared with that one in `refs`.
  */
 export function needsPushForPullRequest(
-  ref: Pick<GitRef, 'name' | 'upstream' | 'ahead' | 'upstreamGone'>,
-  remote: string
+  ref: Pick<GitRef, 'name' | 'hash' | 'upstream' | 'ahead' | 'upstreamGone'>,
+  remote: string,
+  refs: Pick<GitRef, 'name' | 'type' | 'hash'>[]
 ): boolean {
-  return ref.upstream !== `${remote}/${ref.name}` || !!ref.upstreamGone || !!ref.ahead
+  const target = `${remote}/${ref.name}`
+  if (ref.upstream === target) return !!ref.upstreamGone || !!ref.ahead
+  return refs.find((r) => r.type === 'remote' && r.name === target)?.hash !== ref.hash
 }
