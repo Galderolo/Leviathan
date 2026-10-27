@@ -14,6 +14,18 @@ function scrollParent(el: HTMLElement): HTMLElement | null {
   return null
 }
 
+/** Scrolls `scroller`, which holds a `VirtualRows`, just enough to show its row `index` (gone through by keyboard). */
+export function revealRow(scroller: HTMLElement, index: number, rowHeight = FILE_ROW_HEIGHT): void {
+  const rows = scroller.querySelector<HTMLElement>('[data-virtual-rows]')
+  if (!rows || index < 0) return
+  const top =
+    rows.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop + index * rowHeight
+  if (top < scroller.scrollTop) scroller.scrollTop = top
+  else if (top + rowHeight > scroller.scrollTop + scroller.clientHeight) {
+    scroller.scrollTop = top + rowHeight - scroller.clientHeight
+  }
+}
+
 /**
  * Fixed-height rows that only renders those near the visible part of its scrolling container (the closest
  * scrolling ancestor), so lists of tens of thousands of files stay responsive. `render` must set each row's key.
@@ -60,7 +72,7 @@ export function VirtualRows<T>(props: {
   const start = Math.min(range.start, count)
   const end = Math.min(range.end, count)
   return (
-    <div ref={ref} style={{ height: count * rowHeight, position: 'relative' }}>
+    <div ref={ref} data-virtual-rows style={{ height: count * rowHeight, position: 'relative' }}>
       <div style={{ transform: `translateY(${start * rowHeight}px)` }}>
         {props.items.slice(start, end).map((item, i) => props.render(item, start + i))}
       </div>

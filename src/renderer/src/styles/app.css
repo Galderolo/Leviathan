@@ -1165,6 +1165,15 @@ img.avatar {
   overflow: auto;
 }
 
+/* Clicked, the list takes the keys; a ring shows only when it was reached with Tab. */
+.file-list:focus {
+  outline: none;
+}
+
+.file-list:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 .file-list.static {
   flex: none;
   overflow: visible;
@@ -2572,6 +2581,41 @@ img.avatar {
   align-items: center;
   gap: 14px;
   font-size: 12px;
+}
+
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 12px;
+}
+
+.shortcuts-title {
+  margin-bottom: 6px;
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.shortcut {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.shortcut kbd {
+  justify-self: start;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-1);
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .about {

@@ -153,6 +153,10 @@ Known minor issues:
 - The merge tool refuses files whose name has `[ ] * ?` (see above).
 - A repository on a network or WSL path (`\\server\…`, `\\wsl.localhost\…`) opens the terminal in `C:\Windows`: cmd, which starts it, cannot work in such a folder.
 
+## Keyboard shortcuts
+
+`src/renderer/src/shortcuts.ts` holds them: `globalShortcut` reads the app-wide ones (Ctrl or ⌘ alike), handled in `App.tsx` unless a modal is open; `fileKey` the ones of a changed-files list, handled by `listKeys` in `RightPanel.tsx` once the list has the focus (a click on it gives it); `SHORTCUT_GROUPS` is the list Settings shows (F1, or Ctrl+/, which Spanish keyboards type with Shift). After Space or Delete the next file of the list opens (`nextAfter`), so a run of files goes by with the keys alone. Undo and redo in a text box stay the box's own.
+
 ## Next steps
 
 ### 1. Pull requests on real servers

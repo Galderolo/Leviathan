@@ -5,8 +5,11 @@ import {
   closeFileView,
   closeReview,
   closeTab,
+  createBranch,
   cycleTab,
   browseAndOpen,
+  fetchAll,
+  goToTab,
   handleAskpass,
   handleProgress,
   initApp,
@@ -18,8 +21,10 @@ import {
   recheckGitLfs,
   refreshRepo,
   saveSettings,
+  stashChanges,
   undo
 } from './actions'
+import { globalShortcut } from './shortcuts'
 import { CommitGraph } from './components/CommitGraph'
 import { ContextMenu, Dialog, Resizer, Toasts } from './components/common'
 import { DiffView } from './components/DiffView'
@@ -106,37 +111,60 @@ export function App() {
       const s = useStore.getState()
       // A modal on top (dialog, menu, Settings, rebase): shortcuts must not act on the repository behind it.
       if (s.dialog || s.menu || s.settingsOpen || s.whatsNewOpen || s.rebase) return
-      const mod = e.ctrlKey || e.metaKey
-      const key = e.key.toLowerCase()
       const active = s.tabs.find((x) => x.id === s.activeTab)
-      if (mod && key === 't') {
-        e.preventDefault()
-        newTab()
-      } else if (mod && key === 'w') {
-        e.preventDefault()
-        if (s.activeTab) closeTab(s.activeTab)
-      } else if (mod && e.key === 'Tab') {
-        e.preventDefault()
-        cycleTab(e.shiftKey ? -1 : 1)
-      } else if (mod && key === 'o') {
-        e.preventDefault()
-        void browseAndOpen(active?.path ? undefined : active?.id)
-      } else if (mod && (key === 'z' || key === 'y') && active?.path && !isTyping(e.target)) {
-        e.preventDefault()
-        if (key === 'y' || e.shiftKey) void redo(active.path)
-        else void undo(active.path)
-      } else if (mod && (key === 'p' || key === 'l') && !e.shiftKey && active?.path) {
+      const repo = active?.path
+      const shortcut = globalShortcut(e)
+      if (shortcut) {
+        // Undo and redo in a text box are the box's own.
+        if ((shortcut.id === 'undo' || shortcut.id === 'redo') && isTyping(e.target)) return
         e.preventDefault()
         // Like the toolbar buttons, which are disabled while a fetch, pull or push runs.
-        if (getRepo(active.path)?.busy) return
-        if (key === 'p') void push(active.path)
-        else void pull(active.path)
-      } else if (mod && key === 'f') {
-        e.preventDefault()
-        document.getElementById('graph-search')?.focus()
-      } else if (e.key === 'F5' && active?.path) {
-        e.preventDefault()
-        void refreshRepo(active.path)
+        const idle = !!repo && !getRepo(repo)?.busy
+        switch (shortcut.id) {
+          case 'newTab':
+            return newTab()
+          case 'closeTab':
+            if (s.activeTab) closeTab(s.activeTab)
+            return
+          case 'nextTab':
+            return cycleTab(1)
+          case 'previousTab':
+            return cycleTab(-1)
+          case 'goToTab':
+            return goToTab(shortcut.tab!)
+          case 'openRepo':
+            return void browseAndOpen(repo ? undefined : active?.id)
+          case 'undo':
+            if (repo) void undo(repo)
+            return
+          case 'redo':
+            if (repo) void redo(repo)
+            return
+          case 'fetch':
+            if (repo && idle) void fetchAll(repo)
+            return
+          case 'pull':
+            if (repo && idle) void pull(repo)
+            return
+          case 'push':
+            if (repo && idle) void push(repo)
+            return
+          case 'newBranch':
+            if (repo) void createBranch(repo, null)
+            return
+          case 'stash':
+            if (repo) void stashChanges(repo)
+            return
+          case 'search':
+            return document.getElementById('graph-search')?.focus()
+          case 'refresh':
+            if (repo) void refreshRepo(repo)
+            return
+          case 'settings':
+            return useStore.setState({ settingsOpen: true })
+          case 'shortcuts':
+            return useStore.setState({ settingsOpen: true, settingsSection: 'shortcuts' })
+        }
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.review && !isTyping(e.target)) {
         closeReview(active.path)
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.fileView && !isTyping(e.target)) {

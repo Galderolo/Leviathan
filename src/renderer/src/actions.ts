@@ -163,6 +163,13 @@ export function reorderTab(id: string, gap: number): void {
   persistTabs()
 }
 
+/** Shows tab `n` (1 = the first); 9 is the last one, as in browsers. */
+export function goToTab(n: number): void {
+  const { tabs } = useStore.getState()
+  const tab = n === 9 ? tabs[tabs.length - 1] : tabs[n - 1]
+  if (tab) setActiveTab(tab.id)
+}
+
 export function cycleTab(delta: number): void {
   const { tabs, activeTab } = useStore.getState()
   if (tabs.length < 2) return

@@ -456,6 +456,43 @@ test("moves the graph's author, date and SHA columns by dragging their headers, 
   ])
 })
 
+test('stages and unstages files from the keyboard, going on to the next file', async () => {
+  const repo = box.repo('game', { 'a.txt': 'a\n', 'b.txt': 'b\n', 'c.txt': 'c\n' })
+  box.write(repo, { 'a.txt': 'a2\n', 'b.txt': 'b2\n', 'c.txt': 'c2\n' })
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  const staged = () => page.locator('.file-section').nth(1)
+
+  await unstaged().locator('.file-row', { hasText: 'a.txt' }).click()
+  await page.keyboard.press('Space')
+  await expect(staged().locator('.file-row')).toHaveText([/a\.txt/])
+  // The next file is open, ready for the next key.
+  await expect(unstaged().locator('.file-row.active')).toContainText('b.txt')
+  await page.keyboard.press('ArrowDown')
+  await expect(unstaged().locator('.file-row.active')).toContainText('c.txt')
+  await page.keyboard.press('Space')
+  await expect(staged().locator('.file-row')).toHaveText([/a\.txt/, /c\.txt/])
+
+  // In the staged list, Space unstages.
+  await staged().locator('.file-row', { hasText: 'a.txt' }).click()
+  await page.keyboard.press('Space')
+  await expect(staged().locator('.file-row')).toHaveText([/c\.txt/])
+})
+
+test('goes to a tab by its number, and lists the shortcuts with F1', async () => {
+  const one = box.repo('one', { 'a.txt': 'one\n' })
+  const two = box.repo('two', { 'a.txt': 'two\n' })
+  await open(one, two)
+  await page.keyboard.press('Control+2')
+  await expect(page.locator('.tab.active')).toContainText('two')
+
+  await page.keyboard.press('F1')
+  await expect(page.locator('.settings-nav-item.active')).toHaveText('Keyboard shortcuts')
+  const list = page.locator('.settings-body:visible')
+  await expect(list).toContainText('Stage or unstage the files checked, or the one open')
+  await expect(list).toContainText(process.platform === 'darwin' ? '⌘⇧F' : 'Ctrl+Shift+F')
+})
+
 test('checks and unchecks a range of files with Shift on their checkboxes', async () => {
   const repo = box.repo('game', { 'keep.txt': 'x\n' })
   box.write(repo, { 'a.txt': 'a\n', 'b.txt': 'b\n', 'c.txt': 'c\n', 'd.txt': 'd\n' })
@@ -561,6 +598,7 @@ test('keeps Settings in sections and saves each change at once', async () => {
     'Accounts',
     'SSH keys',
     'Updates',
+    'Keyboard shortcuts',
     'About'
   ])
   await page.locator('.settings-body:visible select').first().selectOption('light')
