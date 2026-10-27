@@ -867,12 +867,26 @@ async function moveBranch(repo: string, branch: string, from: string, to: string
 }
 
 /**
+ * Whether a branch of that name can be created: no branch is a folder above it
+ * (`pr` for `pr/7`) or below it (`feature/old` for `feature`). A branch of that
+ * very name does not count.
+ */
+async function branchNameFree(repo: string, name: string): Promise<boolean> {
+  const parts = name.split('/')
+  const above = parts.slice(1).map((_, i) => `refs/heads/${parts.slice(0, i + 1).join('/')}`)
+  // A pattern matches the ref itself and everything below it.
+  const refs = (await run(repo, ['for-each-ref', '--format=%(refname)', `refs/heads/${parts[0]}`])).split('\n')
+  return !refs.some((r) => above.includes(r) || r.startsWith(`refs/heads/${name}/`))
+}
+
+/**
  * Checks out a pull request. A pull request whose branch lives in this
  * repository is checked out as that branch, tracking the remote one (and
  * fast-forwarded to it) — unless a local branch of that name is something else.
  * Otherwise (forks) the provider's `pull/N/head` (GitLab: `merge-requests/N/head`)
- * becomes a local `pr/N` branch. Checking out again brings it up to date, also
- * after the author rewrote it, but never drops commits made on the local branch.
+ * becomes a local `pr/N` branch (`pr-N` when a branch named `pr` exists).
+ * Checking out again brings it up to date, also after the author rewrote it,
+ * but never drops commits made on the local branch.
  */
 export async function checkoutPullRequest(
   repo: string,
@@ -889,23 +903,24 @@ export async function checkoutPullRequest(
     // `+` like git's default refspec: the remote-tracking branch follows force pushes.
     await git(['fetch', remote, `+refs/heads/${branch}:${tracking}`], { cwd: repo })
     const local = await refValue(repo, `refs/heads/${branch}`)
-    if (!local) {
+    if (!local && (await branchNameFree(repo, branch))) {
       await run(repo, ['checkout', '-q', '--track', `${remote}/${branch}`])
       return
     }
     const follows =
+      !!local &&
       (await configValue(repo, `branch.${branch}.remote`)) === remote &&
       (await configValue(repo, `branch.${branch}.merge`)) === `refs/heads/${branch}`
-    if (follows) {
+    if (local && follows) {
       const target = (await refValue(repo, tracking))!
       if (await isAncestor(repo, local, target)) await moveBranch(repo, branch, local, target)
       await run(repo, ['checkout', '-q', branch, '--'])
       return
     }
-    // A local branch with that name holds other work: leave it alone and use pr/N.
+    // A local branch with that name holds other work, or is in the way of it: leave it alone and use pr/N.
   }
 
-  const branch = `pr/${pr.number}`
+  const branch = (await branchNameFree(repo, `pr/${pr.number}`)) ? `pr/${pr.number}` : `pr-${pr.number}`
   const source = pullRequestSource(pr, provider)
   // The last version fetched, out of sight of the branch lists, tells whether pr/N has commits of its own.
   const mirror = `refs/leviathan/pulls/${pr.number}`

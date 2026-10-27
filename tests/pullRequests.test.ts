@@ -113,6 +113,26 @@ describe('checking out a pull request again', () => {
     await repo.checkoutPullRequest(work, 'origin', same, 'github')
     expect((await repo.getState(work)).head).toMatchObject({ branch: 'pr/3', hash: await tip(otherDir, 'feature') })
   })
+
+  it('uses pr/N when a local branch is in the way of the name of the pull request branch', async () => {
+    // git cannot have both feature/old and feature.
+    await repo.createBranch(work, 'feature/old', null, false)
+    await repo.checkoutPullRequest(work, 'origin', same, 'github')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'pr/3', hash: await tip(otherDir, 'feature') })
+  })
+
+  it('uses pr-N when a local branch named pr is in the way of pr/N, and again the next time', async () => {
+    await repo.createBranch(work, 'pr', null, false)
+    await repo.checkoutPullRequest(work, 'origin', fork, 'github')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'pr-7', hash: forkTip })
+
+    await repo.checkout(work, 'main')
+    await git(['checkout', '-q', 'fork-work'], { cwd: otherDir })
+    const newer = await commitFile(otherDir, 'k2.txt', 'more fork work')
+    await git(['push', '-q', 'origin', 'HEAD:refs/pull/7/head'], { cwd: otherDir })
+    await repo.checkoutPullRequest(work, 'origin', fork, 'github')
+    expect((await repo.getState(work)).head).toMatchObject({ branch: 'pr-7', hash: newer })
+  })
 })
 
 afterEach(() => rmSync(root, { recursive: true, force: true }))
