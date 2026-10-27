@@ -541,6 +541,35 @@ test('keeps Settings in sections and saves each change at once', async () => {
   await expect(page.locator('.modal.settings')).toHaveCount(0)
 })
 
+test('adds an account again with a new token: one account, with the name typed, and says it was updated', async () => {
+  // Accounts need the system's secure storage, which a Linux runner without a keyring does not have.
+  test.skip(process.platform === 'linux' && !!process.env.CI, 'no keyring for the account token')
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+
+  await page.locator('.toolbar-right .icon-btn').click()
+  await page.locator('.settings-nav-item', { hasText: 'Accounts' }).click()
+  const section = page.locator('.settings-body:visible')
+  // "Other": the account is who the form says, nothing to ask a server.
+  const add = async (token: string, name: string) => {
+    await section.getByRole('button', { name: 'Add account' }).click()
+    await section.locator('.account-form select').selectOption('other')
+    await section.getByPlaceholder('Host').fill('git.example.com')
+    await section.getByPlaceholder('Username').fill('ana')
+    await section.getByPlaceholder('Personal access token').fill(token)
+    if (name) await section.getByPlaceholder('Commit name').fill(name)
+    await section.getByRole('button', { name: 'Add', exact: true }).click()
+  }
+
+  await add('first-token', '')
+  await expect(page.locator('.toasts')).toContainText('Account ana@git.example.com added')
+  await expect(section.locator('.ssh-key')).toHaveCount(1)
+  await add('second-token', 'Ana Work')
+  await expect(page.locator('.toasts')).toContainText('Account ana@git.example.com updated with the new token')
+  await expect(section.locator('.ssh-key')).toHaveCount(1)
+  await expect(section.locator('.ssh-key')).toContainText('Ana Work <')
+})
+
 test('opens the terminal chosen in Settings in the repository folder', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   // A stand-in terminal: it writes down where it started and what it was given, then exits.
