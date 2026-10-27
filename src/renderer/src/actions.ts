@@ -230,8 +230,9 @@ export async function cloneRepository(
 ): Promise<boolean> {
   useStore.setState({ cloneProgress: t('clone.cloning') })
   try {
-    const { path, submoduleError } = await api.cloneRepo(url, dest, accountId, recurseSubmodules)
+    const { path, submoduleError, bindError } = await api.cloneRepo(url, dest, accountId, recurseSubmodules)
     toast('success', t('toast.cloned'))
+    if (bindError) toast('error', t('toast.accountNotBound', { error: bindError }))
     if (submoduleError) toast('error', t('toast.submodulesNotCloned', { error: submoduleError }))
     await openRepository(path, tabId)
     return true

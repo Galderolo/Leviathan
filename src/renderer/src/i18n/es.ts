@@ -506,6 +506,8 @@ const es: Record<keyof typeof en, string> = {
   'toast.submodulesUpdated': 'Submódulos actualizados',
   'toast.submodulesNotCloned':
     'Clonado, pero algunos submódulos no se pudieron descargar (aparecen sin inicializar): {error}',
+  'toast.accountNotBound':
+    'Clonado, pero no se pudo asignar la cuenta al repositorio (elígela de nuevo en "Cuenta de este repositorio…"): {error}',
   'diff.submoduleMoved': 'Submódulo: {from} → {to}',
   'diff.submoduleAdded': 'Submódulo nuevo en {to}',
   'diff.submoduleRemoved': 'Submódulo eliminado (estaba en {from})',

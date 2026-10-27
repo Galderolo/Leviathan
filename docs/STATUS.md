@@ -218,7 +218,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Commit identity (`getCommitIdentity`, `setCommitIdentity`, `ensureDefaultIdentity` in `src/main/accounts/index.ts`, `src/main/git/identity.ts`, `src/shared/identity.ts`): a repository without a local `user.name`/`user.email` and not bound to an account is bound, when opened, to the account that owns its project (first path part = username, no request) or else the first on that host whose token may push (`canPush`: GitHub/Gitea `permissions.push`, GitLab Developer or above, Bitbucket write/admin). Nothing found is remembered for the session only. A local identity is never replaced; renaming an account only updates the repositories that still have its old identity. Picking an identity typed or the global one keeps the binding (its token still serves push and pull).
 - Usernames with `%` or `@` in the askpass prompt; `*.ghe.com` API base and no-reply emails for hosts with a port.
 - Nested repositories match the first registered repository, not the deepest; Windows path casing in the repository → account map.
-- A clone that succeeds but fails to bind to the account is reported as a failed clone.
 - `other` accounts get an invented default email.
 - GitHub sign-in: one network error while waiting ends the sign-in (no retry); no local deadline besides GitHub's `expired_token`; secure storage is only checked after the browser step; a cancel pressed after GitHub issued the token still adds the account.
 

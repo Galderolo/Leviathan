@@ -58,12 +58,13 @@ export interface LeviathanInvokeApi {
   initRepo(path: string, branch: string): Promise<string>
   /** With `accountId`, clones with that account and binds the new repository to it. */
   /** With `recurseSubmodules`, a submodule that cannot be fetched does not fail the clone: its error comes back. */
+  /** A clone that could not be bound to the account is kept too: `bindError` says why. */
   cloneRepo(
     url: string,
     dest: string,
     accountId?: string | null,
     recurseSubmodules?: boolean
-  ): Promise<{ path: string; submoduleError: string | null }>
+  ): Promise<{ path: string; submoduleError: string | null; bindError: string | null }>
   watchRepo(repo: string): Promise<void>
   unwatchRepo(repo: string): Promise<void>
 
