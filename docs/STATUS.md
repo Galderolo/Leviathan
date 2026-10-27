@@ -238,7 +238,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - History of a staged rename starts from the new name, which HEAD does not have yet (empty list).
 - *Blame before this change* uses the `previous <commit> <path>` that `git blame --porcelain` gives each commit (its parent, and the file's name there): the earlier blame opens at the line number the line had in the commit that changed it (`origLine`), only a guess of where it was in the parent. *Back* is a stack in `fileView.back`.
 - File and folder history list 300 commits at a time (*Show more*, up to 5 000: `HISTORY_PAGE`, `HISTORY_MAX`), and blame stops at 20 000 lines (`BLAME_MAX_LINES`); both say so. Views of HEAD or the working tree are read again when HEAD moves (`useHeadKey`), not when the working file alone changes.
-- A global `blame.ignoreRevsFile` pointing to a missing file makes every blame fail with git's message.
 - Rendering 20 000 blame rows ("Show all") is slow; closing the view does not stop a long `log --follow` or blame.
 - Folder history (`getFolderHistory`: `git log -- <folder>`, literal pathspec, 300 commits) loads the picked commit's whole file list (`getCommitDetails`) and keeps the folder's part (`filesInFolder`, moves in and out included), so a commit of 20 000 files costs the same as in the graph. Files compare with the first parent: a merge that brought the folder's changes may list nothing.
 
