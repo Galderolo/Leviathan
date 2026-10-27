@@ -8,7 +8,8 @@ const stub: Record<string, ReturnType<typeof vi.fn>> = {
   getLfsInfo: vi.fn(async () => lfsInfo),
   installGitLfs: vi.fn(() => new Promise(() => {})),
   saveSettings: vi.fn(async () => DEFAULT_SETTINGS),
-  openExternal: vi.fn(async () => {})
+  openExternal: vi.fn(async () => {}),
+  getLfsLocks: vi.fn(async () => ({ locks: [], verified: true }))
 }
 vi.stubGlobal('window', {
   leviathan: new Proxy(stub, {
@@ -18,8 +19,8 @@ vi.stubGlobal('window', {
 const writeText = vi.fn(async () => {})
 vi.stubGlobal('navigator', { language: 'en', clipboard: { writeText } })
 
-const { loadLfsInfo, setActiveTab } = await import('../src/renderer/src/actions')
-const { newRepoView, useStore } = await import('../src/renderer/src/store')
+const { loadLfsInfo, recheckGitLfs, setActiveTab } = await import('../src/renderer/src/actions')
+const { newRepoView, patchRepo, useStore } = await import('../src/renderer/src/store')
 
 const missing: LfsInfo = {
   version: null,
@@ -93,5 +94,27 @@ describe('asking to install git-lfs', () => {
     dialog()!.resolve({})
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('sudo apt-get install git-lfs'))
     expect(stub.installGitLfs).not.toHaveBeenCalled()
+  })
+})
+
+describe('git-lfs installed by hand', () => {
+  it('notices git-lfs installed while the app runs and loads the locks', async () => {
+    open('/g')
+    useStore.setState({ lfsOffer: null })
+    await loadLfsInfo('/g')
+    patchRepo('/g', { state: { remotes: [{ name: 'origin', url: 'https://example.com/g.git' }] } as never })
+
+    // Back to the window, git-lfs still missing: asked again, then not for a while.
+    stub.getLfsInfo.mockClear()
+    recheckGitLfs(100_000)
+    await vi.waitFor(() => expect(stub.getLfsInfo).toHaveBeenCalledTimes(1))
+    stub.getLfsInfo.mockClear()
+    recheckGitLfs(105_000)
+    expect(stub.getLfsInfo).not.toHaveBeenCalled()
+
+    lfsInfo = { ...missing, version: '3.8.1', filters: true, hooks: true }
+    recheckGitLfs(111_000)
+    await vi.waitFor(() => expect(useStore.getState().repos['/g'].lfs?.info.version).toBe('3.8.1'))
+    await vi.waitFor(() => expect(stub.getLfsLocks).toHaveBeenCalledTimes(1))
   })
 })

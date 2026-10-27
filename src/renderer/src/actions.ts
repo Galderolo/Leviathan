@@ -1860,6 +1860,21 @@ export async function loadLfsInfo(path: string): Promise<void> {
   }
 }
 
+const LFS_RECHECK_MS = 10_000
+let lastLfsRecheck = 0
+
+/**
+ * Back in the window: git-lfs may have been installed by hand meanwhile. Repositories that miss it read their LFS
+ * info again (which loads their locks once it is there), at most every few seconds.
+ */
+export function recheckGitLfs(now = Date.now()): void {
+  if (now - lastLfsRecheck < LFS_RECHECK_MS) return
+  lastLfsRecheck = now
+  for (const [path, view] of Object.entries(useStore.getState().repos)) {
+    if (view.lfs?.info.used && !view.lfs.info.version) void loadLfsInfo(path)
+  }
+}
+
 // Repositories already asked about installing git-lfs in this session, and whether a question is on screen.
 const lfsAsked = new Set<string>()
 let lfsAsking = false

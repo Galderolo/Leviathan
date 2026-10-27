@@ -15,6 +15,7 @@ import {
   pull,
   push,
   redo,
+  recheckGitLfs,
   refreshRepo,
   saveSettings,
   undo
@@ -85,6 +86,7 @@ export function App() {
       const s = useStore.getState()
       const active = s.tabs.find((x) => x.id === s.activeTab)
       if (active?.path) void refreshRepo(active.path)
+      recheckGitLfs()
     }
     window.addEventListener('focus', onFocus)
     return () => {
