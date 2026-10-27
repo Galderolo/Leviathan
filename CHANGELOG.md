@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- An account whose token cannot be read on this computer (a profile copied from another computer or user account) made the pull requests section disappear without a word. The section now says so and links to Settings → Accounts, where signing in again or a new token fixes it.
 - The history of a file renamed and staged, but not committed yet, was empty: it now follows the file back from the name it has in the last commit.
 - The history of a file whose name has quotes, backslashes or tabs (possible on Linux and macOS) showed an empty diff for each commit: git writes those names quoted, and they are now read back as they are.
 - Blame failed in every repository without the file `blame.ignoreRevsFile` names (a setting often made globally for the repositories that have one, such as `.git-blame-ignore-revs`). Files that are missing are now left out; the ones that are there still apply.

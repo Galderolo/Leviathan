@@ -295,8 +295,14 @@ async function repoRemotes(repo: string) {
 /** The hosted project of a repository and the account (with its token) to reach it. */
 async function repoProject(repo: string) {
   const project = pickProject(await repoRemotes(repo), accounts().list(), getRepoAccount(repo))
-  const token = project && (await freshToken(project.account.id))
-  return project && token ? { ...project, token } : null
+  if (!project) return null
+  const token = await freshToken(project.account.id)
+  // Saved by another computer or user account (a copied or restored profile): the account is there, its token is not.
+  if (!token) {
+    const { username, host } = project.account
+    throw new Error(`The token of ${username}@${host} can no longer be read on this system: add the account again.`)
+  }
+  return { ...project, token }
 }
 
 export async function getPullRequests(
