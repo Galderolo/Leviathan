@@ -60,7 +60,7 @@ export function sudoCommand(manager: PackageManager): string {
  * a graphical password prompt (pkexec), else the command to type. Otherwise only the download page is left.
  */
 export function installOffer(
-  platform: NodeJS.Platform,
+  platform: string,
   found: { brew: string | null; pkexec: string | null; manager: PackageManager | null }
 ): LfsInstallOffer {
   if (platform === 'win32') return { method: 'zip' }
