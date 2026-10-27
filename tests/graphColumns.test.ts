@@ -4,8 +4,11 @@ import {
   clampGraphScroll,
   clampWidth,
   gridColumns,
+  moveColumn,
+  readColumnOrder,
   readGraphColumns,
   readHiddenColumns,
+  writeColumnOrder,
   writeGraphColumns,
   writeHiddenColumns
 } from '../src/renderer/src/graphColumns'
@@ -64,6 +67,42 @@ describe('graph columns shown', () => {
     expect(readHiddenColumns(store)).toEqual(['date'])
     store.setItem('leviathan.graphHiddenColumns', 'nope')
     expect(readHiddenColumns(store)).toEqual([])
+  })
+})
+
+describe('graph column order', () => {
+  const widths = { refs: 200, graph: 120 }
+
+  it('lays the columns out in the order they were dragged to', () => {
+    expect(gridColumns(widths, [], ['sha', 'author', 'date'])).toBe(
+      '200px 120px minmax(140px, 1fr) 70px minmax(90px, 150px) minmax(110px, 150px)'
+    )
+    expect(gridColumns(widths, ['author'], ['sha', 'author', 'date'])).toBe(
+      '200px 120px minmax(140px, 1fr) 70px minmax(110px, 150px)'
+    )
+  })
+
+  it('remembers the order, and starts from the usual one on anything else', () => {
+    const store = fakeStore()
+    expect(readColumnOrder(store)).toEqual(['author', 'date', 'sha'])
+    writeColumnOrder(['sha', 'author', 'date'], store)
+    expect(readColumnOrder(store)).toEqual(['sha', 'author', 'date'])
+    for (const bad of ['["sha","author"]', '["sha","sha","date"]', '["sha","message","date"]', 'nope']) {
+      store.setItem('leviathan.graphColumnOrder', bad)
+      expect(readColumnOrder(store)).toEqual(['author', 'date', 'sha'])
+    }
+  })
+
+  it('moves a column among the ones shown, leaving a hidden one where it was', () => {
+    const order = ['author', 'date', 'sha'] as const
+    // Into gap 0 of the shown columns: first.
+    expect(moveColumn([...order], [], 'sha', 0)).toEqual(['sha', 'author', 'date'])
+    expect(moveColumn([...order], [], 'author', 3)).toEqual(['date', 'sha', 'author'])
+    // Dropped either side of itself: nothing moves.
+    expect(moveColumn([...order], [], 'date', 1)).toEqual(['author', 'date', 'sha'])
+    expect(moveColumn([...order], [], 'date', 2)).toEqual(['author', 'date', 'sha'])
+    // Date hidden: author and SHA swap, date keeps its place in the middle.
+    expect(moveColumn([...order], ['date'], 'sha', 0)).toEqual(['sha', 'date', 'author'])
   })
 })
 

@@ -3062,6 +3062,23 @@ img.avatar {
   position: relative;
 }
 
+/* Author, date and SHA move by dragging their headers; the drop place shows as on the tabs. */
+.graph-header > div.col-move {
+  cursor: grab;
+}
+
+.graph-header > div.col-move.dragging {
+  opacity: 0.5;
+}
+
+.graph-header > div.col-move.drop-before {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.graph-header > div.col-move.drop-after {
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+
 .col-resizer {
   position: absolute;
   top: 0;

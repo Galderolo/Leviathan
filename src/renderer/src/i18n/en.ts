@@ -99,7 +99,7 @@ const en = {
   'graph.columnAuthor': 'Author',
   'graph.columnDate': 'Date / time',
   'graph.columnSha': 'SHA',
-  'graph.columnsHint': 'Right-click to choose the columns shown',
+  'graph.columnsHint': 'Right-click to choose the columns shown; drag author, date or SHA to move them',
   'graph.wip': '// WIP',
   'graph.empty': 'No commits yet. Stage some files and make your first commit!',
   'graph.loading': 'Loading…',
