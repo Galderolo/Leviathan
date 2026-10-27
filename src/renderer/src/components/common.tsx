@@ -236,7 +236,9 @@ export function Resizer(props: {
       onMouseDown={(e) => {
         e.preventDefault()
         const startX = e.clientX
-        const start = props.value
+        // From the width shown: a narrow window may show the panel narrower than its saved width.
+        const panel = props.invert ? e.currentTarget.nextElementSibling : e.currentTarget.previousElementSibling
+        const start = Math.round(panel?.getBoundingClientRect().width ?? props.value)
         let latest = start
         const move = (ev: MouseEvent) => {
           const delta = (ev.clientX - startX) * (props.invert ? -1 : 1)

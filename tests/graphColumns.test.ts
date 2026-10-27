@@ -4,6 +4,7 @@ import {
   clampGraphScroll,
   clampWidth,
   gridColumns,
+  gridMinWidth,
   moveColumn,
   readColumnOrder,
   readGraphColumns,
@@ -32,12 +33,24 @@ describe('graph column widths', () => {
 
   it('remembers the widths the user dragged to, within limits', () => {
     const store = fakeStore()
-    writeGraphColumns({ refs: 260, graph: 300 }, store)
-    expect(readGraphColumns(store)).toEqual({ refs: 260, graph: 300 })
-    writeGraphColumns({ refs: 5, graph: 99999 }, store)
-    expect(readGraphColumns(store)).toEqual({ refs: clampWidth('refs', 5), graph: clampWidth('graph', 99999) })
+    const dragged = { refs: 260, graph: 300, author: 120, date: 180, sha: 90 }
+    writeGraphColumns(dragged, store)
+    expect(readGraphColumns(store)).toEqual(dragged)
+    writeGraphColumns({ ...dragged, refs: 5, graph: 99999, sha: 1 }, store)
+    expect(readGraphColumns(store)).toMatchObject({
+      refs: clampWidth('refs', 5),
+      graph: clampWidth('graph', 99999),
+      sha: clampWidth('sha', 1)
+    })
     expect(clampWidth('refs', 5)).toBeGreaterThan(5)
     expect(clampWidth('graph', 99999)).toBeLessThan(99999)
+    expect(clampWidth('sha', 1)).toBeGreaterThan(1)
+  })
+
+  it('keeps the widths saved before author, date and SHA could be resized', () => {
+    const store = fakeStore()
+    store.setItem('leviathan.graphColumns', '{"refs":260,"graph":300}')
+    expect(readGraphColumns(store)).toEqual({ ...DEFAULT_COLUMNS, refs: 260, graph: 300 })
   })
 
   it('falls back to the defaults on bad data', () => {
@@ -50,12 +63,21 @@ describe('graph column widths', () => {
 })
 
 describe('graph columns shown', () => {
-  const widths = { refs: 200, graph: 120 }
+  const widths = { refs: 200, graph: 120, author: 150, date: 140, sha: 70 }
+
+  // Author, date and SHA get the width they were given while there is room, and narrow down to a minimum before the
+  // graph scrolls sideways.
+  const all = '200px 120px minmax(140px, 1fr) minmax(60px, 150px) minmax(80px, 140px) minmax(50px, 70px)'
 
   it('lays out every column, or leaves out the ones hidden', () => {
-    expect(gridColumns(widths, [])).toBe('200px 120px minmax(140px, 1fr) minmax(90px, 150px) minmax(110px, 150px) 70px')
-    expect(gridColumns(widths, ['author', 'sha'])).toBe('200px 120px minmax(140px, 1fr) minmax(110px, 150px)')
+    expect(gridColumns(widths, [])).toBe(all)
+    expect(gridColumns(widths, ['author', 'sha'])).toBe('200px 120px minmax(140px, 1fr) minmax(80px, 140px)')
     expect(gridColumns(widths, ['author', 'date', 'sha'])).toBe('200px 120px minmax(140px, 1fr)')
+  })
+
+  it('knows how narrow the columns shown can get, before the graph scrolls sideways', () => {
+    expect(gridMinWidth(widths, [])).toBe(200 + 120 + 140 + 60 + 80 + 50)
+    expect(gridMinWidth(widths, ['date'])).toBe(200 + 120 + 140 + 60 + 50)
   })
 
   it('remembers the columns hidden, and ignores what is not a column that can be', () => {
@@ -71,14 +93,14 @@ describe('graph columns shown', () => {
 })
 
 describe('graph column order', () => {
-  const widths = { refs: 200, graph: 120 }
+  const widths = { refs: 200, graph: 120, author: 150, date: 140, sha: 70 }
 
   it('lays the columns out in the order they were dragged to', () => {
     expect(gridColumns(widths, [], ['sha', 'author', 'date'])).toBe(
-      '200px 120px minmax(140px, 1fr) 70px minmax(90px, 150px) minmax(110px, 150px)'
+      '200px 120px minmax(140px, 1fr) minmax(50px, 70px) minmax(60px, 150px) minmax(80px, 140px)'
     )
     expect(gridColumns(widths, ['author'], ['sha', 'author', 'date'])).toBe(
-      '200px 120px minmax(140px, 1fr) 70px minmax(110px, 150px)'
+      '200px 120px minmax(140px, 1fr) minmax(50px, 70px) minmax(80px, 140px)'
     )
   })
 

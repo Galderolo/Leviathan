@@ -20,6 +20,7 @@ import {
   clampGraphScroll,
   clampWidth,
   gridColumns,
+  gridMinWidth,
   moveColumn,
   readColumnOrder,
   readGraphColumns,
@@ -119,7 +120,8 @@ export function CommitGraph({ path }: { path: string }) {
     const handle = e.currentTarget
     handle.setPointerCapture(e.pointerId)
     const startX = e.clientX
-    const startWidth = cols[kind]
+    // From the width shown: author, date and SHA may show narrower than they were given when room is short.
+    const startWidth = Math.round(handle.parentElement?.getBoundingClientRect().width ?? cols[kind])
     let latest = cols
     const move = (ev: PointerEvent) => {
       latest = { ...latest, [kind]: clampWidth(kind, startWidth + ev.clientX - startX) }
@@ -138,15 +140,31 @@ export function CommitGraph({ path }: { path: string }) {
     setCols(next)
     writeGraphColumns(next)
   }
-  // Sideways: a trackpad's horizontal swipe, or Shift + wheel.
-  const onWheel = (e: React.WheelEvent) => {
-    const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0)
-    if (dx && content > graphWidth) setGraphScroll((o) => clampGraphScroll(o + dx, content, graphWidth))
-  }
+  // Columns that do not fit make the whole graph scroll sideways (the header with it) rather than cut them off.
+  const tableWidth = gridMinWidth(cols, hidden, order)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const [tableScroll, setTableScroll] = useState(0)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [height, setHeight] = useState(600)
+
+  // Sideways over the graph column (a trackpad's horizontal swipe, or Shift + wheel): its lanes, when they do not fit.
+  // Elsewhere the whole graph scrolls. Not passive, to keep the graph still while the lanes move.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0)
+      if (!dx || content <= graphWidth) return
+      const x = e.clientX - el.getBoundingClientRect().left + el.scrollLeft
+      if (x < cols.refs || x > cols.refs + graphWidth) return
+      e.preventDefault()
+      setGraphScroll((o) => clampGraphScroll(o + dx, content, graphWidth))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [content, graphWidth, cols.refs])
 
   useLayoutEffect(() => {
     const el = scrollRef.current
@@ -287,6 +305,7 @@ export function CommitGraph({ path }: { path: string }) {
       )}
       <div
         className="graph-header"
+        ref={headerRef}
         style={{ gridTemplateColumns: columns }}
         title={t('graph.columnsHint')}
         onContextMenu={columnsMenu}
@@ -333,19 +352,31 @@ export function CommitGraph({ path }: { path: string }) {
             data-index={index}
             className={cx(
               'col-move',
+              'resizable',
               column === dragging && 'dragging',
               marker === index && 'drop-before',
               marker === visible.length && index === visible.length - 1 && 'drop-after'
             )}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = 'move'
-              e.dataTransfer.setData('text/plain', column)
-              setDragging(column)
-            }}
-            onDragEnd={endDrag}
           >
-            {t(HEADER_LABELS[column])}
+            {/* The label drags the column; the edge, outside it, resizes it. */}
+            <span
+              className="col-label"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', column)
+                setDragging(column)
+              }}
+              onDragEnd={endDrag}
+            >
+              {t(HEADER_LABELS[column])}
+            </span>
+            <div
+              className="col-resizer"
+              title={t('graph.resize')}
+              onPointerDown={resize(column)}
+              onDoubleClick={() => resetWidth(column)}
+            />
           </div>
         ))}
       </div>
@@ -354,10 +385,14 @@ export function CommitGraph({ path }: { path: string }) {
         ref={scrollRef}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-        onWheel={onWheel}
+        onScroll={(e) => {
+          const { scrollTop: top, scrollLeft: left } = e.currentTarget
+          setScrollTop(top)
+          setTableScroll(left)
+          if (headerRef.current) headerRef.current.scrollLeft = left
+        }}
       >
-        <div className="graph-canvas" style={{ height: items.length * ROW_H }}>
+        <div className="graph-canvas" style={{ height: items.length * ROW_H, minWidth: tableWidth }}>
           {rows}
         </div>
         {!items.length && (
@@ -370,7 +405,7 @@ export function CommitGraph({ path }: { path: string }) {
         <div
           className="graph-hscroll"
           ref={hbarRef}
-          style={{ marginLeft: cols.refs, width: graphWidth }}
+          style={{ marginLeft: cols.refs - tableScroll, width: graphWidth }}
           onScroll={(e) => setGraphScroll(e.currentTarget.scrollLeft)}
         >
           <div style={{ width: content, height: 1 }} />
