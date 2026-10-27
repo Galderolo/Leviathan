@@ -1,4 +1,12 @@
-import type { DiffSource, FileChange, WorkingStatus } from '../../shared/types'
+import type { DiffSource, FileChange, FileDiff, WorkingStatus } from '../../shared/types'
+
+/**
+ * The same diff read again (a refresh: the window came back, another file changed): kept as it was, the lines
+ * picked in it stay picked. A diff whose file changed is new: its lines may have moved under the picks.
+ */
+export function sameDiff(a: FileDiff | null | undefined, b: FileDiff | null): boolean {
+  return !!a && !!b && JSON.stringify(a) === JSON.stringify(b)
+}
 
 /**
  * Where an open working-tree diff should go after a refresh: the same source

@@ -27,7 +27,7 @@ import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
 import { isFetchDue } from './autofetch'
 import { coalesce } from './coalesce'
-import { followDiff } from './diffFollow'
+import { followDiff, sameDiff } from './diffFollow'
 import { attributesChanged, lfsInfoKey, patternLabel } from './lfsView'
 import { discardSummary } from './fileSelection'
 import { branchStartOptions } from './branchStart'
@@ -868,7 +868,12 @@ async function loadDiff(path: string, source: DiffSource): Promise<void> {
   const isCurrent = (r: RepoView) => diffSeq[path] === seq && !!r.diff && sameSource(r.diff.source, source)
   try {
     const data = await api.getDiff(path, source, useStore.getState().diffFullFile)
-    patchRepo(path, (r) => (isCurrent(r) ? { diff: { source, data } } : {}))
+    patchRepo(path, (r) => {
+      if (!isCurrent(r)) return {}
+      // Read again unchanged: the same object, so the lines picked in the diff stay picked.
+      if (!r.diff?.error && sameDiff(r.diff?.data, data)) return {}
+      return { diff: { source, data } }
+    })
   } catch (err) {
     patchRepo(path, (r) => (isCurrent(r) ? { diff: { source, data: null, error: errorMessage(err) } } : {}))
   }

@@ -511,6 +511,30 @@ test("resizes the graph's author, date and SHA columns, and scrolls sideways whe
     .toBe(Math.round((await sha.boundingBox())!.x))
 })
 
+test("keeps the diff's picked lines when the repository is read again and the file has not changed", async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\ntwo\nthree\n' })
+  box.write(repo, { 'a.txt': 'one\nTWO\nthree\nfour\n' })
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'a.txt' }).click()
+  const added = page.locator('.diff-line.add.selectable')
+  await expect(added).toHaveCount(2)
+  await added.first().locator('.gutter').click()
+  await expect(page.locator('.diff-line.picked')).toHaveCount(1)
+
+  // Coming back to the window reads the repository again (as a change on disk elsewhere would).
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  // Another file changing on disk: the open diff is read again, the same.
+  box.write(repo, { 'b.txt': 'new\n' })
+  await expect(unstaged().locator('.file-row')).toHaveCount(2)
+  await expect(page.locator('.diff-line.picked')).toHaveCount(1)
+
+  // The file itself changed: its lines may have moved, so nothing stays picked.
+  box.write(repo, { 'a.txt': 'zero\none\nTWO\nthree\nfour\n' })
+  await expect(page.locator('.diff-line.add.selectable')).toHaveCount(3)
+  await expect(page.locator('.diff-line.picked')).toHaveCount(0)
+})
+
 test('stages and unstages files from the keyboard, going on to the next file', async () => {
   const repo = box.repo('game', { 'a.txt': 'a\n', 'b.txt': 'b\n', 'c.txt': 'c\n' })
   box.write(repo, { 'a.txt': 'a2\n', 'b.txt': 'b2\n', 'c.txt': 'c2\n' })
