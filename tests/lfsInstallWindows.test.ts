@@ -61,7 +61,8 @@ function deps(sums: string, arch = 'x64') {
     }),
     addToUserPath: vi.fn(async () => 'added'),
     installDir,
-    arch
+    arch,
+    timeouts: { request: 1000, download: 1000 }
   }
 }
 
@@ -82,6 +83,21 @@ describe('installWindowsZip', () => {
     expect(d.extract).not.toHaveBeenCalled()
     expect(d.addToUserPath).not.toHaveBeenCalled()
     expect(existsSync(installDir) ? readdirSync(installDir) : []).toEqual([])
+  })
+
+  it('gives up on a download that stalls, and says so', async () => {
+    const d = deps(`${sha256('zip-bytes')}  ${ZIP}\n`)
+    const github = d.fetch
+    // The zip starts, then nothing more comes (a proxy holding the connection open).
+    d.fetch = (url: string, signal?: AbortSignal) =>
+      url.endsWith('.zip')
+        ? new Promise((_resolve, reject) => signal?.addEventListener('abort', () => reject(signal.reason)))
+        : github(url)
+    d.timeouts = { request: 1000, download: 50 }
+    await expect(installWindowsZip(() => {}, d)).rejects.toThrow(/timed out/i)
+    expect(d.extract).not.toHaveBeenCalled()
+    expect(d.addToUserPath).not.toHaveBeenCalled()
+    expect(process.env.PATH).toBe(pathBefore)
   })
 
   it('says when this Windows has no zip to install', async () => {

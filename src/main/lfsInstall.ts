@@ -31,18 +31,20 @@ interface Fetched {
 }
 
 export interface InstallDeps {
-  fetch: (url: string) => Promise<Fetched>
+  fetch: (url: string, signal?: AbortSignal) => Promise<Fetched>
   extract: (zip: string, dest: string) => Promise<void>
   addToUserPath: (dir: string) => Promise<unknown>
   installDir: string
   arch: string
+  /** How long the release's details and checksums (`request`) and the zip (`download`) may take, in ms. */
+  timeouts: { request: number; download: number }
 }
 
 /** The real ones: Electron's fetch (it follows the system's proxy), Windows' own tar (it reads zips). */
 export function windowsDeps(): InstallDeps {
   const tar = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
   return {
-    fetch: (url) => net.fetch(url, { headers: { 'User-Agent': 'Leviathan' } }),
+    fetch: (url, signal) => net.fetch(url, { headers: { 'User-Agent': 'Leviathan' }, signal }),
     extract: (zip, dest) =>
       new Promise((resolve, reject) =>
         execFile(tar, ['-xf', zip, '-C', dest], { windowsHide: true }, (err, _out, stderr) =>
@@ -51,14 +53,22 @@ export function windowsDeps(): InstallDeps {
       ),
     addToUserPath: (dir) => addToUserPath(dir),
     installDir: join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Git LFS'),
-    arch: process.arch
+    arch: process.arch,
+    timeouts: { request: 30_000, download: 300_000 }
   }
 }
 
-async function download(deps: InstallDeps, url: string): Promise<Fetched> {
-  const res = await deps.fetch(url)
-  if (!res.ok) throw new Error(`GitHub answered ${res.status} for ${url}`)
-  return res
+/** `url`'s answer, read with `read`, within `ms`: a connection that stalls (a proxy holding it open) is given up. */
+async function download<T>(deps: InstallDeps, url: string, ms: number, read: (res: Fetched) => Promise<T>): Promise<T> {
+  const signal = AbortSignal.timeout(ms)
+  try {
+    const res = await deps.fetch(url, signal)
+    if (!res.ok) throw new Error(`GitHub answered ${res.status} for ${url}`)
+    return await read(res)
+  } catch (err) {
+    if (signal.aborted) throw new Error('The download of git-lfs timed out: nothing was installed.')
+    throw err
+  }
 }
 
 async function findFile(dir: string, name: string): Promise<string | null> {
@@ -79,7 +89,8 @@ async function findFile(dir: string, name: string): Promise<string | null> {
  * when run without questions, a git outside Program Files (a per-user Git for Windows, Scoop).
  */
 export async function installWindowsZip(onProgress: (line: string) => void, deps: InstallDeps): Promise<string> {
-  const release = (await (await download(deps, LATEST_RELEASE)).json()) as {
+  const { request, download: slow } = deps.timeouts
+  const release = (await download(deps, LATEST_RELEASE, request, (r) => r.json())) as {
     tag_name?: string
     assets?: ReleaseAsset[]
   }
@@ -92,8 +103,8 @@ export async function installWindowsZip(onProgress: (line: string) => void, deps
   try {
     onProgress(`Downloading git-lfs ${version}…`)
     const [bytes, list] = await Promise.all([
-      download(deps, zip.browser_download_url).then((r) => r.arrayBuffer()),
-      download(deps, sums.browser_download_url).then((r) => r.text())
+      download(deps, zip.browser_download_url, slow, (r) => r.arrayBuffer()),
+      download(deps, sums.browser_download_url, request, (r) => r.text())
     ])
     const data = Buffer.from(bytes)
     if (checksumFor(list, zip.name) !== createHash('sha256').update(data).digest('hex')) {
