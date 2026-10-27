@@ -131,6 +131,21 @@ describe('history and blame edge cases', () => {
     await expect(repo.getFileHistory(dir, 'feat.txt', '--all')).rejects.toThrow()
   })
 
+  it('gives the real name of files git writes quoted: with quotes, backslashes or tabs', async () => {
+    // Names Windows cannot hold in a folder (git there refuses them unless told otherwise): straight into the index.
+    const blob = (await git(['hash-object', '-w', '--stdin'], { cwd: dir, input: 'odd\n' })).stdout.trim()
+    // Git for Windows reads a backslash in a path as a folder separator.
+    const names = ['say "hi".txt', 'tab\there.txt', ...(process.platform === 'win32' ? [] : ['back\\slash.txt'])]
+    for (const name of names) {
+      const entry = `100644,${blob},${name}`
+      await git(['-c', 'core.protectNTFS=false', 'update-index', '--add', '--cacheinfo', entry], { cwd: dir })
+    }
+    await git(['commit', '-q', '-m', 'odd names'], { cwd: dir })
+    for (const name of names) {
+      expect(await repo.getFileHistory(dir, name)).toMatchObject([{ path: name, status: 'A' }])
+    }
+  })
+
   it('refuses to blame a binary file before running blame', async () => {
     writeFileSync(join(dir, 'blob.bin'), Buffer.from([1, 2, 0, 3, 4]))
     await expect(repo.getBlame(dir, 'blob.bin', null)).rejects.toThrow(/binary/i)

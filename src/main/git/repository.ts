@@ -1058,7 +1058,8 @@ export async function getFileHistory(
       history.push({ commit, path: current, status: '' })
       continue
     }
-    const [code, first, second] = change.split('\t')
+    // Names with quotes, backslashes or tabs come quoted, C-style.
+    const [code, first, second] = change.split('\t').map((part, i) => (i ? unquotePath(part) : part))
     const status = code[0]
     if ((status === 'R' || status === 'C') && second) {
       history.push({ commit, path: second, oldPath: first, status })

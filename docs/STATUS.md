@@ -234,7 +234,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Stashing some files (`git stash push -- <paths>`) still keeps a picture of the whole index in the stash: files that were staged appear in it too, though they stay as they were in the working tree.
 
 **File history and blame**
-- File names with quotes, backslashes or tabs (Linux/macOS) come back quoted from `git log` (no `-z`), so their diff is empty.
 - History of a staged rename starts from the new name, which HEAD does not have yet (empty list).
 - *Blame before this change* uses the `previous <commit> <path>` that `git blame --porcelain` gives each commit (its parent, and the file's name there): the earlier blame opens at the line number the line had in the commit that changed it (`origLine`), only a guess of where it was in the parent. *Back* is a stack in `fileView.back`.
 - File and folder history list 300 commits at a time (*Show more*, up to 5 000: `HISTORY_PAGE`, `HISTORY_MAX`), and blame stops at 20 000 lines (`BLAME_MAX_LINES`); both say so. Views of HEAD or the working tree are read again when HEAD moves (`useHeadKey`), not when the working file alone changes.
