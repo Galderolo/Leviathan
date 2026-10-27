@@ -1120,6 +1120,20 @@ async function assertBlameable(repo: string, full: string, path: string, rev: st
   if (blob.slice(0, 8000).includes('\0')) throw binary
 }
 
+/** The blame.ignoreRevsFile entries that exist (relative ones from the top of the repository, as git reads them). */
+async function ignoreRevsFiles(repo: string): Promise<string[]> {
+  const args = ['config', '--get-all', '--path', 'blame.ignoreRevsFile']
+  const { stdout } = await git(args, { cwd: repo, okCodes: [0, 1] })
+  const files = stdout
+    .split('\n')
+    .map((line) => line.replace(/\r$/, ''))
+    .filter(Boolean)
+  const exists = await Promise.all(files.map((file) => fs.stat(resolve(repo, file)).then((s) => s.isFile(), noFile)))
+  return files.filter((_, i) => exists[i])
+}
+
+const noFile = () => false
+
 /**
  * Who last changed each line of a file: as it is in the working tree (`rev`
  * null; lines not committed yet have an all-zeros hash) or in a commit.
@@ -1128,7 +1142,13 @@ export async function getBlame(repo: string, path: string, rev: string | null): 
   const full = insideRepo(repo, path)
   if (rev !== null) assertSafeArg(rev, 'commit')
   await assertBlameable(repo, full, path, rev)
-  const out = await run(repo, ['blame', '--porcelain', ...(rev ? [rev] : []), '--', path])
+  const blame = (ignore: string[]) => run(repo, ['blame', '--porcelain', ...ignore, ...(rev ? [rev] : []), '--', path])
+  const out = await blame([]).catch(async (err: unknown) => {
+    // A blame.ignoreRevsFile this repository does not have (often set globally for the ones that do)
+    // makes git refuse every blame: ask again with only the files that are there.
+    if (!(err instanceof Error) || !/could not open object name list/.test(err.message)) throw err
+    return blame(['--no-ignore-revs-file', ...(await ignoreRevsFiles(repo)).flatMap((f) => ['--ignore-revs-file', f])])
+  })
   if (out.includes('\0')) throw new Error('This is a binary file: it has no lines to blame.')
   const info = new Map<string, Pick<BlameLine, 'author' | 'date' | 'summary' | 'previous'>>()
   const lines: BlameLine[] = []

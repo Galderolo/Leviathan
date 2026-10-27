@@ -101,6 +101,19 @@ describe('getBlame', () => {
     ])
   })
 
+  it('leaves out the ignore-revs files this repository does not have, and keeps the ones it has', async () => {
+    // Often set globally for the repositories that have the file: git refuses every blame in the others.
+    writeFileSync(join(dir, 'ignore-revs'), `${hashes['edit notes']}\n`)
+    await git(['config', '--add', 'blame.ignoreRevsFile', '.git-blame-ignore-revs'], { cwd: dir })
+    await git(['config', '--add', 'blame.ignoreRevsFile', 'ignore-revs'], { cwd: dir })
+    const lines = await repo.getBlame(dir, 'docs.txt', null)
+    // "edit notes" is still ignored: its line goes to the commit before it.
+    expect(lines.map((l) => [l.text, l.author])).toEqual([
+      ['one', 'Ana'],
+      ['two, edited', 'Ana']
+    ])
+  })
+
   it('refuses paths outside the repository and odd revisions', async () => {
     await expect(repo.getBlame(dir, '../escape.txt', null)).rejects.toThrow(/outside/)
     await expect(repo.getBlame(dir, 'docs.txt', '--output=x')).rejects.toThrow()
