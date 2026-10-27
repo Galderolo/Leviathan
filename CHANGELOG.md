@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-27
+
 ### Added
 
 - **Keyboard shortcuts**: in the lists of changed files (once clicked), the arrows go from file to file with its diff, Space stages or unstages the files checked or the one open and goes on to the next, and Delete discards them after asking. New shortcuts for fetch (Ctrl+Shift+F), a new branch (Ctrl+B), stashing (Ctrl+Shift+S), going to a tab by its number (Ctrl+1…9) and Settings (Ctrl+,); F1 lists them all in Settings → Keyboard shortcuts, and the toolbar's tooltips name them. On macOS, ⌘ instead of Ctrl.
