@@ -431,6 +431,31 @@ test("hides the graph's author, date or SHA column, and keeps it hidden for the 
   await expect(page.locator('.graph-header')).toContainText('SHA')
 })
 
+test("moves the graph's author, date and SHA columns by dragging their headers, and keeps the order", async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+  const headers = page.locator('.graph-header > div')
+  const heading = (name: string) => headers.filter({ hasText: name })
+  await expect(headers).toHaveText(['BRANCH / TAG', 'GRAPH', 'COMMIT MESSAGE', 'AUTHOR', 'DATE / TIME', 'SHA'])
+
+  // Onto the left half of AUTHOR: before it.
+  await heading('SHA').dragTo(heading('AUTHOR'), { targetPosition: { x: 5, y: 5 } })
+  await expect(headers).toHaveText(['BRANCH / TAG', 'GRAPH', 'COMMIT MESSAGE', 'SHA', 'AUTHOR', 'DATE / TIME'])
+  // The rows follow the header.
+  await expect(commitRows().first().locator('.cell').nth(3)).toHaveClass(/sha-cell/)
+
+  await app!.close()
+  ;({ app, page } = await launch(box, [repo]))
+  await expect(page.locator('.graph-header > div')).toHaveText([
+    'BRANCH / TAG',
+    'GRAPH',
+    'COMMIT MESSAGE',
+    'SHA',
+    'AUTHOR',
+    'DATE / TIME'
+  ])
+})
+
 test('checks and unchecks a range of files with Shift on their checkboxes', async () => {
   const repo = box.repo('game', { 'keep.txt': 'x\n' })
   box.write(repo, { 'a.txt': 'a\n', 'b.txt': 'b\n', 'c.txt': 'c\n', 'd.txt': 'd\n' })

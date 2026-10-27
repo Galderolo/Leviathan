@@ -101,7 +101,7 @@ const es: Record<keyof typeof en, string> = {
   'graph.columnAuthor': 'Autor',
   'graph.columnDate': 'Fecha / hora',
   'graph.columnSha': 'SHA',
-  'graph.columnsHint': 'Botón derecho para elegir las columnas que se ven',
+  'graph.columnsHint': 'Botón derecho para elegir las columnas que se ven; arrastra autor, fecha o SHA para moverlas',
   'graph.wip': '// WIP',
   'graph.empty': 'Aún no hay commits. ¡Prepara algunos archivos y haz tu primer commit!',
   'graph.loading': 'Cargando…',

@@ -1,4 +1,5 @@
 import { graphContentWidth } from '../../shared/graph'
+import { moveTab } from './tabOrder'
 
 /** Widths of the BRANCH / TAG and GRAPH columns of the commit graph, in px. */
 export interface GraphColumns {
@@ -64,11 +65,58 @@ const OPTIONAL_WIDTHS: Record<OptionalColumn, string> = {
   sha: '70px'
 }
 const HIDDEN_KEY = 'leviathan.graphHiddenColumns'
+const ORDER_KEY = 'leviathan.graphColumnOrder'
 
-/** The grid template of the graph's rows and header: the columns shown, at their widths. */
-export function gridColumns(widths: GraphColumns, hidden: OptionalColumn[]): string {
-  const optional = OPTIONAL_COLUMNS.filter((c) => !hidden.includes(c)).map((c) => OPTIONAL_WIDTHS[c])
+/** The grid template of the graph's rows and header: the columns shown, in their order, at their widths. */
+export function gridColumns(
+  widths: GraphColumns,
+  hidden: OptionalColumn[],
+  order: readonly OptionalColumn[] = OPTIONAL_COLUMNS
+): string {
+  const optional = order.filter((c) => !hidden.includes(c)).map((c) => OPTIONAL_WIDTHS[c])
   return [`${widths.refs}px`, `${widths.graph}px`, 'minmax(140px, 1fr)', ...optional].join(' ')
+}
+
+/** The order the user dragged author, date and SHA to (the same in every repository), or the usual one. */
+export function readColumnOrder(store = browserStore()): OptionalColumn[] {
+  try {
+    const saved = JSON.parse(store?.getItem(ORDER_KEY) ?? 'null') as unknown
+    const complete =
+      Array.isArray(saved) &&
+      saved.length === OPTIONAL_COLUMNS.length &&
+      OPTIONAL_COLUMNS.every((c) => saved.includes(c))
+    if (complete) return saved as OptionalColumn[]
+  } catch {
+    // unreadable: the usual order
+  }
+  return [...OPTIONAL_COLUMNS]
+}
+
+export function writeColumnOrder(order: OptionalColumn[], store = browserStore()): void {
+  try {
+    store?.setItem(ORDER_KEY, JSON.stringify(order))
+  } catch {
+    // not critical: the next start shows the usual order
+  }
+}
+
+/**
+ * `order` with `column` moved into gap `gap` of the columns shown (0 = before the first one shown); a hidden
+ * column keeps its place, for when it is shown again.
+ */
+export function moveColumn(
+  order: OptionalColumn[],
+  hidden: OptionalColumn[],
+  column: OptionalColumn,
+  gap: number
+): OptionalColumn[] {
+  const shown = order.filter((c) => !hidden.includes(c))
+  const moved = moveTab(
+    shown.map((id) => ({ id })),
+    column,
+    gap
+  ).map((c) => c.id as OptionalColumn)
+  return order.map((c) => (hidden.includes(c) ? c : moved.shift()!))
 }
 
 /** The columns the user hid (the same in every repository), in the order they are shown. */

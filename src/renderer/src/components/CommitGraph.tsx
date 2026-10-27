@@ -17,12 +17,14 @@ import { useT } from '../i18n'
 import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
 import {
   DEFAULT_COLUMNS,
-  OPTIONAL_COLUMNS,
   clampGraphScroll,
   clampWidth,
   gridColumns,
+  moveColumn,
+  readColumnOrder,
   readGraphColumns,
   readHiddenColumns,
+  writeColumnOrder,
   writeGraphColumns,
   writeHiddenColumns,
   type GraphColumns,
@@ -40,6 +42,7 @@ const NODE_R = 10
 const GEOMETRY: GraphGeometry = { rowHeight: ROW_H, laneWidth: LANE_WIDTH, padding: GRAPH_PADDING, radius: 8 }
 const OVERSCAN = 12
 const COLUMN_LABELS = { author: 'graph.columnAuthor', date: 'graph.columnDate', sha: 'graph.columnSha' } as const
+const HEADER_LABELS = { author: 'graph.author', date: 'graph.date', sha: 'graph.sha' } as const
 
 export function CommitGraph({ path }: { path: string }) {
   const view = useRepo(path)
@@ -72,14 +75,36 @@ export function CommitGraph({ path }: { path: string }) {
   useEffect(() => {
     if (hbarRef.current && hbarRef.current.scrollLeft !== graphOffset) hbarRef.current.scrollLeft = graphOffset
   }, [graphOffset])
-  // Author, date and SHA can be hidden from the header's menu (the same in every repository).
+  // Author, date and SHA can be hidden from the header's menu, and moved by dragging their headers (the same in
+  // every repository).
   const [hidden, setHidden] = useState<OptionalColumn[]>(readHiddenColumns)
-  const columns = gridColumns(cols, hidden)
+  const [order, setOrder] = useState<OptionalColumn[]>(readColumnOrder)
+  const columns = gridColumns(cols, hidden, order)
   const shown = (column: OptionalColumn) => !hidden.includes(column)
+  // The same array while nothing changes: the rows are memoized on it.
+  const visible = useMemo(() => order.filter((c) => !hidden.includes(c)), [order, hidden])
+  // Column being dragged, and the gap between the columns shown it would land in.
+  const [dragging, setDragging] = useState<OptionalColumn | null>(null)
+  const [gap, setGap] = useState<number | null>(null)
+  const endDrag = () => {
+    setDragging(null)
+    setGap(null)
+  }
+  /** Gap under the pointer: before a column when over its left half, after it over the right half. */
+  const gapAt = (e: React.DragEvent): number | null => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-column]')
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    const index = Number(el.dataset.index)
+    return e.clientX > rect.left + rect.width / 2 ? index + 1 : index
+  }
+  const from = dragging ? visible.indexOf(dragging) : -1
+  // No marker where the drop would leave the column in place.
+  const marker = gap !== null && from !== -1 && gap !== from && gap !== from + 1 ? gap : null
   const columnsMenu = (e: React.MouseEvent) =>
     openMenu(
       e,
-      OPTIONAL_COLUMNS.map((column) => ({
+      order.map((column) => ({
         label: `${shown(column) ? '✓ ' : ''}${t(COLUMN_LABELS[column])}`,
         onClick: () => {
           const next = shown(column) ? [...hidden, column] : hidden.filter((c) => c !== column)
@@ -223,7 +248,7 @@ export function CommitGraph({ path }: { path: string }) {
         row={row}
         index={i}
         columns={columns}
-        hidden={hidden}
+        visible={visible}
         graphWidth={graphWidth}
         graphOffset={graphOffset}
         labels={refMap.get(item.hash)}
@@ -265,6 +290,22 @@ export function CommitGraph({ path }: { path: string }) {
         style={{ gridTemplateColumns: columns }}
         title={t('graph.columnsHint')}
         onContextMenu={columnsMenu}
+        onDragOver={(e) => {
+          const next = dragging && gapAt(e)
+          if (next === null || next === undefined) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          if (next !== gap) setGap(next)
+        }}
+        onDrop={(e) => {
+          const at = dragging && gapAt(e)
+          if (!dragging || at === null || at === undefined) return
+          e.preventDefault()
+          const next = moveColumn(order, hidden, dragging, at)
+          setOrder(next)
+          writeColumnOrder(next)
+          endDrag()
+        }}
       >
         <div className="resizable">
           {t('graph.branchTag')}
@@ -285,9 +326,28 @@ export function CommitGraph({ path }: { path: string }) {
           />
         </div>
         <div>{t('graph.message')}</div>
-        {shown('author') && <div>{t('graph.author')}</div>}
-        {shown('date') && <div>{t('graph.date')}</div>}
-        {shown('sha') && <div>{t('graph.sha')}</div>}
+        {visible.map((column, index) => (
+          <div
+            key={column}
+            data-column={column}
+            data-index={index}
+            className={cx(
+              'col-move',
+              column === dragging && 'dragging',
+              marker === index && 'drop-before',
+              marker === visible.length && index === visible.length - 1 && 'drop-after'
+            )}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = 'move'
+              e.dataTransfer.setData('text/plain', column)
+              setDragging(column)
+            }}
+            onDragEnd={endDrag}
+          >
+            {t(HEADER_LABELS[column])}
+          </div>
+        ))}
       </div>
       <div
         className="graph-scroll"
@@ -326,8 +386,8 @@ interface RowProps {
   row: GraphRow
   index: number
   columns: string
-  /** Optional columns left out of the row. */
-  hidden: OptionalColumn[]
+  /** Optional columns shown, in their order. */
+  visible: OptionalColumn[]
   graphWidth: number
   /** How far the graph is scrolled sideways, in px. */
   graphOffset: number
@@ -406,9 +466,11 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
           </span>
         )}
       </div>
-      {!props.hidden.includes('author') && <div className="cell author-cell">{author}</div>}
-      {!props.hidden.includes('date') && <div className="cell date-cell">{date}</div>}
-      {!props.hidden.includes('sha') && <div className="cell sha-cell">{sha}</div>}
+      {props.visible.map((column) => (
+        <div key={column} className={`cell ${column}-cell`}>
+          {column === 'author' ? author : column === 'date' ? date : sha}
+        </div>
+      ))}
     </div>
   )
 })
