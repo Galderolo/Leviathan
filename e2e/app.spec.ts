@@ -54,6 +54,11 @@ test('reorders the tabs by dragging them, and keeps the order for the next start
   // Onto the right half of the last tab: after it.
   await tab('alpha').dragTo(tab('gamma'), { targetPosition: { x: gamma!.width - 5, y: gamma!.height / 2 } })
   await expect(page.locator('.tab-title')).toHaveText(['beta', 'gamma', 'alpha'])
+  // Pressing a tab shows its repository. Shown first, so that loading it is not under way while dragging: Playwright
+  // only waits one timer tick for the drag to start, and misses one that a busy window starts later.
+  await tab('gamma').click()
+  await expect(page.locator('.toolbar-repo .field-value').first()).toHaveText('gamma')
+  await expect(page.locator('.graph-row.row-commit')).toHaveCount(1)
   // Onto the left half of the first tab: before it.
   await tab('gamma').dragTo(tab('beta'), { targetPosition: { x: 5, y: gamma!.height / 2 } })
   await expect(page.locator('.tab-title')).toHaveText(['gamma', 'beta', 'alpha'])
