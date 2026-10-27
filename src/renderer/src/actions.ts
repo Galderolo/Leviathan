@@ -1990,7 +1990,11 @@ export async function installGitLfs(path: string): Promise<boolean> {
     const version = await api.installGitLfs(path)
     toast('success', t('toast.lfsInstalled', { version }))
   } catch (err) {
-    toast('error', t('toast.lfsInstallFailed', { error: errorMessage(err), link: t('lfs.install') }))
+    // The app may have learnt it cannot install it here (Linux without a password prompt): then, the command.
+    await loadLfsOffer()
+    const offer = useStore.getState().lfsOffer
+    if (offer?.method === 'command') void showLfsCommand(offer.command ?? '')
+    else toast('error', t('toast.lfsInstallFailed', { error: errorMessage(err), link: t('lfs.install') }))
     return false
   } finally {
     patchRepo(path, { busy: null, progress: null })
@@ -1999,6 +2003,16 @@ export async function installGitLfs(path: string): Promise<boolean> {
   await runOp(path, () => api.setupLfs(path), { busy: 'lfs', log: false, success: t('toast.lfsReady') })
   await Promise.all(Object.keys(useStore.getState().repos).map((repo) => loadLfsInfo(repo)))
   return true
+}
+
+/** The command that installs git-lfs here, to copy into a terminal. */
+async function showLfsCommand(command: string): Promise<void> {
+  const ok = await confirmDialog({
+    title: t('lfs.missingTitle'),
+    message: t('dlg.lfsHow.command', { command }),
+    confirmText: t('lfs.copyCommand')
+  })
+  if (ok) await copyText(command, t('toast.copied'))
 }
 
 /** Asks for a pattern (e.g. `*.psd`) and sends matching files through LFS from now on. */

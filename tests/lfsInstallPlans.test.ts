@@ -52,15 +52,23 @@ describe('installGitLfs', () => {
 
   it('turns a dismissed or impossible password prompt into the command to run', async () => {
     for (const exitCode of [126, 127]) {
+      // The app remembers it for the session: a module of its own for each case.
+      vi.resetModules()
+      const fresh = await import('../src/main/lfsInstall')
       const programs = { pkexec: '/usr/bin/pkexec', 'apt-get': '/usr/bin/apt-get' }
       const linux = system('linux', programs, async () => ({
         exitCode,
         stderr: 'Error executing command as another user'
       }))
-      await expect(installGitLfs(() => {}, linux.deps)).rejects.toThrow(
+      await expect(fresh.installGitLfs(() => {}, linux.deps)).rejects.toThrow(
         'run "sudo apt-get install git-lfs" in a terminal'
       )
       expect(linux.git).toEqual([])
+      // From then on the app offers the command, not an install that fails the same way.
+      expect(await fresh.getLfsInstallOffer(linux.deps)).toEqual({
+        method: 'command',
+        command: 'sudo apt-get install git-lfs'
+      })
     }
   })
 

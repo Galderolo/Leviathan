@@ -9,13 +9,16 @@ const stub: Record<string, ReturnType<typeof vi.fn>> = {
   getLfsInfo: vi.fn(async (path: string): Promise<LfsInfo> => {
     infoCalls.push(path)
     return { version: '3.8.1', used: true, filters: true, hooks: true, patterns: [] }
-  })
+  }),
+  getLfsInstallOffer: vi.fn(async () => ({ method: 'zip' }))
 }
 vi.stubGlobal('window', {
   leviathan: new Proxy(stub, {
     get: (target, key: string) => target[key] ?? (() => Promise.reject(new Error(`${key}: not in this test`)))
   })
 })
+const writeText = vi.fn(async () => {})
+vi.stubGlobal('navigator', { language: 'en', clipboard: { writeText } })
 
 const { installGitLfs } = await import('../src/renderer/src/actions')
 const { newRepoView, useStore } = await import('../src/renderer/src/store')
@@ -57,5 +60,23 @@ describe('installGitLfs', () => {
     expect(error).toContain('Get Git LFS')
     expect(stub.setupLfs).not.toHaveBeenCalled()
     expect(useStore.getState().lfsInstalling).toBe(false)
+  })
+})
+
+describe('installGitLfs where the password cannot be asked for', () => {
+  it('shows the command to copy instead of an error', async () => {
+    const command = 'sudo apt-get install git-lfs'
+    stub.installGitLfs.mockRejectedValueOnce(
+      new Error(`Could not ask for your password: run "${command}" in a terminal.`)
+    )
+    stub.getLfsInstallOffer.mockResolvedValueOnce({ method: 'command', command })
+    expect(await installGitLfs('/a')).toBe(false)
+    expect(toasts('error')).toEqual([])
+    expect(useStore.getState().lfsOffer).toEqual({ method: 'command', command })
+    const dialog = useStore.getState().dialog
+    expect(dialog?.message).toContain(command)
+    expect(dialog?.confirmText).toBe('Copy command')
+    dialog!.resolve({})
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(command))
   })
 })

@@ -182,6 +182,9 @@ async function findManager(deps: PlatformDeps): Promise<{ name: PackageManager; 
   return null
 }
 
+// pkexec could not ask for the password (dismissed, or no agent to show it): only the command is offered from then on.
+let noPasswordPrompt = false
+
 /** What the app can do to get git-lfs onto this computer. */
 export async function getLfsInstallOffer(deps: Partial<PlatformDeps> = {}): Promise<LfsInstallOffer> {
   const d = { ...realDeps(), ...deps }
@@ -189,7 +192,8 @@ export async function getLfsInstallOffer(deps: Partial<PlatformDeps> = {}): Prom
   if (d.platform === 'darwin')
     return installOffer(d.platform, { brew: await d.locate('brew'), pkexec: null, manager: null })
   const manager = await findManager(d)
-  return installOffer(d.platform, { brew: null, pkexec: await d.locate('pkexec'), manager: manager?.name ?? null })
+  const pkexec = noPasswordPrompt ? null : await d.locate('pkexec')
+  return installOffer(d.platform, { brew: null, pkexec, manager: manager?.name ?? null })
 }
 
 let installing = false
@@ -219,6 +223,7 @@ export async function installGitLfs(
       const { exitCode, stderr } = await d.run(pkexec, [manager.path, ...packageArgs(manager.name)], onProgress)
       // pkexec: 126 when the password prompt is dismissed, 127 when there is none to show.
       if (exitCode === 126 || exitCode === 127) {
+        noPasswordPrompt = true
         throw new Error(`Could not ask for your password: run "${sudoCommand(manager.name)}" in a terminal.`)
       }
       if (exitCode !== 0) throw new Error(`${manager.name} could not install git-lfs: ${lastLine(stderr)}`)
