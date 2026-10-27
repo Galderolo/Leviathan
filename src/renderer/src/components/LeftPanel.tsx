@@ -105,6 +105,14 @@ export function LeftPanel({ path }: { path: string }) {
   const prs = view?.pullRequests
   const prItems = (prs?.items ?? []).filter((p) => match('#' + p.number + ' ' + p.title + ' ' + p.sourceBranch))
   const prByRef = useMemo(() => pullRequestsByRef(prs?.items ?? [], prs?.remote ?? null, refs), [prs, refs])
+  // The account's token no longer works (revoked, expired) or cannot be read here: say what to do about it.
+  const tokenProblem = !prs?.error
+    ? null
+    : /rejected the token/.test(prs.error)
+      ? 'left.tokenRejected'
+      : /can no longer be read/.test(prs.error)
+        ? 'left.tokenUnreadable'
+        : null
   const submodules = (view.submodules ?? []).filter((s) => match(s.path))
   const staleSubs = (view.submodules ?? []).filter((s) => s.state === 'uninitialized' || s.state === 'outOfSync')
   const lfs = view?.lfs?.info.used ? view.lfs : null
@@ -262,10 +270,9 @@ export function LeftPanel({ path }: { path: string }) {
             collapsed={collapsed}
             toggle={toggle}
           >
-            {prs.error && /rejected the token/.test(prs.error) ? (
-              // The account's token no longer works (revoked, expired): say what to do about it.
+            {tokenProblem ? (
               <div className="side-note error">
-                {t('left.tokenRejected')}{' '}
+                {t(tokenProblem)}{' '}
                 <a onClick={() => useStore.setState({ settingsOpen: true, settingsSection: 'accounts' })}>
                   {t('left.openAccounts')}
                 </a>

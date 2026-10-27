@@ -5,6 +5,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 // The accounts module runs in Electron's main process: stand in for the parts it uses.
 const userData = mkdtempSync(join(tmpdir(), 'leviathan-prs-'))
+// Tokens saved by another computer or user account cannot be decrypted here.
+const keys = vi.hoisted(() => ({ lost: false }))
 vi.mock('electron', () => ({
   app: { getPath: () => userData },
   BrowserWindow: { getAllWindows: () => [] },
@@ -12,10 +14,10 @@ vi.mock('electron', () => ({
     isAsyncEncryptionAvailable: async () => true,
     getSelectedStorageBackend: () => 'dpapi',
     encryptStringAsync: async (text: string) => Buffer.from(text.split('').reverse().join('')),
-    decryptStringAsync: async (data: Buffer) => ({
-      result: data.toString().split('').reverse().join(''),
-      shouldReEncrypt: false
-    })
+    decryptStringAsync: async (data: Buffer) => {
+      if (keys.lost) throw new Error('Error while decrypting the ciphertext provided to safeStorage.decryptString.')
+      return { result: data.toString().split('').reverse().join(''), shouldReEncrypt: false }
+    }
   }
 }))
 
@@ -83,6 +85,18 @@ describe('pull requests of a repository', () => {
   it('has nothing to show when no account is on the remote host', async () => {
     expect(await accounts.getPullRequests(other)).toBeNull()
     expect(await accounts.getDefaultBranch(other)).toBeNull()
+  })
+
+  it('says so when the token of the account on the remote host can no longer be read', async () => {
+    keys.lost = true
+    try {
+      await expect(accounts.getPullRequests(work)).rejects.toThrow(/token of ana@github\.com can no longer be read/)
+      await expect(
+        accounts.createRepoPullRequest(work, { title: 'T', body: '', source: 'x', target: 'main', draft: false })
+      ).rejects.toThrow(/can no longer be read/)
+    } finally {
+      keys.lost = false
+    }
   })
 
   it('creates one and reads the default branch', async () => {

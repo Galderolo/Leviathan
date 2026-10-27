@@ -203,7 +203,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Pull requests**
 - A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.
-- A token that can no longer be decrypted hides the section without a hint.
 - 403 messages are generic (no Gitea scope). A 401 in the side panel says the token stopped working and links to Settings → Accounts (0.13.0), matched on the "rejected the token" text.
 - Up to 500 open PRs are listed (`PULL_REQUESTS_MAX`), asked 100 at a time (50 on Bitbucket and Gitea) until a page is not full: a Gitea server whose page limit is below 50 lists only its first page. Fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 
