@@ -253,7 +253,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Older items**
 - A new SSH key's passphrase reaches ssh-keygen through a one-off askpass bridge (`keygenWithPassphrase` in `src/main/ssh.ts`; `askpass.cmd` for Windows' own OpenSSH, which cannot run `askpass.sh`), then the key is checked to refuse an empty passphrase. Tried with OpenSSH for Windows 9.5; Git for Windows' own ssh-keygen (when it comes first in the PATH) running the `.cmd` is untested — if it cannot, the key is refused, not left unprotected.
-- Pushing with `--set-upstream` replaces a deliberately different upstream.
+- A push sets the upstream only on a branch's first publish to a remote (or when its upstream is gone): an upstream with another name set after that is kept (`push` in `src/main/git/repository.ts`). One set on purpose before the first publish is replaced, as `git push -u` would; a branch that follows another one counts its pushes and pulls against it, as `git status` does.
 - The locale test does nothing without a translated git.
 
 ## Working on it

@@ -991,6 +991,45 @@ test('offers to pull and push again when the remote has commits that are not her
   expect(box.git(origin, 'log', '--format=%s', 'main')).toContain('theirs')
 })
 
+test('asks where to publish a branch started from another remote, then keeps the upstream chosen for it', async () => {
+  const origin = join(box.root, 'origin.git')
+  const upstream = join(box.root, 'upstream.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', upstream)
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(repo, 'remote', 'add', 'origin', origin)
+  box.git(repo, 'remote', 'add', 'upstream', upstream)
+  box.git(repo, 'push', '-q', '-u', 'origin', 'main')
+  box.git(repo, 'push', '-q', 'upstream', 'main')
+  // A fork's branch started from the original repository's main: git makes upstream/main its upstream.
+  box.git(repo, 'checkout', '-q', '-b', 'feature', 'upstream/main')
+  box.write(repo, { 'b.txt': 'mine\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'mine')
+  box.write(repo, { 'c.txt': 'more\n' })
+  await open(repo)
+
+  await toolbarButton('Push').click()
+  await expect(page.locator('.modal')).toContainText('Publish feature to')
+  await page.locator('.modal .btn-primary').click()
+  await expect.poll(() => box.git(repo, 'rev-parse', '--abbrev-ref', 'feature@{upstream}')).toBe('origin/feature')
+  expect(box.git(origin, 'rev-parse', 'feature')).toBe(box.git(repo, 'rev-parse', 'feature'))
+  expect(spawnSync('git', ['rev-parse', '--verify', '-q', 'refs/heads/feature'], { cwd: upstream }).status).not.toBe(0)
+
+  // Following the original main on purpose from now on.
+  box.git(repo, 'branch', '-q', '--set-upstream-to=upstream/main')
+  await page.locator('.graph-row.row-wip').click()
+  await page.getByRole('button', { name: 'Stage all changes' }).click()
+  await page.locator('.summary-input').fill('more')
+  await page.locator('.btn-commit').click()
+  await expect(commitRows().first()).toContainText('more')
+  await toolbarButton('Push').click()
+
+  await expect.poll(() => box.git(origin, 'log', '-1', '--format=%s', 'feature')).toBe('more')
+  await expect(page.locator('.modal')).toHaveCount(0)
+  expect(box.git(repo, 'rev-parse', '--abbrev-ref', 'feature@{upstream}')).toBe('upstream/main')
+})
+
 test('pulls after a background fetch that is running, instead of failing to lock the refs', async () => {
   const origin = join(box.root, 'origin.git')
   box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)

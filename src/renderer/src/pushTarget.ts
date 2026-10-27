@@ -19,12 +19,16 @@ export function syncCounts(state: Pick<RepoState, 'head' | 'unpushed'> | null): 
 
 /**
  * Remotes the user must pick from before pushing `branch`, or null when there
- * is nothing to ask: the branch already tracks a remote branch, or at most one
- * remote exists.
+ * is nothing to ask: the branch already tracks a remote branch of its name or
+ * is on some remote, or at most one remote exists. A branch started from
+ * `upstream/main` tracks it, but is not published anywhere yet.
  */
 export function remotesToChooseFrom(branch: string, refs: GitRef[], remotes: Remote[]): string[] | null {
+  if (remotes.length < 2) return null
+  const names = remotes.map((r) => `${r.name}/${branch}`)
   const local = refs.find((r) => r.type === 'head' && r.name === branch)
-  if (local?.upstream || remotes.length < 2) return null
+  if (local?.upstream && names.includes(local.upstream)) return null
+  if (refs.some((r) => r.type === 'remote' && names.includes(r.name))) return null
   return remotes.map((r) => r.name)
 }
 

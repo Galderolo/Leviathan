@@ -479,13 +479,14 @@ export async function createPullRequestFor(path: string, ref: GitRef): Promise<v
   const remote = getRepo(path)?.pullRequests?.remote
   if (!remote) return
   const find = (refs: GitRef[] | undefined) => refs?.find((r) => r.type === 'head' && r.name === ref.name)
-  if (needsPushForPullRequest(find(getRepo(path)?.state?.refs) ?? ref, remote)) {
+  const refs = getRepo(path)?.state?.refs ?? []
+  if (needsPushForPullRequest(find(refs) ?? ref, remote, refs)) {
     if (!(await push(path, { branch: ref.name }))) return
   }
   // Read the state again: a refresh started meanwhile may not have landed in the store yet.
   const state = await api.getState(path).catch(() => null)
   const branch = find(state?.refs)
-  if (!state || !branch || needsPushForPullRequest(branch, remote)) {
+  if (!state || !branch || needsPushForPullRequest(branch, remote, state.refs)) {
     toast('error', t('error.prRemote', { name: ref.name, remote }))
     return
   }

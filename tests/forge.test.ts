@@ -111,23 +111,30 @@ describe('pickProject', () => {
 describe('needsPushForPullRequest', () => {
   const ref = (upstream?: string, extra: { ahead?: number; upstreamGone?: boolean } = {}) => ({
     name: 'feature',
+    hash: 'tip',
     upstream,
     ...extra
   })
+  const onRemote = (name: string, hash: string) => ({ name, type: 'remote' as const, hash })
 
   it('is false only when the branch is on the remote under its own name, with nothing left to push', () => {
-    expect(needsPushForPullRequest(ref('origin/feature'), 'origin')).toBe(false)
+    expect(needsPushForPullRequest(ref('origin/feature'), 'origin', [])).toBe(false)
   })
 
   it('is true when the branch is not there yet, is ahead, or its remote branch is gone', () => {
-    expect(needsPushForPullRequest(ref(), 'origin')).toBe(true)
-    expect(needsPushForPullRequest(ref('origin/feature', { ahead: 2 }), 'origin')).toBe(true)
-    expect(needsPushForPullRequest(ref('origin/feature', { upstreamGone: true }), 'origin')).toBe(true)
+    expect(needsPushForPullRequest(ref(), 'origin', [])).toBe(true)
+    expect(needsPushForPullRequest(ref('origin/feature', { ahead: 2 }), 'origin', [])).toBe(true)
+    expect(needsPushForPullRequest(ref('origin/feature', { upstreamGone: true }), 'origin', [])).toBe(true)
   })
 
   it('is true when it tracks a branch with another name or on another remote', () => {
     // A branch created from origin/main tracks main: a pull request "from" it would come from main.
-    expect(needsPushForPullRequest(ref('origin/main'), 'origin')).toBe(true)
-    expect(needsPushForPullRequest(ref('fork/feature'), 'origin')).toBe(true)
+    expect(needsPushForPullRequest(ref('origin/main'), 'origin', [])).toBe(true)
+    expect(needsPushForPullRequest(ref('fork/feature'), 'origin', [])).toBe(true)
+  })
+
+  it('looks at the branch of its name when it follows another branch on purpose', () => {
+    expect(needsPushForPullRequest(ref('origin/develop'), 'origin', [onRemote('origin/feature', 'tip')])).toBe(false)
+    expect(needsPushForPullRequest(ref('origin/develop'), 'origin', [onRemote('origin/feature', 'older')])).toBe(true)
   })
 })
