@@ -1,12 +1,24 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { net } from 'electron'
-import { checksumFor, pickWindowsZip, type ReleaseAsset } from '../shared/lfsInstall'
+import {
+  checksumFor,
+  installOffer,
+  packageArgs,
+  pickWindowsZip,
+  sudoCommand,
+  type LfsInstallOffer,
+  type PackageManager,
+  type ReleaseAsset
+} from '../shared/lfsInstall'
 import { addToUserPath } from './cli'
+import { lfsVersion } from './git/lfs'
+import { git } from './git/runner'
 import { prependToPath } from './pathEnv'
+import { locateProgram } from './programs'
 
 const LATEST_RELEASE = 'https://api.github.com/repos/git-lfs/git-lfs/releases/latest'
 
@@ -103,4 +115,115 @@ export async function installWindowsZip(onProgress: (line: string) => void, deps
   } finally {
     await fs.rm(temp, { recursive: true, force: true })
   }
+}
+
+export interface PlatformDeps {
+  platform: NodeJS.Platform
+  locate: (program: string) => Promise<string | null>
+  /** Runs a program, its output lines as progress. */
+  run: (
+    cmd: string,
+    args: string[],
+    onProgress: (line: string) => void
+  ) => Promise<{ exitCode: number; stderr: string }>
+  git: (args: string[]) => Promise<void>
+  version: () => Promise<string | null>
+  windows: () => InstallDeps
+}
+
+function realDeps(): PlatformDeps {
+  return {
+    platform: process.platform,
+    locate: (program) => locateProgram(program),
+    run: (cmd, args, onProgress) =>
+      new Promise((resolve, reject) => {
+        const child = spawn(cmd, args, { windowsHide: true })
+        let stderr = ''
+        const lines = (chunk: Buffer) =>
+          chunk
+            .toString()
+            .split(/\r?\n|\r/)
+            .filter(Boolean)
+            .forEach(onProgress)
+        child.stdout.on('data', lines)
+        child.stderr.on('data', (chunk: Buffer) => {
+          stderr += chunk.toString()
+          lines(chunk)
+        })
+        child.on('error', reject)
+        child.on('close', (code) => resolve({ exitCode: code ?? 1, stderr }))
+      }),
+    // Outside any repository: only the user's own git configuration is set up.
+    git: async (args) => {
+      await git(args, { cwd: homedir() })
+    },
+    version: lfsVersion,
+    windows: windowsDeps
+  }
+}
+
+const MANAGERS: PackageManager[] = ['apt-get', 'dnf', 'zypper', 'pacman']
+
+async function findManager(deps: PlatformDeps): Promise<{ name: PackageManager; path: string } | null> {
+  for (const name of MANAGERS) {
+    const path = await deps.locate(name)
+    if (path) return { name, path }
+  }
+  return null
+}
+
+/** What the app can do to get git-lfs onto this computer. */
+export async function getLfsInstallOffer(deps: Partial<PlatformDeps> = {}): Promise<LfsInstallOffer> {
+  const d = { ...realDeps(), ...deps }
+  if (d.platform === 'win32') return installOffer(d.platform, { brew: null, pkexec: null, manager: null })
+  if (d.platform === 'darwin')
+    return installOffer(d.platform, { brew: await d.locate('brew'), pkexec: null, manager: null })
+  const manager = await findManager(d)
+  return installOffer(d.platform, { brew: null, pkexec: await d.locate('pkexec'), manager: manager?.name ?? null })
+}
+
+let installing = false
+
+/** Installs git-lfs the way this computer allows, sets it up for the user, and gives its version. One at a time. */
+export async function installGitLfs(
+  onProgress: (line: string) => void,
+  deps: Partial<PlatformDeps> = {}
+): Promise<string> {
+  if (installing) throw new Error('git-lfs is already being installed')
+  installing = true
+  try {
+    const d = { ...realDeps(), ...deps }
+    const offer = await getLfsInstallOffer(d)
+    if (offer.method === 'zip') {
+      await installWindowsZip(onProgress, d.windows())
+    } else if (offer.method === 'brew') {
+      const brew = (await d.locate('brew'))!
+      onProgress('brew install git-lfs')
+      const { exitCode, stderr } = await d.run(brew, ['install', 'git-lfs'], onProgress)
+      if (exitCode !== 0) throw new Error(`Homebrew could not install git-lfs: ${lastLine(stderr)}`)
+      prependToPath(dirname(brew))
+    } else if (offer.method === 'package') {
+      const manager = (await findManager(d))!
+      const pkexec = (await d.locate('pkexec'))!
+      onProgress(sudoCommand(manager.name))
+      const { exitCode, stderr } = await d.run(pkexec, [manager.path, ...packageArgs(manager.name)], onProgress)
+      // pkexec: 126 when the password prompt is dismissed, 127 when there is none to show.
+      if (exitCode === 126 || exitCode === 127) {
+        throw new Error(`Could not ask for your password: run "${sudoCommand(manager.name)}" in a terminal.`)
+      }
+      if (exitCode !== 0) throw new Error(`${manager.name} could not install git-lfs: ${lastLine(stderr)}`)
+    } else {
+      throw new Error('This system needs git-lfs installed by hand')
+    }
+    await d.git(['lfs', 'install'])
+    const version = await d.version()
+    if (!version) throw new Error('git-lfs was installed but cannot be found')
+    return version
+  } finally {
+    installing = false
+  }
+}
+
+function lastLine(text: string): string {
+  return text.trim().split(/\r?\n/).pop() || 'it gave no reason'
 }

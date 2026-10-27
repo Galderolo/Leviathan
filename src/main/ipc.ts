@@ -17,6 +17,7 @@ import { cloneWithAccount } from './clone'
 import { answerAskpass, askpassScripts } from './askpass'
 import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
+import * as lfsInstall from './lfsInstall'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
 import { loadSettings, saveSettings } from './settings'
@@ -225,6 +226,8 @@ const handlers: LeviathanInvokeApi = {
   lfsMoveFiles: (path, paths) => lfs.lfsMoveFiles(path, paths),
   lfsRestage: (path, paths) => lfs.lfsRestage(path, paths),
   setupLfs: (path) => lfs.setupLfs(path, progress(path)),
+  getLfsInstallOffer: () => lfsInstall.getLfsInstallOffer(),
+  installGitLfs: (path) => lfsInstall.installGitLfs(progress(path)),
   getSubmodules: (path) => submodules.getSubmodules(path),
   updateSubmodules: (path, paths) => submodules.updateSubmodules(path, paths, progress(path)),
   openExternal: async (url) => {
