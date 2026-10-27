@@ -456,6 +456,61 @@ test("moves the graph's author, date and SHA columns by dragging their headers, 
   ])
 })
 
+test('keeps the graph in view in a narrow window, by narrowing the side panels', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  ;({ app, page } = await launch(box, [repo], { leftPanelWidth: 520, rightPanelWidth: 640 }))
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setBounds({ width: 920, height: 700 }))
+  await expect.poll(async () => (await page.locator('.center-panel').boundingBox())?.width ?? 0).toBeGreaterThan(390)
+  // The toolbar keeps its parts apart: the repository and branch end before the buttons start.
+  const repoBox = (await page.locator('.toolbar-repo').boundingBox())!
+  const buttons = (await page.locator('.toolbar-actions').boundingBox())!
+  expect(repoBox.x + repoBox.width).toBeLessThanOrEqual(buttons.x)
+  const field = page.locator('.toolbar-repo .toolbar-field').first()
+  expect(await field.evaluate((el) => el.getBoundingClientRect().right)).toBeLessThanOrEqual(buttons.x)
+  // Wider again, the panels are as they were left.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setBounds({ width: 1800, height: 900 }))
+  await expect.poll(async () => Math.round((await page.locator('.right-panel').boundingBox())?.width ?? 0)).toBe(640)
+})
+
+test("resizes the graph's author, date and SHA columns, and scrolls sideways when they do not fit", async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+  // Wide: every column gets the width it is given.
+  await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setBounds({ width: 1800, height: 900 }))
+  const sha = page.locator('.graph-header > div', { hasText: 'SHA' })
+  await expect.poll(async () => Math.round((await sha.boundingBox())!.width)).toBe(70)
+  const before = (await sha.boundingBox())!
+  const edge = sha.locator('.col-resizer')
+  const grip = (await edge.boundingBox())!
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(grip.x + grip.width / 2 + 60, grip.y + grip.height / 2, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(async () => Math.round((await sha.boundingBox())!.width)).toBe(Math.round(before.width) + 60)
+  // Resizing is not moving: the columns are where they were.
+  await expect(page.locator('.graph-header > div')).toHaveText([
+    'BRANCH / TAG',
+    'GRAPH',
+    'COMMIT MESSAGE',
+    'AUTHOR',
+    'DATE / TIME',
+    'SHA'
+  ])
+
+  // Narrow, the graph scrolls sideways, the header with it, to the columns that do not fit.
+  await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setBounds({ width: 920, height: 700 }))
+  const scroller = page.locator('.graph-scroll')
+  await expect.poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
+  await scroller.evaluate((el) => el.scrollTo({ left: el.scrollWidth }))
+  const center = (await page.locator('.center-panel').boundingBox())!
+  await expect
+    .poll(async () => (await sha.boundingBox())!.x + (await sha.boundingBox())!.width)
+    .toBeLessThanOrEqual(center.x + center.width + 1)
+  await expect
+    .poll(async () => Math.round((await commitRows().first().locator('.sha-cell').boundingBox())!.x))
+    .toBe(Math.round((await sha.boundingBox())!.x))
+})
+
 test('stages and unstages files from the keyboard, going on to the next file', async () => {
   const repo = box.repo('game', { 'a.txt': 'a\n', 'b.txt': 'b\n', 'c.txt': 'c\n' })
   box.write(repo, { 'a.txt': 'a2\n', 'b.txt': 'b2\n', 'c.txt': 'c2\n' })

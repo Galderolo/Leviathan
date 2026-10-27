@@ -1,16 +1,28 @@
 import { graphContentWidth } from '../../shared/graph'
 import { moveTab } from './tabOrder'
 
-/** Widths of the BRANCH / TAG and GRAPH columns of the commit graph, in px. */
+/** Widths of the commit graph's columns, in px; the message takes what is left. */
 export interface GraphColumns {
   refs: number
   graph: number
+  author: number
+  date: number
+  sha: number
 }
 
 /** Room for a branch name, and for about eight lanes before the graph scrolls sideways. */
-export const DEFAULT_COLUMNS: GraphColumns = { refs: 200, graph: graphContentWidth(8) }
+export const DEFAULT_COLUMNS: GraphColumns = { refs: 200, graph: graphContentWidth(8), author: 150, date: 150, sha: 70 }
 
-const LIMITS: Record<keyof GraphColumns, [number, number]> = { refs: [80, 480], graph: [48, 800] }
+const LIMITS: Record<keyof GraphColumns, [number, number]> = {
+  refs: [80, 480],
+  graph: [48, 800],
+  author: [60, 400],
+  date: [80, 300],
+  sha: [50, 200]
+}
+const KINDS = Object.keys(LIMITS) as (keyof GraphColumns)[]
+/** The least the message keeps; past that, the columns scroll sideways. */
+const MESSAGE_MIN = 140
 const KEY = 'leviathan.graphColumns'
 
 interface KeyValueStore {
@@ -36,7 +48,18 @@ export function readGraphColumns(store = browserStore()): GraphColumns {
   try {
     const saved = JSON.parse(store?.getItem(KEY) ?? 'null') as Partial<GraphColumns> | null
     if (typeof saved?.refs === 'number' && typeof saved.graph === 'number') {
-      return { refs: clampWidth('refs', saved.refs), graph: clampWidth('graph', saved.graph) }
+      // Author, date and SHA came later: widths saved before have none for them.
+      const width = (kind: keyof GraphColumns) => {
+        const px = saved[kind]
+        return clampWidth(kind, typeof px === 'number' ? px : DEFAULT_COLUMNS[kind])
+      }
+      return {
+        refs: width('refs'),
+        graph: width('graph'),
+        author: width('author'),
+        date: width('date'),
+        sha: width('sha')
+      }
     }
   } catch {
     // unreadable: the defaults
@@ -48,7 +71,7 @@ export function writeGraphColumns(columns: GraphColumns, store = browserStore())
   try {
     store?.setItem(
       KEY,
-      JSON.stringify({ refs: clampWidth('refs', columns.refs), graph: clampWidth('graph', columns.graph) })
+      JSON.stringify(Object.fromEntries(KINDS.map((kind) => [kind, clampWidth(kind, columns[kind])])))
     )
   } catch {
     // not critical: the next start uses the defaults
@@ -59,11 +82,6 @@ export function writeGraphColumns(columns: GraphColumns, store = browserStore())
 export const OPTIONAL_COLUMNS = ['author', 'date', 'sha'] as const
 export type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number]
 
-const OPTIONAL_WIDTHS: Record<OptionalColumn, string> = {
-  author: 'minmax(90px, 150px)',
-  date: 'minmax(110px, 150px)',
-  sha: '70px'
-}
 const HIDDEN_KEY = 'leviathan.graphHiddenColumns'
 const ORDER_KEY = 'leviathan.graphColumnOrder'
 
@@ -73,8 +91,19 @@ export function gridColumns(
   hidden: OptionalColumn[],
   order: readonly OptionalColumn[] = OPTIONAL_COLUMNS
 ): string {
-  const optional = order.filter((c) => !hidden.includes(c)).map((c) => OPTIONAL_WIDTHS[c])
-  return [`${widths.refs}px`, `${widths.graph}px`, 'minmax(140px, 1fr)', ...optional].join(' ')
+  // Author, date and SHA take the width they were given while there is room, then narrow down to their minimum.
+  const optional = order.filter((c) => !hidden.includes(c)).map((c) => `minmax(${LIMITS[c][0]}px, ${widths[c]}px)`)
+  return [`${widths.refs}px`, `${widths.graph}px`, `minmax(${MESSAGE_MIN}px, 1fr)`, ...optional].join(' ')
+}
+
+/** How narrow the columns shown can get: below that, the graph scrolls sideways instead of cutting them off. */
+export function gridMinWidth(
+  widths: GraphColumns,
+  hidden: OptionalColumn[],
+  order: readonly OptionalColumn[] = OPTIONAL_COLUMNS
+): number {
+  const optional = order.filter((c) => !hidden.includes(c)).reduce((sum, c) => sum + LIMITS[c][0], 0)
+  return widths.refs + widths.graph + MESSAGE_MIN + optional
 }
 
 /** The order the user dragged author, date and SHA to (the same in every repository), or the usual one. */

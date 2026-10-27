@@ -203,19 +203,28 @@ a:hover {
   min-height: 0;
 }
 
+/* A narrow window narrows the side panels (not below these) before the graph between them: their saved widths
+   come back when it is wide again. */
 .left-panel,
 .right-panel {
-  flex-shrink: 0;
-  min-width: 0;
+  flex-shrink: 1;
   background: var(--bg-1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+.left-panel {
+  min-width: 160px;
+}
+
+.right-panel {
+  min-width: 260px;
+}
+
 .center-panel {
   flex: 1;
-  min-width: 0;
+  min-width: 400px;
   display: flex;
   flex-direction: column;
   background: var(--bg-0);
@@ -368,12 +377,14 @@ a:hover {
   flex-shrink: 0;
 }
 
+/* Narrow, the repository and branch shorten with an ellipsis instead of running over the buttons. */
 .toolbar-repo {
   display: flex;
   align-items: center;
   gap: 2px;
-  min-width: 0;
+  min-width: 150px;
   flex: 1 1 0;
+  overflow: hidden;
 }
 
 .toolbar-field {
@@ -491,6 +502,17 @@ a:hover {
   font-size: 11px;
 }
 
+/* A narrow window keeps the buttons' icons only; their names stay in the tooltips. */
+@media (max-width: 1200px) {
+  .tool-label {
+    display: none;
+  }
+
+  .tool-main {
+    min-width: 34px;
+  }
+}
+
 .toolbar-right {
   display: flex;
   align-items: center;
@@ -504,7 +526,8 @@ a:hover {
   align-items: center;
   gap: 6px;
   height: 30px;
-  width: 240px;
+  flex: 0 1 240px;
+  min-width: 120px;
   padding: 0 8px;
   background: var(--bg-0);
   border: 1px solid var(--border);
@@ -679,6 +702,8 @@ a:hover {
   align-items: center;
   height: 26px;
   flex-shrink: 0;
+  overflow: hidden;
+  padding-right: 10px;
   background: var(--bg-1);
   border-bottom: 1px solid var(--border);
   color: var(--text-dim);
@@ -694,10 +719,12 @@ a:hover {
   text-overflow: ellipsis;
 }
 
+/* Room for the scrollbar always kept (the header keeps the same with its padding), so their columns line up; columns
+   that do not fit scroll sideways, the header following. */
 .graph-scroll {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: auto;
+  scrollbar-gutter: stable;
   position: relative;
   outline: none;
 }
@@ -3106,8 +3133,18 @@ img.avatar {
   position: relative;
 }
 
-/* Author, date and SHA move by dragging their headers; the drop place shows as on the tabs. */
+/* Author, date and SHA move by dragging their headers' label (the edge resizes them); the drop place shows as on the
+   tabs. */
 .graph-header > div.col-move {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.graph-header .col-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: grab;
 }
 

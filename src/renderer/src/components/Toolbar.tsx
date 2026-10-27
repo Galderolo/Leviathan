@@ -71,7 +71,7 @@ interface ToolButtonProps {
 
 function ToolButton({ icon: Icon, label, onClick, onCaret, busy, disabled, badge, title }: ToolButtonProps) {
   return (
-    <div className={cx('tool-button', disabled && 'disabled')} title={title}>
+    <div className={cx('tool-button', disabled && 'disabled')} title={title ?? label}>
       <button className="tool-main" onClick={onClick} disabled={disabled}>
         <span className="tool-icon">
           {busy ? <Spinner size={18} /> : <Icon size={20} />}
