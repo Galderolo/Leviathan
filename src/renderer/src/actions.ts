@@ -1690,12 +1690,16 @@ async function applyHistory(path: string, direction: 'undo' | 'redo'): Promise<v
   }
 }
 
+// One undo or redo at a time per repository: a press while one is being applied is ignored,
+// or both would start from the same entry.
+const historyRuns = inFlight()
+
 export function undo(path: string): Promise<void> {
-  return applyHistory(path, 'undo')
+  return historyRuns.run(path, () => applyHistory(path, 'undo')) ?? Promise.resolve()
 }
 
 export function redo(path: string): Promise<void> {
-  return applyHistory(path, 'redo')
+  return historyRuns.run(path, () => applyHistory(path, 'redo')) ?? Promise.resolve()
 }
 
 // ---------------------------------------------------------------------------

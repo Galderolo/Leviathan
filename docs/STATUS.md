@@ -177,7 +177,7 @@ Set aside on 2026-10-26, not to be brought up again unless asked: a Windows `.zi
 Found by reviews and left for later; none loses work. Good first contributions.
 
 **Undo / redo**
-- Applying a change is not atomic (could use `update-ref --stdin`), and there is no guard against two undos at once.
+- Applying a change is not atomic (could use `update-ref --stdin`). One undo or redo runs at a time per repository (`historyRuns` in `actions.ts`): a press while one is applied is ignored.
 - Tags fetched in the background end up in the next recorded change.
 - The first commit of an empty repository cannot be undone.
 - Some actions are not recorded (stash, discard…).
