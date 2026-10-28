@@ -180,7 +180,9 @@ test('stashes the changes and pops them back', async () => {
 
   await toolbarButton('Pop').click()
   // git drops the stash only once all of it is back, new files included (they come a moment after the others).
-  await expect.poll(() => box.git(repo, 'stash', 'list')).toBe('')
+  // While it drops it, refs/stash is half gone and git fails to list it: poll for an answer, not an error.
+  const stashes = () => spawnSync('git', ['stash', 'list'], { cwd: repo, env: box.env, encoding: 'utf8' }).stdout
+  await expect.poll(stashes).toBe('')
   expect(box.read(repo, 'a.txt')).toBe('mine\n')
   expect(box.read(repo, 'new.txt')).toBe('new\n')
 })
