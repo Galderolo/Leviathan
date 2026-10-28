@@ -32,11 +32,16 @@ const toolbarButton = (label: string) => page.locator('.tool-button', { hasText:
 const menuItem = (label: string | RegExp) => page.locator('.context-menu').getByText(label, { exact: true })
 
 /**
- * Drags `source` (which takes the class `dragging` once its drag starts) onto `target`, at `at` within it. Pressing a
- * tab shows its repository: a window busy with that takes the moves late, all at once, with the release right behind,
- * and no drag starts. So it nudges until the drag has started, then goes on, as a hand would.
+ * Drags `source` onto `target`, at `at` within it; `marked` (`source` itself by default) takes the class `dragging`
+ * once the drag starts. A busy window takes the moves late, all at once, with the release right behind, and no drag
+ * starts. So it nudges until the drag has started, then goes on, as a hand would.
  */
-async function dragByMouse(source: Locator, target: Locator, at: { x: number; y: number }): Promise<void> {
+async function dragByMouse(
+  source: Locator,
+  target: Locator,
+  at: { x: number; y: number },
+  marked: Locator = source
+): Promise<void> {
   const from = (await source.boundingBox())!
   const x = from.x + from.width / 2
   const y = from.y + from.height / 2
@@ -46,7 +51,7 @@ async function dragByMouse(source: Locator, target: Locator, at: { x: number; y:
   await expect(async () => {
     nudge += 6
     await page.mouse.move(x + nudge, y, { steps: 2 })
-    await expect(source).toHaveClass(/dragging/, { timeout: 500 })
+    await expect(marked).toHaveClass(/dragging/, { timeout: 500 })
   }).toPass({ timeout: 10_000 })
   const to = (await target.boundingBox())!
   await page.mouse.move(to.x + at.x, to.y + at.y, { steps: 5 })
@@ -456,7 +461,7 @@ test("moves the graph's author, date and SHA columns by dragging their headers, 
   await expect(headers).toHaveText(['BRANCH / TAG', 'GRAPH', 'COMMIT MESSAGE', 'AUTHOR', 'DATE / TIME', 'SHA'])
 
   // Onto the left half of AUTHOR: before it.
-  await heading('SHA').dragTo(heading('AUTHOR'), { targetPosition: { x: 5, y: 5 } })
+  await dragByMouse(heading('SHA').locator('.col-label'), heading('AUTHOR'), { x: 5, y: 5 }, heading('SHA'))
   await expect(headers).toHaveText(['BRANCH / TAG', 'GRAPH', 'COMMIT MESSAGE', 'SHA', 'AUTHOR', 'DATE / TIME'])
   // The rows follow the header.
   await expect(commitRows().first().locator('.cell').nth(3)).toHaveClass(/sha-cell/)
@@ -1054,7 +1059,8 @@ test('reorders commits by dragging them in the interactive rebase', async () => 
 
   // Newest first: drag "one" (bottom) above "three" (top).
   const row = (subject: string) => page.locator('.rebase-row', { hasText: subject })
-  await row('one').locator('.rebase-grip').dragTo(row('three'))
+  const target = (await row('three').boundingBox())!
+  await dragByMouse(row('one').locator('.rebase-grip'), row('three'), { x: 40, y: target.height / 2 }, row('one'))
   await expect(page.locator('.rebase-subject')).toHaveText(['one', 'three', 'two'])
   await page.getByRole('button', { name: 'Start rebase' }).click()
 
