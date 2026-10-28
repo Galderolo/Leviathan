@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-10-28
+
 ### Changed
 
 - **Settings per repository** keep only what depends on the project: automatic fetch, pull mode, push after commit, commits loaded at a time, editor and diff tool. The terminal and avatars are general again (a value given to a repository in 0.18.0 is no longer used), and the repository's section sits apart at the bottom of Settings, with its name.

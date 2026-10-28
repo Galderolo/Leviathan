@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-28, with 0.18.0 released (649 tests, 49 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-28, with 0.18.1 released (649 tests, 49 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -33,6 +33,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.16.0 | 2026-10-26 | Edit conflicts by hand, pick the commit identity (the owning account's by default), blame before a change, optional avatars from every provider and Gravatar, SSH aliases recognised, async safeStorage |
 | 0.17.0 | 2026-10-27 | Keyboard shortcuts (Space stages, arrows go through files), install git-lfs from the app, graph columns hidden, moved and resized, commit message template, narrow windows keep the graph; two polish batches of fixes |
 | 0.18.0 | 2026-10-28 | Settings per repository: auto-fetch, pull mode, push after commit, commits loaded, avatars, editor, terminal and diff tool |
+| 0.18.1 | 2026-10-28 | Settings per repository keep only what depends on the project (terminal and avatars general again), apart at the bottom of Settings |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
