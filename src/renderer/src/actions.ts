@@ -22,7 +22,6 @@ import { canInstall } from '../../shared/lfsInstall'
 import type { ReleaseNote } from '../../shared/releaseNotes'
 import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
-import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
@@ -607,7 +606,8 @@ export async function chooseRepoAccount(path: string): Promise<void> {
     patchRepo(path, { account })
     void loadPullRequests(path)
     if (account) toast('success', t('toast.repoAccountSet', { name: `${account.username}@${account.host}` }))
-    if (account && !hasRemoteOnHost(getRepo(path)?.state?.remotes ?? [], account.host)) {
+    // Asked to the main process: it sees the real host behind an SSH alias (git@github-work:…).
+    if (account && !(await api.repoUsesHost(path, account.host).catch(() => true))) {
       toast('info', t('toast.accountHostMismatch', { host: account.host }))
     }
   } catch (err) {
@@ -1901,13 +1901,20 @@ export async function loadLfsInfo(path: string): Promise<void> {
 
 const LFS_RECHECK_MS = 10_000
 let lastLfsRecheck = 0
+let recheckLater: ReturnType<typeof setTimeout> | undefined
 
 /**
  * Back in the window: git-lfs may have been installed by hand meanwhile. Repositories that miss it read their LFS
- * info again (which loads their locks once it is there), at most every few seconds.
+ * info again (which loads their locks once it is there), at most every few seconds; back sooner, once the wait is over.
  */
 export function recheckGitLfs(now = Date.now()): void {
-  if (now - lastLfsRecheck < LFS_RECHECK_MS) return
+  const wait = lastLfsRecheck + LFS_RECHECK_MS - now
+  if (wait > 0) {
+    recheckLater ??= setTimeout(() => recheckGitLfs(now + wait), wait)
+    return
+  }
+  clearTimeout(recheckLater)
+  recheckLater = undefined
   lastLfsRecheck = now
   for (const [path, view] of Object.entries(useStore.getState().repos)) {
     if (view.lfs?.info.used && !view.lfs.info.version) void loadLfsInfo(path)
@@ -1923,12 +1930,14 @@ let lfsAsking = false
  * per session, one question at a time, never during an install.
  */
 export async function askToInstallGitLfs(path: string): Promise<void> {
-  const { activeTab, tabs, lfsOffer, lfsInstalling } = useStore.getState()
+  const { activeTab, tabs, lfsOffer, lfsInstalling, whatsNewOpen } = useStore.getState()
   const info = getRepo(path)?.lfs?.info
   const showing = tabs.find((tab) => tab.id === activeTab)?.path === path
   if (!showing || !info?.used || info.version || !lfsOffer || lfsInstalling || lfsAsking || lfsAsked.has(path)) {
     return
   }
+  // Not on top of "What's new": asked once it is closed.
+  if (whatsNewOpen) return
   lfsAsked.add(path)
   lfsAsking = true
   const { method, command } = lfsOffer
@@ -1948,6 +1957,12 @@ export async function askToInstallGitLfs(path: string): Promise<void> {
   else if (method === 'command') await copyText(command ?? '', t('toast.copied'))
   else openExternal(LFS_DOWNLOAD_URL)
 }
+
+useStore.subscribe((s, before) => {
+  if (!before.whatsNewOpen || s.whatsNewOpen) return
+  const path = s.tabs.find((tab) => tab.id === s.activeTab)?.path
+  if (path) void askToInstallGitLfs(path)
+})
 
 /** Loads the locks from the LFS server; `interactive` may ask for credentials. */
 export async function loadLfsLocks(path: string, interactive: boolean): Promise<void> {
@@ -2033,15 +2048,44 @@ export async function installGitLfs(path: string): Promise<boolean> {
     await loadLfsOffer()
     const offer = useStore.getState().lfsOffer
     if (offer?.method === 'command') void showLfsCommand(offer.command ?? '')
-    else toast('error', t('toast.lfsInstallFailed', { error: errorMessage(err), link: t('lfs.install') }))
+    else {
+      // The message goes on with a sentence of its own.
+      const error = errorMessage(err).replace(/\.+$/, '')
+      toast('error', t('toast.lfsInstallFailed', { error, link: t('lfs.install') }))
+    }
     return false
   } finally {
     patchRepo(path, { busy: null, progress: null })
     useStore.setState({ lfsInstalling: false })
   }
-  await runOp(path, () => api.setupLfs(path), { busy: 'lfs', log: false, success: t('toast.lfsReady') })
+  await runLfsSetup(path, false)
   await Promise.all(Object.keys(useStore.getState().repos).map((repo) => loadLfsInfo(repo)))
   return true
+}
+
+/** Sets git-lfs up for a repository; hooks of another tool are left as they are, with git-lfs's lines to add to them. */
+async function runLfsSetup(path: string, log: boolean): Promise<void> {
+  let hooksToMerge: string | null = null
+  const ok = await runOp(
+    path,
+    async () => {
+      ;({ hooksToMerge } = await api.setupLfs(path))
+    },
+    { busy: 'lfs', log }
+  )
+  if (!ok) return
+  if (hooksToMerge) void showHooksToMerge(hooksToMerge)
+  else toast('success', t('toast.lfsReady'))
+}
+
+/** Says that hooks of another tool need git-lfs's lines, and copies its instructions. */
+async function showHooksToMerge(instructions: string): Promise<void> {
+  const copy = await confirmDialog({
+    title: t('lfs.hooksTitle'),
+    message: t('dlg.lfsHooks'),
+    confirmText: t('lfs.copyHooks')
+  })
+  if (copy) await copyText(instructions, t('toast.copied'))
 }
 
 /** The command that installs git-lfs here, to copy into a terminal. */
@@ -2120,7 +2164,7 @@ export async function setupLfs(path: string): Promise<void> {
   // It changes the user's own Git configuration, not just this repository: say so first.
   const ok = await confirmDialog({ title: t('lfs.setup'), message: t('dlg.lfsSetup'), confirmText: t('lfs.setup') })
   if (!ok) return
-  await runOp(path, () => api.setupLfs(path), { busy: 'lfs', success: t('toast.lfsReady') })
+  await runLfsSetup(path, true)
   await loadLfsInfo(path)
 }
 

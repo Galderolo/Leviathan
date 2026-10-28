@@ -6,6 +6,7 @@ import {
   GITLAB_CLIENT_ID,
   GITLAB_REDIRECT_PORT,
   credentialArgs,
+  hasRemoteOnHost,
   noreplyEmail,
   withoutAccount
 } from '../../shared/providers'
@@ -290,6 +291,11 @@ const sshHosts = new SshHosts()
 async function repoRemotes(repo: string) {
   const { stdout } = await git(['remote', '-v'], { cwd: repo })
   return sshHosts.resolve(parseRemotes(stdout))
+}
+
+/** Whether a remote of the repository reaches `host`, also through an SSH alias. */
+export async function repoUsesHost(repo: string, host: string): Promise<boolean> {
+  return hasRemoteOnHost(await repoRemotes(repo), host)
 }
 
 /** The hosted project of a repository and the account (with its token) to reach it. */

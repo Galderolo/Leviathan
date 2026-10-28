@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { delimiter, isAbsolute, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The install module runs in Electron's main process; the downloads here never reach it.
 vi.mock('electron', () => ({ net: { fetch: () => Promise.reject(new Error('no network in tests')) } }))
 
-const { installWindowsZip } = await import('../src/main/lfsInstall')
+const { installWindowsZip, windowsDeps } = await import('../src/main/lfsInstall')
 
 const RELEASE = 'https://api.github.com/repos/git-lfs/git-lfs/releases/latest'
 const ZIP = 'git-lfs-windows-amd64-v3.8.1.zip'
@@ -48,7 +48,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env.PATH = pathBefore
-  rmSync(root, { recursive: true, force: true })
+  rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 function deps(sums: string, arch = 'x64') {
@@ -98,6 +98,36 @@ describe('installWindowsZip', () => {
     expect(d.extract).not.toHaveBeenCalled()
     expect(d.addToUserPath).not.toHaveBeenCalled()
     expect(process.env.PATH).toBe(pathBefore)
+  })
+
+  it('says when GitHub limits how often it is asked from this network, and until when', async () => {
+    const d = deps(`${sha256('zip-bytes')}  ${ZIP}\n`)
+    const reset = Math.floor(Date.now() / 1000) + 20 * 60
+    const headers: Record<string, string> = { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(reset) }
+    d.fetch = async () => ({
+      ok: false,
+      status: 403,
+      headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
+      json: async () => ({}),
+      text: async () => '',
+      arrayBuffer: async () => new ArrayBuffer(0)
+    })
+    await expect(installWindowsZip(() => {}, d)).rejects.toThrow(
+      /^GitHub limits how often it can be asked from this network: try again in 20 minutes, nothing was installed$/
+    )
+    expect(d.extract).not.toHaveBeenCalled()
+  })
+
+  it("installs into the user's own folder even when LOCALAPPDATA is not set", () => {
+    const saved = process.env.LOCALAPPDATA
+    process.env.LOCALAPPDATA = ''
+    try {
+      const dir = windowsDeps().installDir
+      expect(isAbsolute(dir)).toBe(true)
+      expect(dir).toBe(join(homedir(), 'AppData', 'Local', 'Programs', 'Git LFS'))
+    } finally {
+      process.env.LOCALAPPDATA = saved
+    }
   })
 
   it('says when this Windows has no zip to install', async () => {

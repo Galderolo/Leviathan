@@ -112,7 +112,9 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
       })
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
+      // Closed, or asked again: git's work for this one is no longer wanted.
       live = false
+      void api.stopFileView(path)
     }
   }, [path, file, rev, limit, head])
 
@@ -245,6 +247,7 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
       live = false
+      void api.stopFileView(path)
     }
   }, [path, folder, rev, limit, head])
 
@@ -437,6 +440,7 @@ function BlameView(props: {
       .catch((err) => live && setError(errorMessage(err)))
     return () => {
       live = false
+      void api.stopFileView(path)
     }
   }, [path, file, rev, head])
 

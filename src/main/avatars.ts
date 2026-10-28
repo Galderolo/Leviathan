@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import type { Account } from '../shared/types'
+import { writeFileAtomic } from './atomicFile'
 
 export type ImageFetch = (url: string) => Promise<{
   ok: boolean
@@ -143,8 +144,7 @@ export class AvatarCache {
 
   private save(entries: Record<string, Entry>): void {
     try {
-      writeFileSync(`${this.file}.tmp`, JSON.stringify(entries))
-      renameSync(`${this.file}.tmp`, this.file)
+      writeFileAtomic(this.file, JSON.stringify(entries))
     } catch {
       // Not critical: the pictures are fetched again next time.
     }

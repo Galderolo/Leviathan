@@ -1224,6 +1224,11 @@ img.avatar {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
+/* A checked file still shows it is under the mouse. */
+.file-row.selected:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
 .file-row.active {
   background: rgba(31, 182, 166, 0.2);
 }

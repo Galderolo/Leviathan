@@ -117,6 +117,7 @@ export function CommitGraph({ path }: { path: string }) {
 
   const resize = (kind: keyof GraphColumns) => (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
+    if (e.button !== 0) return
     const handle = e.currentTarget
     handle.setPointerCapture(e.pointerId)
     const startX = e.clientX

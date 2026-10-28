@@ -4,6 +4,15 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Fixed
+
+- **Git LFS beside hooks of another tool** (husky and the like): setting LFS up failed with "Hook already exists" and left every LFS hook out. It now sets up the hooks that are missing, downloads the large files, and explains what to add to the other tool's hooks, with git-lfs's instructions to copy (without them a push does not upload the large files).
+- **Installing git-lfs**: when GitHub limits how often it can be asked from your network, the app says so and when to try again; the question no longer opens on top of *What's new*; the failure message no longer ends a sentence with two periods; on Windows without `LOCALAPPDATA` it still installs into your own `AppData\Local`; and git-lfs installed by hand is noticed even when you come back to the window right away.
+- **Closing a file history, folder history or blame stops git's work for it**, which could keep the CPU busy on a big repository.
+- **No false warning about the account's host** when a repository's remote goes through an SSH alias (`git@github-work:…`).
+- **The dividers move with the left button only** (between the changed-file lists, the side panels' edges and the graph's columns), and a checked file still shows when the mouse is over it.
+- **Settings and accounts are saved even when Windows holds the file for a moment** (an antivirus or the search indexer reading it): the save is tried again instead of being lost.
+
 ## [0.18.1] - 2026-10-28
 
 ### Changed

@@ -71,7 +71,7 @@ beforeAll(async () => {
   await accounts.addAccount({ provider: 'github', host: 'github.com', token: TOKEN })
 })
 
-afterAll(() => rmSync(userData, { recursive: true, force: true }))
+afterAll(() => rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('pull requests of a repository', () => {
   it('lists them through the account on the remote host', async () => {

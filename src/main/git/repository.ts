@@ -1021,7 +1021,8 @@ export async function getFileHistory(
   repo: string,
   path: string,
   rev: string | null = null,
-  limit = HISTORY_PAGE
+  limit = HISTORY_PAGE,
+  signal?: AbortSignal
 ): Promise<FileCommit[]> {
   insideRepo(repo, path)
   if (rev !== null) assertSafeArg(rev, 'commit')
@@ -1029,9 +1030,7 @@ export async function getFileHistory(
   const out = await run(
     repo,
     ['log', '--follow', `-n${count}`, `--format=${HISTORY_FORMAT}`, '--name-status', ...(rev ? [rev] : []), '--', path],
-    {
-      env: LITERAL_PATHS
-    }
+    { env: LITERAL_PATHS, signal }
   )
   const history: FileCommit[] = []
   // Walking back in time: the path the file had in the next (older) commit.
@@ -1085,7 +1084,8 @@ export async function getFolderHistory(
   repo: string,
   folder: string,
   rev: string | null = null,
-  limit = HISTORY_PAGE
+  limit = HISTORY_PAGE,
+  signal?: AbortSignal
 ): Promise<Commit[]> {
   const path = folder.replace(/\\/g, '/').replace(/\/+$/, '')
   // The whole repository's history is the graph.
@@ -1094,7 +1094,8 @@ export async function getFolderHistory(
   if (rev !== null) assertSafeArg(rev, 'commit')
   const count = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), HISTORY_MAX) : HISTORY_PAGE
   const out = await run(repo, ['log', `-n${count}`, `--format=${LOG_FORMAT}`, ...(rev ? [rev] : []), '--', path], {
-    env: LITERAL_PATHS
+    env: LITERAL_PATHS,
+    signal
   })
   return parseLog(out)
 }
@@ -1145,11 +1146,17 @@ const noFile = () => false
  * Who last changed each line of a file: as it is in the working tree (`rev`
  * null; lines not committed yet have an all-zeros hash) or in a commit.
  */
-export async function getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]> {
+export async function getBlame(
+  repo: string,
+  path: string,
+  rev: string | null,
+  signal?: AbortSignal
+): Promise<BlameLine[]> {
   const full = insideRepo(repo, path)
   if (rev !== null) assertSafeArg(rev, 'commit')
   await assertBlameable(repo, full, path, rev)
-  const blame = (ignore: string[]) => run(repo, ['blame', '--porcelain', ...ignore, ...(rev ? [rev] : []), '--', path])
+  const blame = (ignore: string[]) =>
+    run(repo, ['blame', '--porcelain', ...ignore, ...(rev ? [rev] : []), '--', path], { signal })
   const out = await blame([]).catch(async (err: unknown) => {
     // A blame.ignoreRevsFile this repository does not have (often set globally for the ones that do)
     // makes git refuse every blame: ask again with only the files that are there.

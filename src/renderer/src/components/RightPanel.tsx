@@ -329,6 +329,7 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
   const unstagedRef = useRef<HTMLDivElement>(null)
   const stagedRef = useRef<HTMLDivElement>(null)
   const dragSplit = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
     const top = unstagedRef.current?.getBoundingClientRect().top
     const bottom = stagedRef.current?.getBoundingClientRect().bottom
     if (top === undefined || bottom === undefined || bottom <= top) return

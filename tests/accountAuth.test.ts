@@ -60,7 +60,7 @@ describe('repositories bound to an account', () => {
   afterEach(async () => {
     setRepoGitArgs(dir, null)
     await bridge?.close()
-    rmSync(dir, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
   })
 
   it("use the account's token instead of other credential helpers", async () => {

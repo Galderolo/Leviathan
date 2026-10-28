@@ -23,7 +23,7 @@ beforeEach(async () => {
   await repo.commit(work, 'base', false)
 })
 
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('shouldRefreshIndex', () => {
   it('refreshes after a slow status, at most every five minutes', () => {

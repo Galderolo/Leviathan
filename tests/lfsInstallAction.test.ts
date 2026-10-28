@@ -5,7 +5,7 @@ import type { LfsInfo } from '../src/shared/lfs'
 const infoCalls: string[] = []
 const stub: Record<string, ReturnType<typeof vi.fn>> = {
   installGitLfs: vi.fn(async () => '3.8.1'),
-  setupLfs: vi.fn(async () => {}),
+  setupLfs: vi.fn(async () => ({ hooksToMerge: null })),
   getLfsInfo: vi.fn(async (path: string): Promise<LfsInfo> => {
     infoCalls.push(path)
     return { version: '3.8.1', used: true, filters: true, hooks: true, patterns: [] }
@@ -53,13 +53,34 @@ describe('installGitLfs', () => {
   })
 
   it('says why and how to get it by hand when the install fails', async () => {
-    stub.installGitLfs.mockRejectedValueOnce(new Error('boom'))
+    stub.installGitLfs.mockRejectedValueOnce(new Error('boom: nothing was installed.'))
     expect(await installGitLfs('/a')).toBe(false)
     const [error] = toasts('error')
-    expect(error).toContain('boom')
+    expect(error).toContain('boom: nothing was installed. "')
     expect(error).toContain('Get Git LFS')
     expect(stub.setupLfs).not.toHaveBeenCalled()
     expect(useStore.getState().lfsInstalling).toBe(false)
+  })
+})
+
+describe('setting LFS up beside hooks of another tool', () => {
+  it("says the hooks need git-lfs's lines, and copies its instructions", async () => {
+    const hooksToMerge = 'Add the following to \'.git/hooks/pre-push\':\n\n\tgit lfs pre-push "$@"'
+    stub.setupLfs.mockResolvedValueOnce({ hooksToMerge })
+    expect(await installGitLfs('/a')).toBe(true)
+    expect(toasts('success')).not.toContain('Git LFS is ready')
+    const dialog = useStore.getState().dialog
+    expect(dialog?.message).toContain('push does not upload the large files')
+    expect(dialog?.confirmText).toBe('Copy the instructions')
+    dialog!.resolve({})
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(hooksToMerge))
+  })
+
+  it('says it is ready when every hook is set up', async () => {
+    stub.setupLfs.mockResolvedValueOnce({ hooksToMerge: null })
+    expect(await installGitLfs('/a')).toBe(true)
+    expect(toasts('success')).toContain('Git LFS is ready')
+    expect(useStore.getState().dialog).toBeNull()
   })
 })
 

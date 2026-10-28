@@ -27,7 +27,7 @@ import type {
 } from './types'
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
-import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
+import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
 import type { LfsInstallOffer } from './lfsInstall'
 import type { RebaseItem } from './rebase'
 import type { ReleaseNote } from './releaseNotes'
@@ -87,6 +87,8 @@ export interface LeviathanInvokeApi {
   getFolderHistory(repo: string, folder: string, rev: string | null, limit?: number): Promise<Commit[]>
   /** Who last changed each line: in the working tree (`rev` null) or in a commit. */
   getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]>
+  /** Stops git's work for the file view of `repo` (history, folder history or blame), which was closed. */
+  stopFileView(repo: string): Promise<void>
 
   // Conflicts
   readWorkingFile(repo: string, path: string): Promise<WorkingFile>
@@ -188,6 +190,8 @@ export interface LeviathanInvokeApi {
   listAccountRepos(id: string): Promise<RemoteRepo[]>
   getRepoAccount(repo: string): Promise<string | null>
   setRepoAccount(repo: string, accountId: string | null): Promise<void>
+  /** Whether a remote of the repository reaches `host`, also through an SSH alias. */
+  repoUsesHost(repo: string, host: string): Promise<boolean>
   /** The message git's commit.template starts commits with, or null without one. */
   getCommitTemplate(repo: string): Promise<CommitDraftText | null>
   /** Who the next commit of a repository will be by, and where that comes from. */
@@ -270,7 +274,7 @@ export interface LeviathanInvokeApi {
   /** Stages again through LFS files that should go through it but were staged whole. */
   lfsRestage(repo: string, paths: string[]): Promise<void>
   /** Runs `git lfs install` and downloads the repository's LFS files. */
-  setupLfs(repo: string): Promise<void>
+  setupLfs(repo: string): Promise<LfsSetup>
   /** How the app can install git-lfs on this computer. */
   getLfsInstallOffer(): Promise<LfsInstallOffer>
   /** Installs git-lfs (its progress shows on `repo`) and gives its version. */
@@ -325,6 +329,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getFileHistory: true,
   getFolderHistory: true,
   getBlame: true,
+  stopFileView: true,
   readWorkingFile: true,
   resolveConflictFile: true,
   resolveConflictWith: true,
@@ -385,6 +390,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   listAccountRepos: true,
   getRepoAccount: true,
   setRepoAccount: true,
+  repoUsesHost: true,
   getCommitTemplate: true,
   getCommitIdentity: true,
   setCommitIdentity: true,

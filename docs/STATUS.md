@@ -216,7 +216,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Loading locks can take up to four git-lfs runs (verify, then without it), and an interactive reload without a credential helper may ask several times. A host without the locks API (Bitbucket Cloud) is told apart by git-lfs's message (`NO_LOCKING_API` in `src/main/git/lfs.ts`: "not found", "not supported", 404), so a different wording from a server would show as an error again (0.13.0).
 - An own lock on a file deleted locally (deletion not committed) is released by id, skipping git-lfs's uncommitted-changes check.
 - Lock lookups per file row are linear in the number of locks (fine for hundreds).
-- A pre-push hook from another tool (husky…) stops git-lfs from installing its own: the section says "not set up" and *Set up* fails with "Hook already exists" (`git lfs update --manual` is the way out).
+- A hook of another tool (husky…) stops `git lfs install` at the first one, setting none up. *Set up* then writes the missing hooks as git-lfs would, downloads the files and offers git-lfs's instructions (`git lfs update --manual`) for the other tool's hooks, which stay as they were: the section says "not set up" until those lines are added by hand. A hook that is husky's wrapper is read as it is (the lines may live in `.husky/pre-push`).
 
 **Pull requests**
 - A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.
@@ -224,7 +224,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Up to 500 open PRs are listed (`PULL_REQUESTS_MAX`), asked 100 at a time (50 on Bitbucket and Gitea) until a page is not full: a Gitea server whose page limit is below 50 lists only its first page. Fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 
 **SSH aliases**
-- `SshHosts` (`src/main/git/sshHosts.ts`) rewrites SSH remote URLs with the host `ssh -G <alias>` reports (once per name per session; names that could read as an option are never passed) before the accounts module looks for the account of a repository (pull requests, default identity, avatars). The renderer's "this account's host is not among the remotes" hint after binding an account still compares the alias.
+- `SshHosts` (`src/main/git/sshHosts.ts`) rewrites SSH remote URLs with the host `ssh -G <alias>` reports (once per name per session; names that could read as an option are never passed) before the accounts module looks for the account of a repository (pull requests, default identity, avatars, and `repoUsesHost` for the "this account's host is not among the remotes" hint after binding an account).
 
 **Avatars**
 - Off by default (`settings.avatars`): `getAvatars` in the main process asks nothing until then. Sources per email (`avatarSources`, `src/main/avatars.ts`): GitHub no-reply address -> `avatars.githubusercontent.com/u/<id>`, an own GitHub account's email -> `github.com/<user>.png`, then the repository's server through its account (`authorAvatar`: GitHub and Gitea by the author of one of their commits, Bitbucket by the user of that commit's author, GitLab by email with `/avatar`), then Gravatar (SHA-256, `d=404`). Pictures come to the window as data: URLs (its CSP allows no remote images), cached in `avatars.json` in the profile: found for 7 days, none for 1 day, an unreachable server not at all. Asked once per email per session.
@@ -238,8 +238,8 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - GitHub sign-in: one network error while waiting ends the sign-in (no retry); no local deadline besides GitHub's `expired_token`; secure storage is only checked after the browser step; a cancel pressed after GitHub issued the token still adds the account.
 
 **Multi-file selection**
-- The divider: no keyboard support, a right-button press also drags, every move re-renders the panel (may stutter with huge lists).
-- Checked rows lose the hover highlight; in Spanish at the minimum panel width the header buttons can crowd the title.
+- The divider: no keyboard support, every move re-renders the panel (may stutter with huge lists).
+- In Spanish at the minimum panel width the header buttons can crowd the title.
 - Checkboxes in the staged list do not exclude files from the commit (unlike GitHub Desktop); "Quitar selección" can read as "deselect".
 
 **Diffs**
@@ -252,7 +252,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **File history and blame**
 - *Blame before this change* uses the `previous <commit> <path>` that `git blame --porcelain` gives each commit (its parent, and the file's name there): the earlier blame opens at the line number the line had in the commit that changed it (`origLine`), only a guess of where it was in the parent. *Back* is a stack in `fileView.back`.
 - File and folder history list 300 commits at a time (*Show more*, up to 5 000: `HISTORY_PAGE`, `HISTORY_MAX`), and blame stops at 20 000 lines (`BLAME_MAX_LINES`); both say so. Views of HEAD or the working tree are read again when HEAD moves (`useHeadKey`), not when the working file alone changes.
-- Rendering 20 000 blame rows ("Show all") is slow; closing the view does not stop a long `log --follow` or blame.
+- Rendering 20 000 blame rows ("Show all") is slow. Closing the view, or asking again, stops git's work for it (`stopFileView`, one `LatestRun` per repository in `ipc.ts`; git commands take a `signal`).
 - Folder history (`getFolderHistory`: `git log -- <folder>`, literal pathspec, 300 commits) loads the picked commit's whole file list (`getCommitDetails`) and keeps the folder's part (`filesInFolder`, moves in and out included), so a commit of 20 000 files costs the same as in the graph. Files compare with the first parent: a merge that brought the folder's changes may list nothing.
 
 **Automatic updates**

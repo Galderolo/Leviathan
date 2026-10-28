@@ -30,7 +30,7 @@ beforeEach(() => {
   file = join(dir, 'accounts.json')
 })
 
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('AccountStore', () => {
   it('stores accounts with encrypted tokens', async () => {

@@ -31,7 +31,7 @@ describe.skipIf(process.platform !== 'win32')('installCommandLine (Windows)', ()
 
   afterEach(() => {
     ps(`Remove-Item -Path 'HKCU:\\Software\\LeviathanTest' -Recurse -Force`)
-    rmSync(dir, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
   })
 
   it('writes leviathan.cmd and adds its folder to the PATH once, keeping %VARIABLES% unexpanded', async () => {

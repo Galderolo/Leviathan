@@ -64,7 +64,7 @@ beforeEach(async () => {
   await git(['push', '-q', '-u', 'origin', 'feature'], { cwd: work })
 })
 
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('ahead/behind across refreshes', () => {
   it('follows commits, fetches and deleted upstreams', async () => {

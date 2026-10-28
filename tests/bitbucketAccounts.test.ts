@@ -61,7 +61,7 @@ beforeEach(() => {
   for (const account of accounts.listAccounts()) accounts.removeAccount(account.id)
 })
 
-afterAll(() => rmSync(userData, { recursive: true, force: true }))
+afterAll(() => rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('Bitbucket accounts', () => {
   it('are added with an API token: the username of the remotes and the primary email', async () => {

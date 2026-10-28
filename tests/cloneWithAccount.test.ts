@@ -23,7 +23,7 @@ beforeEach(async () => {
   await git(['init', '-q', '--bare', '-b', 'main', origin], { cwd: root })
 })
 
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('cloneWithAccount', () => {
   it('keeps a clone that could not be bound to the account, and says why', async () => {

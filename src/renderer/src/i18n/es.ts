@@ -537,6 +537,8 @@ const es: Record<keyof typeof en, string> = {
   'lfs.install': 'Descargar Git LFS',
   'lfs.installNow': 'Instalar git-lfs',
   'lfs.copyCommand': 'Copiar comando',
+  'lfs.hooksTitle': 'Git LFS y los hooks de otra herramienta',
+  'lfs.copyHooks': 'Copiar instrucciones',
   'lfs.missingTitle': 'Git LFS no está instalado',
   'dlg.lfsMissing':
     '{repo} guarda sus archivos grandes (texturas, modelos, audio…) con Git LFS, pero git-lfs no está instalado en este equipo. Sin él verás pequeños archivos de texto en lugar de los archivos reales.',
@@ -583,6 +585,8 @@ const es: Record<keyof typeof en, string> = {
   'lfs.lockedByOthers_one': 'Un archivo cambiado está bloqueado por otra persona: tu push puede ser rechazado.',
   'dlg.lfsSetup':
     'Se ejecuta "git lfs install": añade la configuración de Git LFS a la configuración de Git de tu usuario (~/.gitconfig) y sus hooks a este repositorio, y después descarga los archivos LFS del repositorio.',
+  'dlg.lfsHooks':
+    'Git LFS está configurado y los archivos grandes del repositorio, descargados. Pero este repositorio ya tiene hooks de otra herramienta (husky, por ejemplo), y git-lfs no los sobrescribe: hasta que les añadas las líneas de git-lfs, un push no sube los archivos grandes. Copia las instrucciones de git-lfs y añade esas líneas a los hooks que indican.',
   'dlg.lfsTrack':
     'Los archivos que encajen con el patrón se guardarán con Git LFS a partir de ahora. El cambio va en .gitattributes, que se incluye en un commit como cualquier otro archivo.',
   'dlg.lfsUntrack': '¿Dejar de guardar los archivos «{pattern}» con Git LFS? Los que ya tienen commit siguen en LFS.',

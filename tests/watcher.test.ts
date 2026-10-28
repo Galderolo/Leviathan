@@ -32,7 +32,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   unwatchRepo(work)
-  rmSync(root, { recursive: true, force: true })
+  rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 describe('allIgnored', () => {

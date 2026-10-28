@@ -70,7 +70,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   delete process.env.GIT_CONFIG_GLOBAL
-  rmSync(userData, { recursive: true, force: true })
+  rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 describe('commit identity of a repository', () => {

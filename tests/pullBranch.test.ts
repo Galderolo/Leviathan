@@ -48,7 +48,7 @@ beforeEach(async () => {
   await git(['push', '-q', 'origin', 'develop'], { cwd: other })
 })
 
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('pullBranch', () => {
   it('fast-forwards a branch that is not checked out, without switching', async () => {

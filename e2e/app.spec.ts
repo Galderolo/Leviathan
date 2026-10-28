@@ -32,11 +32,16 @@ const toolbarButton = (label: string) => page.locator('.tool-button', { hasText:
 const menuItem = (label: string | RegExp) => page.locator('.context-menu').getByText(label, { exact: true })
 
 /**
- * Drags `source` (which takes the class `dragging` once its drag starts) onto `target`, at `at` within it. Pressing a
- * tab shows its repository: a window busy with that takes the moves late, all at once, with the release right behind,
- * and no drag starts. So it nudges until the drag has started, then goes on, as a hand would.
+ * Drags `source` onto `target`, at `at` within it; `marked` (`source` itself by default) takes the class `dragging`
+ * once the drag starts. A busy window takes the moves late, all at once, with the release right behind, and no drag
+ * starts. So it nudges until the drag has started, then goes on, as a hand would.
  */
-async function dragByMouse(source: Locator, target: Locator, at: { x: number; y: number }): Promise<void> {
+async function dragByMouse(
+  source: Locator,
+  target: Locator,
+  at: { x: number; y: number },
+  marked: Locator = source
+): Promise<void> {
   const from = (await source.boundingBox())!
   const x = from.x + from.width / 2
   const y = from.y + from.height / 2
@@ -46,7 +51,7 @@ async function dragByMouse(source: Locator, target: Locator, at: { x: number; y:
   await expect(async () => {
     nudge += 6
     await page.mouse.move(x + nudge, y, { steps: 2 })
-    await expect(source).toHaveClass(/dragging/, { timeout: 500 })
+    await expect(marked).toHaveClass(/dragging/, { timeout: 500 })
   }).toPass({ timeout: 10_000 })
   const to = (await target.boundingBox())!
   await page.mouse.move(to.x + at.x, to.y + at.y, { steps: 5 })
@@ -456,7 +461,7 @@ test("moves the graph's author, date and SHA columns by dragging their headers, 
   await expect(headers).toHaveText(['BRANCH / TAG', 'GRAPH', 'COMMIT MESSAGE', 'AUTHOR', 'DATE / TIME', 'SHA'])
 
   // Onto the left half of AUTHOR: before it.
-  await heading('SHA').dragTo(heading('AUTHOR'), { targetPosition: { x: 5, y: 5 } })
+  await dragByMouse(heading('SHA').locator('.col-label'), heading('AUTHOR'), { x: 5, y: 5 }, heading('SHA'))
   await expect(headers).toHaveText(['BRANCH / TAG', 'GRAPH', 'COMMIT MESSAGE', 'SHA', 'AUTHOR', 'DATE / TIME'])
   // The rows follow the header.
   await expect(commitRows().first().locator('.cell').nth(3)).toHaveClass(/sha-cell/)
@@ -605,6 +610,39 @@ test('checks and unchecks a range of files with Shift on their checkboxes', asyn
   await expect(checked()).toHaveCount(2)
   await expect(checkbox('a.txt')).toBeChecked()
   await expect(checkbox('b.txt')).toBeChecked()
+})
+
+test('moves the dividers with the left button only, and highlights a checked file under the mouse', async () => {
+  const repo = box.repo('game', { 'a.txt': 'a\n', 'b.txt': 'b\n' })
+  box.write(repo, { 'a.txt': 'A\n', 'b.txt': 'B\n' })
+  box.git(repo, 'add', 'b.txt')
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+
+  const staged = page.locator('.file-section').nth(1)
+  const leftPanel = page.locator('.left-panel')
+  const before = { staged: (await staged.boundingBox())!.y, left: (await leftPanel.boundingBox())!.width }
+  const rightDrag = async (handle: Locator, dx: number, dy: number) => {
+    const at = (await handle.boundingBox())!
+    const x = at.x + at.width / 2
+    const y = at.y + at.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down({ button: 'right' })
+    await page.mouse.move(x + dx, y + dy, { steps: 5 })
+    await page.mouse.up({ button: 'right' })
+  }
+  await rightDrag(page.locator('.split-handle'), 0, 120)
+  await rightDrag(page.locator('.resizer').first(), 80, 0)
+  expect((await staged.boundingBox())!.y).toBe(before.staged)
+  expect((await leftPanel.boundingBox())!.width).toBe(before.left)
+
+  const row = unstaged().locator('.file-row', { hasText: 'a.txt' })
+  await row.locator('input[type=checkbox]').click()
+  await page.mouse.move(5, 5)
+  const background = () => row.evaluate((el) => getComputedStyle(el).backgroundColor)
+  const resting = await background()
+  await row.hover()
+  await expect.poll(background).not.toBe(resting)
 })
 
 test('asks with a count, not a list, before discarding many files', async () => {
@@ -1021,7 +1059,8 @@ test('reorders commits by dragging them in the interactive rebase', async () => 
 
   // Newest first: drag "one" (bottom) above "three" (top).
   const row = (subject: string) => page.locator('.rebase-row', { hasText: subject })
-  await row('one').locator('.rebase-grip').dragTo(row('three'))
+  const target = (await row('three').boundingBox())!
+  await dragByMouse(row('one').locator('.rebase-grip'), row('three'), { x: 40, y: target.height / 2 }, row('one'))
   await expect(page.locator('.rebase-subject')).toHaveText(['one', 'three', 'two'])
   await page.getByRole('button', { name: 'Start rebase' }).click()
 

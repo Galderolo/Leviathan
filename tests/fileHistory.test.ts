@@ -46,7 +46,7 @@ beforeEach(async () => {
   hashes['rename notes'] = (await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()
 })
 
-afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true }))
+afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('getFileHistory', () => {
   it('lists the commits that touched the file, newest first, following a rename', async () => {

@@ -21,7 +21,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  rmSync(join(sshDir, '..'), { recursive: true, force: true })
+  rmSync(join(sshDir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 /** Whether the private key opens with `passphrase`. */
