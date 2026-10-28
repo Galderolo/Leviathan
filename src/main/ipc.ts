@@ -20,6 +20,7 @@ import * as lfs from './git/lfs'
 import * as lfsInstall from './lfsInstall'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
+import { settingsFor } from '../shared/repoSettings'
 import { loadSettings, saveSettings } from './settings'
 import { openAction } from './shell'
 import { generateKey, listKeys } from './ssh'
@@ -169,8 +170,9 @@ const handlers: LeviathanInvokeApi = {
   setCommitIdentity: (path, choice) => accounts.setCommitIdentity(path, identityChoice(choice)),
   ensureDefaultIdentity: (path) => accounts.ensureDefaultIdentity(path),
   getAvatars: async (path, people) => {
-    // Off by default: nothing is asked to GitHub or Gravatar until Settings says so.
-    if (!loadSettings().avatars || !Array.isArray(people)) return {}
+    // Off by default: nothing is asked to GitHub or Gravatar until Settings (or the repository's own) says so.
+    const repoPath = typeof path === 'string' ? path : null
+    if (!settingsFor(loadSettings(), repoPath).avatars || !Array.isArray(people)) return {}
     const wanted = people
       .filter((p) => typeof p?.email === 'string')
       .map((p) => ({ email: p.email, hash: typeof p.hash === 'string' ? p.hash : undefined }))

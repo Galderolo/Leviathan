@@ -137,6 +137,22 @@ describe('external tools', () => {
     expect(readFileSync(join(dir, 'i.txt'), 'utf8')).toBe('one\n')
   })
 
+  it('uses the editor, terminal and diff tool the repository has of its own', async () => {
+    // General ones that do not exist: nothing starts on the computer running the tests either way.
+    settings.editor = 'leviathan-general-editor {file}'
+    settings.terminal = 'leviathan-general-terminal {folder}'
+    settings.diffTool = 'leviathan-no-such-tool'
+    settings.repoSettings = {
+      [dir]: { editor: 'leviathan-repo-editor {file}', terminal: 'leviathan-repo-terminal {folder}', diffTool: '' }
+    }
+    await expect(openInEditor(dir, 'i.txt')).rejects.toThrow('"leviathan-repo-editor" was not found')
+    await expect(openTerminal(dir)).rejects.toThrow('"leviathan-repo-terminal" was not found')
+    // No diff tool of its own: the one git has set for it, not the general one.
+    await recordingMergeTool()
+    await openDiffTool(dir, { kind: 'unstaged', path: 'i.txt' })
+    expect(await settledCalls()).toEqual(['i.txt'])
+  })
+
   it('refuses a commit that is not a hash', async () => {
     await recordingMergeTool()
     await expect(

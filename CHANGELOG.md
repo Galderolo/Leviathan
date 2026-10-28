@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Settings per repository**: a repository can have its own automatic fetch (for example every minute for one project and never for the rest), pull mode, push after each commit, commits loaded at a time, avatars, editor, terminal and diff tool, in Settings → This repository or from the toolbar's repository menu. Each one starts as "Same as general" and follows the general setting, also when it changes later; a mode picked in the Pull menu, or the push checkbox under the commit box, changes the repository's own value when it has one.
+
 ## [0.17.0] - 2026-10-27
 
 ### Added

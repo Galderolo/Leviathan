@@ -14,7 +14,7 @@ import {
   installGitLfs,
   moveToLfs,
   restageLfs,
-  saveSettings,
+  saveSettingFor,
   openDiff,
   openExternal,
   popStash,
@@ -43,7 +43,7 @@ import { formatSize, lockFor, lockedByOthers } from '../lfsView'
 import { pushAfterCommitTarget } from '../pushTarget'
 import { fileMenu, filesMenu, identityMenu } from '../menus'
 import { fileKey, nextAfter, neighbour } from '../shortcuts'
-import { getRepo, useRepo, useStore, type RepoView } from '../store'
+import { getRepo, useRepo, useRepoSetting, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
 import { cx, formatDate, shortHash, splitPath } from '../utils'
 import { Avatar, LockIcon, StatusBadge } from './common'
@@ -533,7 +533,7 @@ function CommitBox({ path }: { path: string }) {
   const view = useRepo(path)!
   const { summary, body, amend } = view.draft
   const status = view.state!.status
-  const pushAfter = useStore((s) => s.settings.pushAfterCommit)
+  const pushAfter = useRepoSetting(path, 'pushAfterCommit')
   const pushTarget = pushAfterCommitTarget(view.state!.head, view.state!.remotes)
   const stagedCount = status.staged.length
   const blocked = status.conflicted.length > 0
@@ -589,7 +589,7 @@ function CommitBox({ path }: { path: string }) {
           <input
             type="checkbox"
             checked={pushAfter}
-            onChange={(e) => void saveSettings({ pushAfterCommit: e.target.checked })}
+            onChange={(e) => void saveSettingFor(path, 'pushAfterCommit', e.target.checked)}
           />
           {t('wip.pushAfterCommit', { target: pushTarget })}
         </label>

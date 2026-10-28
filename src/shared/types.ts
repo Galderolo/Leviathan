@@ -297,6 +297,8 @@ export interface Settings {
   terminal: string
   /** Repository path -> id of the account it uses. */
   repoAccounts: Record<string, string>
+  /** Repository path -> the settings it has values of its own for; the general ones for the rest. */
+  repoSettings: Record<string, RepoSettings>
   /** Commit identities typed for a repository, newest first, to pick again. */
   recentIdentities: { name: string; email: string }[]
   /** Show authors' pictures (from GitHub and Gravatar), which asks those services about each author's email. */
@@ -323,9 +325,16 @@ export const DEFAULT_SETTINGS: Settings = {
   diffTool: '',
   terminal: '',
   repoAccounts: {},
+  repoSettings: {},
   recentIdentities: [],
   avatars: false
 }
+
+/** The settings a repository can have a value of its own for. */
+export type RepoSettingKey =
+  'autoFetchMinutes' | 'pullMode' | 'pushAfterCommit' | 'commitLimit' | 'editor' | 'terminal' | 'diffTool' | 'avatars'
+
+export type RepoSettings = Partial<Pick<Settings, RepoSettingKey>>
 
 export type Provider = 'github' | 'gitlab' | 'bitbucket' | 'gitea' | 'other'
 

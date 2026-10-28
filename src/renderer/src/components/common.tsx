@@ -3,13 +3,14 @@ import { Lock, X } from 'lucide-react'
 import type { LfsLock } from '../../../shared/lfs'
 import type { FileStatus } from '../../../shared/types'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useActiveTab, useRepoSetting, useStore } from '../store'
 import { closeMenu, dismissToast } from '../ui'
 import { cx, hashColor, initials } from '../utils'
 
-/** The author's picture when Settings shows avatars and one was found; their initials otherwise. */
+/** The author's picture when the repository shown has avatars on and one was found; their initials otherwise. */
 export function Avatar({ name, email, size = 22 }: { name: string; email: string; size?: number }) {
-  const picture = useStore((s) => s.avatars[email.trim().toLowerCase()])
+  const shown = useRepoSetting(useActiveTab()?.path ?? null, 'avatars')
+  const picture = useStore((s) => (shown ? s.avatars[email.trim().toLowerCase()] : undefined))
   const title = `${name} <${email}>`
   if (picture) {
     return <img className="avatar" src={picture} width={size} height={size} alt="" title={title} draggable={false} />

@@ -10,6 +10,7 @@ import type {
   MergeMethod,
   PullRequest,
   PullMode,
+  RepoSettingKey,
   RepoState,
   ResetMode,
   Settings,
@@ -23,6 +24,7 @@ import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
+import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
 import { isFetchDue } from './autofetch'
@@ -96,7 +98,7 @@ export async function initApp(): Promise<void> {
       const path = await api.openRepo(saved)
       if (repos[path]) continue
       tabs.push({ id: path, path })
-      repos[path] = newRepoView(path, settings.commitLimit)
+      repos[path] = newRepoView(path, settingsFor(settings, path).commitLimit)
     } catch {
       // Repository moved or deleted since last session.
     }
@@ -122,6 +124,30 @@ function welcomeTab(): Tab {
 export async function saveSettings(patch: Partial<Settings>): Promise<void> {
   const settings = await api.saveSettings(patch)
   useStore.setState({ settings, lang: resolveLang(settings.language) })
+}
+
+/** The settings as repository `path` sees them: its own values over the general ones. */
+export function repoSettings(path: string | null): Settings {
+  return settingsFor(useStore.getState().settings, path)
+}
+
+/** Gives a repository a value of its own for `key`, or the general one again with `undefined`. */
+export async function saveRepoSetting<K extends RepoSettingKey>(
+  path: string,
+  key: K,
+  value: Settings[K] | undefined
+): Promise<void> {
+  await saveSettings({ repoSettings: withRepoSetting(useStore.getState().settings.repoSettings, path, key, value) })
+  if (key === 'avatars') void loadAvatars(path, getRepo(path)?.commits ?? [])
+}
+
+/**
+ * Saves a setting changed from a repository's own screen (the Pull menu, the commit box): as the repository's value
+ * when it has one of its own, as the general one otherwise.
+ */
+export function saveSettingFor<K extends RepoSettingKey>(path: string, key: K, value: Settings[K]): Promise<void> {
+  if (ownSettings(useStore.getState().settings, path)[key] !== undefined) return saveRepoSetting(path, key, value)
+  return saveSettings({ [key]: value } as Partial<Settings>)
 }
 
 function persistTabs(): void {
@@ -214,7 +240,7 @@ export async function openRepository(input: string, tabId?: string): Promise<voi
   useStore.setState({
     tabs,
     activeTab: path,
-    repos: { ...s.repos, [path]: newRepoView(path, s.settings.commitLimit) }
+    repos: { ...s.repos, [path]: newRepoView(path, settingsFor(s.settings, path).commitLimit) }
   })
   addRecent(path)
   persistTabs()
@@ -260,9 +286,9 @@ export async function cloneRepository(
 /** Authors already asked for this session (whatever the answer): each is asked once. */
 const avatarsAsked = new Set<string>()
 
-/** The pictures of the authors of `commits` not asked for yet, when Settings shows avatars. */
+/** The pictures of the authors of `commits` not asked for yet, when the repository's settings show avatars. */
 export async function loadAvatars(path: string | null, commits: Pick<Commit, 'authorEmail' | 'hash'>[]): Promise<void> {
-  if (!useStore.getState().settings.avatars) return
+  if (!repoSettings(path).avatars) return
   const people: { email: string; hash: string }[] = []
   for (const c of commits) {
     const email = c.authorEmail.trim().toLowerCase()
@@ -285,7 +311,7 @@ export async function setAvatars(on: boolean): Promise<void> {
   await saveSettings({ avatars: on })
   avatarsAsked.clear()
   useStore.setState({ avatars: {} })
-  if (!on) return
+  // Repositories with a value of their own may still show them.
   for (const view of Object.values(useStore.getState().repos)) void loadAvatars(view.path, view.commits)
 }
 
@@ -717,7 +743,7 @@ function fixSelection(path: string): void {
 export async function loadMore(path: string): Promise<void> {
   const view = getRepo(path)
   if (!view || !view.hasMore) return
-  patchRepo(path, { limit: view.limit + useStore.getState().settings.commitLimit })
+  patchRepo(path, { limit: view.limit + repoSettings(path).commitLimit })
   await refreshRepo(path, { log: true })
 }
 
@@ -1010,7 +1036,9 @@ export function autoFetchTick(): void {
   const now = Date.now()
   for (const tab of tabs) {
     const view = tab.path ? repos[tab.path] : undefined
-    if (view && isFetchDue(view.lastFetchAt, now, settings.autoFetchMinutes)) void fetchInBackground(view.path)
+    if (view && isFetchDue(view.lastFetchAt, now, settingsFor(settings, view.path).autoFetchMinutes)) {
+      void fetchInBackground(view.path)
+    }
   }
 }
 
@@ -1037,9 +1065,9 @@ function revealHead(path: string, hash: string): void {
 }
 
 export async function pull(path: string, mode?: PullMode): Promise<boolean> {
-  const settings = useStore.getState().settings
-  const effective = mode ?? settings.pullMode
-  if (mode && mode !== settings.pullMode) void saveSettings({ pullMode: mode })
+  const current = repoSettings(path).pullMode
+  const effective = mode ?? current
+  if (mode && mode !== current) void saveSettingFor(path, 'pullMode', mode)
   const branch = headBranch(path)
   const before = branchTip(path, branch)
   const ok = await runOp(path, () => api.pull(path, effective), { busy: 'pull', undo: { label: t('undo.pull') } })
@@ -1627,7 +1655,7 @@ export async function commit(path: string): Promise<boolean> {
     updateDraft(path, { summary: template?.summary ?? '', body: template?.body ?? '', amend: false })
     patchRepo(path, { diff: null })
     const state = getRepo(path)?.state
-    if (useStore.getState().settings.pushAfterCommit && state && pushAfterCommitTarget(state.head, state.remotes)) {
+    if (repoSettings(path).pushAfterCommit && state && pushAfterCommitTarget(state.head, state.remotes)) {
       // Never force-push on its own: say what is needed instead.
       if (rewritesPushed) toast('info', t('toast.amendNotPushed'))
       else await push(path)
@@ -1763,7 +1791,7 @@ export function openFile(repo: string, file: string): void {
 
 /** Opens a file at a line, or the repository, in the editor from Settings; without one, with the system's app. */
 export function openInEditor(repo: string, file: string | null, line?: number): void {
-  if (!useStore.getState().settings.editor.trim()) {
+  if (!repoSettings(repo).editor.trim()) {
     if (file) openFile(repo, file)
     else void api.openPath(repo).catch((err) => toast('error', errorMessage(err)))
     return
