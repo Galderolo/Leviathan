@@ -79,7 +79,7 @@ function startInWindow(args: string[], cwd: string): Promise<void> {
 
 /** Opens the terminal chosen in Settings, or the system's, in the repository's folder. */
 export async function openTerminal(repo: string, platform: NodeJS.Platform = process.platform): Promise<void> {
-  const template = settingsFor(loadSettings(), repo).terminal.trim()
+  const template = loadSettings().terminal.trim()
   if (!template) return openSystemTerminal(repo)
   if (!existsSync(repo)) throw new Error(`Folder does not exist: ${repo}`)
   const args = terminalArgs(template, repo)

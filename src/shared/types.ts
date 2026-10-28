@@ -331,8 +331,7 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /** The settings a repository can have a value of its own for. */
-export type RepoSettingKey =
-  'autoFetchMinutes' | 'pullMode' | 'pushAfterCommit' | 'commitLimit' | 'editor' | 'terminal' | 'diffTool' | 'avatars'
+export type RepoSettingKey = 'autoFetchMinutes' | 'pullMode' | 'pushAfterCommit' | 'commitLimit' | 'editor' | 'diffTool'
 
 export type RepoSettings = Partial<Pick<Settings, RepoSettingKey>>
 

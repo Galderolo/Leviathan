@@ -6,9 +6,7 @@ export const REPO_SETTING_KEYS: RepoSettingKey[] = [
   'pushAfterCommit',
   'commitLimit',
   'editor',
-  'terminal',
-  'diffTool',
-  'avatars'
+  'diffTool'
 ]
 
 const PULL_MODES: PullMode[] = ['ff', 'ff-only', 'rebase']
