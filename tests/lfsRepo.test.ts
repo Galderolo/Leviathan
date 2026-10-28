@@ -238,9 +238,31 @@ describe.skipIf(!hasLfs)('LFS info and tracking', () => {
     const before = await lfs.getLfsInfo(plain)
     expect(before).toMatchObject({ used: true, hooks: false })
 
-    await lfs.setupLfs(plain, () => {})
+    expect(await lfs.setupLfs(plain, () => {})).toEqual({ hooksToMerge: null })
     expect(await lfs.getLfsInfo(plain)).toMatchObject({ used: true, filters: true, hooks: true })
     expect(readFileSync(process.env.GIT_CONFIG_GLOBAL!, 'utf8')).toContain('[filter "lfs"]')
+  })
+
+  // git-lfs never writes over a hook of another tool (husky…): it stops at the first one, setting none up.
+  it('sets up LFS beside a hook of another tool: keeps it, adds the missing ones, and says what to add to it', async () => {
+    const shared = await newRepo('shared-hooks', { install: false })
+    writeFileSync(join(shared, '.gitattributes'), '*.psd filter=lfs diff=lfs merge=lfs -text\n')
+    const hooks = join(shared, '.git', 'hooks')
+    writeFileSync(join(hooks, 'pre-push'), '#!/bin/sh\necho checks\n')
+
+    const { hooksToMerge } = await lfs.setupLfs(shared, () => {})
+    expect(readFileSync(join(hooks, 'pre-push'), 'utf8')).toBe('#!/bin/sh\necho checks\n')
+    expect(hooksToMerge).toContain('git lfs pre-push "$@"')
+    expect(hooksToMerge).not.toContain('post-checkout')
+    for (const name of ['post-checkout', 'post-commit', 'post-merge']) {
+      expect(readFileSync(join(hooks, name), 'utf8')).toContain(`git lfs ${name} "$@"`)
+    }
+    expect(await lfs.getLfsInfo(shared)).toMatchObject({ filters: true, hooks: false })
+
+    // Once the lines are in it, nothing is left to add.
+    writeFileSync(join(hooks, 'pre-push'), '#!/bin/sh\necho checks\ngit lfs pre-push "$@"\n')
+    expect(await lfs.setupLfs(shared, () => {})).toEqual({ hooksToMerge: null })
+    expect(await lfs.getLfsInfo(shared)).toMatchObject({ hooks: true })
   })
 })
 

@@ -27,7 +27,7 @@ import type {
 } from './types'
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
-import type { LfsInfo, LfsLock, LfsPattern } from './lfs'
+import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
 import type { LfsInstallOffer } from './lfsInstall'
 import type { RebaseItem } from './rebase'
 import type { ReleaseNote } from './releaseNotes'
@@ -270,7 +270,7 @@ export interface LeviathanInvokeApi {
   /** Stages again through LFS files that should go through it but were staged whole. */
   lfsRestage(repo: string, paths: string[]): Promise<void>
   /** Runs `git lfs install` and downloads the repository's LFS files. */
-  setupLfs(repo: string): Promise<void>
+  setupLfs(repo: string): Promise<LfsSetup>
   /** How the app can install git-lfs on this computer. */
   getLfsInstallOffer(): Promise<LfsInstallOffer>
   /** Installs git-lfs (its progress shows on `repo`) and gives its version. */

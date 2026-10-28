@@ -530,6 +530,8 @@ const en = {
   'lfs.install': 'Get Git LFS',
   'lfs.installNow': 'Install git-lfs',
   'lfs.copyCommand': 'Copy command',
+  'lfs.hooksTitle': "Git LFS and another tool's hooks",
+  'lfs.copyHooks': 'Copy the instructions',
   'lfs.missingTitle': 'Git LFS is not installed',
   'dlg.lfsMissing':
     '{repo} keeps its large files (textures, models, audio…) in Git LFS, but git-lfs is not installed on this computer. Without it you will see small text files instead of the real files.',
@@ -574,6 +576,8 @@ const en = {
   'lfs.lockedByOthers_one': 'A changed file is locked by someone else: your push may be refused.',
   'dlg.lfsSetup':
     'This runs "git lfs install": it adds the Git LFS settings to your user\'s Git configuration (~/.gitconfig) and its hooks to this repository, then downloads the repository\'s LFS files.',
+  'dlg.lfsHooks':
+    "Git LFS is set up and the repository's large files are downloaded. But this repository already has hooks of another tool (husky, for example), and git-lfs does not write over them: until git-lfs's lines are added to them, a push does not upload the large files. Copy git-lfs's instructions and add those lines to the hooks they name.",
   'dlg.lfsTrack':
     'Files matching the pattern are stored with Git LFS from now on. The change goes into .gitattributes, which you commit like any other file.',
   'dlg.lfsUntrack': 'Stop storing "{pattern}" files with Git LFS? Files already committed stay in LFS.',

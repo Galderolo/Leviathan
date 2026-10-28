@@ -34,6 +34,12 @@ export interface LfsInfo {
   patterns: LfsPattern[]
 }
 
+/** What setting git-lfs up left to do by hand. */
+export interface LfsSetup {
+  /** git-lfs's instructions for hooks of another tool (husky…), which it does not write over; null when none. */
+  hooksToMerge: string | null
+}
+
 /** Reads a C-style quoted pattern (`"my file.bin"`); returns it and the rest of the line. */
 function readQuoted(line: string): [string, string] {
   let out = ''

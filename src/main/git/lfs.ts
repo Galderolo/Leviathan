@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { lfsPatternFor, parseAttributes, parseLocks, parseMacros, parseVerifiedLocks } from '../../shared/lfs'
-import type { LfsInfo, LfsLock, LfsPattern } from '../../shared/lfs'
+import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from '../../shared/lfs'
 import { addToPath } from '../pathEnv'
 import { locateProgram } from '../programs'
 import { insideRepo, type ProgressFn } from './repository'
@@ -309,8 +309,47 @@ export async function lfsRestage(repo: string, paths: string[]): Promise<void> {
   )
 }
 
-/** Configures git-lfs for the user and this repository, then downloads the repository's LFS files. */
-export async function setupLfs(repo: string, onProgress: ProgressFn): Promise<void> {
-  await run(repo, ['lfs', 'install'])
+/**
+ * Sets up git-lfs's hooks beside hooks of another tool (husky…), which `git lfs install` will not write over and stops
+ * at: the missing ones are written as git-lfs writes them, and git-lfs's instructions for the others are returned (null
+ * when none is left). Adding to another tool's hook stays with the user: a line after its `exit` never runs, and one
+ * before it takes the refs a pre-push hook reads.
+ */
+async function setUpHooksBeside(repo: string): Promise<string | null> {
+  const manual = await run(repo, ['lfs', 'update', '--manual'])
+  const sections = manual.split(/^(?=Add the following to ')/m).filter((s) => s.startsWith('Add the following to '))
+  // Instructions in another shape: all of them, as git-lfs gave them.
+  if (!sections.length) return manual.trim() || null
+  const left: string[] = []
+  for (const section of sections) {
+    const file = /^Add the following to '(.+)':/.exec(section)?.[1]
+    const lines = section.split('\n').filter((line) => line.startsWith('\t'))
+    if (!file || !lines.length) {
+      left.push(section.trim())
+      continue
+    }
+    const full = resolve(repo, file)
+    const current = await fs.readFile(full, 'utf8').catch(() => null)
+    if (current === null) {
+      await fs.mkdir(dirname(full), { recursive: true })
+      await fs.writeFile(full, `${lines.map((line) => line.slice(1)).join('\n')}\n`, { mode: 0o755 })
+    } else if (!/git[ -]lfs/.test(current)) left.push(section.trim())
+  }
+  return left.length ? left.join('\n\n') : null
+}
+
+/**
+ * Configures git-lfs for the user and this repository, then downloads the repository's LFS files. Hooks of another
+ * tool are left as they are, with what to add to them.
+ */
+export async function setupLfs(repo: string, onProgress: ProgressFn): Promise<LfsSetup> {
+  let hooksToMerge: string | null = null
+  try {
+    await run(repo, ['lfs', 'install'])
+  } catch (err) {
+    if (!(err instanceof Error) || !/Hook already exists/.test(err.message)) throw err
+    hooksToMerge = await setUpHooksBeside(repo)
+  }
   if ((await run(repo, ['remote'])).trim()) await run(repo, ['lfs', 'pull'], { onProgress })
+  return { hooksToMerge }
 }

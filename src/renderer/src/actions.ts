@@ -2039,9 +2039,34 @@ export async function installGitLfs(path: string): Promise<boolean> {
     patchRepo(path, { busy: null, progress: null })
     useStore.setState({ lfsInstalling: false })
   }
-  await runOp(path, () => api.setupLfs(path), { busy: 'lfs', log: false, success: t('toast.lfsReady') })
+  await runLfsSetup(path, false)
   await Promise.all(Object.keys(useStore.getState().repos).map((repo) => loadLfsInfo(repo)))
   return true
+}
+
+/** Sets git-lfs up for a repository; hooks of another tool are left as they are, with git-lfs's lines to add to them. */
+async function runLfsSetup(path: string, log: boolean): Promise<void> {
+  let hooksToMerge: string | null = null
+  const ok = await runOp(
+    path,
+    async () => {
+      ;({ hooksToMerge } = await api.setupLfs(path))
+    },
+    { busy: 'lfs', log }
+  )
+  if (!ok) return
+  if (hooksToMerge) void showHooksToMerge(hooksToMerge)
+  else toast('success', t('toast.lfsReady'))
+}
+
+/** Says that hooks of another tool need git-lfs's lines, and copies its instructions. */
+async function showHooksToMerge(instructions: string): Promise<void> {
+  const copy = await confirmDialog({
+    title: t('lfs.hooksTitle'),
+    message: t('dlg.lfsHooks'),
+    confirmText: t('lfs.copyHooks')
+  })
+  if (copy) await copyText(instructions, t('toast.copied'))
 }
 
 /** The command that installs git-lfs here, to copy into a terminal. */
@@ -2120,7 +2145,7 @@ export async function setupLfs(path: string): Promise<void> {
   // It changes the user's own Git configuration, not just this repository: say so first.
   const ok = await confirmDialog({ title: t('lfs.setup'), message: t('dlg.lfsSetup'), confirmText: t('lfs.setup') })
   if (!ok) return
-  await runOp(path, () => api.setupLfs(path), { busy: 'lfs', success: t('toast.lfsReady') })
+  await runLfsSetup(path, true)
   await loadLfsInfo(path)
 }
 
