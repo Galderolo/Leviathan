@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-28
+
 ### Changed
 
 - **Leviathan is now called Git Leviathan**: typing "git" in the Windows search (or Spotlight, or a Linux menu) finds it, and the name tells it apart from other apps called Leviathan. Updating renames its shortcuts; settings, accounts and the `leviathan` command stay as they were.
