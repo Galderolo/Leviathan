@@ -1923,12 +1923,14 @@ let lfsAsking = false
  * per session, one question at a time, never during an install.
  */
 export async function askToInstallGitLfs(path: string): Promise<void> {
-  const { activeTab, tabs, lfsOffer, lfsInstalling } = useStore.getState()
+  const { activeTab, tabs, lfsOffer, lfsInstalling, whatsNewOpen } = useStore.getState()
   const info = getRepo(path)?.lfs?.info
   const showing = tabs.find((tab) => tab.id === activeTab)?.path === path
   if (!showing || !info?.used || info.version || !lfsOffer || lfsInstalling || lfsAsking || lfsAsked.has(path)) {
     return
   }
+  // Not on top of "What's new": asked once it is closed.
+  if (whatsNewOpen) return
   lfsAsked.add(path)
   lfsAsking = true
   const { method, command } = lfsOffer
@@ -1948,6 +1950,12 @@ export async function askToInstallGitLfs(path: string): Promise<void> {
   else if (method === 'command') await copyText(command ?? '', t('toast.copied'))
   else openExternal(LFS_DOWNLOAD_URL)
 }
+
+useStore.subscribe((s, before) => {
+  if (!before.whatsNewOpen || s.whatsNewOpen) return
+  const path = s.tabs.find((tab) => tab.id === s.activeTab)?.path
+  if (path) void askToInstallGitLfs(path)
+})
 
 /** Loads the locks from the LFS server; `interactive` may ask for credentials. */
 export async function loadLfsLocks(path: string, interactive: boolean): Promise<void> {

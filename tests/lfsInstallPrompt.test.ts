@@ -76,6 +76,16 @@ describe('asking to install git-lfs', () => {
     dialog()!.resolve(null)
   })
 
+  it('asks once "What\'s new" is closed, not on top of it', async () => {
+    open('/w')
+    useStore.setState({ whatsNewOpen: true })
+    await loadLfsInfo('/w')
+    expect(dialog()).toBeNull()
+    useStore.setState({ whatsNewOpen: false })
+    await vi.waitFor(() => expect(dialog()?.message).toMatch(/^w keeps its large files/))
+    dialog()!.resolve(null)
+  })
+
   it('installs when the question is accepted', async () => {
     open('/e')
     await loadLfsInfo('/e')
