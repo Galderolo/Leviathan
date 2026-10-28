@@ -7,6 +7,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Added
 
 - **A terminal inside the app**: the Terminal button, or Ctrl and the key left of 1 (Ctrl+` / Ctrl+º), opens a console below the graph, in the repository's folder, as in VS Code. Everything a console does works there: git with all its commands (interactive ones too, such as `git add -p`, `git rebase -i` or the editor for a commit message), and any other program. Each repository keeps its own while you switch tabs or hide it, and what you do there shows in the graph at once. On Windows it runs the shell chosen as the terminal in Settings (Command Prompt, PowerShell 7 or Git Bash), Windows PowerShell otherwise; on macOS and Linux, your own shell. Ctrl+C copies what is selected (otherwise it stops what runs), Ctrl+V pastes (⌘C and ⌘V on macOS). The separate terminal window is still in the button's menu.
+- **Where the changes are, beside the diff's scrollbar**: as in VS Code, red marks for deleted lines and green ones for added lines show where each change is in a diff, which helps most with the whole file shown; a click on them goes there.
 
 ### Fixed
 

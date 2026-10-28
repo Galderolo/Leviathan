@@ -923,6 +923,34 @@ test('highlights the code of a diff', async () => {
   await expect(page.locator('.diff-line.add mark.word-change').first()).toContainText('2')
 })
 
+test('marks beside the scrollbar where the changes of a whole file are, and goes there on a click', async () => {
+  const lines = Array.from({ length: 400 }, (_, i) => `line ${i + 1}`)
+  const repo = box.repo('game', { 'f.txt': lines.join('\n') + '\n' })
+  lines[9] = 'changed 10'
+  lines.splice(380, 0, 'added near the end')
+  box.write(repo, { 'f.txt': lines.join('\n') + '\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'f.txt' }).click()
+  const view = page.locator('.diff-view')
+  await view.getByTitle('Whole file').click()
+  const ruler = view.locator('.change-ruler')
+  // Line 10 changed (a deletion and an addition side by side), and one line added near the end.
+  await expect(ruler.locator('.change-mark.del')).toHaveCount(1)
+  await expect(ruler.locator('.change-mark.add')).toHaveCount(2)
+  const body = view.locator('.diff-body')
+  expect(await body.evaluate((el) => el.scrollTop)).toBe(0)
+
+  const last = (await ruler.locator('.change-mark.add').last().boundingBox())!
+  await page.mouse.click(last.x + last.width / 2, last.y + 1)
+  await expect(view.locator('.diff-line.add', { hasText: 'added near the end' })).toBeInViewport()
+
+  // Side by side, the same marks.
+  await view.getByTitle('Side by side (old | new)').click()
+  await expect(ruler.locator('.change-mark.add')).toHaveCount(2)
+})
+
 test('shows the whole file around a change, and still stages its hunk', async () => {
   const lines = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`)
   const repo = box.repo('game', { 'f.txt': lines.join('\n') + '\n' })

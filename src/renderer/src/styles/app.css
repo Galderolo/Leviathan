@@ -1692,6 +1692,43 @@ img.avatar {
   flex-shrink: 0;
 }
 
+/* The diff, with the marks of its changes beside its scrollbar. */
+.diff-scroll {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.change-ruler {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 14px;
+  border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 70%, transparent);
+  cursor: pointer;
+}
+
+.change-mark {
+  position: absolute;
+  width: calc(50% - 1px);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.change-mark.del {
+  left: 0;
+  background: var(--red);
+}
+
+.change-mark.add {
+  right: 0;
+  background: var(--green);
+}
+
 .diff-body {
   flex: 1;
   overflow: auto;
