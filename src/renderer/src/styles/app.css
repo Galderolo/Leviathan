@@ -230,6 +230,80 @@ a:hover {
   background: var(--bg-0);
 }
 
+/* The graph, diff or file view, above the terminal when it shows. */
+.center-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 80px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-0);
+}
+
+.terminal-resize {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 2;
+  cursor: row-resize;
+}
+
+.terminal-resize:hover,
+.terminal-resize:active {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+}
+
+.terminal-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.terminal-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.terminal-body {
+  flex: 1;
+  min-height: 0;
+  padding: 4px 0 0 8px;
+  overflow: hidden;
+}
+
+.terminal-host,
+.terminal-host .xterm {
+  height: 100%;
+}
+
+/* Below the last whole row: the theme's background, not xterm's black. */
+.terminal-host .xterm-viewport {
+  background-color: var(--bg-0) !important;
+}
+
 .resizer {
   width: 5px;
   margin: 0 -2px;

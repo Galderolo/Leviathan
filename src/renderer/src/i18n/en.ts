@@ -70,6 +70,12 @@ const en = {
   'toolbar.stash': 'Stash',
   'toolbar.pop': 'Pop',
   'toolbar.terminal': 'Terminal',
+  'terminal.ended': 'The console ended (code {code}). Press any key to start it again.',
+  'terminal.restart': 'Start the console again',
+  'terminal.external': 'Open in a separate window',
+  'terminal.externalMenu': 'Open in a separate terminal',
+  'terminal.hide': 'Hide',
+  'terminal.resize': 'Drag to resize the terminal',
   'toolbar.search': 'Search commits (Enter: next)',
   'toolbar.clearSearch': 'Clear',
 
@@ -711,6 +717,9 @@ const en = {
   'keys.shortcuts': 'This list (also {keys})',
   'keys.space': 'Space',
   'keys.delete': 'Delete',
+  // The key left of 1 as this language's keyboards print it.
+  'keys.backquote': '`',
+  'keys.terminal': 'Show or hide the terminal',
   'settings.language': 'Language',
   'settings.theme': 'Theme',
   'settings.themeSystem': 'Same as the system',

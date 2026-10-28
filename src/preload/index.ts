@@ -7,8 +7,12 @@ import {
   IPC_REPO_CHANGED,
   IPC_UPDATE,
   IPC_OPEN_FOLDER,
+  IPC_TERMINAL_DATA,
+  IPC_TERMINAL_EXIT,
   type LeviathanApi,
-  type IpcResult
+  type IpcResult,
+  type TerminalData,
+  type TerminalExit
 } from '../shared/api'
 import type { AskpassRequest, ProgressEvent, RepoChangedEvent } from '../shared/types'
 import type { UpdateState } from '../shared/updates'
@@ -25,7 +29,9 @@ const api: Record<string, unknown> = {
   onProgress: (cb: (e: ProgressEvent) => void) => subscribe(IPC_PROGRESS, cb),
   onAskpass: (cb: (e: AskpassRequest) => void) => subscribe(IPC_ASKPASS, cb),
   onUpdate: (cb: (state: UpdateState) => void) => subscribe(IPC_UPDATE, cb),
-  onOpenFolder: (cb: (folder: string) => void) => subscribe(IPC_OPEN_FOLDER, cb)
+  onOpenFolder: (cb: (folder: string) => void) => subscribe(IPC_OPEN_FOLDER, cb),
+  onTerminalData: (cb: (e: TerminalData) => void) => subscribe(IPC_TERMINAL_DATA, cb),
+  onTerminalExit: (cb: (e: TerminalExit) => void) => subscribe(IPC_TERMINAL_EXIT, cb)
 }
 
 for (const method of API_METHODS) {

@@ -5,7 +5,7 @@ import { BrowserWindow, Menu, app, nativeTheme, screen, shell } from 'electron'
 import { initAccounts } from './accounts'
 import { disposeAskpass, initAskpass } from './askpass'
 import { launchFolder, offerLaunchFolder, windowLoading } from './cli'
-import { registerIpc, sendOpenFolder, startUpdates } from './ipc'
+import { registerIpc, sendOpenFolder, startUpdates, stopTerminals } from './ipc'
 import { loadSettings, saveSettings } from './settings'
 import { unwatchAll } from './watcher'
 
@@ -116,8 +116,13 @@ if (primary)
 
 app.on('window-all-closed', () => {
   unwatchAll()
+  stopTerminals()
   if (process.platform !== 'darwin') app.quit()
 })
 
 // Not on window-all-closed: on macOS the app keeps running and windows can be reopened.
-app.on('will-quit', () => void disposeAskpass())
+app.on('will-quit', () => {
+  void disposeAskpass()
+  // Quitting (⌘Q, an update being installed) closes the windows without window-all-closed.
+  stopTerminals()
+})

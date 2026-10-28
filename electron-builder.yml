@@ -8,10 +8,17 @@ files:
   - out/**
   - resources/**
   - package.json
+  # node-pty (the terminal): what runs, without its sources and debug symbols.
+  - '!**/node_modules/node-pty/{src,deps,third_party,scripts,typings}/**'
+  - '!**/node_modules/node-pty/**/*.{pdb,cc,h,gyp,map,md}'
 icon: resources/icon.png
 # git/ssh execute the askpass scripts from disk, so keep them out of the asar archive.
 asarUnpack:
   - resources/askpass/**
+  # node-pty's native module, and the helpers it starts on Windows and macOS, run from disk too.
+  - node_modules/node-pty/**
+# node-pty is a Node-API module (one build for Node and Electron alike): nothing to rebuild for Electron.
+npmRebuild: false
 win:
   target:
     - nsis

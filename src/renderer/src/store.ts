@@ -85,6 +85,8 @@ export interface RepoView {
   /** Git LFS patterns and locks; null until read. */
   lfs: LfsView | null
   submodules: Submodule[]
+  /** The terminal at the bottom shows (its console lives on while hidden). */
+  terminalOpen: boolean
 }
 
 /** File history, blame or folder history shown in place of the graph. */
@@ -305,7 +307,8 @@ export function newRepoView(path: string, limit: number): RepoView {
     undo: [],
     redo: [],
     lfs: null,
-    submodules: []
+    submodules: [],
+    terminalOpen: false
   }
 }
 

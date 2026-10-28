@@ -36,6 +36,7 @@ import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom, pushNee
 import { stopReason, stoppedOperation } from './operationStop'
 import { viewAfterCheckout, wipShown } from './checkoutView'
 import { moveTab } from './tabOrder'
+import { closeTerminal } from './terminals'
 import { inFlight } from './inFlight'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
@@ -187,6 +188,11 @@ export function reorderTab(id: string, gap: number): void {
   persistTabs()
 }
 
+/** Shows or hides the terminal at the bottom of a repository (its console goes on while hidden). */
+export function toggleTerminal(path: string): void {
+  patchRepo(path, (r) => ({ terminalOpen: !r.terminalOpen }))
+}
+
 /** Shows tab `n` (1 = the first); 9 is the last one, as in browsers. */
 export function goToTab(n: number): void {
   const { tabs } = useStore.getState()
@@ -209,6 +215,7 @@ export function closeTab(id: string): void {
   const repos = { ...s.repos }
   if (tab.path) {
     void api.unwatchRepo(tab.path)
+    closeTerminal(tab.path)
     delete repos[tab.path]
   }
   let tabs = s.tabs.filter((x) => x.id !== id)

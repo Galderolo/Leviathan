@@ -187,7 +187,7 @@ function AutoUpdateSettings() {
 function ShortcutsList() {
   const t = useT()
   const mac = window.leviathan.platform === 'darwin'
-  const names = { Space: t('keys.space'), Delete: t('keys.delete') }
+  const names = { Space: t('keys.space'), Delete: t('keys.delete'), Backquote: t('keys.backquote') }
   const keys = (k: string[]) => keysLabel(k, mac, names)
   return (
     <div className="shortcuts">
