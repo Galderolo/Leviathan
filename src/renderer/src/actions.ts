@@ -22,7 +22,6 @@ import { canInstall } from '../../shared/lfsInstall'
 import type { ReleaseNote } from '../../shared/releaseNotes'
 import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
-import { hasRemoteOnHost } from '../../shared/providers'
 import type { RebaseItem } from '../../shared/rebase'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
@@ -607,7 +606,8 @@ export async function chooseRepoAccount(path: string): Promise<void> {
     patchRepo(path, { account })
     void loadPullRequests(path)
     if (account) toast('success', t('toast.repoAccountSet', { name: `${account.username}@${account.host}` }))
-    if (account && !hasRemoteOnHost(getRepo(path)?.state?.remotes ?? [], account.host)) {
+    // Asked to the main process: it sees the real host behind an SSH alias (git@github-work:…).
+    if (account && !(await api.repoUsesHost(path, account.host).catch(() => true))) {
       toast('info', t('toast.accountHostMismatch', { host: account.host }))
     }
   } catch (err) {

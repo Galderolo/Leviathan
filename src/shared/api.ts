@@ -190,6 +190,8 @@ export interface LeviathanInvokeApi {
   listAccountRepos(id: string): Promise<RemoteRepo[]>
   getRepoAccount(repo: string): Promise<string | null>
   setRepoAccount(repo: string, accountId: string | null): Promise<void>
+  /** Whether a remote of the repository reaches `host`, also through an SSH alias. */
+  repoUsesHost(repo: string, host: string): Promise<boolean>
   /** The message git's commit.template starts commits with, or null without one. */
   getCommitTemplate(repo: string): Promise<CommitDraftText | null>
   /** Who the next commit of a repository will be by, and where that comes from. */
@@ -388,6 +390,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   listAccountRepos: true,
   getRepoAccount: true,
   setRepoAccount: true,
+  repoUsesHost: true,
   getCommitTemplate: true,
   getCommitIdentity: true,
   setCommitIdentity: true,

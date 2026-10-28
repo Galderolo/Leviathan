@@ -169,6 +169,7 @@ const handlers: LeviathanInvokeApi = {
   listAccountRepos: (id) => accounts.listAccountRepos(id),
   getRepoAccount: async (path) => accounts.getRepoAccount(path),
   setRepoAccount: (path, id) => accounts.setRepoAccount(path, id),
+  repoUsesHost: (path, host) => accounts.repoUsesHost(path, host),
   getCommitTemplate: (path) => repo.getCommitTemplate(path),
   getCommitIdentity: (path) => accounts.getCommitIdentity(path),
   setCommitIdentity: (path, choice) => accounts.setCommitIdentity(path, identityChoice(choice)),
