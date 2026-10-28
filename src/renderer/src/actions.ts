@@ -132,13 +132,12 @@ export function repoSettings(path: string | null): Settings {
 }
 
 /** Gives a repository a value of its own for `key`, or the general one again with `undefined`. */
-export async function saveRepoSetting<K extends RepoSettingKey>(
+export function saveRepoSetting<K extends RepoSettingKey>(
   path: string,
   key: K,
   value: Settings[K] | undefined
 ): Promise<void> {
-  await saveSettings({ repoSettings: withRepoSetting(useStore.getState().settings.repoSettings, path, key, value) })
-  if (key === 'avatars') void loadAvatars(path, getRepo(path)?.commits ?? [])
+  return saveSettings({ repoSettings: withRepoSetting(useStore.getState().settings.repoSettings, path, key, value) })
 }
 
 /**
@@ -286,9 +285,9 @@ export async function cloneRepository(
 /** Authors already asked for this session (whatever the answer): each is asked once. */
 const avatarsAsked = new Set<string>()
 
-/** The pictures of the authors of `commits` not asked for yet, when the repository's settings show avatars. */
+/** The pictures of the authors of `commits` not asked for yet, when Settings shows avatars. */
 export async function loadAvatars(path: string | null, commits: Pick<Commit, 'authorEmail' | 'hash'>[]): Promise<void> {
-  if (!repoSettings(path).avatars) return
+  if (!useStore.getState().settings.avatars) return
   const people: { email: string; hash: string }[] = []
   for (const c of commits) {
     const email = c.authorEmail.trim().toLowerCase()
@@ -311,7 +310,7 @@ export async function setAvatars(on: boolean): Promise<void> {
   await saveSettings({ avatars: on })
   avatarsAsked.clear()
   useStore.setState({ avatars: {} })
-  // Repositories with a value of their own may still show them.
+  if (!on) return
   for (const view of Object.values(useStore.getState().repos)) void loadAvatars(view.path, view.commits)
 }
 

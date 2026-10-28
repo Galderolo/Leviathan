@@ -47,7 +47,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Git LFS**: see which files go through LFS, lock and unlock files (yours and, with a confirmation, other people's), track patterns, and get warned before committing a big binary outside LFS or a file someone else locked. Detects a missing or unconfigured git-lfs and sets it up.
 - **Submodules**: see their state in the side panel, initialize and update them, open them in a tab, see which commits a submodule change brings, and clone with them.
 - **External tools**: open files in your editor (VS Code, Rider, Visual Studio… or any command), a change in your diff tool, a conflict in your merge tool and the repository in your terminal (PowerShell, Windows Terminal, Git Bash, iTerm…); and `leviathan .` in a terminal opens the repository you are in.
-- **Settings per repository**: automatic fetch, pull mode, push after commit, commits loaded, avatars, editor, terminal and diff tool can differ from one repository to another; the rest follow the general settings.
+- **Settings per repository**: automatic fetch, pull mode, push after commit, commits loaded, editor and diff tool can differ from one repository to another; the rest follow the general settings.
 - **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets and pulls — without ever losing uncommitted work.
 - **Automatic updates** from the GitHub releases: one click with the Windows installer and the Linux AppImage; the portable build, the .deb and macOS point to the download. The check contacts github.com every half hour (and when you come back to the app) and can be turned off in Settings.
 - **What's new**: the notes of every version, from the status bar.
@@ -115,7 +115,7 @@ Leviathan collects no telemetry or usage data, has no accounts of its own and sh
 - **The hosting services of the accounts you add** (GitHub, GitLab, Gitea…), to list repositories and pull requests and to sign you in. Tokens are stored encrypted on your computer and are only sent to the service they belong to. While you sign in to GitLab, the app listens on 127.0.0.1:47231 (your own computer only) for the browser to come back.
 - **The Git LFS servers of your repositories**, to list and change file locks.
 - **github.com, to look for new Leviathan releases**, shortly after start, every half hour and when you come back to the app (at most every ten minutes). It sends nothing about you or your repositories, and can be turned off in *Settings → Updates*. Opening *What's new* also reads the list of releases from github.com.
-- **Only if you turn on avatars** (*Settings → General*, or for one repository in *Settings → This repository*; off by default): GitHub's picture servers, the API of a repository's server for its authors (GitHub, GitLab, Bitbucket or Gitea, with your account there), and Gravatar, which receives a SHA-256 hash of each author's email. Pictures are kept on your computer for a week.
+- **Only if you turn on avatars** (*Settings → General*, off by default): GitHub's picture servers, the API of a repository's server for its authors (GitHub, GitLab, Bitbucket or Gitea, with your account there), and Gravatar, which receives a SHA-256 hash of each author's email. Pictures are kept on your computer for a week.
 
 ## Contributing
 

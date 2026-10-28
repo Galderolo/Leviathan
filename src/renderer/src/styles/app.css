@@ -3253,6 +3253,22 @@ img.avatar {
   font-weight: 600;
 }
 
+/* The settings of the repository shown, apart from the general ones. */
+.settings-nav-separator {
+  margin: 6px 4px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-nav-repo {
+  display: block;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .settings-body {
   display: flex;
   flex: 1;

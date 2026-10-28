@@ -24,7 +24,6 @@ const stub: Record<string, ReturnType<typeof vi.fn>> = {
   pull: vi.fn(async () => {}),
   push: vi.fn(async () => {}),
   commit: vi.fn(async () => {}),
-  getAvatars: vi.fn(async () => ({})),
   openInEditor: vi.fn(async () => {}),
   openPath: vi.fn(async () => {})
 }
@@ -35,7 +34,7 @@ vi.stubGlobal('window', {
 })
 vi.stubGlobal('navigator', { language: 'en' })
 
-const { autoFetchTick, commit, loadAvatars, loadMore, openInEditor, pull, saveSettingFor } =
+const { autoFetchTick, commit, loadMore, openInEditor, pull, saveSettingFor } =
   await import('../src/renderer/src/actions')
 const { getRepo, newRepoView, patchRepo, useStore } = await import('../src/renderer/src/store')
 
@@ -120,18 +119,6 @@ describe('settings of a repository of its own', () => {
     await loadMore('/other')
     expect(getRepo('/space')?.limit).toBe(600)
     expect(getRepo('/other')?.limit).toBe(2100)
-  })
-
-  it("asks for authors' pictures only where the repository shows them", async () => {
-    open({ avatars: false, repoSettings: { '/space': { avatars: true } } }, '/space', '/other')
-    await loadAvatars('/other', [{ authorEmail: 'a@example.com', hash: 'h1' }])
-    expect(stub.getAvatars).not.toHaveBeenCalled()
-    await loadAvatars('/space', [{ authorEmail: 'a@example.com', hash: 'h1' }])
-    expect(stub.getAvatars).toHaveBeenCalledWith('/space', [{ email: 'a@example.com', hash: 'h1' }])
-
-    open({ avatars: true, repoSettings: { '/private': { avatars: false } } }, '/private')
-    await loadAvatars('/private', [{ authorEmail: 'b@example.com', hash: 'h2' }])
-    expect(stub.getAvatars).toHaveBeenCalledTimes(1)
   })
 
   it('opens the repository in its own editor', () => {

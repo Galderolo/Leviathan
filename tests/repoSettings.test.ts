@@ -38,6 +38,15 @@ describe('settingsFor', () => {
     expect(seen.commitLimit).toBe(500)
   })
 
+  it('keeps the terminal and avatars general: they do not depend on the repository', () => {
+    const s = settings({
+      terminal: 'wt',
+      avatars: false,
+      repoSettings: { '/space': { terminal: 'x', avatars: true } as never }
+    })
+    expect(settingsFor(s, '/space')).toMatchObject({ terminal: 'wt', avatars: false })
+  })
+
   it('reads settings saved before repositories had their own', () => {
     const { repoSettings: _, ...old } = DEFAULT_SETTINGS
     expect(settingsFor(old as Settings, '/space').autoFetchMinutes).toBe(DEFAULT_SETTINGS.autoFetchMinutes)
@@ -46,10 +55,10 @@ describe('settingsFor', () => {
 
 describe('withRepoSetting', () => {
   it('sets a value of its own without touching the rest', () => {
-    const map = { '/space': { pullMode: 'rebase' as const }, '/other': { avatars: true } }
+    const map = { '/space': { pullMode: 'rebase' as const }, '/other': { pushAfterCommit: true } }
     expect(withRepoSetting(map, '/space', 'autoFetchMinutes', 1)).toEqual({
       '/space': { pullMode: 'rebase', autoFetchMinutes: 1 },
-      '/other': { avatars: true }
+      '/other': { pushAfterCommit: true }
     })
     expect(map['/space']).toEqual({ pullMode: 'rebase' })
   })
@@ -59,6 +68,8 @@ describe('withRepoSetting', () => {
     const once = withRepoSetting(map, '/space', 'autoFetchMinutes', undefined)
     expect(once).toEqual({ '/space': { pullMode: 'rebase' } })
     expect(withRepoSetting(once, '/space', 'pullMode', undefined)).toEqual({})
-    expect(withRepoSetting(undefined, '/space', 'avatars', true)).toEqual({ '/space': { avatars: true } })
+    expect(withRepoSetting(undefined, '/space', 'pushAfterCommit', true)).toEqual({
+      '/space': { pushAfterCommit: true }
+    })
   })
 })

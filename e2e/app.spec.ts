@@ -690,13 +690,14 @@ test('keeps Settings in sections and saves each change at once', async () => {
   await page.locator('.toolbar-right .icon-btn').click()
   await expect(page.locator('.settings-nav-item')).toHaveText([
     'General',
-    'This repository',
     'External tools',
     'Accounts',
     'SSH keys',
     'Updates',
     'Keyboard shortcuts',
-    'About'
+    'About',
+    // Apart from the general ones, with the repository's name.
+    'This repositorygame'
   ])
   await page.locator('.settings-body:visible select').first().selectOption('light')
   await expect.poll(async () => (await page.evaluate(() => window.leviathan.getSettings())).theme).toBe('light')

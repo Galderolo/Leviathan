@@ -3,8 +3,8 @@ import { X } from 'lucide-react'
 import { openExternal, openWhatsNew, saveSettings, setAvatars } from '../actions'
 import { LANGUAGES, useT, type TKey } from '../i18n'
 import { SHORTCUT_GROUPS, keysLabel } from '../shortcuts'
-import { useStore, type SettingsSection } from '../store'
-import { cx } from '../utils'
+import { useActiveTab, useStore, type SettingsSection } from '../store'
+import { basename, cx } from '../utils'
 import type { Settings, ThemeSetting } from '../../../shared/types'
 import { AccountsSection } from './AccountsSection'
 import { ExternalToolsSettings } from './ExternalToolsSettings'
@@ -16,7 +16,6 @@ const REPO_URL = 'https://github.com/Galderolo/Leviathan'
 
 const SECTIONS: { id: SettingsSection; label: TKey }[] = [
   { id: 'general', label: 'settings.general' },
-  { id: 'repo', label: 'settings.repo' },
   { id: 'tools', label: 'tools.title' },
   { id: 'accounts', label: 'accounts.title' },
   { id: 'ssh', label: 'ssh.title' },
@@ -30,6 +29,7 @@ export function SettingsModal() {
   const open = useStore((s) => s.settingsOpen)
   const t = useT()
   const section = useStore((s) => s.settingsSection)
+  const repo = useActiveTab()?.path
 
   // Esc closes Settings wherever the focus is, unless a dialog is open on top of it.
   useEffect(() => {
@@ -66,6 +66,15 @@ export function SettingsModal() {
                 {t(s.label)}
               </button>
             ))}
+            <div className="settings-nav-separator" />
+            <button
+              type="button"
+              className={cx('settings-nav-item', section === 'repo' && 'active')}
+              onClick={() => show('repo')}
+            >
+              {t('settings.repo')}
+              {repo && <span className="settings-nav-repo">{basename(repo)}</span>}
+            </button>
           </nav>
           {/* Every section stays mounted (hidden when not shown): a sign-in or a form in progress survives a switch. */}
           <div className="settings-body" hidden={section !== 'general'}>

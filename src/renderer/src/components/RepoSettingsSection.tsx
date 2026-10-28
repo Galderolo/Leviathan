@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DIFF_TOOLS, EDITOR_PRESETS, terminalPresets } from '../../../shared/externalTools'
+import { DIFF_TOOLS, EDITOR_PRESETS } from '../../../shared/externalTools'
 import { ownSettings } from '../../../shared/repoSettings'
 import type { PullMode, RepoSettingKey, Settings } from '../../../shared/types'
 import { saveRepoSetting } from '../actions'
@@ -109,7 +109,6 @@ function RepoSettingsOf({ path }: { path: string }) {
   ]
   const yesNoLabel = (on: boolean) => (on ? t('repoSettings.yes') : t('repoSettings.no'))
   const asText = (value: boolean | number | undefined) => (value === undefined ? undefined : String(value))
-  const terminals = terminalPresets(window.leviathan.platform)
 
   return (
     <div className="tools-section">
@@ -137,13 +136,6 @@ function RepoSettingsOf({ path }: { path: string }) {
         save={(v) => save('pushAfterCommit', v === undefined ? undefined : v === 'true')}
       />
       <OwnCommitLimit general={settings.commitLimit} value={own.commitLimit} save={(v) => save('commitLimit', v)} />
-      <OwnChoice
-        label={t('settings.avatars')}
-        general={yesNoLabel(settings.avatars)}
-        value={asText(own.avatars)}
-        options={yesNo}
-        save={(v) => save('avatars', v === undefined ? undefined : v === 'true')}
-      />
       <CommandChoice
         label={t('tools.editor')}
         systemLabel={t('tools.systemDefault')}
@@ -153,16 +145,6 @@ function RepoSettingsOf({ path }: { path: string }) {
         hint={t('tools.commandHint')}
         general={general(commandLabel(EDITOR_PRESETS, settings.editor, t('tools.systemDefault')))}
         save={(v) => save('editor', v)}
-      />
-      <CommandChoice
-        label={t('tools.terminal')}
-        systemLabel={t('tools.systemTerminal')}
-        presets={terminals}
-        value={own.terminal}
-        example={terminals[0].command}
-        hint={t('tools.terminalHint')}
-        general={general(commandLabel(terminals, settings.terminal, t('tools.systemTerminal')))}
-        save={(v) => save('terminal', v)}
       />
       <OwnChoice
         label={t('tools.diffTool')}
