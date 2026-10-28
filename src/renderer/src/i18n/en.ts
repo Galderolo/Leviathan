@@ -169,6 +169,7 @@ const en = {
   'stash.title': 'stash',
 
   'diff.close': 'Close',
+  'diff.changeRuler': 'Where the changes are (red: deleted, green: added). Click to go there.',
   'diff.binary': 'Binary file — no preview available.',
   'diff.noChanges': 'No changes to show.',
   'diff.stageFile': 'Stage file',

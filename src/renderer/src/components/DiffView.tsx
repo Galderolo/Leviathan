@@ -4,6 +4,7 @@ import { supportsLineSelection } from '../../../shared/patch'
 import type { DiffHunk, FileChange, SubmoduleChange } from '../../../shared/types'
 import { applyHunk, applyLines, closeDiff, discardFiles, openInEditor, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
+import { ChangeRuler } from './ChangeRuler'
 import { ConflictView } from './ConflictView'
 import { useRepo, useRepoSetting, useStore } from '../store'
 import { highlightHunks } from '../syntax'
@@ -19,6 +20,7 @@ export function DiffView({ path }: { path: string }) {
   // Lines picked for line-level staging; only one hunk at a time.
   const [picked, setPicked] = useState<{ hunk: number; lines: Set<number> } | null>(null)
   const anchor = useRef<number | null>(null)
+  const body = useRef<HTMLDivElement>(null)
   const diff = view?.diff
   const data = diff?.data
   const layout = useStore((s) => s.diffLayout)
@@ -138,132 +140,139 @@ export function DiffView({ path }: { path: string }) {
           </button>
         </div>
       </div>
-      <div className="diff-body">
-        {error && <div className="empty-state error">{error}</div>}
-        {!error && !data && <div className="empty-state">{t('graph.loading')}</div>}
-        {data?.binary && <div className="empty-state">{t('diff.binary')}</div>}
-        {data?.submodule && <SubmoduleSummary change={data.submodule} />}
-        {data && !data.binary && !data.submodule && data.hunks.length === 0 && (
-          <div className="empty-state">
-            {data.oldPath ? t('diff.renamedOnly', { path: data.oldPath }) : t('diff.noChanges')}
-          </div>
-        )}
-        {data &&
-          !data.binary &&
-          !data.submodule &&
-          data.hunks.map((hunk, hi) => {
-            const before = gap(hi)
-            if (budget <= 0) return <Fragment key={hi}>{before}</Fragment>
-            const lines = hunk.lines.slice(0, budget)
-            budget -= lines.length
-            return (
-              <Fragment key={hi}>
-                {before}
-                <div className="hunk">
-                  <div className="hunk-header">
-                    <code>{hunk.header}</code>
-                    {picked?.hunk === hi && hunkMode && (
-                      <span className="hunk-actions">
-                        <button className="btn tiny" onClick={() => setPicked(null)}>
-                          {t('diff.clearSelection')}
-                        </button>
-                        <button
-                          className={cx('btn tiny', hunkMode === 'unstaged' ? 'btn-stage' : 'btn-unstage')}
-                          disabled={view?.applying}
-                          onClick={() =>
-                            void applyLines(
-                              path,
-                              data,
-                              hunk,
-                              picked.lines,
-                              hunkMode === 'unstaged' ? 'stage' : 'unstage'
-                            )
-                          }
-                        >
-                          {t(hunkMode === 'unstaged' ? 'diff.stageLines' : 'diff.unstageLines', {
-                            count: picked.lines.size
-                          })}
-                        </button>
-                      </span>
-                    )}
-                    {picked?.hunk !== hi && hunkMode === 'unstaged' && (
-                      <span className="hunk-actions">
-                        <button
-                          className="btn tiny btn-danger-ghost"
-                          disabled={view?.applying}
-                          onClick={() => void applyHunk(path, data, hunk, 'discard')}
-                        >
-                          {t('diff.discardHunk')}
-                        </button>
-                        <button
-                          className="btn tiny btn-stage"
-                          disabled={view?.applying}
-                          onClick={() => void applyHunk(path, data, hunk, 'stage')}
-                        >
-                          {t('diff.stageHunk')}
-                        </button>
-                      </span>
-                    )}
-                    {picked?.hunk !== hi && hunkMode === 'staged' && (
-                      <span className="hunk-actions">
-                        <button
-                          className="btn tiny btn-unstage"
-                          disabled={view?.applying}
-                          onClick={() => void applyHunk(path, data, hunk, 'unstage')}
-                        >
-                          {t('diff.unstageHunk')}
-                        </button>
-                      </span>
+      <div className="diff-scroll">
+        <div className="diff-body" ref={body}>
+          {error && <div className="empty-state error">{error}</div>}
+          {!error && !data && <div className="empty-state">{t('graph.loading')}</div>}
+          {data?.binary && <div className="empty-state">{t('diff.binary')}</div>}
+          {data?.submodule && <SubmoduleSummary change={data.submodule} />}
+          {data && !data.binary && !data.submodule && data.hunks.length === 0 && (
+            <div className="empty-state">
+              {data.oldPath ? t('diff.renamedOnly', { path: data.oldPath }) : t('diff.noChanges')}
+            </div>
+          )}
+          {data &&
+            !data.binary &&
+            !data.submodule &&
+            data.hunks.map((hunk, hi) => {
+              const before = gap(hi)
+              if (budget <= 0) return <Fragment key={hi}>{before}</Fragment>
+              const lines = hunk.lines.slice(0, budget)
+              budget -= lines.length
+              return (
+                <Fragment key={hi}>
+                  {before}
+                  <div className="hunk">
+                    <div className="hunk-header">
+                      <code>{hunk.header}</code>
+                      {picked?.hunk === hi && hunkMode && (
+                        <span className="hunk-actions">
+                          <button className="btn tiny" onClick={() => setPicked(null)}>
+                            {t('diff.clearSelection')}
+                          </button>
+                          <button
+                            className={cx('btn tiny', hunkMode === 'unstaged' ? 'btn-stage' : 'btn-unstage')}
+                            disabled={view?.applying}
+                            onClick={() =>
+                              void applyLines(
+                                path,
+                                data,
+                                hunk,
+                                picked.lines,
+                                hunkMode === 'unstaged' ? 'stage' : 'unstage'
+                              )
+                            }
+                          >
+                            {t(hunkMode === 'unstaged' ? 'diff.stageLines' : 'diff.unstageLines', {
+                              count: picked.lines.size
+                            })}
+                          </button>
+                        </span>
+                      )}
+                      {picked?.hunk !== hi && hunkMode === 'unstaged' && (
+                        <span className="hunk-actions">
+                          <button
+                            className="btn tiny btn-danger-ghost"
+                            disabled={view?.applying}
+                            onClick={() => void applyHunk(path, data, hunk, 'discard')}
+                          >
+                            {t('diff.discardHunk')}
+                          </button>
+                          <button
+                            className="btn tiny btn-stage"
+                            disabled={view?.applying}
+                            onClick={() => void applyHunk(path, data, hunk, 'stage')}
+                          >
+                            {t('diff.stageHunk')}
+                          </button>
+                        </span>
+                      )}
+                      {picked?.hunk !== hi && hunkMode === 'staged' && (
+                        <span className="hunk-actions">
+                          <button
+                            className="btn tiny btn-unstage"
+                            disabled={view?.applying}
+                            onClick={() => void applyHunk(path, data, hunk, 'unstage')}
+                          >
+                            {t('diff.unstageHunk')}
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {layout === 'split' ? (
+                      <SplitHunkLines hunk={hunk} limit={lines.length} syntax={syntaxByHunk[hi]} />
+                    ) : (
+                      <div className="hunk-lines">
+                        {lines.map((line, li) => {
+                          const selectable =
+                            !!hunkMode && supportsLineSelection(hunk) && (line.type === 'add' || line.type === 'del')
+                          return (
+                            <div
+                              key={li}
+                              className={cx(
+                                'diff-line',
+                                line.type,
+                                conflictMarker(line.text) && 'marker',
+                                selectable && 'selectable',
+                                picked?.hunk === hi && picked.lines.has(li) && 'picked'
+                              )}
+                            >
+                              <span
+                                className="gutter"
+                                title={selectable ? t('diff.pickLine') : undefined}
+                                onMouseDown={(e) => selectable && e.shiftKey && e.preventDefault()}
+                                onClick={(e) => pickLine(hi, li, e.shiftKey)}
+                              >
+                                <span className="ln">{line.oldNo ?? ''}</span>
+                                <span className="ln">{line.newNo ?? ''}</span>
+                                <span className="sign">
+                                  {line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}
+                                </span>
+                              </span>
+                              <LineText
+                                line={line}
+                                spans={spansByHunk[hi]?.get(li)}
+                                syntax={syntaxByHunk[hi]?.get(li)}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
                     )}
                   </div>
-                  {layout === 'split' ? (
-                    <SplitHunkLines hunk={hunk} limit={lines.length} syntax={syntaxByHunk[hi]} />
-                  ) : (
-                    <div className="hunk-lines">
-                      {lines.map((line, li) => {
-                        const selectable =
-                          !!hunkMode && supportsLineSelection(hunk) && (line.type === 'add' || line.type === 'del')
-                        return (
-                          <div
-                            key={li}
-                            className={cx(
-                              'diff-line',
-                              line.type,
-                              conflictMarker(line.text) && 'marker',
-                              selectable && 'selectable',
-                              picked?.hunk === hi && picked.lines.has(li) && 'picked'
-                            )}
-                          >
-                            <span
-                              className="gutter"
-                              title={selectable ? t('diff.pickLine') : undefined}
-                              onMouseDown={(e) => selectable && e.shiftKey && e.preventDefault()}
-                              onClick={(e) => pickLine(hi, li, e.shiftKey)}
-                            >
-                              <span className="ln">{line.oldNo ?? ''}</span>
-                              <span className="ln">{line.newNo ?? ''}</span>
-                              <span className="sign">
-                                {line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}
-                              </span>
-                            </span>
-                            <LineText line={line} spans={spansByHunk[hi]?.get(li)} syntax={syntaxByHunk[hi]?.get(li)} />
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </Fragment>
-            )
-          })}
-        {data && !data.binary && !data.submodule && gap(data.hunks.length)}
-        {data && !showAll && totalLines > LINE_LIMIT && (
-          <div className="show-all">
-            <button className="btn" onClick={() => setShowAll(true)}>
-              {t('diff.showAll', { count: totalLines })}
-            </button>
-          </div>
-        )}
+                </Fragment>
+              )
+            })}
+          {data && !data.binary && !data.submodule && gap(data.hunks.length)}
+          {data && !showAll && totalLines > LINE_LIMIT && (
+            <div className="show-all">
+              <button className="btn" onClick={() => setShowAll(true)}>
+                {t('diff.showAll', { count: totalLines })}
+              </button>
+            </div>
+          )}
+        </div>
+        <ChangeRuler body={body} shown={[data, layout, showAll]} />
       </div>
     </div>
   )

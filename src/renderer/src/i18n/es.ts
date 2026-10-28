@@ -171,6 +171,7 @@ const es: Record<keyof typeof en, string> = {
   'stash.title': 'stash',
 
   'diff.close': 'Cerrar',
+  'diff.changeRuler': 'Dónde están los cambios (rojo: borrado, verde: añadido). Haz clic para ir.',
   'diff.binary': 'Archivo binario: no hay vista previa.',
   'diff.noChanges': 'No hay cambios que mostrar.',
   'diff.stageFile': 'Preparar archivo',
