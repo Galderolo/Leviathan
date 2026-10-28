@@ -11,6 +11,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 - **Closing a file history, folder history or blame stops git's work for it**, which could keep the CPU busy on a big repository.
 - **No false warning about the account's host** when a repository's remote goes through an SSH alias (`git@github-work:…`).
 - **The dividers move with the left button only** (between the changed-file lists, the side panels' edges and the graph's columns), and a checked file still shows when the mouse is over it.
+- **Resolving a conflicted file no longer closes the next one you opened**: picking a side or saving a resolution closed whatever file was open once it finished, so a file opened right after (while the first one was still being resolved) closed by itself.
 - **Settings and accounts are saved even when Windows holds the file for a moment** (an antivirus or the search indexer reading it): the save is tried again instead of being lost.
 
 ## [0.18.1] - 2026-10-28

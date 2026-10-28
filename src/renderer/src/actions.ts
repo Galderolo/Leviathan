@@ -1677,8 +1677,13 @@ export async function resolveWithContent(
     log: false,
     success: t('toast.resolved', { name: file })
   })
-  if (ok) closeDiff(path)
+  if (ok) closeResolved(path, file)
   return ok
+}
+
+/** Closes the view of a file just resolved; another file opened meanwhile stays open. */
+function closeResolved(path: string, file: string): void {
+  if (getRepo(path)?.diff?.source.path === file) closeDiff(path)
 }
 
 /** Resolves a conflict with one side of the whole file (or its deletion), after asking when that loses edits. */
@@ -1699,7 +1704,7 @@ export async function resolveWithSide(path: string, file: string, side: 'ours' |
     log: false,
     success: t('toast.resolved', { name: file })
   })
-  if (ok) closeDiff(path)
+  if (ok) closeResolved(path, file)
   return ok
 }
 
