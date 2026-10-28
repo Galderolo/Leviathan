@@ -235,6 +235,8 @@ export function Resizer(props: {
       className="resizer"
       onMouseDown={(e) => {
         e.preventDefault()
+        // The left button only: a right click is not a drag.
+        if (e.button !== 0) return
         const startX = e.clientX
         // From the width shown: a narrow window may show the panel narrower than its saved width.
         const panel = props.invert ? e.currentTarget.nextElementSibling : e.currentTarget.previousElementSibling
