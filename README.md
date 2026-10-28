@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="resources/icon.png" width="96" alt="Leviathan logo" />
+  <img src="resources/icon.png" width="96" alt="Git Leviathan logo" />
 </p>
 
-<h1 align="center">Leviathan</h1>
+<h1 align="center">Git Leviathan</h1>
 
 <p align="center">
   A free and open source Git client with a beautiful commit graph.<br />
@@ -17,11 +17,11 @@
   <a href="#en-español">Español</a>
 </p>
 
-![Leviathan showing a repository's commit graph, branches and staging area](docs/screenshot.png)
+![Git Leviathan showing a repository's commit graph, branches and staging area](docs/screenshot.png)
 
-## Why Leviathan?
+## Why Git Leviathan?
 
-The most comfortable Git GUIs keep their best features behind subscriptions or require an account to work with private repositories. Leviathan gives everyone the same visual workflow — tabs, a coloured branch graph, one-click staging — for free, and is built in the open by the people who use it.
+The most comfortable Git GUIs keep their best features behind subscriptions or require an account to work with private repositories. Git Leviathan (called Leviathan until 0.19) gives everyone the same visual workflow — tabs, a coloured branch graph, one-click staging — for free, and is built in the open by the people who use it.
 
 ## Features
 
@@ -134,7 +134,7 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## En español
 
-**Leviathan** es un cliente Git gratuito y de código abierto, con un grafo de commits visual. Sin anuncios, sin cuentas y sin pagos.
+**Git Leviathan** (Leviathan hasta la 0.19) es un cliente Git gratuito y de código abierto, con un grafo de commits visual. Sin anuncios, sin cuentas y sin pagos.
 
 - Grafo de commits a color con ramas, merges, tags, stashes y el nodo de trabajo en curso (WIP).
 - Pestañas con varios repositorios abiertos a la vez, que se ordenan arrastrándolas y avisan de los commits por traer o por subir.

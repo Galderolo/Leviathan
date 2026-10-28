@@ -293,7 +293,7 @@ const es: Record<keyof typeof en, string> = {
   'toast.stashSetAside': 'Tus cambios están en un stash nuevo ("Apartado para aplicar…"): aplícalo para recuperarlos.',
   'toast.revealedExecutable': 'Por seguridad, este archivo se muestra en su carpeta en lugar de abrirlo.',
 
-  'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Leviathan.',
+  'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Git Leviathan.',
   'error.detachedPush': 'HEAD está desacoplado. Haz checkout de una rama antes del push.',
   'error.noRemote': 'Este repositorio no tiene remotos. Añade uno desde la sección REMOTO.',
 
@@ -670,11 +670,11 @@ const es: Record<keyof typeof en, string> = {
   'update.unsupported': 'Esta copia no puede actualizarse sola; las versiones nuevas están en la página de releases.',
   'update.auto': 'Buscar versiones nuevas automáticamente',
   'update.checkNow': 'Buscar ahora',
-  'update.available': 'Leviathan {version} está disponible',
+  'update.available': 'Git Leviathan {version} está disponible',
   'update.download': 'Descargar e instalar',
   'update.openPage': 'Descargar',
   'update.downloading': 'Descargando actualización… {percent}%',
-  'update.ready': 'Leviathan {version} está lista',
+  'update.ready': 'Git Leviathan {version} está lista',
   'update.restart': 'Reiniciar para actualizar',
   'update.latest': 'Tienes la última versión.',
   'update.failed': 'No se pudo comprobar si hay actualizaciones: {error}',

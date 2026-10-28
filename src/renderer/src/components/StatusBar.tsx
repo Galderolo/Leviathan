@@ -41,7 +41,7 @@ export function StatusBar() {
       <div className="statusbar-right">
         <UpdateNotice />
         <button className="statusbar-version" title={t('whatsNew.title')} onClick={openWhatsNew}>
-          Leviathan {versions.app} · git {versions.git}
+          Git Leviathan {versions.app} · git {versions.git}
         </button>
       </div>
     </div>

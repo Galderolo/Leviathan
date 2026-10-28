@@ -212,7 +212,7 @@ function About() {
   return (
     <div className="about">
       <div>
-        Leviathan {versions.app} · git {versions.git}
+        Git Leviathan {versions.app} · git {versions.git}
       </div>
       <div className="dim">{t('settings.license')}</div>
       <a
