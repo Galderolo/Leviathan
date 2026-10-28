@@ -166,7 +166,7 @@ A console below the graph (`components/TerminalPanel.tsx`), one per repository, 
 
 - Shell: on Windows the terminal chosen in Settings when it is cmd, PowerShell 7 or Git Bash (next to the git on the PATH) and installed, Windows PowerShell otherwise; `$SHELL` elsewhere, as a login shell on macOS. `ELECTRON_*` variables are left out of its environment.
 - On Windows, node-pty keeps a thread alive until a console is killed, also one that ended on its own: `Terminals` kills those too, and every console is stopped on `window-all-closed` and on `will-quit` (`app.quit()` skips the former), or the app would not exit. Its console drops what is typed before the program in it starts.
-- Packaging: node-pty is unpacked from the asar (its helpers run from disk) without its sources and debug symbols (about 6.5 MB), and `npmRebuild: false`: it is a Node-API module, prebuilt for Windows and macOS and compiled by `npm ci` on Linux (so Linux contributors need a C++ toolchain).
+- Packaging: node-pty is unpacked from the asar (its helpers run from disk) without its sources and debug symbols (about 6.5 MB), and `npmRebuild: false`: it is a Node-API module, prebuilt for Windows and macOS and compiled by `npm ci` on Linux (so Linux contributors need a C++ toolchain). Its macOS `spawn-helper` is published without the execute bit ("posix_spawnp failed"): `scripts/fix-node-pty.cjs`, run as `postinstall`, sets it, and packaging keeps it.
 - Not done: several consoles or a split per repository, restoring them after a restart, a font size setting, links in the output.
 
 ## Settings per repository

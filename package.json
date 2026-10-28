@@ -20,7 +20,8 @@
     "dist:linux": "electron-vite build && electron-builder --linux",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "e2e": "playwright test -c e2e/playwright.config.ts"
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "postinstall": "node scripts/fix-node-pty.cjs"
   },
   "engines": {
     "node": ">=22.12"
