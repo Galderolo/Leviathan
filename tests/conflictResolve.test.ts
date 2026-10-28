@@ -34,7 +34,7 @@ beforeEach(async () => {
     await git(['config', k, v], { cwd: dir })
 })
 
-afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true }))
+afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('conflict resolution', () => {
   it('reads the conflicted file with its markers', async () => {

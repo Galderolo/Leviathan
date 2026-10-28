@@ -29,7 +29,7 @@ describe('getCommitTemplate', () => {
   beforeEach(async () => {
     dir = await repo.initRepo(join(mkdtempSync(join(tmpdir(), 'leviathan-template-')), 'repo'), 'main')
   })
-  afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true }))
+  afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
   it("reads the template git's commit.template points to, from the repository's folder", async () => {
     writeFileSync(join(dir, '.gitmessage'), 'feat: \n\n# why?\nWhy:\n')

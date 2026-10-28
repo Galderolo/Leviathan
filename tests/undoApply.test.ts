@@ -39,7 +39,7 @@ beforeEach(async () => {
   await commitFile('a.txt', 'a\n', 'base')
 })
 
-afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true }))
+afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('applyChange', () => {
   it('undoes a commit keeping its changes staged, and redoes it', async () => {

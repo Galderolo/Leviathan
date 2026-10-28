@@ -35,7 +35,7 @@ describe('starting programs', () => {
     } finally {
       if (saved === undefined) delete process.env.NoDefaultCurrentDirectoryInExePath
       else process.env.NoDefaultCurrentDirectoryInExePath = saved
-      rmSync(repo, { recursive: true, force: true })
+      rmSync(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
     }
   })
 })

@@ -29,7 +29,7 @@ beforeEach(async () => {
   await commitFile('a.txt', 'base')
 })
 
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('unpushed commits', () => {
   it('lists the commits of the branch that are not on its upstream', async () => {

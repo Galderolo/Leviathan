@@ -44,7 +44,7 @@ async function setup(path: string) {
 
 beforeEach(() => setup(join(mkdtempSync(join(tmpdir(), 'leviathan-rebase-')), 'repo')))
 
-afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true }))
+afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('getRebaseCommits', () => {
   it('lists the commits after the base, oldest first', async () => {

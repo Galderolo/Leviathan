@@ -34,7 +34,7 @@ beforeEach(async () => {
   await commitFile('m.txt', 'main work')
 })
 
-afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true }))
+afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('getLog scope', () => {
   it('shows every branch by default', async () => {

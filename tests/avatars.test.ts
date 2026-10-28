@@ -56,7 +56,7 @@ describe('AvatarCache', () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'leviathan-avatars-'))
   })
-  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+  afterEach(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
   it('fetches each picture once, from the first source that has one, and remembers who has none', async () => {
     const images = fakeImages([gravatar('bo@example.com'), 'https://github.com/AnaDev.png?size=64'])

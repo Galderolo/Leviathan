@@ -31,7 +31,7 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
-  rmSync(join(dir, '..'), { recursive: true, force: true })
+  rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 describe('untracked files of a stash', () => {

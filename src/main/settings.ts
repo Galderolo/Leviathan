@@ -1,7 +1,8 @@
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { DEFAULT_SETTINGS, type Settings } from '../shared/types'
+import { writeFileAtomic } from './atomicFile'
 
 let cache: Settings | null = null
 
@@ -21,9 +22,6 @@ export function loadSettings(): Settings {
 
 export function saveSettings(patch: Partial<Settings>): Settings {
   cache = { ...loadSettings(), ...patch }
-  const target = file()
-  const tmp = `${target}.tmp`
-  writeFileSync(tmp, JSON.stringify(cache, null, 2), 'utf8')
-  renameSync(tmp, target)
+  writeFileAtomic(file(), JSON.stringify(cache, null, 2))
   return cache
 }

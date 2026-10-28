@@ -37,7 +37,7 @@ describe('samePath', () => {
       expect(samePath(join(real, '.'), real)).toBe(true)
       expect(samePath(dir, real)).toBe(false)
     } finally {
-      rmSync(dir, { recursive: true, force: true })
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
     }
   })
 })
@@ -107,7 +107,7 @@ beforeEach(async () => {
   await configure(work)
 })
 
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('submodules', () => {
   it('reports nothing in a repository without submodules', async () => {

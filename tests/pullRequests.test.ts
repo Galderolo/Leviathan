@@ -135,7 +135,7 @@ describe('checking out a pull request again', () => {
   })
 })
 
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('checkoutPullRequest', () => {
   it('checks out a pull request from a fork as pr/N', async () => {

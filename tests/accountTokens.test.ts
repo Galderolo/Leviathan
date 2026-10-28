@@ -23,7 +23,7 @@ beforeEach(() => {
   store = new AccountStore(join(dir, 'accounts.json'), fakeCipher)
 })
 
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('renewable tokens (GitLab sign-in)', () => {
   it('keeps the renewal token encrypted next to the access token', async () => {

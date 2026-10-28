@@ -8,7 +8,7 @@ const dirs: string[] = []
 
 afterEach(() => {
   for (const d of dirs) setRepoGitArgs(d, null)
-  rmSync(dirs[0], { recursive: true, force: true })
+  rmSync(dirs[0], { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
   dirs.length = 0
 })
 

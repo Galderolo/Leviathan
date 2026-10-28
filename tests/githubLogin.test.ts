@@ -61,7 +61,7 @@ beforeEach(() => {
   currentToken = TOKEN
   for (const a of accounts.listAccounts()) accounts.removeAccount(a.id)
 })
-afterAll(() => rmSync(userData, { recursive: true, force: true }))
+afterAll(() => rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
 describe('signing in to GitHub from the browser', () => {
   it('shows a code, then adds the account once it is authorized', async () => {

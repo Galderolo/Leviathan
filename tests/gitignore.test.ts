@@ -27,7 +27,7 @@ describe('ignoring a file', () => {
   beforeEach(async () => {
     dir = await repo.initRepo(join(mkdtempSync(join(tmpdir(), 'leviathan-ignore-')), 'repo'), 'main')
   })
-  afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true }))
+  afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
 
   const ignored = async (file: string) =>
     (await git(['check-ignore', '-q', '--', file], { cwd: dir, okCodes: [0, 1] })).exitCode === 0

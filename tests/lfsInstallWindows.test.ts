@@ -48,7 +48,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env.PATH = pathBefore
-  rmSync(root, { recursive: true, force: true })
+  rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 function deps(sums: string, arch = 'x64') {

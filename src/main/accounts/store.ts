@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import type { Account } from '../../shared/types'
+import { writeFileAtomic } from '../atomicFile'
 
 /** Encrypts tokens at rest (Electron's safeStorage in the app). */
 export interface Cipher {
@@ -132,9 +133,7 @@ export class AccountStore {
   }
 
   private save(): void {
-    const tmp = `${this.file}.tmp`
-    writeFileSync(tmp, JSON.stringify({ accounts: this.accounts }, null, 2), 'utf8')
-    renameSync(tmp, this.file)
+    writeFileAtomic(this.file, JSON.stringify({ accounts: this.accounts }, null, 2))
   }
 }
 
