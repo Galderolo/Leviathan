@@ -8,6 +8,7 @@ import { cx } from '../utils'
 import type { Settings, ThemeSetting } from '../../../shared/types'
 import { AccountsSection } from './AccountsSection'
 import { ExternalToolsSettings } from './ExternalToolsSettings'
+import { RepoSettingsSection } from './RepoSettingsSection'
 import { SshKeysSection } from './SshKeysSection'
 import { UpdateSettings } from './UpdateNotice'
 
@@ -15,6 +16,7 @@ const REPO_URL = 'https://github.com/Galderolo/Leviathan'
 
 const SECTIONS: { id: SettingsSection; label: TKey }[] = [
   { id: 'general', label: 'settings.general' },
+  { id: 'repo', label: 'settings.repo' },
   { id: 'tools', label: 'tools.title' },
   { id: 'accounts', label: 'accounts.title' },
   { id: 'ssh', label: 'ssh.title' },
@@ -68,6 +70,9 @@ export function SettingsModal() {
           {/* Every section stays mounted (hidden when not shown): a sign-in or a form in progress survives a switch. */}
           <div className="settings-body" hidden={section !== 'general'}>
             <GeneralSettings />
+          </div>
+          <div className="settings-body" hidden={section !== 'repo'}>
+            <RepoSettingsSection />
           </div>
           <div className="settings-body" hidden={section !== 'tools'}>
             <ExternalToolsSettings />

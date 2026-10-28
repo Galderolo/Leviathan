@@ -690,6 +690,7 @@ test('keeps Settings in sections and saves each change at once', async () => {
   await page.locator('.toolbar-right .icon-btn').click()
   await expect(page.locator('.settings-nav-item')).toHaveText([
     'General',
+    'This repository',
     'External tools',
     'Accounts',
     'SSH keys',
@@ -703,6 +704,52 @@ test('keeps Settings in sections and saves each change at once', async () => {
   await expect(page.locator('.settings-body:visible')).toContainText('Sign in with GitLab')
   await page.keyboard.press('Escape')
   await expect(page.locator('.modal.settings')).toHaveCount(0)
+})
+
+test('gives a repository settings of its own from its menu, the rest following the general ones', async () => {
+  const space = box.repo('space', { 'a.txt': 'one\n' })
+  const other = box.repo('other', { 'a.txt': 'one\n' })
+  await open(space, other)
+
+  await page.locator('.toolbar-field', { hasText: 'Repository' }).click()
+  await menuItem('Settings of this repository…').click()
+  const section = page.locator('.settings-body:visible')
+  await expect(section).toContainText('Settings of space')
+  const fetch = section.getByLabel('Fetch remotes automatically')
+  await expect(fetch.locator('option').first()).toHaveText('Same as general (Never)')
+  await fetch.selectOption({ label: 'Every minute' })
+  await section.getByLabel('Pull mode').selectOption({ label: 'Pull (rebase)' })
+  await section.getByLabel('Commits loaded at a time').fill('500')
+  await section.getByLabel('Commits loaded at a time').press('Enter')
+
+  const saved = async () => {
+    const s = await page.evaluate(() => window.leviathan.getSettings())
+    return { general: [s.autoFetchMinutes, s.pullMode, s.commitLimit], own: Object.entries(s.repoSettings) }
+  }
+  await expect
+    .poll(async () => (await saved()).own.map(([path, own]) => [path.split(/[\\/]/).pop(), own]))
+    .toEqual([['space', { autoFetchMinutes: 1, pullMode: 'rebase', commitLimit: 500 }]])
+  expect((await saved()).general).toEqual([0, 'ff', 2000])
+
+  // Back to the general value: the repository no longer has one of its own.
+  await fetch.selectOption({ label: 'Same as general (Never)' })
+  await expect
+    .poll(async () => (await saved()).own.map(([, own]) => own))
+    .toEqual([{ pullMode: 'rebase', commitLimit: 500 }])
+  await page.keyboard.press('Escape')
+
+  // The Pull menu marks the repository's own mode.
+  await page.locator('.tool-button', { hasText: 'Pull' }).locator('.tool-caret').click()
+  await expect(page.locator('.context-menu .menu-item', { hasText: 'Pull (rebase)' })).toContainText('✓')
+  await page.keyboard.press('Escape')
+
+  // Another repository: the general settings, nothing of its own.
+  await page.locator('.tab', { hasText: 'other' }).click()
+  await page.locator('.toolbar-right .icon-btn').click()
+  await page.locator('.settings-nav-item', { hasText: 'This repository' }).click()
+  await expect(section).toContainText('Settings of other')
+  await expect(section.getByLabel('Pull mode')).toHaveValue('*general')
+  await expect(section.getByLabel('Commits loaded at a time')).toHaveValue('')
 })
 
 test('adds an account again with a new token: one account, with the name typed, and says it was updated', async () => {
@@ -747,8 +794,9 @@ test('opens the terminal chosen in Settings in the repository folder', async () 
 
   await page.locator('.toolbar-right .icon-btn').click()
   await page.locator('.settings-nav-item', { hasText: 'External tools' }).click()
-  await page.locator('label.field', { hasText: 'Terminal' }).locator('select').selectOption('custom')
-  const command = page.locator('label.field', { hasText: "started in the repository's folder" }).locator('input')
+  const section = page.locator('.settings-body:visible')
+  await section.locator('label.field', { hasText: 'Terminal' }).locator('select').selectOption('custom')
+  const command = section.locator('label.field', { hasText: "started in the repository's folder" }).locator('input')
   await command.fill(`"${process.execPath}" "${fake}" {folder}`)
   await command.blur()
   await expect

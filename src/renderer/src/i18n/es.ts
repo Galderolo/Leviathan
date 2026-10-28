@@ -347,6 +347,7 @@ const es: Record<keyof typeof en, string> = {
   'accounts.renewed': 'Cuenta {name} actualizada con el token nuevo',
   'accounts.noneOption': 'Ninguna (credenciales normales de git)',
   'menu.repoAccount': 'Cuenta de este repositorio…',
+  'menu.repoSettings': 'Ajustes de este repositorio…',
   'dlg.repoAccount': 'Cuenta para {repo}',
   'dlg.repoAccountHint': 'Los commits usarán el nombre y email de la cuenta, y push/pull usarán su token.',
   'toast.accountHostMismatch':
@@ -675,7 +676,17 @@ const es: Record<keyof typeof en, string> = {
 
   'settings.title': 'Ajustes',
   'settings.general': 'General',
+  'settings.repo': 'Este repositorio',
   'settings.about': 'Acerca de',
+  'repoSettings.title': 'Ajustes de {name}',
+  'repoSettings.hint':
+    'Valen solo para este repositorio. "Como el general" sigue el ajuste general, también cuando cambie más adelante.',
+  'repoSettings.none': 'Abre un repositorio para darle ajustes propios.',
+  'repoSettings.general': 'Como el general ({value})',
+  'repoSettings.pullMode': 'Modo de pull',
+  'repoSettings.pushAfterCommit': 'Push después de cada commit',
+  'repoSettings.yes': 'Sí',
+  'repoSettings.no': 'No',
   'keys.title': 'Atajos de teclado',
   'keys.groupFiles': 'Archivos cambiados (haz clic antes en la lista)',
   'keys.groupRepository': 'Repositorio',

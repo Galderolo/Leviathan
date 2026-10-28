@@ -8,11 +8,13 @@ import type {
   Provider,
   PullRequest,
   RebaseCommit,
+  RepoSettingKey,
   RepoState,
   Settings,
   Submodule
 } from '../../shared/types'
 import { DEFAULT_SETTINGS } from '../../shared/types'
+import { settingsFor } from '../../shared/repoSettings'
 import type { CommitIdentity } from '../../shared/identity'
 import type { CommitDraftText } from '../../shared/commitTemplate'
 import type { LfsInfo, LfsLock } from '../../shared/lfs'
@@ -189,7 +191,7 @@ export interface MenuState {
   items: MenuItem[]
 }
 
-export type SettingsSection = 'general' | 'tools' | 'accounts' | 'ssh' | 'updates' | 'shortcuts' | 'about'
+export type SettingsSection = 'general' | 'repo' | 'tools' | 'accounts' | 'ssh' | 'updates' | 'shortcuts' | 'about'
 
 export interface FormField {
   key: string
@@ -326,4 +328,9 @@ export function useRepo(path: string): RepoView | undefined {
 
 export function useActiveTab(): Tab | undefined {
   return useStore((s) => s.tabs.find((t) => t.id === s.activeTab))
+}
+
+/** A setting as repository `path` sees it: its own value, or the general one. */
+export function useRepoSetting<K extends RepoSettingKey>(path: string | null, key: K): Settings[K] {
+  return useStore((s) => settingsFor(s.settings, path)[key])
 }

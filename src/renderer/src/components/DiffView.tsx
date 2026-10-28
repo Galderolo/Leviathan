@@ -5,7 +5,7 @@ import type { DiffHunk, FileChange, SubmoduleChange } from '../../../shared/type
 import { applyHunk, applyLines, closeDiff, discardFiles, openInEditor, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
 import { ConflictView } from './ConflictView'
-import { useRepo, useStore } from '../store'
+import { useRepo, useRepoSetting, useStore } from '../store'
 import { highlightHunks } from '../syntax'
 import { DiffFullFileToggle, DiffLayoutToggle, GapLines, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 import { cx, shortHash, splitPath } from '../utils'
@@ -23,7 +23,7 @@ export function DiffView({ path }: { path: string }) {
   const data = diff?.data
   const layout = useStore((s) => s.diffLayout)
   // Every hook before the early returns: the same view goes from a conflict to a plain diff once it is resolved.
-  const hasEditor = useStore((s) => !!s.settings.editor.trim())
+  const hasEditor = !!useRepoSetting(path, 'editor').trim()
   const spansByHunk = useMemo(() => data?.hunks.map(wordSpans) ?? [], [data])
   const syntaxByHunk = useMemo(() => (data ? highlightHunks(data.hunks, data.path) : []), [data])
   // Each gap of unchanged lines is highlighted as a hunk of its own.

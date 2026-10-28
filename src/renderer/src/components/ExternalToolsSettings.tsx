@@ -7,25 +7,41 @@ import { copyText } from '../ui'
 
 const api = window.leviathan
 
+/** The choice that follows the general setting, in a repository's own settings. */
+export const GENERAL = '*general'
+
+type Preset = { id: string; label: string; command: string }
+
+/** How a command reads in a list: its preset's name, the command itself, or what an empty one does. */
+export function commandLabel(presets: Preset[], command: string, systemLabel: string): string {
+  return command ? (presets.find((p) => p.command === command)?.label ?? command) : systemLabel
+}
+
 /** A program picked among presets or typed as a command, with a system default; each change is saved at once. */
-function CommandChoice(props: {
+export function CommandChoice(props: {
   label: string
   /** What an empty command does. */
   systemLabel: string
-  presets: { id: string; label: string; command: string }[]
-  value: string
+  presets: Preset[]
+  /** `undefined`: the general one (with `general`). */
+  value: string | undefined
   /** The command to start from when "Other (command)" is picked with nothing typed yet. */
   example: string
   hint: string
-  save: (command: string) => void
+  /** For a repository's own settings: how following the general setting reads. */
+  general?: string
+  save: (command: string | undefined) => void
 }) {
   const t = useT()
   const preset = props.presets.find((p) => p.command === props.value)
-  const [choice, setChoice] = useState(props.value ? (preset?.id ?? 'custom') : '')
-  const [command, setCommand] = useState(props.value)
+  const [choice, setChoice] = useState(
+    props.value === undefined ? GENERAL : props.value ? (preset?.id ?? 'custom') : ''
+  )
+  const [command, setCommand] = useState(props.value ?? '')
 
   const pick = (id: string) => {
     setChoice(id)
+    if (id === GENERAL) return props.save(undefined)
     const next = id === 'custom' ? command || props.example : (props.presets.find((p) => p.id === id)?.command ?? '')
     setCommand(next)
     props.save(next)
@@ -36,6 +52,7 @@ function CommandChoice(props: {
       <label className="field">
         <span>{props.label}</span>
         <select value={choice} onChange={(e) => pick(e.target.value)}>
+          {props.general !== undefined && <option value={GENERAL}>{props.general}</option>}
           <option value="">{props.systemLabel}</option>
           {props.presets.map((p) => (
             <option key={p.id} value={p.id}>
@@ -81,7 +98,7 @@ export function ExternalToolsSettings() {
         value={settings.editor}
         example='code --goto "{file}:{line}"'
         hint={t('tools.commandHint')}
-        save={(editor) => void saveSettings({ editor })}
+        save={(editor) => void saveSettings({ editor: editor ?? '' })}
       />
       <CommandChoice
         label={t('tools.terminal')}
@@ -90,7 +107,7 @@ export function ExternalToolsSettings() {
         value={settings.terminal}
         example={terminals[0].command}
         hint={t('tools.terminalHint')}
-        save={(terminal) => void saveSettings({ terminal })}
+        save={(terminal) => void saveSettings({ terminal: terminal ?? '' })}
       />
       <label className="field">
         <span>{t('tools.diffTool')}</span>

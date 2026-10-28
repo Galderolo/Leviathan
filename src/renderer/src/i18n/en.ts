@@ -343,6 +343,7 @@ const en = {
   'accounts.renewed': 'Account {name} updated with the new token',
   'accounts.noneOption': 'None (normal git credentials)',
   'menu.repoAccount': 'Account for this repository…',
+  'menu.repoSettings': 'Settings of this repository…',
   'dlg.repoAccount': 'Account for {repo}',
   'dlg.repoAccountHint': 'Commits will use the account name and email, and push/pull will use its token.',
   'toast.accountHostMismatch':
@@ -666,7 +667,17 @@ const en = {
 
   'settings.title': 'Settings',
   'settings.general': 'General',
+  'settings.repo': 'This repository',
   'settings.about': 'About',
+  'repoSettings.title': 'Settings of {name}',
+  'repoSettings.hint':
+    'They apply to this repository only. "Same as general" follows the general setting, also when it changes later.',
+  'repoSettings.none': 'Open a repository to give it settings of its own.',
+  'repoSettings.general': 'Same as general ({value})',
+  'repoSettings.pullMode': 'Pull mode',
+  'repoSettings.pushAfterCommit': 'Push after each commit',
+  'repoSettings.yes': 'Yes',
+  'repoSettings.no': 'No',
   'keys.title': 'Keyboard shortcuts',
   'keys.groupFiles': 'Changed files (click the list first)',
   'keys.groupRepository': 'Repository',

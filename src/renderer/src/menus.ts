@@ -43,6 +43,7 @@ import {
   stashFiles,
   push,
   pushTag,
+  repoSettings,
   rebaseOnto,
   removeRemote,
   renameBranch,
@@ -392,7 +393,7 @@ export function fileMenu(
   } else if (area === 'conflicted') {
     items.push({ label: t('wip.markResolved'), onClick: () => void stageFiles(path, [file]) }, { separator: true })
   }
-  const editor = !!useStore.getState().settings.editor.trim()
+  const editor = !!repoSettings(path).editor.trim()
   if (editor && file.status !== 'D') {
     items.push({ label: t('tools.openInEditor'), onClick: () => openInEditor(path, file.path) })
   }

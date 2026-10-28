@@ -32,12 +32,13 @@ import {
   checkoutRef,
   chooseRepoAccount,
   redo,
+  repoSettings,
   undo
 } from '../actions'
 import { useT } from '../i18n'
 import { pushCount } from '../pushTarget'
 import { keysLabel } from '../shortcuts'
-import { getRepo, useRepo, useStore, type MenuItem } from '../store'
+import { getRepo, useRepo, useRepoSetting, useStore, type MenuItem } from '../store'
 import { openMenuBelow } from '../ui'
 import { basename, cx, matchesFilter, shortHash } from '../utils'
 import { Spinner } from './common'
@@ -91,7 +92,7 @@ function ToolButton({ icon: Icon, label, onClick, onCaret, busy, disabled, badge
 export function Toolbar({ path }: { path: string }) {
   const view = useRepo(path)
   const t = useT()
-  const pullMode = useStore((s) => s.settings.pullMode)
+  const pullMode = useRepoSetting(path, 'pullMode')
   // Each button's shortcut in its tooltip, as this system writes the keys.
   const withKeys = (title: string, keys: string[]) =>
     `${title} (${keysLabel(keys, window.leviathan.platform === 'darwin')})`
@@ -129,8 +130,12 @@ export function Toolbar({ path }: { path: string }) {
   const repoMenu = (e: React.MouseEvent) =>
     openMenuBelow(e, [
       { label: t('menu.repoAccount'), onClick: () => void chooseRepoAccount(path) },
+      {
+        label: t('menu.repoSettings'),
+        onClick: () => useStore.setState({ settingsOpen: true, settingsSection: 'repo' })
+      },
       { separator: true },
-      ...(useStore.getState().settings.editor.trim()
+      ...(repoSettings(path).editor.trim()
         ? [{ label: t('tools.openInEditor'), onClick: () => openInEditor(path, null) }]
         : []),
       { label: t('menu.openFolder'), onClick: () => openInFileManager(path) },

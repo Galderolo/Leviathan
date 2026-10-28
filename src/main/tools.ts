@@ -2,6 +2,7 @@ import { spawn as spawnDirect } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import spawn from 'cross-spawn'
 import { difftoolArgs, editorArgs, mergetoolArgs, terminalArgs, windowsStartLine } from '../shared/externalTools'
+import { settingsFor } from '../shared/repoSettings'
 import type { DiffSource } from '../shared/types'
 import { insideRepo } from './git/repository'
 import { git } from './git/runner'
@@ -49,7 +50,7 @@ function launch(args: string[], cwd: string, strict = false): Promise<void> {
 
 /** Opens a file of the repository (at a line), or the repository itself, with the editor chosen in Settings. */
 export async function openInEditor(repo: string, file: string | null, line?: number): Promise<void> {
-  const template = loadSettings().editor.trim()
+  const template = settingsFor(loadSettings(), repo).editor.trim()
   if (!template) throw new Error('No editor is chosen in Settings')
   const args = editorArgs(template, { file: file ? insideRepo(repo, file) : undefined, line, folder: repo })
   // Rider, Visual Studio and others are often not on the PATH: look where their installers put them.
@@ -78,7 +79,7 @@ function startInWindow(args: string[], cwd: string): Promise<void> {
 
 /** Opens the terminal chosen in Settings, or the system's, in the repository's folder. */
 export async function openTerminal(repo: string, platform: NodeJS.Platform = process.platform): Promise<void> {
-  const template = loadSettings().terminal.trim()
+  const template = settingsFor(loadSettings(), repo).terminal.trim()
   if (!template) return openSystemTerminal(repo)
   if (!existsSync(repo)) throw new Error(`Folder does not exist: ${repo}`)
   const args = terminalArgs(template, repo)
@@ -132,7 +133,7 @@ export async function openDiffTool(repo: string, source: DiffSource): Promise<vo
     assertHash(source.parent)
     if (source.oldPath) insideRepo(repo, source.oldPath)
   }
-  const tool = loadSettings().diffTool || null
+  const tool = settingsFor(loadSettings(), repo).diffTool || null
   // git difftool falls back to merge.tool when diff.tool is not set.
   if (!tool && !(await configured(repo, ['diff.tool', 'merge.tool']))) throw new Error(NO_DIFF_TOOL)
   await startGitTool(repo, difftoolArgs(source, tool))
@@ -144,7 +145,7 @@ export async function openMergeTool(repo: string, file: string): Promise<void> {
   if (/[*?[\]]/.test(file)) {
     throw new Error('The merge tool cannot open a file whose name has [ ] * or ?. Resolve it in the conflict editor.')
   }
-  const tool = loadSettings().diffTool || null
+  const tool = settingsFor(loadSettings(), repo).diffTool || null
   if (!tool && !(await configured(repo, ['merge.tool']))) throw new Error(NO_DIFF_TOOL)
   // No *.orig copies left next to the file once it is resolved.
   await startGitTool(repo, ['-c', 'mergetool.keepBackup=false', ...mergetoolArgs(file, tool)])
