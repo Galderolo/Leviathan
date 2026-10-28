@@ -100,6 +100,24 @@ describe('installWindowsZip', () => {
     expect(process.env.PATH).toBe(pathBefore)
   })
 
+  it('says when GitHub limits how often it is asked from this network, and until when', async () => {
+    const d = deps(`${sha256('zip-bytes')}  ${ZIP}\n`)
+    const reset = Math.floor(Date.now() / 1000) + 20 * 60
+    const headers: Record<string, string> = { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(reset) }
+    d.fetch = async () => ({
+      ok: false,
+      status: 403,
+      headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
+      json: async () => ({}),
+      text: async () => '',
+      arrayBuffer: async () => new ArrayBuffer(0)
+    })
+    await expect(installWindowsZip(() => {}, d)).rejects.toThrow(
+      /^GitHub limits how often it can be asked from this network: try again in 20 minutes, nothing was installed$/
+    )
+    expect(d.extract).not.toHaveBeenCalled()
+  })
+
   it('says when this Windows has no zip to install', async () => {
     const d = deps(`${sha256('zip-bytes')}  ${ZIP}\n`, 'ia32')
     await expect(installWindowsZip(() => {}, d)).rejects.toThrow(/no git-lfs download for this computer/i)

@@ -25,6 +25,7 @@ const LATEST_RELEASE = 'https://api.github.com/repos/git-lfs/git-lfs/releases/la
 interface Fetched {
   ok: boolean
   status: number
+  headers?: { get(name: string): string | null }
   json(): Promise<unknown>
   text(): Promise<string>
   arrayBuffer(): Promise<ArrayBuffer>
@@ -58,12 +59,27 @@ export function windowsDeps(): InstallDeps {
   }
 }
 
+/**
+ * Why GitHub did not answer. Its API takes 60 requests an hour from one address without signing in: a network shared
+ * with others (an office, a studio) runs out, and the headers say when it starts again.
+ */
+function refusal(res: Fetched, url: string): Error {
+  const reset = Number(res.headers?.get('x-ratelimit-reset'))
+  if ((res.status === 403 || res.status === 429) && res.headers?.get('x-ratelimit-remaining') === '0' && reset) {
+    const minutes = Math.max(1, Math.ceil((reset * 1000 - Date.now()) / 60_000))
+    return new Error(
+      `GitHub limits how often it can be asked from this network: try again in ${minutes} minute${minutes === 1 ? '' : 's'}, nothing was installed`
+    )
+  }
+  return new Error(`GitHub answered ${res.status} for ${url}`)
+}
+
 /** `url`'s answer, read with `read`, within `ms`: a connection that stalls (a proxy holding it open) is given up. */
 async function download<T>(deps: InstallDeps, url: string, ms: number, read: (res: Fetched) => Promise<T>): Promise<T> {
   const signal = AbortSignal.timeout(ms)
   try {
     const res = await deps.fetch(url, signal)
-    if (!res.ok) throw new Error(`GitHub answered ${res.status} for ${url}`)
+    if (!res.ok) throw refusal(res, url)
     return await read(res)
   } catch (err) {
     if (signal.aborted) throw new Error('The download of git-lfs timed out: nothing was installed.')
