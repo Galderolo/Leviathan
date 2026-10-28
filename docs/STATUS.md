@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-28, with 0.18.1 released (649 tests, 49 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-28, with 0.19.0 released (681 tests, 52 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -34,6 +34,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.17.0 | 2026-10-27 | Keyboard shortcuts (Space stages, arrows go through files), install git-lfs from the app, graph columns hidden, moved and resized, commit message template, narrow windows keep the graph; two polish batches of fixes |
 | 0.18.0 | 2026-10-28 | Settings per repository: auto-fetch, pull mode, push after commit, commits loaded, avatars, editor, terminal and diff tool |
 | 0.18.1 | 2026-10-28 | Settings per repository keep only what depends on the project (terminal and avatars general again), apart at the bottom of Settings |
+| 0.19.0 | 2026-10-28 | A terminal inside the app (one per repository), change marks beside the diff's scrollbar, polish batch 4 (LFS beside other tools' hooks, installer messages, stopping file history and blame, settings saved while Windows holds the file), resolving a conflict no longer closes the next file |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
@@ -168,6 +169,7 @@ A console below the graph (`components/TerminalPanel.tsx`), one per repository, 
 - On Windows, node-pty keeps a thread alive until a console is killed, also one that ended on its own: `Terminals` kills those too, and every console is stopped on `window-all-closed` and on `will-quit` (`app.quit()` skips the former), or the app would not exit. Its console drops what is typed before the program in it starts.
 - Packaging: node-pty is unpacked from the asar (its helpers run from disk) without its sources and debug symbols (about 6.5 MB), and `npmRebuild: false`: it is a Node-API module, prebuilt for Windows and macOS and compiled by `npm ci` on Linux (so Linux contributors need a C++ toolchain). Its macOS `spawn-helper` is published without the execute bit ("posix_spawnp failed"): `scripts/fix-node-pty.cjs`, run as `postinstall`, sets it, and packaging keeps it.
 - Not done: several consoles or a split per repository, restoring them after a restart, a font size setting, links in the output.
+- Each console killed on Windows prints "AttachConsole failed" from node-pty's `conpty_console_list_agent` (it then falls back to the shell's own process). A test build used for a while exited with code 127 when its window was closed (twice); closing it in tests, with or without consoles, exits with 0. Not reproduced.
 
 ## Settings per repository
 

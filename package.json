@@ -1,7 +1,7 @@
 {
   "name": "leviathan",
   "productName": "Leviathan",
-  "version": "0.18.1",
+  "version": "0.19.0",
   "description": "Free and open source Git GUI with a visual commit graph. No ads, no accounts, no paywalls.",
   "license": "MIT",
   "author": "Leviathan contributors",
