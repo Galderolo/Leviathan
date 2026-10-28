@@ -24,7 +24,12 @@ export interface RunOptions {
   onProgress?: (line: string) => void
   /** Fail at once when another git holds the index lock, instead of waiting a little for it. */
   noLockWait?: boolean
+  /** Stops the command: git is ended and the call fails with `STOPPED`. */
+  signal?: AbortSignal
 }
+
+/** The message of a command stopped through its `signal`. */
+export const STOPPED = 'The git command was stopped'
 
 export interface RunResult {
   stdout: string
@@ -184,11 +189,19 @@ export async function git(args: string[], opts: RunOptions): Promise<RunResult> 
 function gitOnce(args: string[], opts: RunOptions): Promise<RunResult> {
   const fullArgs = [...BASE_ARGS, ...argsForCwd(opts.cwd), ...args]
   return new Promise((resolve, reject) => {
+    if (opts.signal?.aborted) return reject(new Error(STOPPED))
     const child = spawn('git', fullArgs, {
       cwd: opts.cwd,
       env: { ...process.env, ...BASE_ENV, ...appEnv, ...opts.env },
       windowsHide: true
     })
+    // Without waiting for its output to close: a program git started may still hold it.
+    const stop = () => {
+      child.kill()
+      reject(new Error(STOPPED))
+    }
+    opts.signal?.addEventListener('abort', stop, { once: true })
+    child.on('close', () => opts.signal?.removeEventListener('abort', stop))
 
     const out: Buffer[] = []
     let stderr = ''

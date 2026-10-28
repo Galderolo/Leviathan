@@ -87,6 +87,8 @@ export interface LeviathanInvokeApi {
   getFolderHistory(repo: string, folder: string, rev: string | null, limit?: number): Promise<Commit[]>
   /** Who last changed each line: in the working tree (`rev` null) or in a commit. */
   getBlame(repo: string, path: string, rev: string | null): Promise<BlameLine[]>
+  /** Stops git's work for the file view of `repo` (history, folder history or blame), which was closed. */
+  stopFileView(repo: string): Promise<void>
 
   // Conflicts
   readWorkingFile(repo: string, path: string): Promise<WorkingFile>
@@ -325,6 +327,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getFileHistory: true,
   getFolderHistory: true,
   getBlame: true,
+  stopFileView: true,
   readWorkingFile: true,
   resolveConflictFile: true,
   resolveConflictWith: true,

@@ -20,6 +20,7 @@ import * as lfs from './git/lfs'
 import * as lfsInstall from './lfsInstall'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
+import { LatestRun } from './latestRun'
 import { loadSettings, saveSettings } from './settings'
 import { openAction } from './shell'
 import { generateKey, listKeys } from './ssh'
@@ -35,6 +36,7 @@ function broadcast(channel: string, payload: unknown): void {
 }
 
 let avatarCache: AvatarCache | null = null
+const fileViewRuns = new LatestRun()
 
 function progress(path: string) {
   return (line: string) => broadcast(IPC_PROGRESS, { repo: path, line })
@@ -79,9 +81,12 @@ const handlers: LeviathanInvokeApi = {
   getDiff: (path, source, fullFile) => repo.getDiff(path, source, fullFile === true),
   getSnapshot: (path) => repo.getSnapshot(path),
   // A limit that is not a whole number falls back to the first page there.
-  getFileHistory: (path, file, rev, limit) => repo.getFileHistory(path, file, rev, limit),
-  getFolderHistory: (path, folder, rev, limit) => repo.getFolderHistory(path, folder, rev, limit),
-  getBlame: (path, file, rev) => repo.getBlame(path, file, rev),
+  // One file view per repository: a newer one, or closing it, stops git's work for the one before.
+  getFileHistory: (path, file, rev, limit) => repo.getFileHistory(path, file, rev, limit, fileViewRuns.start(path)),
+  getFolderHistory: (path, folder, rev, limit) =>
+    repo.getFolderHistory(path, folder, rev, limit, fileViewRuns.start(path)),
+  getBlame: (path, file, rev) => repo.getBlame(path, file, rev, fileViewRuns.start(path)),
+  stopFileView: async (path) => fileViewRuns.stop(path),
   readWorkingFile: (path, file) => repo.readWorkingFile(path, file),
   resolveConflictFile: (path, file, content, original) => repo.resolveConflictFile(path, file, content, original),
   resolveConflictWith: (path, file, side) => repo.resolveConflictWith(path, file, side),
