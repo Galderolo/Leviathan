@@ -1,16 +1,14 @@
-import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { LatestRun } from '../src/main/latestRun'
 import { STOPPED, git } from '../src/main/git/runner'
 
-const dir = mkdtempSync(join(tmpdir(), 'leviathan-stop-'))
-
-afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }))
+// Not a folder of its own: on Windows the program git started outlives git for a moment, and its folder could not be
+// removed meanwhile.
+const dir = tmpdir()
 
 /** A git command that takes a long time: an alias running a program that waits. */
-const slow = ['-c', `alias.slow=!"${process.execPath.replace(/\\/g, '/')}" -e "setTimeout(() => {}, 8000)"`, 'slow']
+const slow = ['-c', `alias.slow=!"${process.execPath.replace(/\\/g, '/')}" -e "setTimeout(() => {}, 5000)"`, 'slow']
 
 describe('stopping a git command', () => {
   it('stops a command that is running, at once', async () => {
