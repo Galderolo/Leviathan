@@ -1,4 +1,6 @@
+import { statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Terminals, shellFor, terminalEnv } from '../src/main/terminal'
 
@@ -36,6 +38,14 @@ describe('terminalEnv', () => {
     const env = terminalEnv({ PATH: '/bin', HOME: '/home/ana', ELECTRON_RUN_AS_NODE: '1', ELECTRON_NO_ASAR: '1' })
     expect(env).toEqual({ PATH: '/bin', HOME: '/home/ana', COLORTERM: 'truecolor' })
   })
+})
+
+// Windows has no execute bit to check.
+it.skipIf(process.platform === 'win32')("can run node-pty's macOS helper once installed", () => {
+  for (const arch of ['darwin-arm64', 'darwin-x64']) {
+    const helper = join(__dirname, '..', 'node_modules', 'node-pty', 'prebuilds', arch, 'spawn-helper')
+    expect(statSync(helper).mode & 0o111).not.toBe(0)
+  }
 })
 
 describe('Terminals', () => {
