@@ -127,4 +127,24 @@ describe('git-lfs installed by hand', () => {
     await vi.waitFor(() => expect(useStore.getState().repos['/g'].lfs?.info.version).toBe('3.8.1'))
     await vi.waitFor(() => expect(stub.getLfsLocks).toHaveBeenCalledTimes(1))
   })
+
+  it('looks again once the wait is over when the window came back too soon', async () => {
+    vi.useFakeTimers()
+    try {
+      open('/h')
+      useStore.setState({ lfsOffer: null })
+      await loadLfsInfo('/h')
+      recheckGitLfs(200_000)
+      await vi.waitFor(() => expect(stub.getLfsInfo).toHaveBeenCalledTimes(2))
+      // Installed by hand right after, and back to the window within the wait.
+      lfsInfo = { ...missing, version: '3.8.1', filters: true, hooks: true }
+      recheckGitLfs(203_000)
+      expect(stub.getLfsInfo).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(7_000)
+      expect(stub.getLfsInfo).toHaveBeenCalledTimes(3)
+      expect(useStore.getState().repos['/h'].lfs?.info.version).toBe('3.8.1')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

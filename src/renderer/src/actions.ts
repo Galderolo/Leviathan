@@ -1901,13 +1901,20 @@ export async function loadLfsInfo(path: string): Promise<void> {
 
 const LFS_RECHECK_MS = 10_000
 let lastLfsRecheck = 0
+let recheckLater: ReturnType<typeof setTimeout> | undefined
 
 /**
  * Back in the window: git-lfs may have been installed by hand meanwhile. Repositories that miss it read their LFS
- * info again (which loads their locks once it is there), at most every few seconds.
+ * info again (which loads their locks once it is there), at most every few seconds; back sooner, once the wait is over.
  */
 export function recheckGitLfs(now = Date.now()): void {
-  if (now - lastLfsRecheck < LFS_RECHECK_MS) return
+  const wait = lastLfsRecheck + LFS_RECHECK_MS - now
+  if (wait > 0) {
+    recheckLater ??= setTimeout(() => recheckGitLfs(now + wait), wait)
+    return
+  }
+  clearTimeout(recheckLater)
+  recheckLater = undefined
   lastLfsRecheck = now
   for (const [path, view] of Object.entries(useStore.getState().repos)) {
     if (view.lfs?.info.used && !view.lfs.info.version) void loadLfsInfo(path)
@@ -2041,7 +2048,11 @@ export async function installGitLfs(path: string): Promise<boolean> {
     await loadLfsOffer()
     const offer = useStore.getState().lfsOffer
     if (offer?.method === 'command') void showLfsCommand(offer.command ?? '')
-    else toast('error', t('toast.lfsInstallFailed', { error: errorMessage(err), link: t('lfs.install') }))
+    else {
+      // The message goes on with a sentence of its own.
+      const error = errorMessage(err).replace(/\.+$/, '')
+      toast('error', t('toast.lfsInstallFailed', { error, link: t('lfs.install') }))
+    }
     return false
   } finally {
     patchRepo(path, { busy: null, progress: null })

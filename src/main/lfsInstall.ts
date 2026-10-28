@@ -53,7 +53,8 @@ export function windowsDeps(): InstallDeps {
         )
       ),
     addToUserPath: (dir) => addToUserPath(dir),
-    installDir: join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Git LFS'),
+    // Without LOCALAPPDATA a relative folder would land wherever the app was started.
+    installDir: join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'Programs', 'Git LFS'),
     arch: process.arch,
     timeouts: { request: 30_000, download: 300_000 }
   }

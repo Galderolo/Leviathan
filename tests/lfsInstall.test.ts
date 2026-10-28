@@ -46,6 +46,8 @@ describe('installing git-lfs', () => {
       checksumFor(sums.replace(`${zip}  git-lfs-windows-amd64-v3.8.1.zip\n`, ''), 'git-lfs-windows-amd64-v3.8.1.zip')
     ).toBeNull()
     expect(checksumFor(sums, 'git-lfs-windows-arm64-v3.8.1.zip')).toBeNull()
+    // A hash alone on its line does not belong to the file named on the next one.
+    expect(checksumFor(`${zip}\ngit-lfs-windows-amd64-v3.8.1.zip\n`, 'git-lfs-windows-amd64-v3.8.1.zip')).toBeNull()
   })
 
   it('offers what this system can do', () => {

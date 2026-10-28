@@ -34,7 +34,7 @@ export function pickWindowsZip(assets: ReleaseAsset[], arch: string): ReleaseAss
 /** The SHA-256 a release's `sha256sums.asc` gives for `file`, in lowercase; null when it lists no such file. */
 export function checksumFor(sums: string, file: string): string | null {
   const escaped = file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const line = new RegExp(`^([0-9a-fA-F]{64})\\s+\\*?${escaped}\\r?$`, 'm').exec(sums)
+  const line = new RegExp(`^([0-9a-fA-F]{64})[ \\t]+\\*?${escaped}\\r?$`, 'm').exec(sums)
   return line ? line[1].toLowerCase() : null
 }
 

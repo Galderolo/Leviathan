@@ -53,10 +53,10 @@ describe('installGitLfs', () => {
   })
 
   it('says why and how to get it by hand when the install fails', async () => {
-    stub.installGitLfs.mockRejectedValueOnce(new Error('boom'))
+    stub.installGitLfs.mockRejectedValueOnce(new Error('boom: nothing was installed.'))
     expect(await installGitLfs('/a')).toBe(false)
     const [error] = toasts('error')
-    expect(error).toContain('boom')
+    expect(error).toContain('boom: nothing was installed. "')
     expect(error).toContain('Get Git LFS')
     expect(stub.setupLfs).not.toHaveBeenCalled()
     expect(useStore.getState().lfsInstalling).toBe(false)
