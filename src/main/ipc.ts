@@ -8,6 +8,8 @@ import {
   IPC_REPO_CHANGED,
   IPC_UPDATE,
   IPC_OPEN_FOLDER,
+  IPC_TERMINAL_DATA,
+  IPC_TERMINAL_EXIT,
   type LeviathanInvokeApi,
   type IpcResult
 } from '../shared/api'
@@ -21,6 +23,7 @@ import * as lfsInstall from './lfsInstall'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
 import { LatestRun } from './latestRun'
+import { Terminals, integratedShell } from './terminal'
 import { loadSettings, saveSettings } from './settings'
 import { openAction } from './shell'
 import { generateKey, listKeys } from './ssh'
@@ -37,6 +40,21 @@ function broadcast(channel: string, payload: unknown): void {
 
 let avatarCache: AvatarCache | null = null
 const fileViewRuns = new LatestRun()
+const terminals = new Terminals({
+  data: (id, data) => broadcast(IPC_TERMINAL_DATA, { id, data }),
+  exit: (id, code) => broadcast(IPC_TERMINAL_EXIT, { id, code })
+})
+
+/** A console's width or height from the window, in whole cells. */
+function cells(value: unknown, fallback: number): number {
+  const n = Number(value)
+  return Number.isInteger(n) && n > 0 ? Math.min(n, 1000) : fallback
+}
+
+/** The window is gone: so are its consoles and what runs in them. */
+export function stopTerminals(): void {
+  terminals.stopAll()
+}
 
 function progress(path: string) {
   return (line: string) => broadcast(IPC_PROGRESS, { repo: path, line })
@@ -139,6 +157,18 @@ const handlers: LeviathanInvokeApi = {
   removeRemote: (path, name) => repo.removeRemote(path, name),
 
   openTerminal: (path) => tools.openTerminal(path),
+  terminalStart: async (path, cols, rows) => {
+    if (typeof path !== 'string' || !statSync(path, { throwIfNoEntry: false })?.isDirectory()) {
+      throw new Error(`Folder does not exist: ${path}`)
+    }
+    const shell = await integratedShell(loadSettings().terminal)
+    return terminals.start(shell, path, cells(cols, 80), cells(rows, 24))
+  },
+  terminalWrite: async (id, data) => {
+    if (typeof data === 'string') terminals.write(Number(id), data)
+  },
+  terminalResize: async (id, cols, rows) => terminals.resize(Number(id), cells(cols, 80), cells(rows, 24)),
+  terminalStop: async (id) => terminals.stop(Number(id)),
   openPath: async (path) => {
     if (!statSync(path).isDirectory()) throw new Error('Only folders can be opened this way')
     const error = await shell.openPath(path)

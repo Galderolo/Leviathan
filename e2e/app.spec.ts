@@ -845,12 +845,41 @@ test('opens the terminal chosen in Settings in the repository folder', async () 
     .toContain('fake-terminal')
   await page.keyboard.press('Escape')
 
-  await toolbarButton('Terminal').click()
+  // The button shows the terminal inside the app; a separate one is in its menu.
+  await page.locator('.tool-button', { hasText: 'Terminal' }).locator('.tool-caret').click()
+  await menuItem('Open in a separate window').click()
   await expect.poll(() => existsSync(marker)).toBe(true)
   const started = JSON.parse(readFileSync(marker, 'utf8')) as { cwd: string; folder: string }
   const same = (p: string) => realpathSync.native(p).toLowerCase()
   expect(same(started.cwd)).toBe(same(repo))
   expect(same(started.folder)).toBe(same(repo))
+})
+
+test('runs commands in the terminal at the bottom, each repository with its own', async () => {
+  const game = box.repo('game', { 'a.txt': 'one\n' })
+  const tool = box.repo('tool', { 'b.txt': 'one\n' })
+  await open(game, tool)
+
+  await toolbarButton('Terminal').click()
+  const screen = page.locator('.terminal-panel .xterm-rows')
+  // Its prompt names the repository's folder (PowerShell, bash and zsh alike).
+  await expect(screen).toContainText('game', { timeout: 20_000 })
+  await page.keyboard.type('git commit --allow-empty -m "from the terminal"')
+  await page.keyboard.press('Enter')
+  // The graph shows it, as with any change made outside the app.
+  await expect(commitRows().first()).toContainText('from the terminal', { timeout: 20_000 })
+
+  // Another repository has its own, not shown until asked for; back, the first one is as it was.
+  await page.locator('.tab', { hasText: 'tool' }).click()
+  await expect(page.locator('.terminal-panel')).toHaveCount(0)
+  await page.locator('.tab', { hasText: 'game' }).click()
+  await expect(screen).toContainText('from the terminal')
+
+  // Keys typed there are the shell's; Ctrl and the key left of 1 hides it.
+  await page.locator('.terminal-panel .xterm').click()
+  await page.keyboard.press('Control+Backquote')
+  await expect(page.locator('.terminal-panel')).toHaveCount(0)
+  await expect(page.locator('.tab')).toHaveCount(2)
 })
 
 test("shows a folder's history with the files each commit changed there, and goes up to its parent", async () => {

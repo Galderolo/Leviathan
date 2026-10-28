@@ -22,6 +22,7 @@ import {
   refreshRepo,
   saveSettings,
   stashChanges,
+  toggleTerminal,
   undo
 } from './actions'
 import { globalShortcut } from './shortcuts'
@@ -37,6 +38,7 @@ import { SettingsModal } from './components/SettingsModal'
 import { WhatsNew } from './components/WhatsNew'
 import { StatusBar } from './components/StatusBar'
 import { TabBar } from './components/TabBar'
+import { TerminalPanel } from './components/TerminalPanel'
 import { Toolbar } from './components/Toolbar'
 import { WelcomeView } from './components/WelcomeView'
 import { getRepo, useActiveTab, useStore } from './store'
@@ -114,6 +116,8 @@ export function App() {
       const active = s.tabs.find((x) => x.id === s.activeTab)
       const repo = active?.path
       const shortcut = globalShortcut(e)
+      // Keys typed in the terminal are the shell's (Ctrl+W, Ctrl+B, Esc…), but the one that hides it.
+      if ((e.target as HTMLElement | null)?.closest?.('.terminal-panel') && shortcut?.id !== 'terminal') return
       if (shortcut) {
         // Undo and redo in a text box are the box's own.
         if ((shortcut.id === 'undo' || shortcut.id === 'redo') && isTyping(e.target)) return
@@ -164,6 +168,9 @@ export function App() {
             return useStore.setState({ settingsOpen: true })
           case 'shortcuts':
             return useStore.setState({ settingsOpen: true, settingsSection: 'shortcuts' })
+          case 'terminal':
+            if (repo) toggleTerminal(repo)
+            return
         }
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.review && !isTyping(e.target)) {
         closeReview(active.path)
@@ -200,6 +207,7 @@ function RepoScreen({ path }: { path: string }) {
   const hasDiff = useStore((s) => !!s.repos[path]?.diff)
   const hasFileView = useStore((s) => !!s.repos[path]?.fileView)
   const hasReview = useStore((s) => !!s.repos[path]?.review)
+  const terminalOpen = useStore((s) => !!s.repos[path]?.terminalOpen)
   const [left, setLeft] = useState(settings.leftPanelWidth)
   const [right, setRight] = useState(settings.rightPanelWidth)
 
@@ -218,15 +226,18 @@ function RepoScreen({ path }: { path: string }) {
           onCommit={(v) => void saveSettings({ leftPanelWidth: v })}
         />
         <div className="center-panel">
-          {hasReview ? (
-            <PullRequestView path={path} />
-          ) : hasFileView ? (
-            <FileView path={path} />
-          ) : hasDiff ? (
-            <DiffView path={path} />
-          ) : (
-            <CommitGraph path={path} />
-          )}
+          <div className="center-main">
+            {hasReview ? (
+              <PullRequestView path={path} />
+            ) : hasFileView ? (
+              <FileView path={path} />
+            ) : hasDiff ? (
+              <DiffView path={path} />
+            ) : (
+              <CommitGraph path={path} />
+            )}
+          </div>
+          {terminalOpen && <TerminalPanel path={path} />}
         </div>
         <Resizer
           value={right}

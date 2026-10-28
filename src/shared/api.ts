@@ -284,6 +284,26 @@ export interface LeviathanInvokeApi {
   getSubmodules(repo: string): Promise<Submodule[]>
   /** Initializes and checks out `paths` (or every submodule) at the recorded commits, recursively. */
   updateSubmodules(repo: string, paths: string[] | null): Promise<void>
+
+  /** Starts a console in the repository's folder, with the shell for this system; its id. */
+  terminalStart(repo: string, cols: number, rows: number): Promise<number>
+  /** Sends what was typed (or pasted) to a console. */
+  terminalWrite(id: number, data: string): Promise<void>
+  terminalResize(id: number, cols: number, rows: number): Promise<void>
+  /** Ends a console and what runs in it. */
+  terminalStop(id: number): Promise<void>
+}
+
+/** Output of a console of the panel at the bottom of a repository. */
+export interface TerminalData {
+  id: number
+  data: string
+}
+
+/** A console whose shell ended (`exit` typed, or stopped). */
+export interface TerminalExit {
+  id: number
+  code: number
 }
 
 /** Event subscriptions, and the platform, exposed next to the invoke methods. */
@@ -297,6 +317,8 @@ export interface LeviathanEventsApi {
   onOpenFolder(cb: (folder: string) => void): () => void
   onProgress(cb: (e: ProgressEvent) => void): () => void
   onAskpass(cb: (e: AskpassRequest) => void): () => void
+  onTerminalData(cb: (e: TerminalData) => void): () => void
+  onTerminalExit(cb: (e: TerminalExit) => void): () => void
 }
 
 export type LeviathanApi = LeviathanInvokeApi & LeviathanEventsApi
@@ -433,7 +455,11 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getLfsInstallOffer: true,
   installGitLfs: true,
   getSubmodules: true,
-  updateSubmodules: true
+  updateSubmodules: true,
+  terminalStart: true,
+  terminalWrite: true,
+  terminalResize: true,
+  terminalStop: true
 }
 
 export const API_METHODS = Object.keys(METHODS) as (keyof LeviathanInvokeApi)[]
@@ -444,5 +470,7 @@ export const IPC_PROGRESS = 'leviathan:progress'
 export const IPC_ASKPASS = 'leviathan:askpass'
 export const IPC_UPDATE = 'leviathan:update'
 export const IPC_OPEN_FOLDER = 'leviathan:open-folder'
+export const IPC_TERMINAL_DATA = 'leviathan:terminal-data'
+export const IPC_TERMINAL_EXIT = 'leviathan:terminal-exit'
 
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string }

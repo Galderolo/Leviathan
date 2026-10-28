@@ -5,7 +5,8 @@ import {
   keysLabel,
   nextAfter,
   neighbour,
-  SHORTCUT_GROUPS
+  SHORTCUT_GROUPS,
+  terminalKey
 } from '../src/renderer/src/shortcuts'
 
 const press = (key: string, mods: Partial<Record<'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey', boolean>> = {}) => ({
@@ -101,5 +102,32 @@ describe('the list of shortcuts', () => {
   it('lists each shortcut once', () => {
     const all = SHORTCUT_GROUPS.flatMap((g) => g.items.map((i) => i.keys.join('+')))
     expect(new Set(all).size).toBe(all.length)
+  })
+})
+
+describe('the console at the bottom', () => {
+  // The key left of 1, whatever it types (` in English, º in Spanish), as in VS Code.
+  const backquote = (key: string) => ({ ...press(key, { ctrlKey: true }), code: 'Backquote' })
+
+  it('opens and closes with Ctrl and the key left of 1', () => {
+    expect(globalShortcut(backquote('`'))?.id).toBe('terminal')
+    expect(globalShortcut(backquote('º'))?.id).toBe('terminal')
+    expect(terminalKey(backquote('º'), false, false)).toBe('toggle')
+  })
+
+  it('copies what is selected and pastes, leaving Ctrl+C to the shell when nothing is selected', () => {
+    expect(terminalKey(ctrl('c'), false, true)).toBe('copy')
+    expect(terminalKey(ctrl('c'), false, false)).toBeNull()
+    expect(terminalKey(ctrl('C', true), false, true)).toBe('copy')
+    expect(terminalKey(ctrl('v'), false, false)).toBe('paste')
+    expect(terminalKey(ctrl('V', true), false, false)).toBe('paste')
+    expect(terminalKey(press('a'), false, true)).toBeNull()
+  })
+
+  it("copies and pastes with ⌘ on macOS, where Ctrl+C and Ctrl+V stay the shell's", () => {
+    expect(terminalKey(press('c', { metaKey: true }), true, true)).toBe('copy')
+    expect(terminalKey(press('v', { metaKey: true }), true, false)).toBe('paste')
+    expect(terminalKey(ctrl('c'), true, true)).toBeNull()
+    expect(terminalKey(ctrl('v'), true, false)).toBeNull()
   })
 })

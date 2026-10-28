@@ -32,6 +32,7 @@ import {
   checkoutRef,
   chooseRepoAccount,
   redo,
+  toggleTerminal,
   repoSettings,
   undo
 } from '../actions'
@@ -95,7 +96,7 @@ export function Toolbar({ path }: { path: string }) {
   const pullMode = useRepoSetting(path, 'pullMode')
   // Each button's shortcut in its tooltip, as this system writes the keys.
   const withKeys = (title: string, keys: string[]) =>
-    `${title} (${keysLabel(keys, window.leviathan.platform === 'darwin')})`
+    `${title} (${keysLabel(keys, window.leviathan.platform === 'darwin', { Backquote: t('keys.backquote') })})`
   const state = view?.state
   const head = state?.head
   const toPush = state ? pushCount(state) : 0
@@ -139,7 +140,7 @@ export function Toolbar({ path }: { path: string }) {
         ? [{ label: t('tools.openInEditor'), onClick: () => openInEditor(path, null) }]
         : []),
       { label: t('menu.openFolder'), onClick: () => openInFileManager(path) },
-      { label: t('toolbar.terminal'), onClick: () => openTerminal(path) },
+      { label: t('terminal.externalMenu'), onClick: () => openTerminal(path) },
       { separator: true },
       { label: t('tab.close'), onClick: () => closeTab(path) }
     ])
@@ -247,7 +248,13 @@ export function Toolbar({ path }: { path: string }) {
         />
         <ToolButton icon={ArchiveRestore} label={t('toolbar.pop')} onClick={() => void popStash(path)} />
         <div className="toolbar-sep" />
-        <ToolButton icon={SquareTerminal} label={t('toolbar.terminal')} onClick={() => openTerminal(path)} />
+        <ToolButton
+          icon={SquareTerminal}
+          label={t('toolbar.terminal')}
+          title={withKeys(t('toolbar.terminal'), ['Ctrl', 'Backquote'])}
+          onClick={() => toggleTerminal(path)}
+          onCaret={(e) => openMenuBelow(e, [{ label: t('terminal.external'), onClick: () => openTerminal(path) }])}
+        />
       </div>
 
       <div className="toolbar-right">

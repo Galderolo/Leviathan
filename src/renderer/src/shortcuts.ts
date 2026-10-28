@@ -3,6 +3,8 @@ import type { TKey } from './i18n'
 /** What a shortcut needs from a key press (a KeyboardEvent has it all). */
 export interface KeyInput {
   key: string
+  /** The key's place on the keyboard, whatever it types (`Backquote`: the one left of 1). */
+  code?: string
   ctrlKey: boolean
   metaKey: boolean
   shiftKey: boolean
@@ -27,6 +29,12 @@ export type GlobalShortcut =
   | 'refresh'
   | 'settings'
   | 'shortcuts'
+  | 'terminal'
+
+/** Ctrl and the key left of 1 (` in English, º in Spanish), on every system: the console at the bottom, as in VS Code. */
+function isTerminalToggle(e: KeyInput): boolean {
+  return e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.code === 'Backquote'
+}
 
 const WITH_MOD: Record<string, GlobalShortcut> = {
   t: 'newTab',
@@ -48,6 +56,7 @@ const WITH_MOD_SHIFT: Record<string, GlobalShortcut> = { f: 'fetch', s: 'stash',
  * last one, as in browsers); null for any other key.
  */
 export function globalShortcut(e: KeyInput): { id: GlobalShortcut; tab?: number } | null {
+  if (isTerminalToggle(e)) return { id: 'terminal' }
   const mod = e.ctrlKey || e.metaKey
   if (!mod && !e.shiftKey && !e.altKey) {
     if (e.key === 'F5') return { id: 'refresh' }
@@ -61,6 +70,22 @@ export function globalShortcut(e: KeyInput): { id: GlobalShortcut; tab?: number 
   if (e.shiftKey) return WITH_MOD_SHIFT[key] ? { id: WITH_MOD_SHIFT[key] } : null
   if (/^[1-9]$/.test(key)) return { id: 'goToTab', tab: Number(key) }
   return WITH_MOD[key] ? { id: WITH_MOD[key] } : null
+}
+
+export type TerminalKey = 'toggle' | 'copy' | 'paste'
+
+/**
+ * The keys the console at the bottom keeps from its shell: copy what is selected (Ctrl+C with nothing selected stays
+ * the shell's interrupt), paste, and the one that hides it. On macOS, ⌘C and ⌘V; Ctrl+C and Ctrl+V go to the shell.
+ */
+export function terminalKey(e: KeyInput, mac: boolean, selected: boolean): TerminalKey | null {
+  if (isTerminalToggle(e)) return 'toggle'
+  const key = e.key.toLowerCase()
+  const mod = mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
+  if (!mod || e.altKey) return null
+  if (key === 'c' && selected) return 'copy'
+  if (key === 'v') return 'paste'
+  return null
 }
 
 export type FileKey = 'previous' | 'next' | 'stageToggle' | 'discard'
@@ -144,6 +169,7 @@ export const SHORTCUT_GROUPS: { title: TKey; items: ShortcutHelp[] }[] = [
       { keys: ['Mod', '1…9'], label: 'keys.goToTab' },
       { keys: ['Mod', 'O'], label: 'keys.openRepo' },
       { keys: ['Mod', ','], label: 'keys.settings' },
+      { keys: ['Ctrl', 'Backquote'], label: 'keys.terminal' },
       { keys: ['F1'], label: 'keys.shortcuts' }
     ]
   }
@@ -151,6 +177,7 @@ export const SHORTCUT_GROUPS: { title: TKey; items: ShortcutHelp[] }[] = [
 
 const SYMBOLS: Record<string, [mac: string, other: string]> = {
   Mod: ['⌘', 'Ctrl'],
+  Ctrl: ['⌃', 'Ctrl'],
   Shift: ['⇧', 'Shift'],
   Alt: ['⌥', 'Alt'],
   Enter: ['↩', 'Enter'],
