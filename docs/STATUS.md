@@ -4,6 +4,8 @@ Snapshot of where Leviathan stands and what comes next, so a new working session
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
+**Name.** The app shows as *Git Leviathan* (after 0.19.0): Windows' Start search finds apps by the start of each word of their name, so both "git" and "lev" find it. Only what people see changed: the shortcuts (`nsis.shortcutName`, renamed in place on update), the uninstall entry, the installers' file names, the macOS display name (`CFBundleDisplayName`), the Linux menu entry, the window title and the app's texts. `productName`, `appId`, the executable, the install and user data folders (`%APPDATA%\Leviathan`), the `leviathan` command, the GitHub repository and the OAuth apps' names stay Leviathan, so updates land on the same install and keep settings and accounts (on macOS the token key lives in the keychain under the app's name).
+
 ## Released
 
 | Version | Date | Highlights |

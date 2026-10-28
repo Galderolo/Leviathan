@@ -42,7 +42,7 @@ export function WelcomeView({ tabId }: { tabId: string }) {
         <div className="welcome-brand">
           <img src="./leviathan.png" alt="" width={64} height={64} />
           <div>
-            <h1>Leviathan</h1>
+            <h1>Git Leviathan</h1>
             <p className="dim">{t('welcome.tagline')}</p>
           </div>
         </div>

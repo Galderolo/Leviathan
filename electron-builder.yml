@@ -1,3 +1,6 @@
+# The app shows as "Git Leviathan" (Windows' search finds it typing "git" or "lev"). Inside it stays Leviathan: the
+# app id, executable, install folder and user data folder keep updates in place and settings and accounts where they
+# were (macOS keeps the token key under the app's name).
 appId: org.leviathan.app
 productName: Leviathan
 copyright: Copyright © 2026 Leviathan contributors
@@ -26,19 +29,32 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  artifactName: ${productName}-${version}-setup.${ext}
+  # An update renames the old "Leviathan" shortcuts (the installer keeps shortcuts and follows a new name).
+  shortcutName: Git Leviathan
+  uninstallDisplayName: Git Leviathan ${version}
+  artifactName: GitLeviathan-${version}-setup.${ext}
 portable:
-  artifactName: ${productName}-${version}-portable.${ext}
+  artifactName: GitLeviathan-${version}-portable.${ext}
 mac:
   target:
     - dmg
     - zip
   category: public.app-category.developer-tools
+  artifactName: GitLeviathan-${version}-${arch}-mac.${ext}
+  extendInfo:
+    CFBundleDisplayName: Git Leviathan
+dmg:
+  artifactName: GitLeviathan-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage
     - deb
   category: Development
   maintainer: Leviathan contributors
+  desktop:
+    entry:
+      Name: Git Leviathan
+appImage:
+  artifactName: GitLeviathan-${version}.${ext}
 publish:
   provider: github

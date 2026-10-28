@@ -289,7 +289,7 @@ const en = {
   'toast.stashSetAside': 'Your changes are in a new stash ("Set aside to apply…"): apply it to get them back.',
   'toast.revealedExecutable': 'For safety this file is shown in its folder instead of being opened.',
 
-  'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Leviathan.',
+  'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Git Leviathan.',
   'error.detachedPush': 'HEAD is detached. Check out a branch before pushing.',
   'error.noRemote': 'This repository has no remotes. Add one from the REMOTE section.',
 
@@ -661,11 +661,11 @@ const en = {
   'update.unsupported': 'This copy cannot update itself; new versions are on the releases page.',
   'update.auto': 'Check for new versions automatically',
   'update.checkNow': 'Check now',
-  'update.available': 'Leviathan {version} is available',
+  'update.available': 'Git Leviathan {version} is available',
   'update.download': 'Download and install',
   'update.openPage': 'Download',
   'update.downloading': 'Downloading update… {percent}%',
-  'update.ready': 'Leviathan {version} is ready',
+  'update.ready': 'Git Leviathan {version} is ready',
   'update.restart': 'Restart to update',
   'update.latest': 'You have the latest version.',
   'update.failed': 'Could not check for updates: {error}',

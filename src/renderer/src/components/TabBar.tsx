@@ -33,7 +33,7 @@ export function TabBar() {
 
   return (
     <div className="tabbar">
-      <div className="brand" title="Leviathan">
+      <div className="brand" title="Git Leviathan">
         <img src="./leviathan.png" alt="" width={18} height={18} />
       </div>
       <div

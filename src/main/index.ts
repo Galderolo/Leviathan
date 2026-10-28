@@ -60,7 +60,7 @@ function createWindow(): void {
     minHeight: 560,
     show: false,
     backgroundColor: prefersDark() ? '#1b1e24' : '#ffffff',
-    title: 'Leviathan',
+    title: 'Git Leviathan',
     autoHideMenuBar: true,
     icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
