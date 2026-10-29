@@ -3,6 +3,7 @@ import { DIFF_TOOLS, EDITOR_PRESETS, terminalPresets } from '../../../shared/ext
 import { installCommandLine, saveSettings } from '../actions'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { terminalFontSize } from '../terminalTabs'
 import { copyText } from '../ui'
 
 const api = window.leviathan
@@ -77,6 +78,31 @@ export function CommandChoice(props: {
   )
 }
 
+/** The font size of the terminal inside the app, saved once typed. */
+function TerminalFontSize({ value }: { value: number }) {
+  const t = useT()
+  const [text, setText] = useState(String(value))
+  const save = () => {
+    const size = terminalFontSize(Number(text))
+    setText(String(size))
+    if (size !== value) void saveSettings({ terminalFontSize: size })
+  }
+  return (
+    <label className="field">
+      <span>{t('tools.terminalFontSize')}</span>
+      <input
+        type="number"
+        min={9}
+        max={24}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => e.key === 'Enter' && save()}
+      />
+    </label>
+  )
+}
+
 /** Editor, terminal, diff/merge tool and the `leviathan` command; each change is saved at once. */
 export function ExternalToolsSettings() {
   const t = useT()
@@ -109,6 +135,7 @@ export function ExternalToolsSettings() {
         hint={t('tools.terminalHint')}
         save={(terminal) => void saveSettings({ terminal: terminal ?? '' })}
       />
+      <TerminalFontSize value={settings.terminalFontSize} />
       <label className="field">
         <span>{t('tools.diffTool')}</span>
         <select value={settings.diffTool} onChange={(e) => void saveSettings({ diffTool: e.target.value })}>

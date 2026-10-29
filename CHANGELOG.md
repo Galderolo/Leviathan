@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Several consoles in the terminal**: the + in its header opens another console of the repository in a tab of its own, each with its shell and what it ran; the × on a tab closes it. URLs in the output (the one `git push` prints to open a pull request, for example) open in the browser with Ctrl+click (⌘+click on macOS). The terminal's font size is in Settings → External tools.
 - **Undo a discard, and stashes**: discarded changes (whole files, new files, a hunk, or everything) come back with Undo (Ctrl+Z), exactly as they were, and Redo discards them again. Saving, applying, popping and deleting a stash can be undone too. Only files over 50 MB are not kept for it (a game's assets can be gigabytes): then the app says that action cannot be undone. Undo refuses, as ever, when a file was edited since.
 
 ## [0.20.0] - 2026-10-28

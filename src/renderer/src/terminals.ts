@@ -2,15 +2,18 @@ import type { FitAddon } from '@xterm/addon-fit'
 import type { ITheme, Terminal } from '@xterm/xterm'
 import { t } from './i18n'
 import { terminalKey } from './shortcuts'
+import { getRepo, patchRepo, useStore } from './store'
+import { opensLink, terminalFontSize } from './terminalTabs'
 import { toast } from './ui'
 
 const api = window.leviathan
 
 /**
- * A repository's console. It lives on while its panel is hidden or another tab shows: what it ran and printed is there
- * when it shows again.
+ * One of a repository's consoles. It lives on while its panel is hidden, another of its tabs shows or another
+ * repository does: what it ran and printed is there when it shows again.
  */
 interface Session {
+  key: number
   repo: string
   term: Terminal
   fit: FitAddon
@@ -22,8 +25,10 @@ interface Session {
   ended: boolean
 }
 
-const sessions = new Map<string, Session>()
+/** By console key (the tab's), not the main process's id: a console started again keeps its tab. */
+const sessions = new Map<number, Session>()
 const byId = new Map<number, Session>()
+let lastKey = 0
 /** Output of a console whose id the window does not know yet (it comes as the start answers). */
 const early = new Map<number, string>()
 let listening = false
@@ -102,9 +107,10 @@ function theme(): ITheme {
 async function start(session: Session): Promise<void> {
   session.ended = false
   try {
-    const id = await api.terminalStart(session.repo, session.term.cols, session.term.rows)
+    const { id, shell } = await api.terminalStart(session.repo, session.term.cols, session.term.rows)
     session.id = id
     byId.set(id, session)
+    patchRepo(session.repo, (r) => ({ consoles: r.consoles.map((c) => (c.key === session.key ? { ...c, shell } : c)) }))
     const before = early.get(id)
     early.delete(id)
     if (before) session.term.write(before)
@@ -114,12 +120,16 @@ async function start(session: Session): Promise<void> {
   }
 }
 
-async function create(repo: string): Promise<Session> {
-  const [{ Terminal }, { FitAddon }] = await Promise.all([import('@xterm/xterm'), import('@xterm/addon-fit')])
+async function create(repo: string, key: number): Promise<Session> {
+  const [{ Terminal }, { FitAddon }, { WebLinksAddon }] = await Promise.all([
+    import('@xterm/xterm'),
+    import('@xterm/addon-fit'),
+    import('@xterm/addon-web-links')
+  ])
   const css = getComputedStyle(document.documentElement)
   const term = new Terminal({
     fontFamily: css.getPropertyValue('--mono').trim() || 'monospace',
-    fontSize: 13,
+    fontSize: terminalFontSize(useStore.getState().settings.terminalFontSize),
     cursorBlink: true,
     scrollback: 5000,
     theme: theme()
@@ -128,8 +138,20 @@ async function create(repo: string): Promise<Session> {
   term.loadAddon(fit)
   const host = document.createElement('div')
   host.className = 'terminal-host'
-  const session: Session = { repo, term, fit, host, opened: false, id: null, ended: false }
+  const session: Session = { key, repo, term, fit, host, opened: false, id: null, ended: false }
   const mac = api.platform === 'darwin'
+  // URLs in the output (the one `git push` prints to open a pull request): Ctrl+click opens them in the browser.
+  term.loadAddon(
+    new WebLinksAddon(
+      (event, uri) => {
+        if (opensLink(event, mac)) void api.openExternal(uri).catch(() => {})
+      },
+      {
+        hover: () => (host.title = t(mac ? 'terminal.followLinkMac' : 'terminal.followLink')),
+        leave: () => (host.title = '')
+      }
+    )
+  )
   term.attachCustomKeyEventHandler((e) => {
     if (e.type !== 'keydown') return true
     const key = terminalKey(e, mac, term.hasSelection())
@@ -161,23 +183,29 @@ function fitTo(session: Session): void {
   if (session.host.isConnected && session.host.clientHeight > 0) session.fit.fit()
 }
 
+/** Opens a new console for the repository, in a tab of its own that shows at once. */
+export function addConsole(repo: string): void {
+  const key = ++lastKey
+  patchRepo(repo, (r) => ({ consoles: [...r.consoles, { key, shell: '' }], activeConsole: key, terminalOpen: true }))
+}
+
 /**
- * Shows the repository's console in `container`, starting it the first time. Returns what hides it again (the
+ * Shows console `key` of the repository in `container`, starting it the first time. Returns what hides it again (the
  * console goes on).
  */
-export function showTerminal(repo: string, container: HTMLElement): () => void {
+export function showConsole(repo: string, key: number, container: HTMLElement): () => void {
   listen()
   let gone = false
   let observer: ResizeObserver | null = null
   let shown: Session | null = null
-  const pending = sessions.get(repo) ?? null
+  const pending = sessions.get(key) ?? null
   void (async () => {
     let session = pending
     if (!session) {
-      session = await create(repo)
-      // Two panels for one repository at once (a quick toggle): the first one made is kept.
-      session = sessions.get(repo) ?? session
-      sessions.set(repo, session)
+      session = await create(repo, key)
+      // Shown twice at once (a quick toggle): the first one made is kept.
+      session = sessions.get(key) ?? session
+      sessions.set(key, session)
     }
     if (gone) return
     shown = session
@@ -199,9 +227,9 @@ export function showTerminal(repo: string, container: HTMLElement): () => void {
   }
 }
 
-/** Starts the repository's console again: what runs in it now is ended. */
-export function restartTerminal(repo: string): void {
-  const session = sessions.get(repo)
+/** Starts console `key` again: what runs in it now is ended. */
+export function restartConsole(key: number): void {
+  const session = sessions.get(key)
   if (!session) return
   if (session.id !== null) {
     // Its end is not news: a new one starts right away.
@@ -214,11 +242,8 @@ export function restartTerminal(repo: string): void {
   session.term.focus()
 }
 
-/** The repository's tab closed: its console ends, and is forgotten. */
-export function closeTerminal(repo: string): void {
-  const session = sessions.get(repo)
-  if (!session) return
-  sessions.delete(repo)
+function endSession(session: Session): void {
+  sessions.delete(session.key)
   if (session.id !== null) {
     byId.delete(session.id)
     void api.terminalStop(session.id)
@@ -227,7 +252,34 @@ export function closeTerminal(repo: string): void {
   session.host.remove()
 }
 
+/** Closes console `key` (what runs in it ends): the next tab shows, and the panel hides with the last one. */
+export function closeConsole(repo: string, key: number): void {
+  const session = sessions.get(key)
+  if (session) endSession(session)
+  const consoles = getRepo(repo)?.consoles ?? []
+  const at = consoles.findIndex((c) => c.key === key)
+  const left = consoles.filter((c) => c.key !== key)
+  patchRepo(repo, (r) => ({
+    consoles: left,
+    activeConsole: r.activeConsole === key ? (left[Math.min(at, left.length - 1)]?.key ?? null) : r.activeConsole,
+    terminalOpen: left.length > 0 && r.terminalOpen
+  }))
+}
+
+/** The repository's tab closed: its consoles end, and are forgotten. */
+export function closeTerminal(repo: string): void {
+  for (const session of [...sessions.values()]) if (session.repo === repo) endSession(session)
+}
+
 /** The app's theme changed: so do the consoles' colours. */
 export function retheme(): void {
   for (const session of sessions.values()) session.term.options.theme = theme()
+}
+
+/** The font size in Settings changed: the consoles take it, and fit their panel again. */
+export function setTerminalFontSize(size: number): void {
+  for (const session of sessions.values()) {
+    session.term.options.fontSize = terminalFontSize(size)
+    fitTo(session)
+  }
 }

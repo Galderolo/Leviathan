@@ -951,6 +951,60 @@ test('highlights the code of a diff', async () => {
   await expect(page.locator('.diff-line.add mark.word-change').first()).toContainText('2')
 })
 
+test('keeps several consoles per repository, opens links with Ctrl+click and takes its font size from Settings', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+  // Links go to the browser through the main process: recorded instead.
+  await app!.evaluate(({ shell }) => {
+    const opened: string[] = []
+    ;(globalThis as Record<string, unknown>).__opened = opened
+    shell.openExternal = async (url: string) => void opened.push(url)
+  })
+  const opened = () => app!.evaluate(() => (globalThis as Record<string, unknown>).__opened as string[])
+
+  await toolbarButton('Terminal').click()
+  const panel = page.locator('.terminal-panel')
+  const tabs = panel.locator('.terminal-tab')
+  const screen = panel.locator('.xterm-rows')
+  await expect(tabs).toHaveCount(1)
+  await expect(screen).toContainText('game', { timeout: 20_000 })
+  await page.keyboard.type('echo first-console')
+  await page.keyboard.press('Enter')
+  await expect(screen).toContainText('first-console')
+
+  await panel.getByTitle('New console').click()
+  await expect(tabs).toHaveCount(2)
+  await expect(screen).not.toContainText('first-console')
+  await expect(screen).toContainText('game', { timeout: 20_000 })
+  await page.keyboard.type('echo https://example.com/pull/7')
+  await page.keyboard.press('Enter')
+  // The output's line (the last one with it): pointed at, it becomes a link; Ctrl+click opens it.
+  const link = screen.locator('span', { hasText: 'https://example.com/pull/7' }).last()
+  await expect(link).toBeVisible()
+  const at = (await link.boundingBox())!
+  await page.mouse.move(at.x + 8, at.y + at.height / 2)
+  await expect(panel.locator('.xterm-cursor-pointer')).toHaveCount(1)
+  await page.keyboard.down(process.platform === 'darwin' ? 'Meta' : 'Control')
+  await page.mouse.click(at.x + 8, at.y + at.height / 2)
+  await page.keyboard.up(process.platform === 'darwin' ? 'Meta' : 'Control')
+  await expect.poll(opened).toEqual(['https://example.com/pull/7'])
+
+  // Each console keeps its own; closing one leaves the other.
+  await tabs.first().click()
+  await expect(screen).toContainText('first-console')
+  await tabs.nth(1).locator('.terminal-tab-close').click()
+  await expect(tabs).toHaveCount(1)
+  await expect(screen).toContainText('first-console')
+
+  await page.locator('.toolbar-right .icon-btn').click()
+  await page.locator('.settings-nav-item', { hasText: 'External tools' }).click()
+  const size = page.locator('.settings-body:visible').getByLabel('Terminal font size')
+  await size.fill('18')
+  await size.press('Enter')
+  await page.keyboard.press('Escape')
+  await expect.poll(() => screen.evaluate((el) => getComputedStyle(el).fontSize)).toBe('18px')
+})
+
 test('marks beside the scrollbar where the changes of a whole file are, and goes there on a click', async () => {
   const lines = Array.from({ length: 400 }, (_, i) => `line ${i + 1}`)
   const repo = box.repo('game', { 'f.txt': lines.join('\n') + '\n' })
