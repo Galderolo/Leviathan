@@ -295,6 +295,8 @@ export interface Settings {
   diffTool: string
   /** Command that opens a terminal, started in the repository's folder ({folder}); empty: the system's. */
   terminal: string
+  /** Font size of the terminal inside the app, in pixels. */
+  terminalFontSize: number
   /** Repository path -> id of the account it uses. */
   repoAccounts: Record<string, string>
   /** Repository path -> the settings it has values of its own for; the general ones for the rest. */
@@ -324,6 +326,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editor: '',
   diffTool: '',
   terminal: '',
+  terminalFontSize: 13,
   repoAccounts: {},
   repoSettings: {},
   recentIdentities: [],

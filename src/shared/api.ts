@@ -288,8 +288,8 @@ export interface LeviathanInvokeApi {
   /** Initializes and checks out `paths` (or every submodule) at the recorded commits, recursively. */
   updateSubmodules(repo: string, paths: string[] | null): Promise<void>
 
-  /** Starts a console in the repository's folder, with the shell for this system; its id. */
-  terminalStart(repo: string, cols: number, rows: number): Promise<number>
+  /** Starts a console in the repository's folder, with the shell for this system: its id, and that shell's program. */
+  terminalStart(repo: string, cols: number, rows: number): Promise<{ id: number; shell: string }>
   /** Sends what was typed (or pasted) to a console. */
   terminalWrite(id: number, data: string): Promise<void>
   terminalResize(id: number, cols: number, rows: number): Promise<void>

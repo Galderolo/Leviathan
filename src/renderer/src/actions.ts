@@ -36,7 +36,7 @@ import { amendsPushedCommit, pushAfterCommitTarget, remotesToChooseFrom, pushNee
 import { stopReason, stoppedOperation } from './operationStop'
 import { viewAfterCheckout, wipShown } from './checkoutView'
 import { moveTab } from './tabOrder'
-import { closeTerminal } from './terminals'
+import { addConsole, closeTerminal } from './terminals'
 import { inFlight } from './inFlight'
 import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
 import { resolveLang, t } from './i18n'
@@ -188,8 +188,11 @@ export function reorderTab(id: string, gap: number): void {
   persistTabs()
 }
 
-/** Shows or hides the terminal at the bottom of a repository (its console goes on while hidden). */
+/** Shows or hides the terminal at the bottom of a repository (its consoles go on while hidden); the first time, opens one. */
 export function toggleTerminal(path: string): void {
+  const view = getRepo(path)
+  if (!view) return
+  if (!view.terminalOpen && !view.consoles.length) return addConsole(path)
   patchRepo(path, (r) => ({ terminalOpen: !r.terminalOpen }))
 }
 

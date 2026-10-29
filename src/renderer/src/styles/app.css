@@ -281,6 +281,50 @@ a:hover {
   text-transform: uppercase;
 }
 
+.terminal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.terminal-tab {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 4px 0 8px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.terminal-tab:hover {
+  background: var(--row-hover);
+}
+
+.terminal-tab.active {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.terminal-tab-close {
+  display: flex;
+  padding: 2px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.terminal-tab-close:hover {
+  background: var(--hover-strong);
+}
+
 .terminal-actions {
   display: flex;
   gap: 2px;

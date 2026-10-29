@@ -164,7 +164,7 @@ const handlers: LeviathanInvokeApi = {
       throw new Error(`Folder does not exist: ${path}`)
     }
     const shell = await integratedShell(loadSettings().terminal)
-    return terminals.start(shell, path, cells(cols, 80), cells(rows, 24))
+    return { id: await terminals.start(shell, path, cells(cols, 80), cells(rows, 24)), shell: shell.file }
   },
   terminalWrite: async (id, data) => {
     if (typeof data === 'string') terminals.write(Number(id), data)
