@@ -299,6 +299,21 @@ const en = {
   'dlg.stashClashConfirm': 'Stash mine and apply',
   'stash.setAside': 'Set aside to apply: {name}',
   'toast.stashSetAside': 'Your changes are in a new stash ("Set aside to apply…"): apply it to get them back.',
+  'toast.stashConflicts':
+    'The stash clashes with the files here: they are left with conflicts to resolve. The stash is kept, just in case.',
+  'dlg.checkoutBlockedTitle': 'Uncommitted changes in the way',
+  'dlg.checkoutBlocked':
+    'Checking out {name} would overwrite the uncommitted changes of these {count} files, so git did not do it (nothing was changed):',
+  'dlg.checkoutBlocked_one':
+    'Checking out {name} would overwrite the uncommitted changes of this file, so git did not do it (nothing was changed):',
+  'dlg.checkoutBlockedStash': '• Stash: your changes are kept in a stash, to apply whenever you want.',
+  'dlg.checkoutBlockedCarry':
+    '• Take them along: stashed, then applied on {name}. Where they clash, the files are left with conflicts to resolve, and the stash is kept.',
+  'dlg.checkoutBlockedDiscard':
+    '• Discard: these files go back to how the last commit has them. Undo brings them back.',
+  'dlg.checkoutStash': 'Stash and check out',
+  'dlg.checkoutCarry': 'Take them along',
+  'dlg.checkoutDiscard': 'Discard and check out',
   'toast.revealedExecutable': 'For safety this file is shown in its folder instead of being opened.',
 
   'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Git Leviathan.',

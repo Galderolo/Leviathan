@@ -134,7 +134,8 @@ export function Dialog() {
   }, [dialog])
 
   if (!dialog) return null
-  const submit = () => dialog.resolve(values)
+  const primary = dialog.choices && (dialog.choices.find((c) => c.primary) ?? dialog.choices[0])
+  const submit = (choice = primary?.key) => dialog.resolve(choice ? { ...values, choice } : values)
   const cancel = () => dialog.resolve(null)
   // Added to the latest values, not to those of the render the handler came from: quick typing loses nothing.
   const setField = (key: string, value: string) => setValues((v) => ({ ...v, [key]: value }))
@@ -142,7 +143,7 @@ export function Dialog() {
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
       <form
-        className="modal"
+        className={cx('modal', dialog.choices && 'choice-modal')}
         onSubmit={(e) => {
           e.preventDefault()
           submit()
@@ -154,6 +155,14 @@ export function Dialog() {
       >
         <div className="modal-title">{dialog.title}</div>
         {dialog.message && <p className="modal-message">{dialog.message}</p>}
+        {dialog.list && (
+          <ul className="modal-list">
+            {dialog.list.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        )}
+        {dialog.note && <p className="modal-message">{dialog.note}</p>}
         {dialog.fields.map((field, i) => (
           <label key={field.key} className="field">
             <span>{field.label}</span>
@@ -193,9 +202,28 @@ export function Dialog() {
           <button type="button" className="btn" onClick={cancel}>
             {t('common.cancel')}
           </button>
-          <button ref={confirmBtn} type="submit" className={cx('btn', dialog.danger ? 'btn-danger' : 'btn-primary')}>
-            {dialog.confirmText}
-          </button>
+          {dialog.choices ? (
+            dialog.choices.map((choice) =>
+              choice === primary ? (
+                <button key={choice.key} ref={confirmBtn} type="submit" className="btn btn-primary">
+                  {choice.label}
+                </button>
+              ) : (
+                <button
+                  key={choice.key}
+                  type="button"
+                  className={cx('btn', choice.danger && 'btn-danger')}
+                  onClick={() => submit(choice.key)}
+                >
+                  {choice.label}
+                </button>
+              )
+            )
+          ) : (
+            <button ref={confirmBtn} type="submit" className={cx('btn', dialog.danger ? 'btn-danger' : 'btn-primary')}>
+              {dialog.confirmText}
+            </button>
+          )}
         </div>
       </form>
     </div>

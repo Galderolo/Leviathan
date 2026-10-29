@@ -17,6 +17,7 @@ import type {
   Stash,
   Submodule
 } from '../../shared/types'
+import type { CheckoutBlock } from '../../shared/checkout'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
 import { canInstall } from '../../shared/lfsInstall'
 import type { ReleaseNote } from '../../shared/releaseNotes'
@@ -53,7 +54,7 @@ import {
   type RepoView,
   type Tab
 } from './store'
-import { confirmDialog, copyText, errorMessage, formDialog, promptText, toast } from './ui'
+import { choiceDialog, confirmDialog, copyText, errorMessage, formDialog, promptText, toast } from './ui'
 import { basename } from './utils'
 
 const api = window.leviathan
@@ -517,20 +518,15 @@ export async function checkoutPullRequest(path: string, pr: PullRequest): Promis
   const info = getRepo(path)?.pullRequests
   if (!info?.provider || !info.remote) return false
   const { provider, remote } = info
-  const ok = await runOp(
-    path,
-    () =>
-      api.checkoutPullRequest(
-        path,
-        remote,
-        { number: pr.number, sourceBranch: pr.sourceBranch, fromFork: pr.fromFork },
-        provider
-      ),
-    // It fetches the pull request's branch first.
-    { busy: 'fetch', undo: { label: t('undo.checkout', { name: '#' + pr.number }) } }
-  )
-  if (ok) showAfterCheckout(path)
-  return ok
+  const checkout = () =>
+    api.checkoutPullRequest(
+      path,
+      remote,
+      { number: pr.number, sourceBranch: pr.sourceBranch, fromFork: pr.fromFork },
+      provider
+    )
+  // It fetches the pull request's branch first.
+  return switchTo(path, '#' + pr.number, checkout, 'fetch')
 }
 
 /**
@@ -1005,8 +1001,8 @@ async function runOp(
     undo?: { label: string; mode?: RepoChange['mode']; paths?: string[] }
     /** Shown instead of git's message when the command fails. */
     errorText?: string
-    /** Failures the caller handles itself (no error toast for them). */
-    quiet?: (err: unknown) => boolean
+    /** Failures the caller handles itself (no error toast for them); `after` is the state they left. */
+    quiet?: (err: unknown, after: RepoState | null) => boolean
   } = {}
 ): Promise<boolean> {
   if (opts.busy) patchRepo(path, { busy: opts.busy, progress: null })
@@ -1021,9 +1017,10 @@ async function runOp(
   } catch (err) {
     // A merge, rebase, cherry-pick or revert that stopped for conflicts has not failed: the banner takes over
     // (git's own message mentions commands the app does not offer).
-    const stopped = stoppedOperation(before, await api.getState(path).catch(() => null))
+    const after = await api.getState(path).catch(() => null)
+    const stopped = stoppedOperation(before, after)
     if (stopped?.conflicts) toast('info', t('toast.stoppedForConflicts'))
-    else if (opts.quiet?.(err)) {
+    else if (opts.quiet?.(err, after)) {
       // the caller says what happened
     } else if (stopped) {
       // Stopped for something else: git's reason, without its hints about commands the app does not offer.
@@ -1233,9 +1230,9 @@ export async function stashChanges(path: string, askMessage = false): Promise<vo
     if (!values) return
     message = values.message || null
   }
-  const status = view.state?.status
-  const paths = [...new Set([...(status?.staged ?? []), ...(status?.unstaged ?? [])].flatMap(changePaths))]
-  await runOp(path, () => api.stashSave(path, message), { undo: { label: t('undo.stash'), paths } })
+  await runOp(path, () => api.stashSave(path, message), {
+    undo: { label: t('undo.stash'), paths: allChangePaths(path) }
+  })
 }
 
 /** Stashes only these files (both their staged and unstaged changes; a rename takes its old path along). */
@@ -1264,7 +1261,8 @@ export function applyStash(path: string, stash: Stash): Promise<boolean> {
  * instead of git's file-by-file list.
  *
  * When files it changes have uncommitted changes, git refuses to apply it at all: the user can set those changes
- * aside in a stash of their own first.
+ * aside in a stash of their own first. Where it clashes with the files, git leaves them with conflicts to resolve
+ * and keeps the stash: that is said instead of git's report.
  */
 async function restoreStash(path: string, stash: Stash, pop: boolean): Promise<boolean> {
   const inTheWay = await api.stashTrackedClashes(path, stash.index, stash.hash).catch(() => [])
@@ -1291,10 +1289,18 @@ async function restoreStash(path: string, stash: Stash, pop: boolean): Promise<b
   const restore = pop ? api.stashPop : api.stashApply
   const paths = await api.stashPaths(path, stash.index, stash.hash).catch(() => [])
   const label = t(pop ? 'undo.stashPop' : 'undo.stashApply', { name: stash.message })
-  return runOp(path, () => restore(path, stash.index, stash.hash), {
+  const hadConflicts = !!getRepo(path)?.state?.status.conflicted.length
+  let clashed = false
+  const ok = await runOp(path, () => restore(path, stash.index, stash.hash), {
     errorText: clashes.length ? t('error.stashUntrackedExist', { count: clashes.length }) : undefined,
+    quiet: (_, after) => (clashed = !hadConflicts && !!after?.status.conflicted.length),
     undo: { label, paths }
   })
+  if (clashed) {
+    toast('info', t('toast.stashConflicts'))
+    selectWip(path)
+  }
+  return ok
 }
 
 export async function dropStash(path: string, stash: Stash): Promise<void> {
@@ -1318,32 +1324,110 @@ function showAfterCheckout(path: string): void {
   else if (next) void selectCommit(path, next.hash, true)
 }
 
-export async function checkoutRef(path: string, ref: GitRef): Promise<boolean> {
-  const undo = { label: t('undo.checkout', { name: ref.name }) }
+/** What to do with uncommitted changes in the way of a checkout. */
+type CheckoutWay = 'stash' | 'carry' | 'discard'
+
+/**
+ * Checks out with `checkout`. When uncommitted changes are in its way (git changed nothing), asks what to do with
+ * them: put them in a stash, take them along (stashed, then popped after the checkout), or put the files in the way
+ * back as the last commit has them. Then it checks out again, recorded with that as one change to undo.
+ */
+async function switchTo(
+  path: string,
+  name: string,
+  checkout: () => Promise<CheckoutBlock | null>,
+  busy?: BusyKind
+): Promise<boolean> {
+  const label = t('undo.checkout', { name })
+  const first: { block: CheckoutBlock | null } = { block: null }
+  const ran = await runOp(path, async () => void (first.block = await checkout()), { busy, undo: { label } })
+  const block = first.block
+  if (!ran) return false
+  if (block) {
+    const way = await askCheckoutWay(name, block)
+    if (!way) return false
+    const stashes = new Set(getRepo(path)?.state?.stashes.map((s) => s.hash))
+    const aside =
+      way === 'discard'
+        ? {
+            paths: [...block.changed, ...block.untracked],
+            run: () => api.restoreFromHead(path, block.changed, block.untracked)
+          }
+        : { paths: allChangePaths(path), run: () => api.stashSave(path, null) }
+    const done = await runOp(
+      path,
+      async () => {
+        // A failed checkout is thrown once recorded: what was stashed or discarded stays undoable.
+        const failure = await recordUndo(
+          path,
+          label,
+          'keep',
+          async () => {
+            await aside.run()
+            try {
+              const still = await checkout()
+              return still ? new Error(still.message) : null
+            } catch (err) {
+              return err
+            }
+          },
+          aside.paths
+        )
+        if (failure) throw failure
+      },
+      { busy }
+    )
+    if (!done) return false
+    if (way === 'carry') {
+      const stash = getRepo(path)?.state?.stashes.find((s) => !stashes.has(s.hash))
+      if (stash) await restoreStash(path, stash, true)
+    }
+  }
+  showAfterCheckout(path)
+  return true
+}
+
+/** The choice between stashing, taking along or discarding the changes in the way of checking out `name`. */
+async function askCheckoutWay(name: string, block: CheckoutBlock): Promise<CheckoutWay | null> {
+  const list = [...block.changed, ...block.untracked, ...block.folders.map((f) => f + '/')]
+  // The untracked files of a folder are not copied to undo a discard: only stashing is offered for them.
+  const discard = !block.folders.length
+  const choice = await choiceDialog({
+    title: t('dlg.checkoutBlockedTitle'),
+    message: t('dlg.checkoutBlocked', { name, count: list.length }),
+    list,
+    note: [
+      t('dlg.checkoutBlockedStash'),
+      t('dlg.checkoutBlockedCarry', { name }),
+      ...(discard ? [t('dlg.checkoutBlockedDiscard')] : [])
+    ].join('\n'),
+    choices: [
+      ...(discard ? [{ key: 'discard', label: t('dlg.checkoutDiscard'), danger: true }] : []),
+      { key: 'carry', label: t('dlg.checkoutCarry') },
+      { key: 'stash', label: t('dlg.checkoutStash'), primary: true }
+    ]
+  })
+  return choice as CheckoutWay | null
+}
+
+export function checkoutRef(path: string, ref: GitRef): Promise<boolean> {
   const checkout =
     ref.type === 'head'
       ? () => api.checkout(path, ref.name)
       : ref.type === 'remote'
         ? () => api.checkoutRemote(path, ref.name)
         : () => api.checkoutDetached(path, ref.name)
-  const ok = await runOp(path, checkout, { undo })
-  if (ok) showAfterCheckout(path)
-  return ok
+  return switchTo(path, ref.name, checkout)
 }
 
-export async function checkoutCommit(path: string, hash: string): Promise<boolean> {
-  const ok = await runOp(path, () => api.checkoutDetached(path, hash), {
-    undo: { label: t('undo.checkout', { name: hash.slice(0, 7) }) }
-  })
-  if (ok) showAfterCheckout(path)
-  return ok
+export function checkoutCommit(path: string, hash: string): Promise<boolean> {
+  return switchTo(path, hash.slice(0, 7), () => api.checkoutDetached(path, hash))
 }
 
 export function mergeRef(path: string, name: string): Promise<boolean> {
   return runOp(path, () => api.merge(path, name), { undo: { label: t('undo.merge', { name }) } })
 }
 
-/** Checks out the local branch `into` and merges `from` into it. */
 /** Checks out `into` and merges `from` into it, once the user agreed to leave the current branch. */
 export async function checkoutAndMerge(path: string, into: string, from: string): Promise<boolean> {
   const state = getRepo(path)?.state
@@ -1359,7 +1443,8 @@ export async function checkoutAndMerge(path: string, into: string, from: string)
   return runOp(
     path,
     async () => {
-      await api.checkout(path, into)
+      const block = await api.checkout(path, into)
+      if (block) throw new Error(block.message)
       await api.merge(path, from)
     },
     { undo: { label: t('undo.merge', { name: from }) } }
@@ -1642,16 +1727,22 @@ export async function discardAll(path: string): Promise<void> {
     danger: true
   })
   if (!ok) return
-  const status = getRepo(path)?.state?.status
-  const paths = [...new Set([...(status?.staged ?? []), ...(status?.unstaged ?? [])].flatMap(changePaths))]
   // In the middle of a merge or rebase, discarding everything ends it: that is not brought back.
-  const undo = getRepo(path)?.state?.operation ? undefined : { label: t('undo.discardAll'), paths }
+  const undo = getRepo(path)?.state?.operation
+    ? undefined
+    : { label: t('undo.discardAll'), paths: allChangePaths(path) }
   await runOp(path, () => api.discardAll(path), { log: false, undo })
 }
 
 /** The paths a change touches: a rename's old one too. */
 function changePaths(file: FileChange): string[] {
   return file.origPath ? [file.origPath, file.path] : [file.path]
+}
+
+/** The paths of all the uncommitted changes (staged or not). */
+function allChangePaths(path: string): string[] {
+  const status = getRepo(path)?.state?.status
+  return [...new Set([...(status?.staged ?? []), ...(status?.unstaged ?? [])].flatMap(changePaths))]
 }
 
 export function ignorePattern(path: string, pattern: string): Promise<boolean> {

@@ -167,6 +167,42 @@ test('creates a branch and switches between branches', async () => {
   await expect.poll(() => box.branch(repo)).toBe('main')
 })
 
+test('asks what to do with uncommitted changes in the way of a checkout, and undoes it in one step', async () => {
+  const repo = box.repo('game', { 'Shared Data.asset': 'base\n', 'b.txt': 'b\n' })
+  box.git(repo, 'checkout', '-qb', 'rising')
+  box.write(repo, { 'Shared Data.asset': 'rising\n' })
+  box.git(repo, 'commit', '-qam', 'on rising')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'Shared Data.asset': 'mine\n', 'b.txt': 'mine too\n' })
+  await open(repo)
+  const rising = page.locator('.left-panel').getByText('rising', { exact: true })
+  const modal = page.locator('.modal')
+
+  await rising.dblclick()
+  await expect(modal).toContainText('Checking out rising would overwrite the uncommitted changes of this file')
+  await expect(modal.locator('.modal-list')).toHaveText('Shared Data.asset')
+  await modal.getByRole('button', { name: 'Stash and check out' }).click()
+  await expect.poll(() => box.branch(repo)).toBe('rising')
+  expect(box.read(repo, 'Shared Data.asset')).toBe('rising\n')
+  expect(box.git(repo, 'stash', 'list').split('\n').filter(Boolean)).toHaveLength(1)
+
+  // One step back: on main with the changes again, and no stash.
+  await toolbarButton('Undo').click()
+  await expect.poll(() => box.branch(repo)).toBe('main')
+  await expect.poll(() => box.git(repo, 'stash', 'list')).toBe('')
+  expect(box.read(repo, 'Shared Data.asset')).toBe('mine\n')
+  expect(box.read(repo, 'b.txt')).toBe('mine too\n')
+
+  // Taken along: the change that clashes with rising is left as a conflict, and the stash is kept.
+  await rising.dblclick()
+  await modal.getByRole('button', { name: 'Take them along' }).click()
+  await expect(page.locator('.toast', { hasText: 'The stash clashes' })).toBeVisible()
+  expect(box.branch(repo)).toBe('rising')
+  expect(box.read(repo, 'b.txt')).toBe('mine too\n')
+  expect(box.git(repo, 'diff', '--name-only', '--diff-filter=U')).toBe('Shared Data.asset')
+  expect(box.git(repo, 'stash', 'list').split('\n').filter(Boolean)).toHaveLength(1)
+})
+
 test('stashes the changes and pops them back', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   box.write(repo, { 'a.txt': 'mine\n', 'new.txt': 'new\n' })

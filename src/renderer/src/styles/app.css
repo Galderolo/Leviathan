@@ -2327,9 +2327,28 @@ img.avatar {
 
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+.modal.choice-modal {
+  width: 600px;
+}
+
+.modal-list {
+  max-height: 160px;
+  margin: 0;
+  padding: 6px 10px;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-all;
 }
 
 .side-note {

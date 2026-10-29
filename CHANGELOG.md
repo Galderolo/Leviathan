@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Checkout with uncommitted changes in the way**: when changes would be overwritten by switching branch (or checking out a commit or a pull request), the app names the files and offers to stash them and check out, take them along (stashed and applied on the other branch; where they clash, the files are left with conflicts and the stash is kept), or discard those files and check out, instead of git's error. Undo goes back to where you were, with the changes, in one step.
 - **Interactive rebase with merges**: a range of commits with merges among them no longer refuses the interactive rebase. The merges are kept as they are (git's own `--rebase-merges` plan), shown as fixed rows, with a dashed line where a merged branch starts; each commit can still be reworded, edited, squashed, fixed up or dropped. Commits are not moved across branches there (without merges, reordering is as before).
 - **Several consoles in the terminal**: the + in its header opens another console of the repository in a tab of its own, each with its shell and what it ran; the × on a tab closes it. URLs in the output (the one `git push` prints to open a pull request, for example) open in the browser with Ctrl+click (⌘+click on macOS). The terminal's font size is in Settings → External tools.
 - **Undoing a hard reset brings back the changes it dropped**, staged and not, along with the branch.
@@ -13,6 +14,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- **A stash that clashes with the files when applied** says that they are left with conflicts to resolve and that the stash is kept, instead of git's report.
 - **Undo no longer takes in what a background fetch brought**: tags fetched while a commit (or any action) ran were part of it, and undoing it deleted them. An action now waits for a fetch under way, and none starts until it is done.
 - **Installing git-lfs**: its progress shows whole lines; where the app cannot install it, the LFS section offers to copy the command (also after the question was turned down); accepting it while the repository is busy says so instead of taking over; closing the tab it installs from asks first (the install goes on).
 - **A refused pull request change** (closing one without the right to) no longer blames the token alone: the account's role on the project may be what is missing.

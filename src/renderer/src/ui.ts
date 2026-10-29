@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useStore, type FormField, type MenuItem, type Toast } from './store'
+import { useStore, type DialogChoice, type FormField, type MenuItem, type Toast } from './store'
 
 let toastId = 0
 
@@ -41,9 +41,12 @@ export function closeMenu(): void {
 type DialogOptions = {
   title: string
   message?: string
+  list?: string[]
+  note?: string
   fields: FormField[]
   confirmText: string
   danger?: boolean
+  choices?: DialogChoice[]
 }
 
 /** Dialogs waiting for the one on screen to close (e.g. a credential prompt during another dialog). */
@@ -90,6 +93,18 @@ export async function confirmDialog(opts: {
   danger?: boolean
 }): Promise<boolean> {
   return (await formDialog({ ...opts, fields: [] })) !== null
+}
+
+/** Asks which way to go on: the key of the button picked, or null when cancelled. */
+export async function choiceDialog(opts: {
+  title: string
+  message: string
+  list?: string[]
+  note?: string
+  choices: DialogChoice[]
+}): Promise<string | null> {
+  const primary = opts.choices.find((c) => c.primary) ?? opts.choices[0]
+  return (await formDialog({ ...opts, fields: [], confirmText: primary.label }))?.choice ?? null
 }
 
 export async function copyText(text: string, successText: string): Promise<void> {
