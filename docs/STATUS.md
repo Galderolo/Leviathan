@@ -183,6 +183,10 @@ A repository can have its own auto-fetch interval, pull mode, push after commit,
 
 When git refuses a checkout because uncommitted changes would be overwritten (it changes nothing), the checkout returns what is in the way instead of failing: `switchTo` in `repository.ts` runs it with `LC_ALL=C` and `parseCheckoutBlock` (`src/shared/checkout.ts`) reads git's lists (one tab before each name) into changed files, untracked files and folders whose untracked files would be lost. Branches, remote branches, commits and pull requests go through it. The app then asks (`switchTo` / `askCheckoutWay` in `actions.ts`, a dialog with `choices`): stash and check out, take them along (stash, check out, pop: a clash leaves conflicts and keeps the stash, which `restoreStash` now says for any stash), or discard the files in the way (`restoreFromHead`: back to HEAD, staged changes too; not offered for folders, whose untracked files are not copied for undo). Stashing or discarding and the second checkout are recorded as one change, so one Undo goes back to the branch with the changes as they were; a second checkout that fails is reported after it is recorded.
 
+## Branches whose remote branch is gone
+
+Fetch prunes (`--prune`), so a branch deleted on the server leaves its local branch with an upstream that git reports as `[gone]` (the ✕ in the side panel, with a tooltip). `goneBranches` in `actions.ts` lists those, apart from the one checked out; a branch never pushed has no upstream, so it is never among them. *Delete branches whose remote branch is gone…* (LOCAL header button, shown only when there are some, and the menu of such a branch) asks with a checklist (a `checklist` field of the generic dialog): `commitsOnlyOn` counts each branch's commits that no other branch, remote branch or tag has (`rev-list --count <branch> --not --exclude=<branch> --branches --remotes --tags`), and a branch with any comes unchecked with the count. The deletes are forced and recorded as one change; undo brings each branch back with its settings (`moveRef`).
+
 ## Next steps
 
 ### 1. Pull requests on real servers

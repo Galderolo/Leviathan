@@ -130,6 +130,8 @@ export interface LeviathanInvokeApi {
   checkoutDetached(repo: string, hash: string): Promise<CheckoutBlock | null>
   createBranch(repo: string, name: string, startPoint: string | null, checkout: boolean): Promise<void>
   renameBranch(repo: string, oldName: string, newName: string): Promise<void>
+  /** For each local branch, how many of its commits no other branch, remote branch or tag has. */
+  commitsOnlyOn(repo: string, names: string[]): Promise<Record<string, number>>
   deleteBranch(repo: string, name: string, force: boolean): Promise<void>
   deleteRemoteBranch(repo: string, remote: string, branch: string): Promise<void>
   merge(repo: string, ref: string): Promise<void>
@@ -383,6 +385,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   checkoutDetached: true,
   createBranch: true,
   renameBranch: true,
+  commitsOnlyOn: true,
   deleteBranch: true,
   deleteRemoteBranch: true,
   merge: true,

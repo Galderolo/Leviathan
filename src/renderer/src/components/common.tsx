@@ -114,6 +114,12 @@ export function ContextMenu() {
   )
 }
 
+/** A checklist's value, one picked value per line, with `value` checked or not. */
+function toggleLine(lines: string, value: string, checked: boolean): string {
+  const rest = lines.split('\n').filter((line) => line && line !== value)
+  return (checked ? [...rest, value] : rest).join('\n')
+}
+
 export function Dialog() {
   const dialog = useStore((s) => s.dialog)
   const t = useT()
@@ -163,41 +169,63 @@ export function Dialog() {
           </ul>
         )}
         {dialog.note && <p className="modal-message">{dialog.note}</p>}
-        {dialog.fields.map((field, i) => (
-          <label key={field.key} className="field">
-            <span>{field.label}</span>
-            {field.type === 'select' ? (
-              <select
-                ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
-                value={values[field.key] ?? ''}
-                onChange={(e) => setField(field.key, e.target.value)}
-              >
+        {dialog.fields.map((field, i) =>
+          field.type === 'checklist' ? (
+            <div key={field.key} className="field">
+              <span>{field.label}</span>
+              <div className="checklist">
                 {field.options?.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
+                  <label key={o.value} className="checklist-row">
+                    <input
+                      type="checkbox"
+                      checked={(values[field.key] ?? '').split('\n').includes(o.value)}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setValues((v) => ({ ...v, [field.key]: toggleLine(v[field.key] ?? '', o.value, checked) }))
+                      }}
+                    />
+                    <span className="checklist-label">{o.label}</span>
+                    {o.note && <span className="checklist-note">{o.note}</span>}
+                  </label>
                 ))}
-              </select>
-            ) : field.multiline ? (
-              <textarea
-                ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
-                rows={4}
-                value={values[field.key] ?? ''}
-                placeholder={field.placeholder}
-                onChange={(e) => setField(field.key, e.target.value)}
-              />
-            ) : (
-              <input
-                ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
-                type={field.type === 'number' || field.type === 'password' ? field.type : 'text'}
-                value={values[field.key] ?? ''}
-                placeholder={field.placeholder}
-                spellCheck={false}
-                onChange={(e) => setField(field.key, e.target.value)}
-              />
-            )}
-          </label>
-        ))}
+              </div>
+            </div>
+          ) : (
+            <label key={field.key} className="field">
+              <span>{field.label}</span>
+              {field.type === 'select' ? (
+                <select
+                  ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
+                  value={values[field.key] ?? ''}
+                  onChange={(e) => setField(field.key, e.target.value)}
+                >
+                  {field.options?.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : field.multiline ? (
+                <textarea
+                  ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
+                  rows={4}
+                  value={values[field.key] ?? ''}
+                  placeholder={field.placeholder}
+                  onChange={(e) => setField(field.key, e.target.value)}
+                />
+              ) : (
+                <input
+                  ref={i === 0 ? (el) => void (firstInput.current = el) : undefined}
+                  type={field.type === 'number' || field.type === 'password' ? field.type : 'text'}
+                  value={values[field.key] ?? ''}
+                  placeholder={field.placeholder}
+                  spellCheck={false}
+                  onChange={(e) => setField(field.key, e.target.value)}
+                />
+              )}
+            </label>
+          )
+        )}
         <div className="modal-actions">
           <button type="button" className="btn" onClick={cancel}>
             {t('common.cancel')}

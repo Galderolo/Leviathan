@@ -143,6 +143,48 @@ test('says what the mark of a branch whose remote branch was deleted means', asy
   await expect(page.locator('.left-panel .side-row', { hasText: /^main/ }).locator('.ab-badge.gone')).toHaveCount(0)
 })
 
+test('deletes the branches whose remote branch is gone, never one not pushed, and asks about commits of their own', async () => {
+  const origin = join(box.root, 'origin.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  const game = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(game, 'remote', 'add', 'origin', origin)
+  box.git(game, 'push', '-q', '-u', 'origin', 'main')
+  box.git(game, 'push', '-q', 'origin', 'main:merged-feature')
+  box.git(game, 'branch', '-q', '--track', 'merged-feature', 'origin/merged-feature')
+  box.git(game, 'checkout', '-q', '-b', 'own-work')
+  box.git(game, 'commit', '-q', '--allow-empty', '-m', 'only here')
+  box.git(game, 'push', '-q', '-u', 'origin', 'own-work')
+  box.git(game, 'checkout', '-q', 'main')
+  box.git(game, 'branch', '-q', 'local-only')
+  box.git(origin, 'branch', '-q', '-D', 'merged-feature', 'own-work')
+  box.git(game, 'fetch', '-q', '--prune')
+  const branches = () => box.git(game, 'branch', '--format=%(refname:short)')
+  await open(game)
+
+  await page
+    .locator('.side-section-header', { hasText: 'LOCAL' })
+    .getByTitle(/remote branch is gone \(2\)/)
+    .click()
+  const rows = page.locator('.modal .checklist-row')
+  await expect(rows).toHaveCount(2)
+  const merged = rows.filter({ hasText: 'merged-feature' })
+  const own = rows.filter({ hasText: 'own-work' })
+  await expect(merged).toContainText('all its commits are on other branches')
+  await expect(merged.locator('input')).toBeChecked()
+  await expect(own).toContainText('1 commit on no other branch')
+  await expect(own.locator('input')).not.toBeChecked()
+  await page.locator('.modal .btn-danger').click()
+  await expect.poll(branches).toBe('local-only\nmain\nown-work')
+
+  // Back with one undo, still following its remote branch.
+  await toolbarButton('Undo').click()
+  await expect.poll(branches).toBe('local-only\nmain\nmerged-feature\nown-work')
+  // The branch is back a moment before its settings.
+  const upstream = () =>
+    spawnSync('git', ['config', 'branch.merged-feature.merge'], { cwd: game, env: box.env, encoding: 'utf8' }).stdout
+  await expect.poll(upstream).toBe('refs/heads/merged-feature\n')
+})
+
 test('never runs a git.exe that a repository has at its root', async () => {
   test.skip(process.platform !== 'win32', 'only Windows looks for programs in the working folder')
   const repo = box.repo('game', { 'a.txt': 'one\n' })

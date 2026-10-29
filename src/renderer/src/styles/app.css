@@ -2337,6 +2337,48 @@ img.avatar {
   width: 600px;
 }
 
+.checklist {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  padding: 4px 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.checklist-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.checklist-row input {
+  flex: none;
+  align-self: center;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.checklist-label {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checklist-note {
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
 .modal-list {
   max-height: 160px;
   margin: 0;

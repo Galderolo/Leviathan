@@ -1552,6 +1552,68 @@ export async function deleteBranch(path: string, ref: GitRef): Promise<void> {
   await refreshRepo(path)
 }
 
+/**
+ * Local branches whose remote branch is gone (deleted there), apart from the one checked out. A branch never pushed
+ * has no remote branch to lose, so it is never among them.
+ */
+export function goneBranches(path: string): GitRef[] {
+  return (getRepo(path)?.state?.refs ?? []).filter((r) => r.type === 'head' && r.upstreamGone && !r.isHead)
+}
+
+/**
+ * Deletes the branches picked among those whose remote branch is gone. A branch with commits that no other branch,
+ * remote branch or tag has comes unchecked (a squash merge leaves them so): deleting it would lose them. All of
+ * them come back with one undo.
+ */
+export async function deleteGoneBranches(path: string): Promise<void> {
+  const gone = goneBranches(path)
+  if (!gone.length) return
+  const own = await api
+    .commitsOnlyOn(
+      path,
+      gone.map((r) => r.name)
+    )
+    .catch(() => null)
+  const values = await formDialog({
+    title: t('dlg.deleteGoneTitle'),
+    message: t('dlg.deleteGone'),
+    fields: [
+      {
+        key: 'branches',
+        label: t('dlg.deleteGoneBranches', { count: gone.length }),
+        type: 'checklist',
+        value: gone
+          .filter((r) => own?.[r.name] === 0)
+          .map((r) => r.name)
+          .join('\n'),
+        options: gone.map((r) => ({
+          value: r.name,
+          label: r.name,
+          note: !own
+            ? undefined
+            : own[r.name]
+              ? t('dlg.deleteGoneOwn', { count: own[r.name] })
+              : t('dlg.deleteGoneSafe')
+        }))
+      }
+    ],
+    confirmText: t('dlg.delete'),
+    danger: true
+  })
+  const names = values?.branches?.split('\n').filter(Boolean) ?? []
+  if (!names.length) return
+  await runOp(
+    path,
+    async () => {
+      for (const name of names) await api.deleteBranch(path, name, true)
+    },
+    {
+      undo: { label: t('undo.deleteBranches', { count: names.length }) },
+      success: t('toast.deletedBranches', { count: names.length })
+    }
+  )
+}
+
 export async function renameBranch(path: string, ref: GitRef): Promise<void> {
   const name = await promptText({
     title: t('dlg.renameBranch'),

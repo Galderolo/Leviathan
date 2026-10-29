@@ -132,6 +132,7 @@ const handlers: LeviathanInvokeApi = {
   checkoutDetached: (path, hash) => repo.checkoutDetached(path, hash),
   createBranch: (path, name, start, checkout) => repo.createBranch(path, name, start, checkout),
   renameBranch: (path, oldName, newName) => repo.renameBranch(path, oldName, newName),
+  commitsOnlyOn: (path, names) => repo.commitsOnlyOn(path, names),
   deleteBranch: (path, name, force) => repo.deleteBranch(path, name, force),
   deleteRemoteBranch: (path, remote, branch) => repo.deleteRemoteBranch(path, remote, branch, progress(path)),
   merge: (path, ref) => repo.merge(path, ref),
