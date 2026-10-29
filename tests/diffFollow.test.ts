@@ -49,6 +49,19 @@ describe('followDiff', () => {
     })
   })
 
+  it('follows a file that stays in the list but is untracked now, or tracked again', () => {
+    // `git rm --cached a.txt`: still unstaged, as a new file.
+    const untracked = { kind: 'unstaged' as const, path: 'a.txt', untracked: true }
+    expect(
+      followDiff(
+        { kind: 'unstaged', path: 'a.txt' },
+        status({ unstaged: [file('a.txt', '?')], staged: [file('a.txt', 'D')] })
+      )
+    ).toEqual(untracked)
+    expect(followDiff(untracked, status({ unstaged: [file('a.txt')] }))).toEqual({ kind: 'unstaged', path: 'a.txt' })
+    expect(followDiff(untracked, status({ unstaged: [file('a.txt', '?')] }))).toBe(untracked)
+  })
+
   it('closes when the file has no changes left', () => {
     expect(followDiff({ kind: 'unstaged', path: 'a.txt' }, status({ unstaged: [file('b.txt')] }))).toBeNull()
   })

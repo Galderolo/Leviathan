@@ -9,10 +9,10 @@ export function sameDiff(a: FileDiff | null | undefined, b: FileDiff | null): bo
 }
 
 /**
- * Where an open working-tree diff should go after a refresh: the same source
- * while its file is still in that list, the other list when the file moved
- * there whole (staged or unstaged), or null when it has no changes left. A
- * conflict stays in the conflict editor only while the file is in conflict.
+ * Where an open working-tree diff should go after a refresh: the same source while its file is still in that list
+ * (marked untracked or not as the file is now), the other list when the file moved there whole (staged or
+ * unstaged), or null when it has no changes left. A conflict stays in the conflict editor only while the file is in
+ * conflict.
  */
 export function followDiff(source: DiffSource, status: WorkingStatus): DiffSource | null {
   if (source.kind === 'commit') return source
@@ -24,7 +24,11 @@ export function followDiff(source: DiffSource, status: WorkingStatus): DiffSourc
     if (unstaged) return unstagedSource(source.path, unstaged)
     return staged ? { kind: 'staged', path: source.path } : null
   }
-  if (source.kind === 'unstaged' ? unstaged || conflicted : staged) return source
+  if (source.kind === 'unstaged' && unstaged) {
+    // Still in the list, maybe untracked now (`git rm --cached`) or tracked again.
+    return (unstaged.status === '?') === !!source.untracked ? source : unstagedSource(source.path, unstaged)
+  }
+  if (source.kind === 'unstaged' ? conflicted : staged) return source
   if (source.kind === 'unstaged' && staged) return { kind: 'staged', path: source.path }
   if (source.kind === 'staged' && unstaged) return unstagedSource(source.path, unstaged)
   return null

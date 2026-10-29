@@ -686,6 +686,12 @@ function changeCount(view: RepoView): number {
   return st ? st.staged.length + st.unstaged.length + st.conflicted.length : 0
 }
 
+/** Whether git sees uncommitted changes now, whatever the last refresh saw. */
+async function hasChanges(path: string): Promise<boolean> {
+  const st = (await api.getState(path).catch(() => null))?.status
+  return !!st && st.staged.length + st.unstaged.length + st.conflicted.length > 0
+}
+
 // Refreshes requested while one runs (file changes that never stop, actions finishing) become one more refresh
 // after it, instead of piling up and throwing each other's results away.
 const refreshCoalesced = coalesce(
@@ -1223,7 +1229,8 @@ export async function createBranch(path: string, startHash: string | null): Prom
 
 export async function stashChanges(path: string, askMessage = false): Promise<void> {
   const view = getRepo(path)
-  if (!view || changeCount(view) === 0) {
+  // The last refresh may not have seen a change made a moment ago: git says whether there is none.
+  if (!view || (changeCount(view) === 0 && !(await hasChanges(path)))) {
     toast('info', t('toast.nothingToStash'))
     return
   }
