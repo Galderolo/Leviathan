@@ -3773,6 +3773,11 @@ img.avatar {
   border-bottom-color: var(--green);
 }
 
+/* A conflict's two sides: neither is removed nor added. */
+.image-diff.sides .image-side figcaption {
+  border-bottom-color: var(--border);
+}
+
 .image-label {
   font-weight: 600;
 }

@@ -10,10 +10,12 @@ import {
   type Choice,
   type Segment
 } from '../../../shared/conflicts'
+import { imageType } from '../../../shared/images'
 import type { WorkingFile } from '../../../shared/types'
 import { closeDiff, openFile, resolveWithContent, resolveWithSide } from '../actions'
 import { useT } from '../i18n'
 import { confirmDialog, errorMessage } from '../ui'
+import { ImageDiff } from './ImageDiff'
 import { cx, splitPath } from '../utils'
 
 const api = window.leviathan
@@ -154,6 +156,8 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
     setVersion((v) => v + 1)
   }
 
+  // An image shows as its two sides (a Git LFS one has a conflicted pointer, not the picture).
+  const image = !!imageType(file)
   const total = segments ? conflictCount(segments) : 0
   const done = choices.filter(Boolean).length
   const result = segments ? resolveConflicts(segments, choices) : null
@@ -193,7 +197,15 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
       <div className="diff-body conflict-body" hidden={!!draft}>
         {error && <div className="empty-state error">{error}</div>}
         {!error && !segments && <div className="empty-state">{t('graph.loading')}</div>}
-        {segments && total === 0 && (
+        {image && segments && (
+          <ImageDiff
+            repo={path}
+            source={{ kind: 'unstaged', path: file, conflicted: true }}
+            version={version}
+            labels={{ before: t('conflict.current'), after: t('conflict.incoming') }}
+          />
+        )}
+        {!image && segments && total === 0 && (
           <div className="empty-state">
             {t(
               read?.reason === 'large'
@@ -206,7 +218,8 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
             )}
           </div>
         )}
-        {segments &&
+        {!image &&
+          segments &&
           total > 0 &&
           segments.map((segment, si) => {
             if (segment.kind === 'common') {
@@ -267,7 +280,7 @@ export function ConflictView({ path, file }: { path: string; file: string }) {
           </span>
         </div>
       )}
-      {!draft && segments && total > 0 && (
+      {!draft && !image && segments && total > 0 && (
         <div className="conflict-footer">
           <span className="dim">{t('conflict.progress', { done, count: total })}</span>
           <span className="conflict-footer-actions">

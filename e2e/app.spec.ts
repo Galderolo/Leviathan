@@ -1156,16 +1156,17 @@ test('marks beside the scrollbar where the changes of a whole file are, and goes
   await expect(ruler.locator('.change-mark.add')).toHaveCount(2)
 })
 
+// A red 4×2 picture and a blue 3×5 one.
+const red = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg==',
+  'base64'
+)
+const blue = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAMAAAAFCAIAAAAPE8H1AAAAD0lEQVR4nGNgYPgPQ8SxAGbZDvIwYYikAAAAAElFTkSuQmCC',
+  'base64'
+)
+
 test('shows an image change as the pictures before and after, with their sizes', async () => {
-  // A red 4×2 picture, then a blue 3×5 one.
-  const red = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg==',
-    'base64'
-  )
-  const blue = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAMAAAAFCAIAAAAPE8H1AAAAD0lEQVR4nGNgYPgPQ8SxAGbZDvIwYYikAAAAAElFTkSuQmCC',
-    'base64'
-  )
   const repo = box.repo('game', { 'readme.txt': 'one\n' })
   writeFileSync(join(repo, 'shot.png'), red)
   box.git(repo, 'add', '.')
@@ -1192,6 +1193,37 @@ test('shows an image change as the pictures before and after, with their sizes',
   await expect(after.locator('figcaption')).toContainText('Added')
   await expect(after.locator('.image-meta')).toContainText('4 × 2')
   await expect(before).toHaveCount(0)
+})
+
+test('shows both sides of a conflicted image, and takes one of them', async () => {
+  const repo = box.repo('game', { 'readme.txt': 'one\n' })
+  writeFileSync(join(repo, 'shot.png'), red)
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'picture')
+  box.git(repo, 'checkout', '-qb', 'other')
+  writeFileSync(join(repo, 'shot.png'), blue)
+  box.git(repo, 'commit', '-qam', 'blue picture')
+  box.git(repo, 'checkout', '-q', 'main')
+  writeFileSync(join(repo, 'shot.png'), Buffer.concat([red, Buffer.from('mine')]))
+  box.git(repo, 'commit', '-qam', 'my picture')
+  try {
+    box.git(repo, 'merge', 'other')
+  } catch {
+    // stops for the conflict
+  }
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await page.locator('.file-row', { hasText: 'shot.png' }).first().click()
+
+  const sides = page.locator('.image-diff.sides .image-side')
+  await expect(sides.nth(0).locator('figcaption')).toContainText('Current')
+  await expect(sides.nth(0).locator('.image-meta')).toContainText('4 × 2')
+  await expect(sides.nth(1).locator('figcaption')).toContainText('Incoming')
+  await expect(sides.nth(1).locator('.image-meta')).toContainText('3 × 5')
+  await expect(page.locator('.conflict-footer')).toHaveCount(0)
+
+  await page.locator('.diff-actions').getByRole('button', { name: 'Take incoming file' }).click()
+  await expect.poll(() => readFileSync(join(repo, 'shot.png')).equals(blue)).toBe(true)
 })
 
 test('shows the whole file around a change, and still stages its hunk', async () => {
