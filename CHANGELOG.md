@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-29
+
 ### Added
 
 - **Images in the diff**: a changed image (PNG, JPEG, GIF, WebP, BMP, ICO, AVIF, and TGA, common for game textures) shows as the pictures before and after, side by side, with their size in pixels and bytes (two of the same size can also be compared with a divider swiped across or one over the other), instead of "Binary file" — for uncommitted changes, commits, file history and pull request reviews. A conflicted image shows its current and incoming sides in the conflict editor, to take one seeing them. Images in Git LFS show too, from the files downloaded here (nothing is fetched); one not downloaded says so.

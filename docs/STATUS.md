@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-28, with 0.20.0 released (681 tests, 52 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-10-29, with 0.21.0 released (770 tests, 63 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -38,6 +38,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.18.1 | 2026-10-28 | Settings per repository keep only what depends on the project (terminal and avatars general again), apart at the bottom of Settings |
 | 0.19.0 | 2026-10-28 | A terminal inside the app (one per repository), change marks beside the diff's scrollbar, polish batch 4 (LFS beside other tools' hooks, installer messages, stopping file history and blame, settings saved while Windows holds the file), resolving a conflict no longer closes the next file |
 | 0.20.0 | 2026-10-28 | The app shows as Git Leviathan (shortcuts renamed on update; folders, settings and accounts unchanged) |
+| 0.21.0 | 2026-10-29 | Images in the diff (TGA too, Git LFS ones, conflicted ones, swipe and overlay), a dialog for uncommitted changes in the way of a checkout, pull, merge, rebase, cherry-pick or revert, interactive rebase with merges, deleting branches whose remote branch is gone, undo for discards and stashes, several consoles in the terminal, polish batches 5 and 6 |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
