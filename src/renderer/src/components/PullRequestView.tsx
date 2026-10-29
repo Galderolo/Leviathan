@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check, ExternalLink, GitMerge, X } from 'lucide-react'
-import type { FileChange, FileDiff, PullRequest, PullRequestComment } from '../../../shared/types'
+import type { DiffSource, FileChange, FileDiff, PullRequest, PullRequestComment } from '../../../shared/types'
 import { approveReviewedPullRequest, closeReview, mergeReviewedPullRequest, openExternal } from '../actions'
 import { useT } from '../i18n'
 import { useRepo, useStore } from '../store'
@@ -60,25 +60,26 @@ function Review({ path, pr }: { path: string; pr: PullRequest }) {
   // it ends (closed, replaced by another view, its tab closed).
   useEffect(() => () => void api.endPullRequestReview(path, pr.number).catch(() => {}), [path, pr.number])
 
+  const source = useMemo<DiffSource | null>(
+    () =>
+      range && picked
+        ? { kind: 'commit', hash: range.head, parent: range.base, path: picked.path, oldPath: picked.origPath }
+        : null,
+    [range, picked]
+  )
   useEffect(() => {
-    if (!range || !picked) return
+    if (!source) return
     let live = true
     setDiff(null)
     setDiffError(null)
     api
-      .getDiff(path, {
-        kind: 'commit',
-        hash: range.head,
-        parent: range.base,
-        path: picked.path,
-        oldPath: picked.origPath
-      })
+      .getDiff(path, source)
       .then((d) => live && setDiff(d))
       .catch((err) => live && setDiffError(errorMessage(err)))
     return () => {
       live = false
     }
-  }, [path, range, picked])
+  }, [path, source])
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true)
@@ -176,7 +177,7 @@ function Review({ path, pr }: { path: string; pr: PullRequest }) {
               <div className="diff-body">
                 {diffError && <div className="empty-state error">{diffError}</div>}
                 {!diffError && !diff && <div className="empty-state">{t('graph.loading')}</div>}
-                {diff && <ReadOnlyDiff data={diff} />}
+                {diff && <ReadOnlyDiff data={diff} repo={path} source={source} />}
               </div>
             </div>
           )}

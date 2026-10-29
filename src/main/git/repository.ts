@@ -18,6 +18,7 @@ import {
 import { parseCommitTemplate, type CommitDraftText } from '../../shared/commitTemplate'
 import { parseCheckoutBlock, type CheckoutBlock } from '../../shared/checkout'
 import { unchangedGaps } from '../../shared/diffGaps'
+import { IMAGE_PREVIEW_MAX, imageType, parseLfsPointer, type ImagePair, type ImageVersion } from '../../shared/images'
 import { LARGE_FILE_BYTES } from '../../shared/lfs'
 import type {
   Commit,
@@ -60,7 +61,7 @@ import type {
 } from '../../shared/undo'
 import { listRefs } from './refs'
 import { GitError, NON_INTERACTIVE_ENV, git, holdingIndex } from './runner'
-import { lfsFilesAmong, plainLfs, stagedBlobs } from './staged'
+import { lfsFilesAmong, plainLfs, POINTER_MAX_BYTES, stagedBlobs } from './staged'
 
 export type ProgressFn = (line: string) => void
 
@@ -458,6 +459,85 @@ async function getFileDiff(repo: string, source: DiffSource, extraArgs: string[]
       return parseDiff(out, source.path)
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Images
+
+/** Where an image comes from: a blob (`<commit>:<path>`, `:<path>` for the index) or the file in the folder. */
+type ImageSide = { blob: string } | { file: string }
+
+/**
+ * An image change's two sides as `source` says (those of the diff), to show instead of the diff. A Git LFS file is
+ * shown through its object downloaded here, never fetched.
+ */
+export async function getImages(repo: string, source: DiffSource, maxBytes = IMAGE_PREVIEW_MAX): Promise<ImagePair> {
+  const type = imageType(source.path)
+  if (!type) throw new Error(`Not an image: ${source.path}`)
+  const [before, after] = await Promise.all(
+    imageSides(source).map((side) => (side ? imageVersion(repo, side, type, maxBytes) : null))
+  )
+  return { before, after }
+}
+
+function imageSides(source: DiffSource): (ImageSide | null)[] {
+  switch (source.kind) {
+    case 'unstaged':
+      if (source.untracked) return [null, { file: source.path }]
+      // Conflicted: what the branch has against the file as it is.
+      return [{ blob: `${source.conflicted ? 'HEAD' : ''}:${source.path}` }, { file: source.path }]
+    case 'staged':
+      return [{ blob: `HEAD:${source.path}` }, { blob: `:${source.path}` }]
+    case 'commit':
+      assertSafeArg(source.hash, 'commit')
+      if (source.untracked) return [null, { blob: `${source.hash}^3:${source.path}` }]
+      if (source.parent) assertSafeArg(source.parent, 'commit')
+      return [
+        source.parent ? { blob: `${source.parent}:${source.oldPath ?? source.path}` } : null,
+        { blob: `${source.hash}:${source.path}` }
+      ]
+  }
+}
+
+/** One side of an image change, or null where the file does not exist. */
+async function imageVersion(
+  repo: string,
+  side: ImageSide,
+  type: string,
+  maxBytes: number
+): Promise<ImageVersion | null> {
+  let content: Buffer
+  if ('file' in side) {
+    const full = insideRepo(repo, side.file)
+    // lstat: never follow a symlink, its target may live outside the repository.
+    const stat = await fs.lstat(full).catch(() => null)
+    if (!stat?.isFile()) return null
+    if (stat.size > maxBytes) return { url: null, bytes: stat.size, missing: 'large' }
+    content = await fs.readFile(full)
+  } else {
+    const { stdout, exitCode } = await git(['cat-file', '-s', side.blob], { cwd: repo, okCodes: [0, 128] })
+    if (exitCode !== 0) return null
+    const size = Number(stdout.trim())
+    if (size > maxBytes) return { url: null, bytes: size, missing: 'large' }
+    content = (await git(['cat-file', 'blob', side.blob], { cwd: repo, binary: true })).bytes!
+  }
+  // Through Git LFS the file is stored as a pointer: its content is the object it stands for.
+  const pointer = content.length <= POINTER_MAX_BYTES ? parseLfsPointer(content.toString('utf8')) : null
+  if (pointer) {
+    if (pointer.size > maxBytes) return { url: null, bytes: pointer.size, missing: 'large' }
+    const object = await readLfsObject(repo, pointer.oid)
+    if (!object) return { url: null, bytes: pointer.size, missing: 'lfs' }
+    content = object
+  }
+  return { url: `data:${type};base64,${content.toString('base64')}`, bytes: content.length }
+}
+
+/** A Git LFS object downloaded here (git-lfs keeps them in `lfs/objects` of the git folder, or in `lfs.storage`). */
+async function readLfsObject(repo: string, oid: string): Promise<Buffer | null> {
+  const common = resolve(repo, (await run(repo, ['rev-parse', '--git-common-dir'])).trim())
+  const storage = await configValue(repo, 'lfs.storage')
+  const root = storage ? resolve(common, storage) : join(common, 'lfs')
+  return fs.readFile(join(root, 'objects', oid.slice(0, 2), oid.slice(2, 4), oid)).catch(() => null)
 }
 
 // ---------------------------------------------------------------------------
