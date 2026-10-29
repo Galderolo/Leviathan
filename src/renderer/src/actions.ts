@@ -952,19 +952,32 @@ async function recordUndo<T>(
   fn: () => Promise<T>,
   paths: string[] = []
 ): Promise<T> {
-  const before = await api.getSnapshot(path, paths).catch(() => null)
-  const result = await fn()
-  if (before?.tooLarge?.length) {
-    // Without a copy of those files, undoing would lose them: better nothing to undo.
-    const [name] = before.tooLarge
-    toast('info', t('toast.undoTooLarge', { name: basename(name), count: before.tooLarge.length }))
+  // A background fetch would bring its tags into what this action changed, and undoing it would delete them: one
+  // under way ends first, and none starts until the action is recorded.
+  recording.set(path, (recording.get(path) ?? 0) + 1)
+  try {
+    await backgroundFetches.idle(path)
+    const before = await api.getSnapshot(path, paths).catch(() => null)
+    const result = await fn()
+    if (before?.tooLarge?.length) {
+      // Without a copy of those files, undoing would lose them: better nothing to undo.
+      const [name] = before.tooLarge
+      toast('info', t('toast.undoTooLarge', { name: basename(name), count: before.tooLarge.length }))
+      return result
+    }
+    const after = before ? await api.getSnapshot(path, paths).catch(() => null) : null
+    const change = before && after ? diffSnapshots(before, after, mode) : null
+    if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
     return result
+  } finally {
+    const left = (recording.get(path) ?? 1) - 1
+    if (left) recording.set(path, left)
+    else recording.delete(path)
   }
-  const after = before ? await api.getSnapshot(path, paths).catch(() => null) : null
-  const change = before && after ? diffSnapshots(before, after, mode) : null
-  if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
-  return result
 }
+
+/** Repositories with an action being recorded for undo, and how many. */
+const recording = new Map<string, number>()
 
 async function runOp(
   path: string,
@@ -1037,7 +1050,7 @@ const backgroundFetches = inFlight()
 /** Quiet fetch used by auto-fetch: no prompts, no toasts; errors go to the status bar. */
 export async function fetchInBackground(path: string): Promise<void> {
   const view = getRepo(path)
-  if (!view?.state?.remotes.length || view.busy) return
+  if (!view?.state?.remotes.length || view.busy || recording.has(path)) return
   await backgroundFetches.run(path, async () => {
     patchRepo(path, { lastFetchAt: Date.now() })
     try {
