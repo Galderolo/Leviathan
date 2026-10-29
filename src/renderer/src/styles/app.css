@@ -1256,12 +1256,18 @@ img.avatar {
 .file-section-actions {
   display: flex;
   gap: 6px;
-  flex-shrink: 0;
+  min-width: 0;
 }
 
-/* Two of them fit beside the title in the narrowest panel. */
+/* Two of them fit beside the title in the narrowest panel; with a wider font they shorten (the tooltip says it all). */
 .file-section-actions .btn.small {
+  display: block;
+  min-width: 0;
   padding: 0 6px;
+  overflow: hidden;
+  line-height: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-check {

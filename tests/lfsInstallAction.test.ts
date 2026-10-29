@@ -10,7 +10,10 @@ const stub: Record<string, ReturnType<typeof vi.fn>> = {
     infoCalls.push(path)
     return { version: '3.8.1', used: true, filters: true, hooks: true, patterns: [] }
   }),
-  getLfsInstallOffer: vi.fn(async () => ({ method: 'zip' }))
+  getLfsInstallOffer: vi.fn(async () => ({ method: 'zip' })),
+  // Closing a tab stops watching it and saves the tabs left.
+  unwatchRepo: vi.fn(async () => {}),
+  saveSettings: vi.fn(async () => useStore.getState().settings)
 }
 vi.stubGlobal('window', {
   leviathan: new Proxy(stub, {
