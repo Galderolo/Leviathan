@@ -217,6 +217,8 @@ Still to do: GitHub Enterprise and self-managed GitLab (each server needs its ow
 
 Set aside on 2026-10-26, not to be brought up again unless asked: a Windows `.zip` target; commit messages written by AI; author profiles per group of repositories (the commit identity picker and the owning account's identity by default cover it); translations by the maintainer (more languages come from native speakers).
 
+Set aside on 2026-10-29 by the user, until someone asks: signing in with the browser to GitHub Enterprise or a GitLab of one's own (each server would need an OAuth app made there and its client ID typed in, more work than the token those servers already take; the Accounts section says how); code signing (paid: Azure Trusted Signing or a certificate for Windows, Apple Developer for macOS), so installers still show the SmartScreen warning and macOS asks to open the app with a right click the first time.
+
 ## Known minor issues
 
 Found by reviews and left for later; none loses work. Good first contributions.

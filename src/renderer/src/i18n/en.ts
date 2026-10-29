@@ -378,6 +378,8 @@ const en = {
   'accounts.copyAndOpen': 'Copy code and open GitHub',
   'accounts.waiting': 'Waiting for you to authorize Leviathan in the browser…',
   'accounts.add': 'Add account',
+  'accounts.ownServerHint':
+    'GitHub Enterprise, a GitLab of your own or Gitea: Add account, with the server as host and a token created there (Create a token opens its page).',
   'accounts.other': 'Other',
   'accounts.host': 'Host (e.g. github.com)',
   'accounts.token': 'Personal access token',
