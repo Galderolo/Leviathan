@@ -7,7 +7,16 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Added
 
 - **Several consoles in the terminal**: the + in its header opens another console of the repository in a tab of its own, each with its shell and what it ran; the × on a tab closes it. URLs in the output (the one `git push` prints to open a pull request, for example) open in the browser with Ctrl+click (⌘+click on macOS). The terminal's font size is in Settings → External tools.
+- **Undoing a hard reset brings back the changes it dropped**, staged and not, along with the branch.
 - **Undo a discard, and stashes**: discarded changes (whole files, new files, a hunk, or everything) come back with Undo (Ctrl+Z), exactly as they were, and Redo discards them again. Saving, applying, popping and deleting a stash can be undone too. Only files over 50 MB are not kept for it (a game's assets can be gigabytes): then the app says that action cannot be undone. Undo refuses, as ever, when a file was edited since.
+
+### Fixed
+
+- **Undo no longer takes in what a background fetch brought**: tags fetched while a commit (or any action) ran were part of it, and undoing it deleted them. An action now waits for a fetch under way, and none starts until it is done.
+- **Installing git-lfs**: its progress shows whole lines; where the app cannot install it, the LFS section offers to copy the command (also after the question was turned down); accepting it while the repository is busy says so instead of taking over; closing the tab it installs from asks first (the install goes on).
+- **A refused pull request change** (closing one without the right to) no longer blames the token alone: the account's role on the project may be what is missing.
+- **Signing in with GitHub** waits through a dropped connection or a GitHub server error while you enter the code.
+- **The changed-file headers fit the narrowest panel**: with files checked, the buttons say the action and the count ("Stage (3)", "Discard (3)…", with the whole sentence as a tooltip), so the title stays in sight; in Spanish "Quitar selección" no longer reads as "deselect". The divider between the lists moves with the arrow keys too.
 
 ## [0.20.0] - 2026-10-28
 

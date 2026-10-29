@@ -675,6 +675,28 @@ test('moves the dividers with the left button only, and highlights a checked fil
   await expect.poll(background).not.toBe(resting)
 })
 
+test('fits the header of checked files in the narrowest panel, and moves its divider with the keyboard', async () => {
+  const repo = box.repo('game', { 'keep.txt': 'x\n' })
+  box.write(repo, { 'a.txt': 'a\n', 'b.txt': 'b\n', 'c.txt': 'c\n', 'd.txt': 'd\n' })
+  ;({ app, page } = await launch(box, [repo], { language: 'es', rightPanelWidth: 260 }))
+  await page.locator('.graph-row.row-wip').click()
+  for (const name of ['a.txt', 'b.txt', 'c.txt']) {
+    await unstaged().locator('.file-row', { hasText: name }).locator('input[type=checkbox]').click()
+  }
+  const header = unstaged().locator('.file-section-header')
+  await expect(header.getByRole('button', { name: 'Preparar (3)' })).toBeVisible()
+  await expect(header.getByRole('button', { name: 'Descartar (3)…' })).toHaveAttribute('title', /3 archivos marcados/)
+  // Nothing cut: the title shows, and the buttons fit.
+  expect((await header.locator('.file-section-title').boundingBox())!.width).toBeGreaterThan(40)
+  expect(await header.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+
+  const staged = page.locator('.file-section').nth(1)
+  const before = (await staged.boundingBox())!.y
+  await page.locator('.split-handle').focus()
+  await page.keyboard.press('ArrowDown')
+  await expect.poll(async () => (await staged.boundingBox())!.y).toBeGreaterThan(before)
+})
+
 test('asks with a count, not a list, before discarding many files', async () => {
   const files = Object.fromEntries(Array.from({ length: 26 }, (_, i) => [`Packages/dir/file${i}.class`, 'a\n']))
   const repo = box.repo('game', files)

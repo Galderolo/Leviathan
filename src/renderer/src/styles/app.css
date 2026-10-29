@@ -1246,15 +1246,22 @@ img.avatar {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
+  /* Some of the title stays in sight beside the buttons for checked files. */
+  min-width: 56px;
   overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .file-section-actions {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+}
+
+/* Two of them fit beside the title in the narrowest panel. */
+.file-section-actions .btn.small {
+  padding: 0 6px;
 }
 
 .file-check {
@@ -1277,7 +1284,9 @@ img.avatar {
 }
 
 .split-handle:hover,
-.split-handle:active {
+.split-handle:active,
+.split-handle:focus-visible {
+  outline: none;
   background: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 

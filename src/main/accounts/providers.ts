@@ -78,12 +78,17 @@ async function request(
     const why = reason(body)
     // A refused change (approving twice, merging without the right to) is not a bad token: say what the server said.
     if (send && why && provider !== 'bitbucket') throw new Error(`${LABELS[provider]} refused (${res.status}): ${why}`)
-    const label = `${LABELS[provider]} rejected the token (${res.status})${provider === 'bitbucket' ? missingScopes(body) : ''}`
-    throw new Error(
-      send
-        ? `${label}. It needs permission to change pull requests (GitHub: repo, GitLab: api, Bitbucket: write:pullrequest:bitbucket).`
-        : label
-    )
+    const scopes = provider === 'bitbucket' ? missingScopes(body) : ''
+    const permission =
+      'permission to change pull requests (GitHub: repo, GitLab: api, Bitbucket: write:pullrequest:bitbucket)'
+    // A refusal (403) that names no missing scope: the account's role on the project may be what is missing.
+    if (send && res.status === 403 && !scopes) {
+      throw new Error(
+        `${LABELS[provider]} refused the change (403): the account may not have the role on this project it needs, or the token ${permission}.`
+      )
+    }
+    const label = `${LABELS[provider]} rejected the token (${res.status})${scopes}`
+    throw new Error(send ? `${label}. It needs ${permission}.` : label)
   }
   if (!res.ok) {
     const why = send ? reason(await res.json().catch(() => null)) : null

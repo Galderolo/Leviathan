@@ -20,8 +20,8 @@ vi.stubGlobal('window', {
 const writeText = vi.fn(async () => {})
 vi.stubGlobal('navigator', { language: 'en', clipboard: { writeText } })
 
-const { installGitLfs } = await import('../src/renderer/src/actions')
-const { newRepoView, useStore } = await import('../src/renderer/src/store')
+const { closeTab, copyLfsCommand, installGitLfs } = await import('../src/renderer/src/actions')
+const { newRepoView, patchRepo, useStore } = await import('../src/renderer/src/store')
 
 const toasts = (kind: string) =>
   useStore
@@ -99,5 +99,38 @@ describe('installGitLfs where the password cannot be asked for', () => {
     expect(dialog?.confirmText).toBe('Copy command')
     dialog!.resolve({})
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(command))
+  })
+})
+
+describe('installing git-lfs and what else goes on', () => {
+  it('does not start while the repository is busy with something else', async () => {
+    patchRepo('/a', { busy: 'pull' })
+    expect(await installGitLfs('/a')).toBe(false)
+    expect(stub.installGitLfs).not.toHaveBeenCalled()
+    expect(toasts('info')).toEqual([expect.stringContaining('git-lfs')])
+    expect(useStore.getState().repos['/a'].busy).toBe('pull')
+  })
+
+  it('asks before closing the tab it is installing from', async () => {
+    let finish: (v: string) => void = () => {}
+    stub.installGitLfs.mockImplementationOnce(() => new Promise<string>((resolve) => (finish = resolve)))
+    const installing = installGitLfs('/a')
+    await vi.waitFor(() => expect(stub.installGitLfs).toHaveBeenCalled())
+    closeTab('/a')
+    await vi.waitFor(() => expect(useStore.getState().dialog?.message).toContain('git-lfs'))
+    useStore.getState().dialog!.resolve(null)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(useStore.getState().tabs.map((tab) => tab.id)).toContain('/a')
+    closeTab('/b')
+    expect(useStore.getState().tabs.map((tab) => tab.id)).not.toContain('/b')
+    finish('3.8.1')
+    await installing
+  })
+
+  it('copies the command that installs it where the app cannot, also after the question was turned down', async () => {
+    const command = 'sudo apt-get install git-lfs'
+    useStore.setState({ lfsOffer: { method: 'command', command } })
+    await copyLfsCommand()
+    expect(writeText).toHaveBeenCalledWith(command)
   })
 })

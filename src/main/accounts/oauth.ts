@@ -14,6 +14,12 @@ export interface DeviceCode {
 
 const GITHUB = 'https://github.com'
 
+/** GitHub could not be reached, or failed on its side (5xx): worth asking again in a moment. */
+class Unreachable extends Error {}
+
+/** Unreachable answers in a row while waiting for the user before the sign-in gives up. */
+const RETRIES = 3
+
 async function post(path: string, form: Record<string, string>, fetchFn: FetchFn): Promise<Record<string, unknown>> {
   let res: Awaited<ReturnType<FetchFn>>
   try {
@@ -27,9 +33,12 @@ async function post(path: string, form: Record<string, string>, fetchFn: FetchFn
       body: new URLSearchParams(form).toString()
     })
   } catch (err) {
-    throw new Error(`Could not reach GitHub: ${err instanceof Error ? err.message : String(err)}`)
+    throw new Unreachable(`Could not reach GitHub: ${err instanceof Error ? err.message : String(err)}`)
   }
-  if (!res.ok) throw new Error(`GitHub answered with an error (${res.status})`)
+  if (!res.ok) {
+    const error = `GitHub answered with an error (${res.status})`
+    throw res.status >= 500 ? new Unreachable(error) : new Error(error)
+  }
   return (await res.json()) as Record<string, unknown>
 }
 
@@ -75,14 +84,27 @@ export async function pollDeviceFlow(
         )
       }))
   let interval = code.interval
+  let failures = 0
   for (;;) {
     await sleep(interval * 1000)
     if (opts.signal?.aborted) throw cancelled()
-    const body = await post(
-      '/login/oauth/access_token',
-      { client_id: clientId, device_code: code.deviceCode, grant_type: 'urn:ietf:params:oauth:grant-type:device_code' },
-      fetchFn
-    )
+    let body: Record<string, unknown>
+    try {
+      body = await post(
+        '/login/oauth/access_token',
+        {
+          client_id: clientId,
+          device_code: code.deviceCode,
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+        },
+        fetchFn
+      )
+    } catch (err) {
+      // A dropped connection while the user types the code: ask again, unless it keeps failing.
+      if (!(err instanceof Unreachable) || ++failures >= RETRIES) throw err
+      continue
+    }
+    failures = 0
     if (opts.signal?.aborted) throw cancelled()
     if (typeof body.access_token === 'string' && body.access_token) return body.access_token
     switch (body.error) {

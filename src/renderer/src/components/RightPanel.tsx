@@ -11,6 +11,7 @@ import {
   continueOperation,
   discardFiles,
   dropStash,
+  copyLfsCommand,
   installGitLfs,
   moveToLfs,
   restageLfs,
@@ -343,14 +344,26 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
     const up = () => {
       handle.removeEventListener('pointermove', move)
       handle.removeEventListener('pointerup', up)
-      try {
-        localStorage.setItem(SPLIT_KEY, String(latest))
-      } catch {
-        // not critical: the divider goes back to the middle next time
-      }
+      saveSplit(latest)
     }
     handle.addEventListener('pointermove', move)
     handle.addEventListener('pointerup', up)
+  }
+  const saveSplit = (value: number) => {
+    try {
+      localStorage.setItem(SPLIT_KEY, String(value))
+    } catch {
+      // not critical: the divider goes back to the middle next time
+    }
+  }
+  // Focused, the up and down arrows move it too.
+  const keySplit = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.key === 'ArrowUp' ? -0.05 : e.key === 'ArrowDown' ? 0.05 : 0
+    if (!step) return
+    e.preventDefault()
+    const next = splitRatio(split + step)
+    setSplit(next)
+    saveSplit(next)
   }
 
   return (
@@ -423,12 +436,14 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
               <>
                 <button
                   className="btn small btn-danger-ghost"
+                  title={t('wip.discardCheckedHint', { count: unstagedSel.selected.length })}
                   onClick={() => void discardFiles(path, unstagedSel.selected).then((ok) => ok && unstagedSel.clear())}
                 >
                   {t('wip.discardSelected', { count: unstagedSel.selected.length })}
                 </button>
                 <button
                   className="btn small btn-stage"
+                  title={t('wip.stageCheckedHint', { count: unstagedSel.selected.length })}
                   onClick={() => void stageFiles(path, unstagedSel.selected).then((ok) => ok && unstagedSel.clear())}
                 >
                   {t('wip.stageSelected', { count: unstagedSel.selected.length })}
@@ -469,7 +484,16 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
             )}
           />
         </FileSection>
-        <div className="split-handle" onPointerDown={dragSplit} title={t('wip.resize')} />
+        <div
+          className="split-handle"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-valuenow={Math.round(split * 100)}
+          tabIndex={0}
+          onPointerDown={dragSplit}
+          onKeyDown={keySplit}
+          title={t('wip.resize')}
+        />
         <FileSection
           title={t('wip.staged', { count: staged.length })}
           count={staged.length}
@@ -486,6 +510,7 @@ const WorkingPanel = memo(function WorkingPanel({ path }: { path: string }) {
             stagedSel.some ? (
               <button
                 className="btn small btn-unstage"
+                title={t('wip.unstageCheckedHint', { count: stagedSel.selected.length })}
                 onClick={() => void unstageFiles(path, stagedSel.selected).then((ok) => ok && stagedSel.clear())}
               >
                 {t('wip.unstageSelected', { count: stagedSel.selected.length })}
@@ -669,6 +694,13 @@ function LfsWarnings({ path, view }: { path: string; view: RepoView }) {
             onClick={() => void installGitLfs(path)}
           >
             {t('lfs.installNow')}
+          </button>
+        )
+      }
+      if (lfsOffer?.method === 'command' && lfsOffer.command) {
+        return (
+          <button className="btn small" title={lfsOffer.command} onClick={() => void copyLfsCommand()}>
+            {t('lfs.copyCommand')}
           </button>
         )
       }

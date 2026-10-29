@@ -212,6 +212,21 @@ export function cycleTab(delta: number): void {
 
 export function closeTab(id: string): void {
   const s = useStore.getState()
+  const tab = s.tabs.find((x) => x.id === id)
+  // git-lfs is being installed from it: closing it does not stop that, say so first.
+  if (tab?.path && s.lfsInstalling && s.repos[tab.path]?.busy === 'lfs') {
+    void confirmDialog({
+      title: t('tab.close'),
+      message: t('dlg.closeWhileLfsInstalls'),
+      confirmText: t('tab.close')
+    }).then((ok) => ok && closeTabNow(id))
+    return
+  }
+  closeTabNow(id)
+}
+
+function closeTabNow(id: string): void {
+  const s = useStore.getState()
   const idx = s.tabs.findIndex((tab) => tab.id === id)
   if (idx === -1) return
   const tab = s.tabs[idx]
@@ -952,19 +967,32 @@ async function recordUndo<T>(
   fn: () => Promise<T>,
   paths: string[] = []
 ): Promise<T> {
-  const before = await api.getSnapshot(path, paths).catch(() => null)
-  const result = await fn()
-  if (before?.tooLarge?.length) {
-    // Without a copy of those files, undoing would lose them: better nothing to undo.
-    const [name] = before.tooLarge
-    toast('info', t('toast.undoTooLarge', { name: basename(name), count: before.tooLarge.length }))
+  // A background fetch would bring its tags into what this action changed, and undoing it would delete them: one
+  // under way ends first, and none starts until the action is recorded.
+  recording.set(path, (recording.get(path) ?? 0) + 1)
+  try {
+    await backgroundFetches.idle(path)
+    const before = await api.getSnapshot(path, paths).catch(() => null)
+    const result = await fn()
+    if (before?.tooLarge?.length) {
+      // Without a copy of those files, undoing would lose them: better nothing to undo.
+      const [name] = before.tooLarge
+      toast('info', t('toast.undoTooLarge', { name: basename(name), count: before.tooLarge.length }))
+      return result
+    }
+    const after = before ? await api.getSnapshot(path, paths).catch(() => null) : null
+    const change = before && after ? diffSnapshots(before, after, mode) : null
+    if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
     return result
+  } finally {
+    const left = (recording.get(path) ?? 1) - 1
+    if (left) recording.set(path, left)
+    else recording.delete(path)
   }
-  const after = before ? await api.getSnapshot(path, paths).catch(() => null) : null
-  const change = before && after ? diffSnapshots(before, after, mode) : null
-  if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
-  return result
 }
+
+/** Repositories with an action being recorded for undo, and how many. */
+const recording = new Map<string, number>()
 
 async function runOp(
   path: string,
@@ -1037,7 +1065,7 @@ const backgroundFetches = inFlight()
 /** Quiet fetch used by auto-fetch: no prompts, no toasts; errors go to the status bar. */
 export async function fetchInBackground(path: string): Promise<void> {
   const view = getRepo(path)
-  if (!view?.state?.remotes.length || view.busy) return
+  if (!view?.state?.remotes.length || view.busy || recording.has(path)) return
   await backgroundFetches.run(path, async () => {
     patchRepo(path, { lastFetchAt: Date.now() })
     try {
@@ -1524,8 +1552,20 @@ export async function resetTo(path: string, hash: string, mode: ResetMode): Prom
     })
     if (!ok) return
   }
+  // A hard reset drops the uncommitted changes of tracked files (new files stay): copied, to bring them back.
+  const status = getRepo(path)?.state?.status
+  const dropped =
+    mode === 'hard'
+      ? [
+          ...new Set(
+            [...(status?.staged ?? []), ...(status?.unstaged ?? [])]
+              .filter((f) => f.status !== '?')
+              .flatMap(changePaths)
+          )
+        ]
+      : []
   await runOp(path, () => api.reset(path, hash, mode), {
-    undo: { label: t('undo.reset', { name: hash.slice(0, 7) }), mode: undoModeForReset(mode) }
+    undo: { label: t('undo.reset', { name: hash.slice(0, 7) }), mode: undoModeForReset(mode), paths: dropped }
   })
 }
 
@@ -2093,6 +2133,11 @@ export async function loadLfsOffer(): Promise<void> {
  */
 export async function installGitLfs(path: string): Promise<boolean> {
   if (useStore.getState().lfsInstalling) return false
+  // A pull or push under way (accepted while it started): the install would take its place on screen.
+  if (getRepo(path)?.busy) {
+    toast('info', t('toast.lfsWaitBusy'))
+    return false
+  }
   useStore.setState({ lfsInstalling: true })
   patchRepo(path, { busy: 'lfs', progress: null })
   try {
@@ -2141,6 +2186,12 @@ async function showHooksToMerge(instructions: string): Promise<void> {
     confirmText: t('lfs.copyHooks')
   })
   if (copy) await copyText(instructions, t('toast.copied'))
+}
+
+/** Copies the command that installs git-lfs on this system, where the app cannot run it itself. */
+export async function copyLfsCommand(): Promise<void> {
+  const command = useStore.getState().lfsOffer?.command
+  if (command) await copyText(command, t('toast.copied'))
 }
 
 /** The command that installs git-lfs here, to copy into a terminal. */

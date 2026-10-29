@@ -33,6 +33,7 @@ import {
   addRemote,
   checkoutPullRequest,
   checkoutRef,
+  copyLfsCommand,
   installGitLfs,
   loadLfsLocks,
   openExternal,
@@ -407,6 +408,14 @@ export function LeftPanel({ path }: { path: string }) {
                   <>
                     <a className="side-link" onClick={() => !lfsInstalling && !view?.busy && void installGitLfs(path)}>
                       {t('lfs.installNow')}
+                    </a>
+                    {' · '}
+                  </>
+                )}
+                {lfsOffer?.method === 'command' && lfsOffer.command && (
+                  <>
+                    <a className="side-link" title={lfsOffer.command} onClick={() => void copyLfsCommand()}>
+                      {t('lfs.copyCommand')}
                     </a>
                     {' · '}
                   </>
