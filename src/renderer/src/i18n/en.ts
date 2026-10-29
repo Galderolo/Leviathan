@@ -99,6 +99,8 @@ const en = {
   'left.tags': 'TAGS',
   'left.filter': 'Filter',
   'left.empty': 'None',
+  'left.upstreamGone':
+    '{upstream} no longer exists on the remote: it was deleted there (often once its pull request was merged). This branch keeps its commits.',
 
   'graph.branchTag': 'BRANCH / TAG',
   'graph.graph': 'GRAPH',
