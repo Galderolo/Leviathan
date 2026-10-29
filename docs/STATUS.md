@@ -211,9 +211,9 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Undo / redo**
 - Applying a change is not atomic (could use `update-ref --stdin`). One undo or redo runs at a time per repository (`historyRuns` in `actions.ts`): a press while one is applied is ignored.
-- Tags fetched in the background end up in the next recorded change.
+- An action recorded for undo waits for a background fetch under way, and none starts until it is recorded (`recording` in `actions.ts`): otherwise the tags it brought were part of the change.
 - The first commit of an empty repository cannot be undone.
-- The uncommitted changes a hard reset drops are not brought back by undoing it (the branch is): undoing and redoing it would need the files and the branch applied in an order that depends on the direction. Discarding everything during a merge or rebase is not recorded either (it ends the operation).
+- Undoing a hard reset brings back the uncommitted changes of tracked files it dropped; redoing it sets those files to HEAD first (`filesToHead`), as `reset --keep` refuses local changes. Discarding everything during a merge or rebase is not recorded (it ends the operation).
 - Undoing a branch rename restarts its reflog; undoing a merge commit does not restore `MERGE_MODE` (`--no-ff`).
 
 **Conflict editor**
@@ -234,7 +234,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - A hook of another tool (husky…) stops `git lfs install` at the first one, setting none up. *Set up* then writes the missing hooks as git-lfs would, downloads the files and offers git-lfs's instructions (`git lfs update --manual`) for the other tool's hooks, which stay as they were: the section says "not set up" until those lines are added by hand. A hook that is husky's wrapper is read as it is (the lines may live in `.husky/pre-push`).
 
 **Pull requests**
-- A 403 when closing a pull request always blames the token's scopes, even when the account lacks the role on the project.
 - 403 messages are generic (no Gitea scope). A 401 in the side panel says the token stopped working and links to Settings → Accounts (0.13.0), matched on the "rejected the token" text.
 - Up to 500 open PRs are listed (`PULL_REQUESTS_MAX`), asked 100 at a time (50 on Bitbucket and Gitea) until a page is not full: a Gitea server whose page limit is below 50 lists only its first page. Fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 
@@ -250,12 +249,11 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Usernames with `%` or `@` in the askpass prompt; `*.ghe.com` API base and no-reply emails for hosts with a port.
 - Nested repositories match the first registered repository, not the deepest; Windows path casing in the repository → account map.
 - `other` accounts get an invented default email.
-- GitHub sign-in: one network error while waiting ends the sign-in (no retry); no local deadline besides GitHub's `expired_token`; secure storage is only checked after the browser step; a cancel pressed after GitHub issued the token still adds the account.
+- GitHub sign-in: network and server errors while waiting are asked again, three in a row end it; no local deadline besides GitHub's `expired_token`; secure storage is only checked after the browser step; a cancel pressed after GitHub issued the token still adds the account.
 
 **Multi-file selection**
-- The divider: no keyboard support, every move re-renders the panel (may stutter with huge lists).
-- In Spanish at the minimum panel width the header buttons can crowd the title.
-- Checkboxes in the staged list do not exclude files from the commit (unlike GitHub Desktop); "Quitar selección" can read as "deselect".
+- The divider: every move re-renders the panel (may stutter with huge lists); focused, the arrow keys move it.
+- Checkboxes in the staged list do not exclude files from the commit (unlike GitHub Desktop).
 
 **Diffs**
 - *Whole file* asks git for the same diff twice: as usual (the hunks that stage, unstage and discard) and with `-U100000000` (`WHOLE_FILE`), whose context lines fill the gaps (`unchangedGaps`, by old line number). Near INT_MAX git splits the file into overlapping hunks (it doubles the context when joining them). Each gap is highlighted on its own, so a comment opened in a gap is not known in the next hunk.
