@@ -954,14 +954,16 @@ export function setFilter(path: string, filter: string): void {
 
 /**
  * Runs `fn` and records what it changed (refs, HEAD, the stash list, and the files in `paths`) so it can be undone.
- * Errors propagate; nothing is recorded when nothing changed, nor when a file in `paths` is too large to keep.
+ * `'changes'` copies every uncommitted change as git sees it just before (a stash or discard of them all): the
+ * last refresh may not have seen them all yet. Errors propagate; nothing is recorded when nothing changed, nor when a
+ * file in `paths` is too large to keep.
  */
 async function recordUndo<T>(
   path: string,
   label: string,
   mode: RepoChange['mode'],
   fn: () => Promise<T>,
-  paths: string[] = []
+  paths: string[] | 'changes' = []
 ): Promise<T> {
   // A background fetch would bring its tags into what this action changed, and undoing it would delete them: one
   // under way ends first, and none starts until the action is recorded.
@@ -976,7 +978,8 @@ async function recordUndo<T>(
       toast('info', t('toast.undoTooLarge', { name: basename(name), count: before.tooLarge.length }))
       return result
     }
-    const after = before ? await api.getSnapshot(path, paths).catch(() => null) : null
+    const copied = paths === 'changes' ? Object.keys(before?.files ?? {}) : paths
+    const after = before ? await api.getSnapshot(path, copied).catch(() => null) : null
     const change = before && after ? diffSnapshots(before, after, mode) : null
     if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
     return result
@@ -998,7 +1001,7 @@ async function runOp(
     success?: string
     log?: boolean
     /** `paths`: files it changes in the working tree or the index (a discard, a stash), copied to bring them back. */
-    undo?: { label: string; mode?: RepoChange['mode']; paths?: string[] }
+    undo?: { label: string; mode?: RepoChange['mode']; paths?: string[] | 'changes' }
     /** Shown instead of git's message when the command fails. */
     errorText?: string
     /** Failures the caller handles itself (no error toast for them); `after` is the state they left. */
@@ -1231,7 +1234,7 @@ export async function stashChanges(path: string, askMessage = false): Promise<vo
     message = values.message || null
   }
   await runOp(path, () => api.stashSave(path, message), {
-    undo: { label: t('undo.stash'), paths: allChangePaths(path) }
+    undo: { label: t('undo.stash'), paths: 'changes' }
   })
 }
 
@@ -1353,7 +1356,7 @@ async function switchTo(
             paths: [...block.changed, ...block.untracked],
             run: () => api.restoreFromHead(path, block.changed, block.untracked)
           }
-        : { paths: allChangePaths(path), run: () => api.stashSave(path, null) }
+        : { paths: 'changes' as const, run: () => api.stashSave(path, null) }
     const done = await runOp(
       path,
       async () => {
@@ -1790,21 +1793,13 @@ export async function discardAll(path: string): Promise<void> {
   })
   if (!ok) return
   // In the middle of a merge or rebase, discarding everything ends it: that is not brought back.
-  const undo = getRepo(path)?.state?.operation
-    ? undefined
-    : { label: t('undo.discardAll'), paths: allChangePaths(path) }
+  const undo = getRepo(path)?.state?.operation ? undefined : { label: t('undo.discardAll'), paths: 'changes' as const }
   await runOp(path, () => api.discardAll(path), { log: false, undo })
 }
 
 /** The paths a change touches: a rename's old one too. */
 function changePaths(file: FileChange): string[] {
   return file.origPath ? [file.origPath, file.path] : [file.path]
-}
-
-/** The paths of all the uncommitted changes (staged or not). */
-function allChangePaths(path: string): string[] {
-  const status = getRepo(path)?.state?.status
-  return [...new Set([...(status?.staged ?? []), ...(status?.unstaged ?? [])].flatMap(changePaths))]
 }
 
 export function ignorePattern(path: string, pattern: string): Promise<boolean> {

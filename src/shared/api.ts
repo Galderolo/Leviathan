@@ -82,7 +82,8 @@ export interface LeviathanInvokeApi {
   /** `fullFile`: also the unchanged lines around the hunks (`FileDiff.gaps`). */
   getDiff(repo: string, source: DiffSource, fullFile?: boolean): Promise<FileDiff>
   /** Refs, HEAD and the stash list; with `paths`, a copy of those files too (`tooLarge`: the ones too big to keep). */
-  getSnapshot(repo: string, paths?: string[]): Promise<Snapshot>
+  /** `'changes'`: every uncommitted change as git sees it now. */
+  getSnapshot(repo: string, paths?: string[] | 'changes'): Promise<Snapshot>
   /** The files a stash changes (its untracked ones too): what applying or popping it touches. */
   stashPaths(repo: string, index: number, hash: string): Promise<string[]>
   /** Commits that touched a file, newest first, following renames; `limit` of them (`HISTORY_PAGE` by default). */
