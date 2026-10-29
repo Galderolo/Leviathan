@@ -1186,6 +1186,15 @@ test('shows an image change as the pictures before and after, with their sizes',
 
   await expect(after.locator('.image-meta')).toContainText(`${blue.length} B`)
 
+  // A TGA, which the window cannot draw itself: a red pixel.
+  writeFileSync(
+    join(repo, 'rock.tga'),
+    Buffer.from([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 24, 0x20, 0, 0, 255])
+  )
+  await unstaged().locator('.file-row', { hasText: 'rock.tga' }).click()
+  await expect(after.locator('figcaption')).toContainText('Added')
+  await expect(after.locator('.image-meta')).toContainText('1 × 1')
+
   // The commit that added it: only the picture it added.
   await page.keyboard.press('Escape')
   await commitRows().filter({ hasText: 'picture' }).click()

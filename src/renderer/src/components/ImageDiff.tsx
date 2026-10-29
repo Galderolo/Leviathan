@@ -90,7 +90,13 @@ function ImageSide({ label, version, side }: { label: string; version: ImageVers
           />
         ) : (
           <div className="empty-state">
-            {t(broken ? 'image.broken' : version.missing === 'lfs' ? 'image.notDownloaded' : 'image.tooLarge')}
+            {t(
+              broken || version.missing === 'unreadable'
+                ? 'image.broken'
+                : version.missing === 'lfs'
+                  ? 'image.notDownloaded'
+                  : 'image.tooLarge'
+            )}
           </div>
         )}
       </div>

@@ -42,7 +42,8 @@ describe('imageType', () => {
     expect(imageType('Assets/Screenshots/shot.PNG')).toBe('image/png')
     expect(imageType('a/photo.jpeg')).toBe('image/jpeg')
     expect(imageType('icon.ico')).toBe('image/x-icon')
-    expect(imageType('Textures/rock.tga')).toBeNull()
+    expect(imageType('Textures/rock.tga')).toBe('image/x-tga')
+    expect(imageType('Textures/rock.psd')).toBeNull()
     expect(imageType('folder.png/readme')).toBeNull()
     expect(imageType('png')).toBeNull()
   })
@@ -159,6 +160,22 @@ describe('getImages', () => {
     expect(await repo.getImages(dir, { kind: 'unstaged', path: 'shot.png', conflicted: true })).toEqual({
       before: shown(v3),
       after: shown(v2)
+    })
+  })
+
+  it('sends a TGA as a PNG, the window cannot draw it, and says when it cannot read one', async () => {
+    // 1×1, 24 bits, red.
+    const tga = Buffer.from([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 24, 0x20, 0, 0, 255])
+    writeFileSync(join(dir, 'rock.tga'), tga)
+    writeFileSync(join(dir, 'bad.tga'), Buffer.from('not a picture'))
+
+    const { after } = await repo.getImages(dir, { kind: 'unstaged', path: 'rock.tga', untracked: true })
+    expect(after?.url).toMatch(/^data:image\/png;base64,iVBORw0KGgo/)
+    expect(after?.bytes).toBe(tga.length)
+    expect((await repo.getImages(dir, { kind: 'unstaged', path: 'bad.tga', untracked: true })).after).toEqual({
+      url: null,
+      bytes: 13,
+      missing: 'unreadable'
     })
   })
 

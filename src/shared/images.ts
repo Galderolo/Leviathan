@@ -7,8 +7,13 @@ const IMAGE_TYPES: Record<string, string> = {
   webp: 'image/webp',
   bmp: 'image/bmp',
   ico: 'image/x-icon',
-  avif: 'image/avif'
+  avif: 'image/avif',
+  // Not drawn by browsers: the main process turns it into a PNG.
+  tga: 'image/x-tga'
 }
+
+/** The type of a TGA image, sent to the window as a PNG. */
+export const TGA_TYPE = 'image/x-tga'
 
 /** Larger images are not sent to the window (each is read whole and passed as a data URL). */
 export const IMAGE_PREVIEW_MAX = 20 * 1024 * 1024
@@ -26,8 +31,8 @@ export interface ImageVersion {
   url: string | null
   /** Its size in bytes (the real file's, for a file in Git LFS). */
   bytes: number
-  /** A Git LFS file whose content is not downloaded here, or an image over `IMAGE_PREVIEW_MAX`. */
-  missing?: 'lfs' | 'large'
+  /** A Git LFS file whose content is not downloaded here, an image over `IMAGE_PREVIEW_MAX`, or a TGA it cannot read. */
+  missing?: 'lfs' | 'large' | 'unreadable'
 }
 
 /** An image before and after a change: null on the side where the file does not exist. */
