@@ -1204,6 +1204,44 @@ test('shows an image change as the pictures before and after, with their sizes',
   await expect(before).toHaveCount(0)
 })
 
+test('compares two images of the same size with a divider or one over the other, and keeps the choice', async () => {
+  const green = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAD0lEQVR4nGNg+M+AQMgcAGeyB/k29YCoAAAAAElFTkSuQmCC',
+    'base64'
+  )
+  const repo = box.repo('game', { 'readme.txt': 'one\n' })
+  writeFileSync(join(repo, 'a.png'), red)
+  writeFileSync(join(repo, 'b.png'), red)
+  writeFileSync(join(repo, 'c.png'), red)
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'pictures')
+  writeFileSync(join(repo, 'a.png'), green)
+  writeFileSync(join(repo, 'b.png'), green)
+  // Another size: compared side by side only.
+  writeFileSync(join(repo, 'c.png'), blue)
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  const modes = page.locator('.image-modes .icon-btn')
+  const second = page.locator('.image-stack img').nth(1)
+
+  await unstaged().locator('.file-row', { hasText: 'a.png' }).click()
+  await modes.nth(1).click()
+  await expect(page.locator('.image-sides')).toHaveCount(0)
+  await page.locator('.image-amount').fill('30')
+  await expect(second).toHaveAttribute('style', /clip-path: inset\(0px 0px 0px 30%\)/)
+  await modes.nth(2).click()
+  await page.locator('.image-amount').fill('80')
+  await expect(second).toHaveAttribute('style', /opacity: 0\.8/)
+
+  // The next image opens the same way.
+  await unstaged().locator('.file-row', { hasText: 'b.png' }).click()
+  await expect(modes.nth(2)).toHaveClass(/\bon\b/)
+  await expect(page.locator('.image-stack')).toHaveCount(1)
+  await unstaged().locator('.file-row', { hasText: 'c.png' }).click()
+  await expect(page.locator('.image-sides .image-side')).toHaveCount(2)
+  await expect(modes).toHaveCount(0)
+})
+
 test('shows both sides of a conflicted image, and takes one of them', async () => {
   const repo = box.repo('game', { 'readme.txt': 'one\n' })
   writeFileSync(join(repo, 'shot.png'), red)

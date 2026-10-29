@@ -3773,6 +3773,68 @@ img.avatar {
   border-bottom-color: var(--green);
 }
 
+.image-modes {
+  align-self: flex-start;
+}
+
+/* Two pictures of the same size, one over the other. */
+.image-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.image-compare-captions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font);
+  font-size: 12px;
+}
+
+.image-compare-captions .image-side {
+  display: inline;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--red);
+}
+
+.image-compare-captions .image-side.after {
+  border-bottom-color: var(--green);
+}
+
+.image-diff.sides .image-compare-captions .image-side {
+  border-bottom-color: var(--border);
+}
+
+.image-stack {
+  position: relative;
+}
+
+.image-stack img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.image-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.image-amount {
+  width: 100%;
+  max-width: 420px;
+  align-self: center;
+  accent-color: var(--accent);
+}
+
 /* A conflict's two sides: neither is removed nor added. */
 .image-diff.sides .image-side figcaption {
   border-bottom-color: var(--border);
