@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   Cloud,
+  Eraser,
   Download,
   EyeOff,
   Folder,
@@ -33,6 +34,7 @@ import {
   addRemote,
   checkoutPullRequest,
   checkoutRef,
+  deleteGoneBranches,
   copyLfsCommand,
   installGitLfs,
   loadLfsLocks,
@@ -103,6 +105,8 @@ export function LeftPanel({ path }: { path: string }) {
   const match = (name: string) => !f || name.toLowerCase().includes(f)
   const refs = state?.refs ?? []
   const locals = refs.filter((r) => r.type === 'head' && match(r.name))
+  // As `goneBranches`: the branch checked out is not offered.
+  const gone = refs.filter((r) => r.type === 'head' && r.upstreamGone && !r.isHead).length
   const remoteRefs = refs.filter((r) => r.type === 'remote' && match(r.name))
   const tags = refs.filter((r) => r.type === 'tag' && match(r.name))
   const stashes = (state?.stashes ?? []).filter((s) => match(s.message))
@@ -205,6 +209,20 @@ export function LeftPanel({ path }: { path: string }) {
           count={locals.length}
           collapsed={collapsed}
           toggle={toggle}
+          action={
+            gone > 0 && (
+              <button
+                className="icon-btn small"
+                title={t('left.deleteGone', { count: gone })}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  void deleteGoneBranches(path)
+                }}
+              >
+                <Eraser size={14} />
+              </button>
+            )
+          }
         >
           <TreeView
             nodes={buildTree(locals, (r) => r.name)}

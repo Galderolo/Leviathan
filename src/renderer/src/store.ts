@@ -204,8 +204,9 @@ export interface FormField {
   value?: string
   placeholder?: string
   multiline?: boolean
-  type?: 'text' | 'select' | 'number' | 'password'
-  options?: { value: string; label: string }[]
+  /** `checklist`: a checkbox per option; the value is the checked ones, one per line. */
+  type?: 'text' | 'select' | 'number' | 'password' | 'checklist'
+  options?: { value: string; label: string; note?: string }[]
 }
 
 /** A button of a dialog that offers several ways on; `primary` is the one Enter picks. */

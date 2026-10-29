@@ -16,6 +16,7 @@ import {
   createPullRequestFor,
   createTag,
   deleteBranch,
+  deleteGoneBranches,
   deleteRemoteBranch,
   deleteTag,
   discardAll,
@@ -182,6 +183,9 @@ export function branchMenu(path: string, ref: GitRef): MenuItem[] {
         onClick: () => void deleteBranch(path, ref)
       }
     )
+    if (ref.upstreamGone) {
+      items.push({ label: t('menu.deleteGone'), danger: true, onClick: () => void deleteGoneBranches(path) })
+    }
   } else {
     items.push({
       label: t('menu.deleteRemote', { name: ref.name }),

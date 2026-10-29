@@ -641,6 +641,27 @@ export async function renameBranch(repo: string, oldName: string, newName: strin
   await run(repo, ['branch', '-m', oldName, newName])
 }
 
+/** For each local branch, how many of its commits no other branch, remote branch or tag has (deleting it loses them). */
+export async function commitsOnlyOn(repo: string, names: string[]): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {}
+  for (const name of names) {
+    await assertBranchName(repo, name)
+    // Branch names cannot hold glob characters, so `--exclude` leaves out this branch alone.
+    const out = await run(repo, [
+      'rev-list',
+      '--count',
+      `refs/heads/${name}`,
+      '--not',
+      `--exclude=${name}`,
+      '--branches',
+      '--remotes',
+      '--tags'
+    ])
+    counts[name] = Number(out.trim())
+  }
+  return counts
+}
+
 export async function deleteBranch(repo: string, name: string, force: boolean): Promise<void> {
   assertSafeArg(name, 'branch name')
   // The UI recognises "not fully merged" to offer a forced delete, so keep the message in English.
