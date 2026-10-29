@@ -978,9 +978,10 @@ test('keeps several consoles per repository, opens links with Ctrl+click and tak
   await expect(screen).toContainText('game', { timeout: 20_000 })
   await page.keyboard.type('echo https://example.com/pull/7')
   await page.keyboard.press('Enter')
-  // The output's line (the last one with it): pointed at, it becomes a link; Ctrl+click opens it.
-  const link = screen.locator('span', { hasText: 'https://example.com/pull/7' }).last()
-  await expect(link).toBeVisible()
+  // The output's row, the URL alone (not the command's, where a plain prompt shares its text): pointed at, it becomes
+  // a link; Ctrl+click opens it.
+  const link = screen.locator(':scope > div', { hasText: /^\s*https:\/\/example\.com\/pull\/7\s*$/ })
+  await expect(link).toHaveCount(1)
   const at = (await link.boundingBox())!
   await page.mouse.move(at.x + 8, at.y + at.height / 2)
   await expect(panel.locator('.xterm-cursor-pointer')).toHaveCount(1)
