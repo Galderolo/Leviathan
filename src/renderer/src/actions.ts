@@ -1824,8 +1824,6 @@ async function applyHistory(path: string, direction: 'undo' | 'redo'): Promise<v
       )
     }
     toast('error', stale ? t(staleHistoryKey(direction)) : errorMessage(err))
-  } finally {
-    await refreshRepo(path)
   }
 }
 
@@ -1833,12 +1831,23 @@ async function applyHistory(path: string, direction: 'undo' | 'redo'): Promise<v
 // or both would start from the same entry.
 const historyRuns = inFlight()
 
+/**
+ * Applies the next undo or redo, then reads the repository again. The refresh comes after the run: Redo is there to
+ * press as soon as an undo is applied, and a press then must not be ignored.
+ */
+async function runHistory(path: string, direction: 'undo' | 'redo'): Promise<void> {
+  const run = historyRuns.run(path, () => applyHistory(path, direction))
+  if (!run) return
+  await run
+  await refreshRepo(path)
+}
+
 export function undo(path: string): Promise<void> {
-  return historyRuns.run(path, () => applyHistory(path, 'undo')) ?? Promise.resolve()
+  return runHistory(path, 'undo')
 }
 
 export function redo(path: string): Promise<void> {
-  return historyRuns.run(path, () => applyHistory(path, 'redo')) ?? Promise.resolve()
+  return runHistory(path, 'redo')
 }
 
 // ---------------------------------------------------------------------------
