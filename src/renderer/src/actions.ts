@@ -939,13 +939,25 @@ export function setFilter(path: string, filter: string): void {
 // Running git operations
 
 /**
- * Runs `fn` and records what it changed (refs and HEAD) so it can be undone.
- * Errors propagate; nothing is recorded when nothing changed.
+ * Runs `fn` and records what it changed (refs, HEAD, the stash list, and the files in `paths`) so it can be undone.
+ * Errors propagate; nothing is recorded when nothing changed, nor when a file in `paths` is too large to keep.
  */
-async function recordUndo<T>(path: string, label: string, mode: RepoChange['mode'], fn: () => Promise<T>): Promise<T> {
-  const before = await api.getSnapshot(path).catch(() => null)
+async function recordUndo<T>(
+  path: string,
+  label: string,
+  mode: RepoChange['mode'],
+  fn: () => Promise<T>,
+  paths: string[] = []
+): Promise<T> {
+  const before = await api.getSnapshot(path, paths).catch(() => null)
   const result = await fn()
-  const after = before ? await api.getSnapshot(path).catch(() => null) : null
+  if (before?.tooLarge?.length) {
+    // Without a copy of those files, undoing would lose them: better nothing to undo.
+    const [name] = before.tooLarge
+    toast('info', t('toast.undoTooLarge', { name: basename(name), count: before.tooLarge.length }))
+    return result
+  }
+  const after = before ? await api.getSnapshot(path, paths).catch(() => null) : null
   const change = before && after ? diffSnapshots(before, after, mode) : null
   if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
   return result
@@ -958,7 +970,8 @@ async function runOp(
     busy?: BusyKind
     success?: string
     log?: boolean
-    undo?: { label: string; mode?: RepoChange['mode'] }
+    /** `paths`: files it changes in the working tree or the index (a discard, a stash), copied to bring them back. */
+    undo?: { label: string; mode?: RepoChange['mode']; paths?: string[] }
     /** Shown instead of git's message when the command fails. */
     errorText?: string
     /** Failures the caller handles itself (no error toast for them). */
@@ -970,7 +983,7 @@ async function runOp(
   try {
     // Busy marks network work: it starts once a background fetch of the repository is over.
     if (opts.busy) await backgroundFetches.idle(path)
-    if (opts.undo) await recordUndo(path, opts.undo.label, opts.undo.mode ?? 'keep', fn)
+    if (opts.undo) await recordUndo(path, opts.undo.label, opts.undo.mode ?? 'keep', fn, opts.undo.paths)
     else await fn()
     if (opts.success) toast('success', opts.success)
     return true
@@ -1189,13 +1202,15 @@ export async function stashChanges(path: string, askMessage = false): Promise<vo
     if (!values) return
     message = values.message || null
   }
-  await runOp(path, () => api.stashSave(path, message))
+  const status = view.state?.status
+  const paths = [...new Set([...(status?.staged ?? []), ...(status?.unstaged ?? [])].flatMap(changePaths))]
+  await runOp(path, () => api.stashSave(path, message), { undo: { label: t('undo.stash'), paths } })
 }
 
 /** Stashes only these files (both their staged and unstaged changes; a rename takes its old path along). */
 export async function stashFiles(path: string, files: FileChange[]): Promise<void> {
-  const paths = [...new Set(files.flatMap((f) => (f.origPath ? [f.origPath, f.path] : [f.path])))]
-  await runOp(path, () => api.stashSave(path, null, paths))
+  const paths = [...new Set(files.flatMap(changePaths))]
+  await runOp(path, () => api.stashSave(path, null, paths), { undo: { label: t('undo.stash'), paths } })
 }
 
 /** Pops `stash`, or the most recent stash when none is given (toolbar Pop). */
@@ -1243,8 +1258,11 @@ async function restoreStash(path: string, stash: Stash, pop: boolean): Promise<b
   }
   const clashes = await api.stashUntrackedClashes(path, stash.index, stash.hash).catch(() => [])
   const restore = pop ? api.stashPop : api.stashApply
+  const paths = await api.stashPaths(path, stash.index, stash.hash).catch(() => [])
+  const label = t(pop ? 'undo.stashPop' : 'undo.stashApply', { name: stash.message })
   return runOp(path, () => restore(path, stash.index, stash.hash), {
-    errorText: clashes.length ? t('error.stashUntrackedExist', { count: clashes.length }) : undefined
+    errorText: clashes.length ? t('error.stashUntrackedExist', { count: clashes.length }) : undefined,
+    undo: { label, paths }
   })
 }
 
@@ -1255,7 +1273,11 @@ export async function dropStash(path: string, stash: Stash): Promise<void> {
     confirmText: t('dlg.delete'),
     danger: true
   })
-  if (ok) await runOp(path, () => api.stashDrop(path, stash.index, stash.hash))
+  if (ok) {
+    await runOp(path, () => api.stashDrop(path, stash.index, stash.hash), {
+      undo: { label: t('undo.stashDrop', { name: stash.message }) }
+    })
+  }
 }
 
 /** After a checkout, show the uncommitted changes that came along, or else where HEAD is now. */
@@ -1555,7 +1577,13 @@ export async function discardFiles(path: string, files: FileChange[]): Promise<b
   const plain = files.filter((f) => !subs.some((s) => s.path === f.path))
   const tracked = plain.filter((f) => f.status !== '?').map((f) => f.path)
   const untracked = plain.filter((f) => f.status === '?').map((f) => f.path)
-  const discarded = plain.length ? await runOp(path, () => api.discard(path, tracked, untracked), { log: false }) : true
+  const undo = {
+    label: single ? t('undo.discard', { name: summary.name! }) : t('undo.discardFiles', { count: plain.length }),
+    paths: [...tracked, ...untracked]
+  }
+  const discarded = plain.length
+    ? await runOp(path, () => api.discard(path, tracked, untracked), { log: false, undo })
+    : true
   const moved = subs.filter((s) => s.state === 'outOfSync')
   if (moved.length) await updateSubmodules(path, moved)
   const inside = subs.filter((s) => s.state !== 'outOfSync' && s.dirty)
@@ -1570,7 +1598,17 @@ export async function discardAll(path: string): Promise<void> {
     confirmText: t('menu.discardAll'),
     danger: true
   })
-  if (ok) await runOp(path, () => api.discardAll(path), { log: false })
+  if (!ok) return
+  const status = getRepo(path)?.state?.status
+  const paths = [...new Set([...(status?.staged ?? []), ...(status?.unstaged ?? [])].flatMap(changePaths))]
+  // In the middle of a merge or rebase, discarding everything ends it: that is not brought back.
+  const undo = getRepo(path)?.state?.operation ? undefined : { label: t('undo.discardAll'), paths }
+  await runOp(path, () => api.discardAll(path), { log: false, undo })
+}
+
+/** The paths a change touches: a rename's old one too. */
+function changePaths(file: FileChange): string[] {
+  return file.origPath ? [file.origPath, file.path] : [file.path]
 }
 
 export function ignorePattern(path: string, pattern: string): Promise<boolean> {
@@ -1621,9 +1659,11 @@ export async function applyHunk(
       : mode === 'unstage'
         ? { cached: true, reverse: true }
         : { cached: false, reverse: true }
+  const undo =
+    mode === 'discard' ? { label: t('undo.discardHunk', { name: basename(diff.path) }), paths: [diff.path] } : undefined
   patchRepo(path, { applying: true })
   try {
-    await runOp(path, () => api.applyPatch(path, patch, opts), { log: false })
+    await runOp(path, () => api.applyPatch(path, patch, opts), { log: false, undo })
     await reloadDiff(path)
   } finally {
     patchRepo(path, { applying: false })

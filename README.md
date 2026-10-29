@@ -49,7 +49,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **External tools**: open files in your editor (VS Code, Rider, Visual Studio… or any command), a change in your diff tool, a conflict in your merge tool and the repository in your terminal (PowerShell, Windows Terminal, Git Bash, iTerm…); and `leviathan .` in a terminal opens the repository you are in.
 - **Terminal inside the app** (Ctrl+`): a real console below the graph, in the repository's folder, one per repository, for everything you would rather type by hand.
 - **Settings per repository**: automatic fetch, pull mode, push after commit, commits loaded, editor and diff tool can differ from one repository to another; the rest follow the general settings.
-- **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets and pulls — without ever losing uncommitted work.
+- **Undo / redo** (Ctrl+Z / Ctrl+Shift+Z) for commits, checkouts, branches, tags, merges, rebases, resets, pulls, discarded changes and stashes — without ever losing uncommitted work.
 - **Automatic updates** from the GitHub releases: one click with the Windows installer and the Linux AppImage; the portable build, the .deb and macOS point to the download. The check contacts github.com every half hour (and when you come back to the app) and can be turned off in Settings.
 - **What's new**: the notes of every version, from the status bar.
 - **Dark and light themes**, or follow the system.
