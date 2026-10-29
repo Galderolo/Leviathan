@@ -81,6 +81,19 @@ describe('pollDeviceFlow', () => {
     )
   })
 
+  it('keeps waiting through a network error or a server error now and then', async () => {
+    const answers: (() => Awaited<ReturnType<FetchFn>>)[] = [
+      () => {
+        throw new Error('read ECONNRESET')
+      },
+      () => ({ ok: false, status: 502, json: async () => ({}) }),
+      () => ({ ok: true, status: 200, json: async () => ({ error: 'authorization_pending' }) }),
+      () => ({ ok: true, status: 200, json: async () => ({ access_token: TOKEN }) })
+    ]
+    const fn: FetchFn = async () => answers.shift()!()
+    expect(await pollDeviceFlow(CLIENT, code, { fetchFn: fn, sleep: async () => {} })).toBe(TOKEN)
+  })
+
   it('says when GitHub cannot be reached', async () => {
     const fn: FetchFn = async () => {
       throw new Error('getaddrinfo ENOTFOUND github.com')
