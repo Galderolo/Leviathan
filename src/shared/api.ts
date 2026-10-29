@@ -15,7 +15,7 @@ import type {
   PullRequest,
   PullRequestComment,
   PullMode,
-  RebaseCommit,
+  RebaseList,
   RemoteRepo,
   RepoChangedEvent,
   RepoState,
@@ -104,7 +104,7 @@ export interface LeviathanInvokeApi {
   applyChange(repo: string, change: RepoChange): Promise<void>
 
   // Interactive rebase
-  getRebaseCommits(repo: string, base: string): Promise<RebaseCommit[]>
+  getRebaseCommits(repo: string, base: string): Promise<RebaseList>
   /** Refused when the branch no longer holds exactly the commits in `items`. */
   interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<void>
 

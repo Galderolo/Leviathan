@@ -6,6 +6,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Interactive rebase with merges**: a range of commits with merges among them no longer refuses the interactive rebase. The merges are kept as they are (git's own `--rebase-merges` plan), shown as fixed rows, with a dashed line where a merged branch starts; each commit can still be reworded, edited, squashed, fixed up or dropped. Commits are not moved across branches there (without merges, reordering is as before).
 - **Several consoles in the terminal**: the + in its header opens another console of the repository in a tab of its own, each with its shell and what it ran; the × on a tab closes it. URLs in the output (the one `git push` prints to open a pull request, for example) open in the browser with Ctrl+click (⌘+click on macOS). The terminal's font size is in Settings → External tools.
 - **Undoing a hard reset brings back the changes it dropped**, staged and not, along with the branch.
 - **Undo a discard, and stashes**: discarded changes (whole files, new files, a hunk, or everything) come back with Undo (Ctrl+Z), exactly as they were, and Redo discards them again. Saving, applying, popping and deleting a stash can be undone too. Only files over 50 MB are not kept for it (a game's assets can be gigabytes): then the app says that action cannot be undone. Undo refuses, as ever, when a file was edited since.

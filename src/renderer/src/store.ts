@@ -238,7 +238,7 @@ export interface AppState {
   settingsSection: SettingsSection
   whatsNewOpen: boolean
   /** Interactive rebase dialog: the commits after `base` in repository `path`. */
-  rebase: { path: string; base: string; commits: RebaseCommit[] } | null
+  rebase: { path: string; base: string; commits: RebaseCommit[]; script: string | null } | null
   cloneProgress: string | null
   versions: { app: string; git: string }
   /** How diffs are shown: one column, or old and new side by side. */

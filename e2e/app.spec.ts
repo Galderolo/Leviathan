@@ -1216,6 +1216,37 @@ async function openRebaseFromBase(): Promise<void> {
   await expect(page.locator('.rebase-row')).toHaveCount(3)
 }
 
+test('rewrites commits around a merge in the interactive rebase, keeping the merge', async () => {
+  const repo = box.repo('game', { 'base.txt': 'base\n' })
+  box.git(repo, 'checkout', '-qb', 'feature')
+  box.write(repo, { 'f.txt': 'f\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'feature work')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'm.txt': 'm\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'main work')
+  box.git(repo, 'merge', '-q', '--no-ff', '-m', 'Merge feature', 'feature')
+  await open(repo)
+
+  await commitRows().filter({ hasText: 'first' }).click({ button: 'right' })
+  await menuItem('Interactive rebase from here…').click()
+  const row = (subject: string) => page.locator('.rebase-row', { hasText: subject })
+  await expect(page.locator('.rebase-row')).toHaveCount(3)
+  // The merge is kept as it is: a row of its own, with nothing to choose; nothing moves across it.
+  await expect(row('Merge feature')).toHaveClass(/merge-row/)
+  await expect(row('Merge feature').locator('select')).toHaveCount(0)
+  await expect(page.locator('.rebase-grip')).toHaveCount(0)
+
+  await row('feature work').locator('select').selectOption('reword')
+  await row('feature work').locator('textarea').fill('feature done')
+  await page.getByRole('button', { name: 'Start rebase' }).click()
+  await expect(page.locator('.rebase-modal')).toHaveCount(0)
+  await expect.poll(() => box.git(repo, 'log', '--format=%s', 'HEAD^2', '-1')).toBe('feature done')
+  expect(box.git(repo, 'log', '--format=%s', '-1')).toBe('Merge feature')
+  expect(box.git(repo, 'rev-list', '--parents', '-n1', 'HEAD').split(' ')).toHaveLength(3)
+})
+
 test('reorders commits by dragging them in the interactive rebase', async () => {
   const repo = threeCommits()
   await open(repo)

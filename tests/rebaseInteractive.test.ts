@@ -48,17 +48,46 @@ afterEach(() => rmSync(join(dir, '..'), { recursive: true, force: true, maxRetri
 
 describe('getRebaseCommits', () => {
   it('lists the commits after the base, oldest first', async () => {
-    const commits = await repo.getRebaseCommits(dir, base)
+    const { commits, script } = await repo.getRebaseCommits(dir, base)
     expect(commits.map((c) => c.subject)).toEqual(['one', 'two', 'three'])
     expect(commits[0].hash).toBe(hashes.one)
+    expect(script).toBeNull()
   })
 
-  it('refuses a range with merge commits', async () => {
-    await repo.createBranch(dir, 'side', base, true)
-    await commitFile('side.txt', 'side\n', 'side')
-    await repo.checkout(dir, 'main')
-    await repo.merge(dir, 'side')
-    await expect(repo.getRebaseCommits(dir, base)).rejects.toThrow(/merge/)
+  it("lists a range with merges in the order of git's own list, which it gives along", async () => {
+    await mergeSide()
+    const { commits, script } = await repo.getRebaseCommits(dir, base)
+    expect(commits.map((c) => c.subject)).toEqual(['side', 'one', 'two', 'three'])
+    expect(script).toMatch(/^merge -C [0-9a-f]+ /m)
+    // Nothing started: no rebase in progress, the branch where it was.
+    expect((await repo.getState(dir)).operation).toBeNull()
+  })
+})
+
+/** A branch `side` off the base, merged into main after its three commits. */
+async function mergeSide() {
+  await repo.createBranch(dir, 'side', base, true)
+  hashes.side = await commitFile('side.txt', 'side\n', 'side')
+  await repo.checkout(dir, 'main')
+  await repo.merge(dir, 'side')
+}
+
+describe('interactiveRebase with merges', () => {
+  it('rewords and drops commits, keeping the merge a merge', async () => {
+    await mergeSide()
+    await repo.interactiveRebase(dir, base, [
+      pick('side', 'reword', 'side first'),
+      pick('one'),
+      pick('two', 'drop'),
+      pick('three')
+    ])
+    const parents = (await git(['rev-list', '--parents', '-n1', 'HEAD'], { cwd: dir })).stdout.trim().split(' ')
+    expect(parents).toHaveLength(3)
+    const all = await messages()
+    expect(all).toContain('side first')
+    expect(all).not.toContain('two')
+    expect(all).toContain('three')
+    expect(existsSync(join(dir, 'two.txt'))).toBe(false)
   })
 })
 

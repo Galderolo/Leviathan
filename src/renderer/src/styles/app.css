@@ -2662,6 +2662,28 @@ img.avatar {
   color: var(--text-dim);
 }
 
+/* A merge, kept as it is: no choice, set apart from the commits. */
+.rebase-row.merge-row {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  color: var(--text-dim);
+}
+
+.rebase-merge-icon {
+  display: flex;
+  color: var(--accent);
+}
+
+.rebase-merge-kept {
+  flex: 0 0 120px;
+  font-size: 11.5px;
+}
+
+/* Where another branch's commits start. */
+.rebase-branch-break {
+  height: 0;
+  border-top: 2px dashed var(--border);
+}
+
 .rebase-message {
   width: 100%;
   font-family: var(--mono);

@@ -248,6 +248,14 @@ export interface RebaseCommit {
   date: number
 }
 
+/** The commits an interactive rebase rewrites, and with merges among them, the list git makes to keep them. */
+export interface RebaseList {
+  /** Oldest first; with merges, in the order of git's list (merges themselves are not among them). */
+  commits: RebaseCommit[]
+  /** `git rebase -i --rebase-merges`'s own list, or null when there is no merge. */
+  script: string | null
+}
+
 /** A working-tree file read whole as text, or why it cannot be edited as text. */
 export type WorkingFile =
   { text: string; reason: null } | { text: null; reason: 'binary' | 'large' | 'encoding' | 'missing' }
