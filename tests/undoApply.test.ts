@@ -125,6 +125,44 @@ describe('applyChange edge cases', () => {
     return r.exitCode === 0 ? r.stdout.trim() : null
   }
 
+  it('undoing a --no-ff merge commit brings the merge back as --no-ff, so committing again makes a merge', async () => {
+    await repo.createBranch(dir, 'side', null, true)
+    await commitFile('b.txt', 'b\n', 'side work')
+    await repo.checkout(dir, 'main')
+    // main could fast-forward to side: only --no-ff makes a merge commit.
+    await git(['merge', '--no-ff', '--no-commit', 'side'], { cwd: dir })
+    const change = await track(() => repo.commit(dir, 'Merge side', false), 'soft')
+    await repo.applyChange(dir, invertChange(change))
+
+    await repo.commit(dir, 'Merge side again', false)
+    const parents = (await git(['log', '-1', '--format=%P'], { cwd: dir })).stdout.trim().split(' ')
+    expect(parents).toHaveLength(2)
+  })
+
+  it('undoes the first commit of an empty repository, keeping its files staged, and redoes it', async () => {
+    const empty = await repo.initRepo(join(dir, '..', 'empty'), 'main')
+    for (const [k, v] of [
+      ['user.name', 'Test'],
+      ['user.email', 't@example.com'],
+      ['commit.gpgsign', 'false']
+    ]) {
+      await git(['config', k, v], { cwd: empty })
+    }
+    writeFileSync(join(empty, 'first.txt'), 'first\n')
+    await repo.stage(empty, ['first.txt'])
+    const before = await repo.getSnapshot(empty)
+    await repo.commit(empty, 'first', false)
+    const change = diffSnapshots(before, await repo.getSnapshot(empty), 'soft')!
+
+    await repo.applyChange(empty, invertChange(change))
+    expect((await repo.getSnapshot(empty)).head).toMatchObject({ branch: 'main', hash: null })
+    expect((await repo.getState(empty)).status.staged).toEqual([{ path: 'first.txt', status: 'A' }])
+
+    await repo.applyChange(empty, change)
+    expect((await git(['log', '-1', '--format=%s'], { cwd: empty })).stdout.trim()).toBe('first')
+    expect((await repo.getState(empty)).status.staged).toEqual([])
+  })
+
   it('undoes a commit made on a detached HEAD keeping its changes staged', async () => {
     await repo.checkoutDetached(dir, (await repo.getSnapshot(dir)).head.hash!)
     writeFileSync(join(dir, 'b.txt'), 'b\n')

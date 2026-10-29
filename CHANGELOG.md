@@ -17,6 +17,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- **Stash no longer says there is nothing to stash** for a change made a moment before the app saw it: git is asked first.
+- **The first commit of an empty repository can be undone**: its files are left staged, and Redo commits them again.
+- **Undoing a merge commit made with `--no-ff`** (one that could have fast-forwarded) brings the merge back as such: committing it again makes a merge, not a plain commit of the other branch.
+- **An open diff follows a file that became untracked** (`git rm --cached` in a terminal) or tracked again, instead of showing no changes.
 - **Accounts on a server of your own**: Settings → Accounts says how to add GitHub Enterprise, a GitLab of your own or Gitea (Add account, with the server as host and a token created there).
 - **Undoing a stash of all changes (or a discard of everything) no longer risks a change the app had not shown yet**: the copy kept for undo was made from the files of the last refresh, so a change made just before (by another program, or right after an undo) could go with the stash and not come back. The copy is now made from what git sees at that moment.
 - **The ✕ beside a branch says what it means** on hover: its remote branch no longer exists (deleted on the server, often once its pull request was merged), and the branch keeps its commits.

@@ -1775,10 +1775,21 @@ async function moveRefsAndHead(repo: string, change: RepoChange, concludesMerge:
   const { from, to } = change.head
   const startRef = from.branch ? `refs/heads/${from.branch}` : null
   if (from.branch === to.branch) {
-    if (change.refs.some((m) => m.ref === startRef && m.to === null)) {
+    // Undoing the first commit of a branch: it has no commit again, and what the commit had stays staged.
+    const unborn = !!from.hash && !to.hash && change.mode === 'soft'
+    if (change.refs.some((m) => m.ref === startRef && m.to === null) && !unborn) {
       throw new Error('The checked-out branch cannot be deleted')
     }
     for (const move of change.refs) if (move.ref !== startRef) await moveRef(repo, move)
+    if (unborn) {
+      await run(repo, ['update-ref', '-d', startRef!, from.hash!])
+      return
+    }
+    if (to.hash && !from.hash && change.mode === 'soft') {
+      // Redoing it: the branch is made again at the commit; the index already holds what it has.
+      await run(repo, ['update-ref', startRef ?? 'HEAD', to.hash, ''])
+      return
+    }
     if (to.hash && to.hash !== from.hash) {
       if (concludesMerge) {
         // `reset --soft` refuses mid-merge; moving HEAD is all a soft reset does.
@@ -1795,6 +1806,14 @@ async function moveRefsAndHead(repo: string, change: RepoChange, concludesMerge:
       const dir = await gitDir(repo)
       await fs.writeFile(join(dir, 'MERGE_HEAD'), to.merge.join('\n') + '\n')
       await fs.writeFile(join(dir, 'MERGE_MSG'), message)
+      // A merge that could have fast-forwarded was made with --no-ff: without it, committing again would drop the
+      // merge and keep only the other side.
+      for (const head of to.merge) {
+        if (to.hash && (await isAncestor(repo, to.hash, head))) {
+          await fs.writeFile(join(dir, 'MERGE_MODE'), 'no-ff')
+          break
+        }
+      }
     }
     return
   }

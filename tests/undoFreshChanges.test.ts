@@ -42,7 +42,8 @@ beforeEach(() => {
     repos: { '/r': { ...newRepoView('/r', 100), state } },
     tabs: [{ id: '/r', path: '/r' }],
     activeTab: '/r',
-    dialog: null
+    dialog: null,
+    toasts: []
   })
 })
 
@@ -56,6 +57,15 @@ describe('undoing a stash or discard of every change', () => {
       ['/r', 'changes'],
       ['/r', ['a.txt', 'new.txt']]
     ])
+  })
+
+  it('asks git before saying there is nothing to stash, as the last refresh may not have seen a change yet', async () => {
+    const clean = { ...state, status: { staged: [], unstaged: [], conflicted: [] } } as unknown as RepoState
+    useStore.setState({ repos: { '/r': { ...newRepoView('/r', 100), state: clean } } })
+    await stashChanges('/r')
+
+    expect(stub.stashSave).toHaveBeenCalled()
+    expect(useStore.getState().toasts.map((t) => t.text)).not.toContain('There are no changes to stash')
   })
 
   it('does the same for discarding everything', async () => {

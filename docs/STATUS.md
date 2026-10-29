@@ -226,9 +226,9 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **Undo / redo**
 - Applying a change is not atomic (could use `update-ref --stdin`). One undo or redo runs at a time per repository (`historyRuns` in `actions.ts`): a press while one is applied is ignored.
 - An action recorded for undo waits for a background fetch under way, and none starts until it is recorded (`recording` in `actions.ts`): otherwise the tags it brought were part of the change.
-- The first commit of an empty repository cannot be undone.
+- Undoing the first commit of a branch with no commits before (an empty repository) deletes the branch again and leaves its files staged (`update-ref -d`).
 - Undoing a hard reset brings back the uncommitted changes of tracked files it dropped; redoing it sets those files to HEAD first (`filesToHead`), as `reset --keep` refuses local changes. Discarding everything during a merge or rebase is not recorded (it ends the operation).
-- Undoing a branch rename restarts its reflog; undoing a merge commit does not restore `MERGE_MODE` (`--no-ff`).
+- Undoing a branch rename restarts its reflog. Undoing a merge commit that could have fast-forwarded brings it back as `--no-ff` (`MERGE_MODE`), so committing again makes a merge.
 
 **Conflict editor**
 - `=======` inside the current side is read as the separator (git and other editors share this ambiguity).
@@ -272,7 +272,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Diffs**
 - *Whole file* asks git for the same diff twice: as usual (the hunks that stage, unstage and discard) and with `-U100000000` (`WHOLE_FILE`), whose context lines fill the gaps (`unchangedGaps`, by old line number). Near INT_MAX git splits the file into overlapping hunks (it doubles the context when joining them). Each gap is highlighted on its own, so a comment opened in a gap is not known in the next hunk.
-- An open diff keeps an outdated untracked flag when the file stays in the same list (`git rm --cached`).
 
 **Stash**
 - Stashing some files (`git stash push -- <paths>`) still keeps a picture of the whole index in the stash: files that were staged appear in it too, though they stay as they were in the working tree.
