@@ -15,6 +15,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- **Undoing a stash of all changes (or a discard of everything) no longer risks a change the app had not shown yet**: the copy kept for undo was made from the files of the last refresh, so a change made just before (by another program, or right after an undo) could go with the stash and not come back. The copy is now made from what git sees at that moment.
 - **The ✕ beside a branch says what it means** on hover: its remote branch no longer exists (deleted on the server, often once its pull request was merged), and the branch keeps its commits.
 - **A stash that clashes with the files when applied** says that they are left with conflicts to resolve and that the stash is kept, instead of git's report.
 - **Undo no longer takes in what a background fetch brought**: tags fetched while a commit (or any action) ran were part of it, and undoing it deleted them. An action now waits for a fetch under way, and none starts until it is done.

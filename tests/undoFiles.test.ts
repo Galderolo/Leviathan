@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -125,6 +125,30 @@ describe('undoing stashes', () => {
     await repo.applyChange(dir, change)
     expect(await status()).toBe('')
     expect(await stashes()).toEqual([saved])
+  })
+
+  it('copies every uncommitted change as it is when the snapshot is taken, to undo a stash of them all', async () => {
+    mkdirSync(join(dir, 'folder'))
+    writeFileSync(join(dir, 'a.txt'), 'mine\n')
+    writeFileSync(join(dir, 'folder', 'new.txt'), 'new\n')
+    writeFileSync(join(dir, 'b.txt'), 'staged\n')
+    await repo.stage(dir, ['b.txt'])
+
+    const before = await repo.getSnapshot(dir, 'changes')
+    expect(Object.keys(before.files ?? {}).sort()).toEqual(['a.txt', 'b.txt', 'folder/new.txt'])
+    await repo.stashSave(dir, null)
+    const after = await repo.getSnapshot(dir, Object.keys(before.files!))
+    await repo.applyChange(dir, invertChange(diffSnapshots(before, after, 'keep')!))
+
+    expect(read('a.txt')).toBe('mine\n')
+    expect(read('folder/new.txt')).toBe('new\n')
+    expect(await status()).toBe(' M a.txt\nA  b.txt\n?? folder/\n')
+    expect(await stashes()).toEqual([])
+  })
+
+  it('copies both names of a renamed file', async () => {
+    await git(['mv', 'a.txt', 'c.txt'], { cwd: dir })
+    expect(Object.keys((await repo.getSnapshot(dir, 'changes')).files ?? {}).sort()).toEqual(['a.txt', 'c.txt'])
   })
 
   it('undoes popping a stash: the stash is back and the changes leave again', async () => {

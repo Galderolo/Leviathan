@@ -98,7 +98,14 @@ const handlers: LeviathanInvokeApi = {
   getCommitDetails: (path, hash) => repo.getCommitDetails(path, hash),
   getDiff: (path, source, fullFile) => repo.getDiff(path, source, fullFile === true),
   getSnapshot: (path, paths) =>
-    repo.getSnapshot(path, Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []),
+    repo.getSnapshot(
+      path,
+      paths === 'changes'
+        ? 'changes'
+        : Array.isArray(paths)
+          ? paths.filter((p): p is string => typeof p === 'string')
+          : []
+    ),
   stashPaths: (path, index, hash) => repo.stashPaths(path, index, hash),
   // A limit that is not a whole number falls back to the first page there.
   // One file view per repository: a newer one, or closing it, stops git's work for the one before.

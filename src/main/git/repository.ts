@@ -1501,7 +1501,25 @@ async function fileVersions(repo: string, paths: string[], write: boolean, maxBy
  * Every local branch and tag (unpeeled, so annotated tags can be restored) plus HEAD and the stash list; and with
  * `paths`, a copy of those files (working tree and index), to bring them back.
  */
-export async function getSnapshot(repo: string, paths: string[] = [], maxBytes = UNDO_FILE_MAX): Promise<Snapshot> {
+/** The paths of the uncommitted changes, staged or not, new files one by one (a rename's old name too). */
+async function changedPaths(repo: string): Promise<string[]> {
+  const { status } = parseStatus(
+    await run(repo, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'])
+  )
+  const files = [...status.staged, ...status.unstaged]
+  return [...new Set(files.flatMap((f) => (f.origPath ? [f.origPath, f.path] : [f.path])))]
+}
+
+/**
+ * `which`: files to copy, or `'changes'` for every uncommitted change as git sees it now (a rename's old name too):
+ * the app's last refresh may not have seen the latest ones yet.
+ */
+export async function getSnapshot(
+  repo: string,
+  which: string[] | 'changes' = [],
+  maxBytes = UNDO_FILE_MAX
+): Promise<Snapshot> {
+  const paths = which === 'changes' ? await changedPaths(repo) : which
   const [out, head, config, stash, files] = await Promise.all([
     run(repo, ['for-each-ref', '--format=%(refname)%1f%(objectname)', 'refs/heads', 'refs/tags']),
     currentHead(repo),
