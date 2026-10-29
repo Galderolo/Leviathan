@@ -101,6 +101,8 @@ const es: Record<keyof typeof en, string> = {
   'left.tags': 'TAGS',
   'left.filter': 'Filtrar',
   'left.empty': 'Ninguna',
+  'left.upstreamGone':
+    '{upstream} ya no existe en el remoto: se borró allí (a menudo al mergear su pull request). Esta rama conserva sus commits.',
 
   'graph.branchTag': 'RAMA / TAG',
   'graph.graph': 'GRAFO',

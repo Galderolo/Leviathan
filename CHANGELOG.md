@@ -14,6 +14,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- **The ✕ beside a branch says what it means** on hover: its remote branch no longer exists (deleted on the server, often once its pull request was merged), and the branch keeps its commits.
 - **A stash that clashes with the files when applied** says that they are left with conflicts to resolve and that the stash is kept, instead of git's report.
 - **Undo no longer takes in what a background fetch brought**: tags fetched while a commit (or any action) ran were part of it, and undoing it deleted them. An action now waits for a fetch under way, and none starts until it is done.
 - **Installing git-lfs**: its progress shows whole lines; where the app cannot install it, the LFS section offers to copy the command (also after the question was turned down); accepting it while the repository is busy says so instead of taking over; closing the tab it installs from asks first (the install goes on).

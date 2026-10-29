@@ -122,6 +122,27 @@ test('marks the tabs whose repository has commits to pull or to push', async () 
   await expect(toolTab.locator('.ab-badge')).toHaveCount(0)
 })
 
+test('says what the mark of a branch whose remote branch was deleted means', async () => {
+  const origin = join(box.root, 'origin.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  const game = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(game, 'remote', 'add', 'origin', origin)
+  box.git(game, 'push', '-q', '-u', 'origin', 'main')
+  box.git(game, 'push', '-q', 'origin', 'main:merged-feature')
+  box.git(game, 'branch', '-q', '--track', 'merged-feature', 'origin/merged-feature')
+  // Deleted on the server, as once its pull request is merged; the fetch prunes it here.
+  box.git(origin, 'branch', '-q', '-D', 'merged-feature')
+  box.git(game, 'fetch', '-q', '--prune')
+  await open(game)
+
+  const row = page.locator('.left-panel .side-row', { hasText: 'merged-feature' })
+  await expect(row.locator('.ab-badge.gone')).toHaveAttribute(
+    'title',
+    'origin/merged-feature no longer exists on the remote: it was deleted there (often once its pull request was merged). This branch keeps its commits.'
+  )
+  await expect(page.locator('.left-panel .side-row', { hasText: /^main/ }).locator('.ab-badge.gone')).toHaveCount(0)
+})
+
 test('never runs a git.exe that a repository has at its root', async () => {
   test.skip(process.platform !== 'win32', 'only Windows looks for programs in the working folder')
   const repo = box.repo('game', { 'a.txt': 'one\n' })

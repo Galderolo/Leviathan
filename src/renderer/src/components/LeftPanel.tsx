@@ -163,7 +163,7 @@ export function LeftPanel({ path }: { path: string }) {
         </span>
       )}
       {ref.upstreamGone && (
-        <span className="ab-badge gone">
+        <span className="ab-badge gone" title={t('left.upstreamGone', { upstream: ref.upstream ?? '' })}>
           <X size={10} strokeWidth={3} />
         </span>
       )}
