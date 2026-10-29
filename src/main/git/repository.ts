@@ -484,8 +484,9 @@ function imageSides(source: DiffSource): (ImageSide | null)[] {
   switch (source.kind) {
     case 'unstaged':
       if (source.untracked) return [null, { file: source.path }]
-      // Conflicted: what the branch has against the file as it is.
-      return [{ blob: `${source.conflicted ? 'HEAD' : ''}:${source.path}` }, { file: source.path }]
+      // Conflicted: the current side against the incoming one (the index's stages 2 and 3).
+      if (source.conflicted) return [{ blob: `:2:${source.path}` }, { blob: `:3:${source.path}` }]
+      return [{ blob: `:${source.path}` }, { file: source.path }]
     case 'staged':
       return [{ blob: `HEAD:${source.path}` }, { blob: `:${source.path}` }]
     case 'commit':

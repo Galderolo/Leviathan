@@ -146,6 +146,22 @@ describe('getImages', () => {
     })
   })
 
+  it('shows a conflicted image as the current and the incoming one', async () => {
+    const v3 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xfd, 0x09])
+    await commitFile('shot.png', v1, 'first')
+    await repo.createBranch(dir, 'side', null, true)
+    await commitFile('shot.png', v2, 'side')
+    await repo.checkout(dir, 'main')
+    await commitFile('shot.png', v3, 'main')
+    await repo.merge(dir, 'side').catch(() => {})
+    expect((await repo.getState(dir)).operation).toBe('merge')
+
+    expect(await repo.getImages(dir, { kind: 'unstaged', path: 'shot.png', conflicted: true })).toEqual({
+      before: shown(v3),
+      after: shown(v2)
+    })
+  })
+
   it('does not send an image over the size limit', async () => {
     await commitFile('shot.png', v1, 'first')
     writeFileSync(join(dir, 'shot.png'), v2)

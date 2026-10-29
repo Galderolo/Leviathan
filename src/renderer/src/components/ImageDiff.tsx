@@ -11,7 +11,18 @@ import { cx } from '../utils'
  * pointer. Give it a `key` per file; `version` changes whenever the diff was read again (the file changed), and the
  * pictures are read again without blanking the ones on screen.
  */
-export function ImageDiff({ repo, source, version }: { repo: string; source: DiffSource; version: unknown }) {
+export function ImageDiff({
+  repo,
+  source,
+  version,
+  labels
+}: {
+  repo: string
+  source: DiffSource
+  version: unknown
+  /** In place of before / after (a conflict's two sides). */
+  labels?: { before: string; after: string }
+}) {
   const t = useT()
   const [pair, setPair] = useState<ImagePair | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -38,13 +49,19 @@ export function ImageDiff({ repo, source, version }: { repo: string; source: Dif
   if (!before && !after) return <div className="empty-state">{t('image.none')}</div>
   const same = !!before?.url && before.url === after?.url
   return (
-    <div className="image-diff">
+    <div className={cx('image-diff', labels && 'sides')}>
       {same && <div className="image-same">{t('image.same')}</div>}
       <div className="image-sides">
         {before && !same && (
-          <ImageSide label={t(after ? 'image.before' : 'image.removed')} version={before} side="before" />
+          <ImageSide
+            label={labels?.before ?? t(after ? 'image.before' : 'image.removed')}
+            version={before}
+            side="before"
+          />
         )}
-        {after && <ImageSide label={t(before ? 'image.after' : 'image.added')} version={after} side="after" />}
+        {after && (
+          <ImageSide label={labels?.after ?? t(before ? 'image.after' : 'image.added')} version={after} side="after" />
+        )}
       </div>
     </div>
   )
