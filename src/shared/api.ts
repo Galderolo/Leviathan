@@ -80,7 +80,10 @@ export interface LeviathanInvokeApi {
   getCommitDetails(repo: string, hash: string): Promise<CommitDetails>
   /** `fullFile`: also the unchanged lines around the hunks (`FileDiff.gaps`). */
   getDiff(repo: string, source: DiffSource, fullFile?: boolean): Promise<FileDiff>
-  getSnapshot(repo: string): Promise<Snapshot>
+  /** Refs, HEAD and the stash list; with `paths`, a copy of those files too (`tooLarge`: the ones too big to keep). */
+  getSnapshot(repo: string, paths?: string[]): Promise<Snapshot>
+  /** The files a stash changes (its untracked ones too): what applying or popping it touches. */
+  stashPaths(repo: string, index: number, hash: string): Promise<string[]>
   /** Commits that touched a file, newest first, following renames; `limit` of them (`HISTORY_PAGE` by default). */
   getFileHistory(repo: string, path: string, rev: string | null, limit?: number): Promise<FileCommit[]>
   /** Commits that changed anything inside a folder, newest first; `limit` of them (`HISTORY_PAGE` by default). */
@@ -348,6 +351,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getCommitDetails: true,
   getDiff: true,
   getSnapshot: true,
+  stashPaths: true,
   getFileHistory: true,
   getFolderHistory: true,
   getBlame: true,

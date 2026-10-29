@@ -37,7 +37,16 @@ import type {
 } from '../../shared/types'
 import { BLAME_MAX_LINES, HISTORY_MAX, HISTORY_PAGE } from '../../shared/types'
 import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
-import type { BranchConfig, HeadState, RefMove, RepoChange, Snapshot } from '../../shared/undo'
+import type {
+  BranchConfig,
+  FileMove,
+  FileVersion,
+  HeadState,
+  RefMove,
+  RepoChange,
+  Snapshot,
+  StashEntry
+} from '../../shared/undo'
 import { listRefs } from './refs'
 import { GitError, NON_INTERACTIVE_ENV, git, holdingIndex } from './runner'
 import { lfsFilesAmong, plainLfs, stagedBlobs } from './staged'
@@ -828,6 +837,14 @@ export async function stashTrackedClashes(repo: string, index: number, hash: str
   return stashed.filter((file) => dirty.has(file))
 }
 
+/** The files a stash changes, its untracked ones (kept in its third parent) too. */
+export async function stashPaths(repo: string, index: number, hash: string): Promise<string[]> {
+  const ref = await verifiedStashRef(repo, index, hash)
+  const tracked = await run(repo, ['diff', '--name-only', '-z', '--no-renames', `${ref}^1`, ref])
+  const untracked = await git(['ls-tree', '-r', '--name-only', '-z', `${ref}^3`], { cwd: repo, okCodes: [0, 128] })
+  return [...new Set([...tracked.split('\0'), ...untracked.stdout.split('\0')].filter(Boolean))]
+}
+
 export async function stashDrop(repo: string, index: number, hash: string): Promise<void> {
   await run(repo, ['stash', 'drop', '-q', await verifiedStashRef(repo, index, hash)])
 }
@@ -1325,19 +1342,126 @@ async function branchConfig(repo: string): Promise<Record<string, BranchConfig>>
   return config
 }
 
-/** Every local branch and tag (unpeeled, so annotated tags can be restored) plus HEAD. */
-export async function getSnapshot(repo: string): Promise<Snapshot> {
-  const [out, head, config] = await Promise.all([
+/** Files larger than this get no copy for undo (a game's assets can be gigabytes): what changes them cannot be undone. */
+export const UNDO_FILE_MAX = 50 * 1024 * 1024
+
+async function stashList(repo: string): Promise<StashEntry[]> {
+  const out = await run(repo, ['stash', 'list', '--format=%H%x1f%gs'])
+  return out
+    .split('\n')
+    .map((line) => line.replace(/\r$/, '').split('\x1f'))
+    .filter(([commit]) => commit)
+    .map(([commit, message]) => ({ commit, message: message ?? '' }))
+}
+
+/** The index entries (not in conflict) of `paths`. */
+async function indexEntries(repo: string, paths: string[]): Promise<Map<string, { mode: string; blob: string }>> {
+  const entries = new Map<string, { mode: string; blob: string }>()
+  // ls-files takes no pathspec file: a few hundred paths at a time keep its command line short enough for Windows.
+  for (let i = 0; i < paths.length; i += 200) {
+    const chunk = paths.slice(i, i + 200)
+    const out = await run(repo, ['ls-files', '-s', '-z', '--', ...chunk], { env: LITERAL_PATHS })
+    for (const record of out.split('\0')) {
+      const m = /^(\d+) ([0-9a-f]+) (\d)\t([\s\S]+)$/.exec(record)
+      if (m && m[3] === '0') entries.set(m[4], { mode: m[1], blob: m[2] })
+    }
+  }
+  return entries
+}
+
+/**
+ * The bytes of `paths` in the working tree as blobs (`write`: kept in the repository's objects), exactly as they are:
+ * no filters. Files over `maxBytes`, and symlinks, get none and are listed apart.
+ */
+async function worktreeBlobs(repo: string, paths: string[], write: boolean, maxBytes = Number.POSITIVE_INFINITY) {
+  const blobs = new Map<string, string | null>()
+  const skipped: string[] = []
+  const present: string[] = []
+  for (const path of paths) {
+    const stat = await fs.lstat(insideRepo(repo, path)).catch(() => null)
+    if (!stat || stat.isDirectory()) blobs.set(path, null)
+    else if (!stat.isFile() || stat.size > maxBytes) skipped.push(path)
+    else present.push(path)
+  }
+  if (present.length) {
+    const args = ['hash-object', ...(write ? ['-w'] : []), '--no-filters', '--stdin-paths']
+    const ids = (await run(repo, args, { input: present.join('\n') + '\n' })).split('\n').filter(Boolean)
+    present.forEach((path, i) => blobs.set(path, ids[i]))
+  }
+  return { blobs, skipped }
+}
+
+async function fileVersions(repo: string, paths: string[], write: boolean, maxBytes?: number) {
+  const [index, worktree] = await Promise.all([indexEntries(repo, paths), worktreeBlobs(repo, paths, write, maxBytes)])
+  const versions: Record<string, FileVersion> = {}
+  for (const path of paths) {
+    if (!worktree.skipped.includes(path)) {
+      versions[path] = { worktree: worktree.blobs.get(path) ?? null, index: index.get(path) ?? null }
+    }
+  }
+  return { versions, skipped: worktree.skipped }
+}
+
+/**
+ * Every local branch and tag (unpeeled, so annotated tags can be restored) plus HEAD and the stash list; and with
+ * `paths`, a copy of those files (working tree and index), to bring them back.
+ */
+export async function getSnapshot(repo: string, paths: string[] = [], maxBytes = UNDO_FILE_MAX): Promise<Snapshot> {
+  const [out, head, config, stash, files] = await Promise.all([
     run(repo, ['for-each-ref', '--format=%(refname)%1f%(objectname)', 'refs/heads', 'refs/tags']),
     currentHead(repo),
-    branchConfig(repo)
+    branchConfig(repo),
+    stashList(repo),
+    paths.length ? fileVersions(repo, paths, true, maxBytes) : null
   ])
   const refs: Record<string, string> = {}
   for (const line of out.split('\n')) {
     const [ref, hash] = line.replace(/\r$/, '').split('\x1f')
     if (ref && hash) refs[ref] = hash
   }
-  return { head, refs, config }
+  const snapshot: Snapshot = { head, refs, config, stash }
+  if (files) snapshot.files = files.versions
+  if (files?.skipped.length) snapshot.tooLarge = files.skipped
+  return snapshot
+}
+
+function sameFile(a: FileVersion, b: FileVersion): boolean {
+  return a.worktree === b.worktree && a.index?.mode === b.index?.mode && a.index?.blob === b.index?.blob
+}
+
+/** Puts files back as a change left them: their bytes in the working tree and their index entries. */
+async function writeFiles(repo: string, moves: FileMove[]): Promise<void> {
+  const entries: string[] = []
+  for (const { path, from, to } of moves) {
+    const full = insideRepo(repo, path)
+    if (to.worktree !== from.worktree) {
+      if (to.worktree === null) await fs.rm(full, { force: true })
+      else {
+        // The blob's bytes as they are, in a file of the repository's folder, then moved into place.
+        const temp = (await run(repo, ['unpack-file', to.worktree])).trim()
+        await fs.mkdir(dirname(full), { recursive: true })
+        await fs.rename(join(repo, temp), full)
+        if ((to.index ?? from.index)?.mode === '100755') await fs.chmod(full, 0o755)
+      }
+    }
+    if (to.index?.mode !== from.index?.mode || to.index?.blob !== from.index?.blob) {
+      const none = '0'.repeat((from.index ?? to.index)?.blob.length ?? 40)
+      entries.push(to.index ? `${to.index.mode} ${to.index.blob}\t${path}` : `0 ${none}\t${path}`)
+    }
+  }
+  if (entries.length) await run(repo, ['update-index', '-z', '--index-info'], { input: entries.join('\0') + '\0' })
+}
+
+/** Drops the stashes a change took away and stores again the ones it brought (they are kept as commits). */
+async function moveStashes(repo: string, stash: RepoChange['stash']): Promise<void> {
+  for (const gone of stash?.removed ?? []) {
+    const index = (await stashList(repo)).findIndex((s) => s.commit === gone.commit)
+    if (index >= 0) await run(repo, ['stash', 'drop', '-q', `stash@{${index}}`])
+  }
+  // Oldest first: the newest ends on top, as it was.
+  for (const back of [...(stash?.added ?? [])].reverse()) {
+    await run(repo, ['stash', 'store', '-m', back.message, back.commit])
+  }
 }
 
 async function moveRef(repo: string, move: RefMove): Promise<void> {
@@ -1379,7 +1503,28 @@ export async function applyChange(repo: string, change: RepoChange): Promise<voi
   for (const move of change.refs) {
     if ((await refValue(repo, move.ref)) !== move.from) throw changed
   }
+  // Files edited since, or a stash list that moved on: their content would be lost.
+  if (change.files?.length) {
+    const now = await fileVersions(
+      repo,
+      change.files.map((f) => f.path),
+      false
+    )
+    if (change.files.some((f) => !now.versions[f.path] || !sameFile(now.versions[f.path], f.from))) throw changed
+  }
+  if (change.stash) {
+    const list = await stashList(repo)
+    const has = (s: StashEntry) => list.some((e) => e.commit === s.commit)
+    if (!change.stash.removed.every(has) || change.stash.added.some(has)) throw changed
+  }
 
+  await moveRefsAndHead(repo, change, concludesMerge)
+  if (change.files?.length) await writeFiles(repo, change.files)
+  if (change.stash) await moveStashes(repo, change.stash)
+}
+
+async function moveRefsAndHead(repo: string, change: RepoChange, concludesMerge: boolean): Promise<void> {
+  const { from, to } = change.head
   const startRef = from.branch ? `refs/heads/${from.branch}` : null
   if (from.branch === to.branch) {
     if (change.refs.some((m) => m.ref === startRef && m.to === null)) {

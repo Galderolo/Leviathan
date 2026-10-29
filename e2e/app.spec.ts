@@ -187,6 +187,34 @@ test('stashes the changes and pops them back', async () => {
   expect(box.read(repo, 'new.txt')).toBe('new\n')
 })
 
+test('undoes discarding changes and stashing them, and redoes them', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.write(repo, { 'a.txt': 'mine\n', 'new.txt': 'new\n' })
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+
+  await unstaged().locator('.file-row', { hasText: 'a.txt' }).click()
+  await page.locator('.diff-actions').getByRole('button', { name: 'Discard changes' }).click()
+  await expect(page.locator('.modal')).toContainText('Undo brings them back')
+  await page.locator('.modal .btn-danger').click()
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe('one\n')
+  await toolbarButton('Undo').click()
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe('mine\n')
+  await toolbarButton('Redo').click()
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe('one\n')
+  await toolbarButton('Undo').click()
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe('mine\n')
+
+  // A stash, new files included: undone, the changes are back and the stash is gone.
+  await toolbarButton('Stash').click()
+  await expect(page.locator('.graph-row.row-stash')).toHaveCount(1)
+  await expect.poll(() => existsSync(join(repo, 'new.txt'))).toBe(false)
+  await toolbarButton('Undo').click()
+  await expect(page.locator('.graph-row.row-stash')).toHaveCount(0)
+  expect(box.read(repo, 'a.txt')).toBe('mine\n')
+  expect(box.read(repo, 'new.txt')).toBe('new\n')
+})
+
 test('shows a merge stopped by a conflict, and aborts it', async () => {
   const repo = box.repo('game', { 'a.txt': 'base\n' })
   box.git(repo, 'checkout', '-qb', 'other')

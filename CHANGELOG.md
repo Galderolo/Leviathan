@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Undo a discard, and stashes**: discarded changes (whole files, new files, a hunk, or everything) come back with Undo (Ctrl+Z), exactly as they were, and Redo discards them again. Saving, applying, popping and deleting a stash can be undone too. Only files over 50 MB are not kept for it (a game's assets can be gigabytes): then the app says that action cannot be undone. Undo refuses, as ever, when a file was edited since.
+
 ## [0.20.0] - 2026-10-28
 
 ### Changed
