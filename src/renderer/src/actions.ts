@@ -1378,8 +1378,8 @@ export async function openInteractiveRebase(path: string, base: string): Promise
     return
   }
   try {
-    const commits = await api.getRebaseCommits(path, base)
-    useStore.setState({ rebase: { path, base, commits } })
+    const { commits, script } = await api.getRebaseCommits(path, base)
+    useStore.setState({ rebase: { path, base, commits, script } })
   } catch (err) {
     toast('error', errorMessage(err))
   }

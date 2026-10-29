@@ -21,7 +21,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 ## History editing
 
 - [x] Drag and drop to reorder commits in the interactive rebase dialog
-- [ ] Interactive rebase of ranges with merge commits (`--rebase-merges`)
+- [x] Interactive rebase of ranges with merge commits (`--rebase-merges`)
 - [x] Stop at a commit to amend it (`edit`) during an interactive rebase
 
 ## Remotes and collaboration

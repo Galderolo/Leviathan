@@ -469,6 +469,9 @@ const es: Record<keyof typeof en, string> = {
   'rebase.reword': 'Cambiar mensaje',
   'rebase.edit': 'Editar (parar aquí)',
   'rebase.drag': 'Arrastra para moverlo',
+  'rebase.mergesHint':
+    'Los commits posteriores a {base}, del más reciente al más antiguo. Entre ellos hay merges: se mantienen tal cual, así que los commits se quedan donde están, y una línea discontinua marca dónde empieza una rama mergeada. Unir funde un commit en el de debajo de su misma rama; Editar para ahí para que lo cambies.',
+  'rebase.mergeKept': 'merge (se mantiene)',
   'rebase.squash': 'Unir',
   'rebase.fixup': 'Unir sin mensaje',
   'rebase.drop': 'Descartar',

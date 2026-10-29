@@ -463,6 +463,9 @@ const en = {
   'rebase.reword': 'Reword',
   'rebase.edit': 'Edit (stop here)',
   'rebase.drag': 'Drag to move',
+  'rebase.mergesHint':
+    'The commits after {base}, newest first. There are merges among them: they are kept as they are, so commits stay where they are, and a dashed line marks where a merged branch starts. Squash and fixup meld a commit into the one below it in its branch; Edit stops there so you can change it.',
+  'rebase.mergeKept': 'merge (kept)',
   'rebase.squash': 'Squash',
   'rebase.fixup': 'Fixup',
   'rebase.drop': 'Drop',

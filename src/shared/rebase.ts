@@ -100,6 +100,88 @@ export function planRebase(
   return { todo: lines.join('\n') + '\n', files }
 }
 
+/**
+ * A line of the list `git rebase -i --rebase-merges` makes: one of its commits, a merge (kept as it is), or a line that
+ * keeps the branches apart (`label`, `reset`).
+ */
+export type ScriptLine =
+  { kind: 'pick'; hash: string } | { kind: 'merge'; subject: string; text: string } | { kind: 'other'; text: string }
+
+/** Reads git's own list, its abbreviated hashes taken as the full ones of `commits`; comments and blanks go. */
+export function parseRebaseScript(todo: string, commits: { hash: string }[]): ScriptLine[] {
+  const lines: ScriptLine[] = []
+  for (const raw of todo.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const pick = /^(?:pick|p) ([0-9a-f]+)/.exec(line)
+    if (pick) {
+      const commit = commits.find((c) => c.hash.startsWith(pick[1]))
+      if (!commit) throw new Error(`The rebase list names a commit that is not among the ones read: ${pick[1]}`)
+      lines.push({ kind: 'pick', hash: commit.hash })
+    } else if (/^(?:merge|m) /.test(line)) {
+      const comment = line.indexOf(' # ')
+      lines.push({ kind: 'merge', subject: comment < 0 ? '' : line.slice(comment + 3), text: line })
+    } else lines.push({ kind: 'other', text: line })
+  }
+  return lines
+}
+
+/** The commits between the lines that keep the branches apart: a squash or fixup melds only into one of its own. */
+function segments(lines: ScriptLine[], items: RebaseItem[]): RebaseItem[][] {
+  const byHash = new Map(items.map((item) => [item.hash, item]))
+  const out: RebaseItem[][] = [[]]
+  for (const line of lines) {
+    if (line.kind === 'pick') out[out.length - 1].push(byHash.get(line.hash) ?? { hash: line.hash, action: 'pick' })
+    else if (out[out.length - 1].length) out.push([])
+  }
+  return out.filter((segment) => segment.length)
+}
+
+/** Why the list cannot be run as is (with merges), or null when it can. */
+export function rebaseProblemWithMerges(lines: ScriptLine[], items: RebaseItem[]): RebaseProblem | null {
+  if (!items.some((i) => i.action !== 'drop')) return 'empty'
+  for (const segment of segments(lines, items)) {
+    const problem = rebaseProblem(segment)
+    if (problem && problem !== 'empty') return problem
+  }
+  return null
+}
+
+/**
+ * Plans a rebase that keeps merges: git's own list, with each run of a branch's commits planned as `planRebase` plans
+ * a whole rebase (its helper files named apart), and its labels, resets and merges as they were.
+ */
+export function planRebaseWithMerges(
+  lines: ScriptLine[],
+  items: RebaseItem[],
+  messageOf: (hash: string) => string,
+  path: (name: string) => string
+): RebasePlan {
+  const byHash = new Map(items.map((item) => [item.hash, item]))
+  const todo: string[] = []
+  const files: Record<string, string> = {}
+  let run: RebaseItem[] = []
+  let count = 0
+  const flush = () => {
+    if (!run.length) return
+    const prefix = `s${count++}-`
+    const plan = planRebase(run, messageOf, (name) => path(prefix + name))
+    todo.push(...plan.todo.split('\n').filter(Boolean))
+    for (const [name, text] of Object.entries(plan.files)) files[prefix + name] = text
+    run = []
+  }
+  for (const line of lines) {
+    if (line.kind === 'pick') {
+      run.push(byHash.get(line.hash) ?? { hash: line.hash, action: 'pick' })
+      continue
+    }
+    flush()
+    todo.push(line.text)
+  }
+  flush()
+  return { todo: todo.join('\n') + '\n', files }
+}
+
 /** `items` with the one at `from` moved to `to` (a drag and drop); out-of-range moves change nothing. */
 export function moveItem<T>(items: T[], from: number, to: number): T[] {
   if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return items

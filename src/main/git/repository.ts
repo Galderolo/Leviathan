@@ -1,4 +1,5 @@
 import { existsSync, promises as fs } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import {
   LOG_FORMAT,
@@ -28,7 +29,7 @@ import type {
   GitRef,
   Provider,
   PullMode,
-  RebaseCommit,
+  RebaseList,
   RepoOperation,
   RepoState,
   ResetMode,
@@ -36,7 +37,16 @@ import type {
   WorkingFile
 } from '../../shared/types'
 import { BLAME_MAX_LINES, HISTORY_MAX, HISTORY_PAGE } from '../../shared/types'
-import { REBASE_ACTIONS, planRebase, rebaseProblem, shQuote, type RebaseItem } from '../../shared/rebase'
+import {
+  REBASE_ACTIONS,
+  parseRebaseScript,
+  planRebase,
+  planRebaseWithMerges,
+  rebaseProblem,
+  rebaseProblemWithMerges,
+  shQuote,
+  type RebaseItem
+} from '../../shared/rebase'
 import type {
   BranchConfig,
   FileMove,
@@ -629,14 +639,19 @@ export async function rebase(repo: string, onto: string): Promise<void> {
 }
 
 /** The commits an interactive rebase onto `base` would rewrite (`base..HEAD`), oldest first. */
-export async function getRebaseCommits(repo: string, base: string): Promise<RebaseCommit[]> {
+export async function getRebaseCommits(repo: string, base: string): Promise<RebaseList> {
   assertSafeArg(base, 'commit')
   const ancestor = await git(['merge-base', '--is-ancestor', base, 'HEAD'], { cwd: repo, okCodes: [0, 1] })
   if (ancestor.exitCode !== 0) throw new Error('That commit is not part of the current branch.')
-  if ((await run(repo, ['rev-list', '--merges', `${base}..HEAD`])).trim()) {
-    throw new Error('These commits include merges, which interactive rebase does not support.')
-  }
-  const out = await run(repo, ['log', '--reverse', '-z', '--format=%H%x1f%an%x1f%at%x1f%B', `${base}..HEAD`])
+  const merges = (await run(repo, ['rev-list', '--merges', `${base}..HEAD`])).trim()
+  const out = await run(repo, [
+    'log',
+    '--reverse',
+    '--no-merges',
+    '-z',
+    '--format=%H%x1f%an%x1f%at%x1f%B',
+    `${base}..HEAD`
+  ])
   const commits = out
     .split('\0')
     .filter((entry) => entry.trim())
@@ -646,7 +661,35 @@ export async function getRebaseCommits(repo: string, base: string): Promise<Reba
       return { hash, author, date: Number(date), message, subject: message.split('\n')[0] }
     })
   if (!commits.length) throw new Error('There are no commits after that one.')
-  return commits
+  if (!merges) return { commits, script: null }
+  // With merges, git's own list says how they are made again: the commits come in its order.
+  const script = await rebaseScript(repo, base)
+  const byHash = new Map(commits.map((c) => [c.hash, c]))
+  const order = parseRebaseScript(script, commits).flatMap((line) => (line.kind === 'pick' ? [line.hash] : []))
+  return { commits: order.map((hash) => byHash.get(hash)!), script }
+}
+
+/**
+ * The list `git rebase -i --rebase-merges` starts from. git makes it; an editor keeps a copy and fails, so the rebase
+ * stops before doing anything. Hooks are off: a pre-rebase hook must not run for a list.
+ */
+async function rebaseScript(repo: string, base: string): Promise<string> {
+  const dir = await fs.mkdtemp(join(tmpdir(), 'leviathan-rebase-list-'))
+  const copy = join(dir, 'todo').replace(/\\/g, '/')
+  try {
+    await git(['-c', `core.hooksPath=${dir.replace(/\\/g, '/')}`, 'rebase', '-i', '--rebase-merges', base], {
+      cwd: repo,
+      okCodes: [0, 1, 128],
+      env: { GIT_SEQUENCE_EDITOR: `f() { cp "$1" ${shQuote(copy)}; exit 1; }; f` }
+    })
+    const script = await fs.readFile(copy, 'utf8').catch(() => null)
+    // git refused before making a list (uncommitted changes in the way).
+    if (script === null) throw new Error('Commit or stash your uncommitted changes before rebasing.')
+    return script
+  } finally {
+    if ((await currentOperation(repo)) === 'rebase') await run(repo, ['rebase', '--abort'])
+    await fs.rm(dir, { recursive: true, force: true })
+  }
 }
 
 /**
@@ -661,10 +704,11 @@ export async function interactiveRebase(repo: string, base: string, items: Rebas
     throw new Error('Commit or stash your uncommitted changes before rebasing.')
   }
   if (items.some((i) => !REBASE_ACTIONS.includes(i.action))) throw new Error('Unknown rebase action')
-  const problem = rebaseProblem(items)
-  if (problem) throw new Error(`This rebase cannot run (${problem}).`)
   // The list was read earlier: it must still be exactly the commits to rewrite.
-  const commits = await getRebaseCommits(repo, base)
+  const { commits, script } = await getRebaseCommits(repo, base)
+  const lines = script === null ? null : parseRebaseScript(script, commits)
+  const problem = lines ? rebaseProblemWithMerges(lines, items) : rebaseProblem(items)
+  if (problem) throw new Error(`This rebase cannot run (${problem}).`)
   if (
     commits
       .map((c) => c.hash)
@@ -684,11 +728,13 @@ export async function interactiveRebase(repo: string, base: string, items: Rebas
   await fs.mkdir(dir, { recursive: true })
   const file = (name: string) => join(dir, name).replace(/\\/g, '/')
   const messages = new Map(commits.map((c) => [c.hash, c.message]))
-  const plan = planRebase(items, (hash) => messages.get(hash) ?? '', file)
+  const messageOf = (hash: string) => messages.get(hash) ?? ''
+  // With merges, git's own list keeps them (its order: commits are not moved across them).
+  const plan = lines ? planRebaseWithMerges(lines, items, messageOf, file) : planRebase(items, messageOf, file)
   for (const [name, text] of Object.entries(plan.files)) await fs.writeFile(file(name), text, 'utf8')
   await fs.writeFile(file('todo'), plan.todo, 'utf8')
   // A failed step (a reword's amend, say) runs again on continue instead of being skipped.
-  await run(repo, ['rebase', '-i', '--reschedule-failed-exec', base], {
+  await run(repo, ['rebase', '-i', ...(lines ? ['--rebase-merges'] : []), '--reschedule-failed-exec', base], {
     env: { GIT_SEQUENCE_EDITOR: `cp ${shQuote(file('todo'))}` }
   })
   await removeRebaseFiles(repo)
