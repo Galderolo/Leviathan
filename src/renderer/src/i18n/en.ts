@@ -566,6 +566,9 @@ const en = {
   'dlg.lfsHow.download': 'Download it from git-lfs.com and install it: the app notices it when you come back.',
   'dlg.lfsHow.command': 'Install it from a terminal with: {command}',
   'toast.lfsInstalled': 'git-lfs {version} is installed',
+  'toast.lfsWaitBusy': 'This repository is busy: install git-lfs once it is done.',
+  'dlg.closeWhileLfsInstalls':
+    'git-lfs is being installed from this repository. Closing the tab does not stop it: it goes on, and every repository gets it.',
   'toast.lfsInstallFailed': 'Could not install git-lfs: {error}. "{link}" in the LFS section downloads it by hand.',
   'lfs.setup': 'Set up Git LFS',
   'lfs.track': 'Track files with Git LFS',

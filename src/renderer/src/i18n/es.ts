@@ -575,6 +575,9 @@ const es: Record<keyof typeof en, string> = {
   'dlg.lfsHow.download': 'Descárgalo de git-lfs.com e instálalo: la app lo notará cuando vuelvas.',
   'dlg.lfsHow.command': 'Instálalo desde un terminal con: {command}',
   'toast.lfsInstalled': 'git-lfs {version} instalado',
+  'toast.lfsWaitBusy': 'Este repositorio está ocupado: instala git-lfs cuando termine.',
+  'dlg.closeWhileLfsInstalls':
+    'Se está instalando git-lfs desde este repositorio. Cerrar la pestaña no lo detiene: sigue, y todos los repositorios lo tendrán.',
   'toast.lfsInstallFailed': 'No se pudo instalar git-lfs: {error}. «{link}» en la sección LFS lo descarga a mano.',
   'lfs.setup': 'Configurar Git LFS',
   'lfs.track': 'Guardar archivos con Git LFS',

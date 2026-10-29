@@ -159,6 +159,25 @@ export interface PlatformDeps {
   windows: () => InstallDeps
 }
 
+/**
+ * Whole lines of a program's output, which comes in pieces that can end in the middle of one: what is left of a
+ * piece waits for the next. `\r` ends a line too (a percentage written over itself).
+ */
+export function progressLines(onLine: (line: string) => void): { push(text: string): void; end(): void } {
+  let pending = ''
+  return {
+    push(text) {
+      const parts = (pending + text).split(/\r?\n|\r/)
+      pending = parts.pop() ?? ''
+      for (const line of parts) if (line.trim()) onLine(line)
+    },
+    end() {
+      if (pending.trim()) onLine(pending)
+      pending = ''
+    }
+  }
+}
+
 function realDeps(): PlatformDeps {
   return {
     platform: process.platform,
@@ -167,19 +186,19 @@ function realDeps(): PlatformDeps {
       new Promise((resolve, reject) => {
         const child = spawn(cmd, args, { windowsHide: true })
         let stderr = ''
-        const lines = (chunk: Buffer) =>
-          chunk
-            .toString()
-            .split(/\r?\n|\r/)
-            .filter(Boolean)
-            .forEach(onProgress)
-        child.stdout.on('data', lines)
+        const out = progressLines(onProgress)
+        const err = progressLines(onProgress)
+        child.stdout.on('data', (chunk: Buffer) => out.push(chunk.toString()))
         child.stderr.on('data', (chunk: Buffer) => {
           stderr += chunk.toString()
-          lines(chunk)
+          err.push(chunk.toString())
         })
         child.on('error', reject)
-        child.on('close', (code) => resolve({ exitCode: code ?? 1, stderr }))
+        child.on('close', (code) => {
+          out.end()
+          err.end()
+          resolve({ exitCode: code ?? 1, stderr })
+        })
       }),
     git: async (args) => {
       await git(args, { cwd: homedir() })

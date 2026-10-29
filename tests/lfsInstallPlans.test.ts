@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 // The install module runs in Electron's main process; nothing here reaches the network.
 vi.mock('electron', () => ({ net: { fetch: () => Promise.reject(new Error('no network in tests')) } }))
 
-const { getLfsInstallOffer, installGitLfs } = await import('../src/main/lfsInstall')
+const { getLfsInstallOffer, installGitLfs, progressLines } = await import('../src/main/lfsInstall')
 
 type Result = { exitCode: number; stderr: string }
 
@@ -80,5 +80,18 @@ describe('installGitLfs', () => {
     await vi.waitFor(() => expect(mac.calls).toHaveLength(1))
     finish({ exitCode: 0, stderr: '' })
     await expect(first).resolves.toBe('3.8.1')
+  })
+})
+
+describe('progressLines', () => {
+  it('passes on whole lines, however the output comes in pieces', () => {
+    const lines: string[] = []
+    const progress = progressLines((line) => lines.push(line))
+    progress.push('==> Down')
+    progress.push('loading git-lfs\n==> Pour')
+    progress.push('ing\r\n\r\n50%\r75%\r')
+    progress.push('done')
+    progress.end()
+    expect(lines).toEqual(['==> Downloading git-lfs', '==> Pouring', '50%', '75%', 'done'])
   })
 })

@@ -11,6 +11,7 @@ import {
   continueOperation,
   discardFiles,
   dropStash,
+  copyLfsCommand,
   installGitLfs,
   moveToLfs,
   restageLfs,
@@ -669,6 +670,13 @@ function LfsWarnings({ path, view }: { path: string; view: RepoView }) {
             onClick={() => void installGitLfs(path)}
           >
             {t('lfs.installNow')}
+          </button>
+        )
+      }
+      if (lfsOffer?.method === 'command' && lfsOffer.command) {
+        return (
+          <button className="btn small" title={lfsOffer.command} onClick={() => void copyLfsCommand()}>
+            {t('lfs.copyCommand')}
           </button>
         )
       }

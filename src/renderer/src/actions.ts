@@ -212,6 +212,21 @@ export function cycleTab(delta: number): void {
 
 export function closeTab(id: string): void {
   const s = useStore.getState()
+  const tab = s.tabs.find((x) => x.id === id)
+  // git-lfs is being installed from it: closing it does not stop that, say so first.
+  if (tab?.path && s.lfsInstalling && s.repos[tab.path]?.busy === 'lfs') {
+    void confirmDialog({
+      title: t('tab.close'),
+      message: t('dlg.closeWhileLfsInstalls'),
+      confirmText: t('tab.close')
+    }).then((ok) => ok && closeTabNow(id))
+    return
+  }
+  closeTabNow(id)
+}
+
+function closeTabNow(id: string): void {
+  const s = useStore.getState()
   const idx = s.tabs.findIndex((tab) => tab.id === id)
   if (idx === -1) return
   const tab = s.tabs[idx]
@@ -2118,6 +2133,11 @@ export async function loadLfsOffer(): Promise<void> {
  */
 export async function installGitLfs(path: string): Promise<boolean> {
   if (useStore.getState().lfsInstalling) return false
+  // A pull or push under way (accepted while it started): the install would take its place on screen.
+  if (getRepo(path)?.busy) {
+    toast('info', t('toast.lfsWaitBusy'))
+    return false
+  }
   useStore.setState({ lfsInstalling: true })
   patchRepo(path, { busy: 'lfs', progress: null })
   try {
@@ -2166,6 +2186,12 @@ async function showHooksToMerge(instructions: string): Promise<void> {
     confirmText: t('lfs.copyHooks')
   })
   if (copy) await copyText(instructions, t('toast.copied'))
+}
+
+/** Copies the command that installs git-lfs on this system, where the app cannot run it itself. */
+export async function copyLfsCommand(): Promise<void> {
+  const command = useStore.getState().lfsOffer?.command
+  if (command) await copyText(command, t('toast.copied'))
 }
 
 /** The command that installs git-lfs here, to copy into a terminal. */
