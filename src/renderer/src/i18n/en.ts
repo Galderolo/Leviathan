@@ -243,7 +243,7 @@ const en = {
   'dlg.deleteBranchForce': 'The branch "{name}" is not fully merged. Delete it anyway? Unmerged commits may be lost.',
   'dlg.deleteRemoteBranch': 'Delete "{name}" from the remote server?',
   'dlg.deleteTag': 'Delete the local tag "{name}"?',
-  'dlg.resetHard': 'A hard reset discards all uncommitted changes. This cannot be undone.',
+  'dlg.resetHard': 'A hard reset discards all uncommitted changes. Undo brings them back, except files over 50 MB.',
   'dlg.discardAll':
     'Discard ALL uncommitted changes, including untracked files? Undo brings them back, except files over 50 MB.',
   'dlg.discardFile': 'Discard changes to {name}? Undo brings them back, except a file over 50 MB.',

@@ -86,6 +86,31 @@ describe('undoing a discard', () => {
   })
 })
 
+describe('undoing a hard reset', () => {
+  it('brings back the branch and the uncommitted changes it dropped, and drops them again on redo', async () => {
+    const base = (await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()
+    writeFileSync(join(dir, 'a.txt'), 'second\n')
+    await repo.stage(dir, ['a.txt'])
+    await repo.commit(dir, 'second', false)
+    const second = (await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()
+    writeFileSync(join(dir, 'a.txt'), 'staged\n')
+    await repo.stage(dir, ['a.txt'])
+    writeFileSync(join(dir, 'a.txt'), 'staged and more\n')
+
+    const change = await track(() => repo.reset(dir, base, 'hard'), ['a.txt'])
+    expect(read('a.txt')).toBe('a\n')
+    await repo.applyChange(dir, invertChange(change))
+    expect((await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()).toBe(second)
+    expect(read('a.txt')).toBe('staged and more\n')
+    expect((await git(['show', ':a.txt'], { cwd: dir })).stdout).toBe('staged\n')
+
+    await repo.applyChange(dir, change)
+    expect((await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()).toBe(base)
+    expect(read('a.txt')).toBe('a\n')
+    expect(await status()).toBe('')
+  })
+})
+
 describe('undoing stashes', () => {
   it('undoes saving a stash: the changes come back and the stash goes, and redo saves it again', async () => {
     writeFileSync(join(dir, 'a.txt'), 'mine\n')

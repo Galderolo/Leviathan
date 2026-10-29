@@ -246,7 +246,8 @@ const es: Record<keyof typeof en, string> = {
     'La rama "{name}" no está completamente fusionada. ¿Borrarla igualmente? Se pueden perder commits.',
   'dlg.deleteRemoteBranch': '¿Borrar "{name}" del servidor remoto?',
   'dlg.deleteTag': '¿Borrar el tag local "{name}"?',
-  'dlg.resetHard': 'Un reset hard descarta todos los cambios sin commit. No se puede deshacer.',
+  'dlg.resetHard':
+    'Un reset hard descarta todos los cambios sin commit. Deshacer los recupera, salvo los archivos de más de 50 MB.',
   'dlg.discardAll':
     '¿Descartar TODOS los cambios sin commit, incluidos los archivos nuevos? Deshacer los recupera, salvo los archivos de más de 50 MB.',
   'dlg.discardFile': '¿Descartar los cambios de {name}? Deshacer los recupera, salvo si el archivo pasa de 50 MB.',

@@ -1524,8 +1524,20 @@ export async function resetTo(path: string, hash: string, mode: ResetMode): Prom
     })
     if (!ok) return
   }
+  // A hard reset drops the uncommitted changes of tracked files (new files stay): copied, to bring them back.
+  const status = getRepo(path)?.state?.status
+  const dropped =
+    mode === 'hard'
+      ? [
+          ...new Set(
+            [...(status?.staged ?? []), ...(status?.unstaged ?? [])]
+              .filter((f) => f.status !== '?')
+              .flatMap(changePaths)
+          )
+        ]
+      : []
   await runOp(path, () => api.reset(path, hash, mode), {
-    undo: { label: t('undo.reset', { name: hash.slice(0, 7) }), mode: undoModeForReset(mode) }
+    undo: { label: t('undo.reset', { name: hash.slice(0, 7) }), mode: undoModeForReset(mode), paths: dropped }
   })
 }
 

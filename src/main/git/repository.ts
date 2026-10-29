@@ -1452,6 +1452,27 @@ async function writeFiles(repo: string, moves: FileMove[]): Promise<void> {
   if (entries.length) await run(repo, ['update-index', '-z', '--index-info'], { input: entries.join('\0') + '\0' })
 }
 
+/** Puts `paths` back as HEAD has them, in the index and the working tree; those HEAD has not are removed. */
+async function filesToHead(repo: string, paths: string[]): Promise<void> {
+  const ps = pathspecInput(paths)
+  const inHead = new Set<string>()
+  // A few hundred at a time, as for ls-files: the command line stays short enough for Windows.
+  for (let i = 0; i < paths.length; i += 200) {
+    const chunk = paths.slice(i, i + 200)
+    const out = await run(repo, ['ls-tree', '-r', '--name-only', '-z', 'HEAD', '--', ...chunk], { env: LITERAL_PATHS })
+    for (const path of out.split('\0')) if (path) inHead.add(path)
+  }
+  if (inHead.size) {
+    const kept = pathspecInput([...inHead])
+    await run(repo, ['checkout', '-q', 'HEAD', ...kept.args], kept.opts)
+  }
+  const added = paths.filter((p) => !inHead.has(p))
+  if (added.length) {
+    await run(repo, ['rm', '-q', '--cached', '--ignore-unmatch', ...ps.args], { ...ps.opts, input: added.join('\0') })
+    for (const path of added) await fs.rm(insideRepo(repo, path), { force: true })
+  }
+}
+
 /** Drops the stashes a change took away and stores again the ones it brought (they are kept as commits). */
 async function moveStashes(repo: string, stash: RepoChange['stash']): Promise<void> {
   for (const gone of stash?.removed ?? []) {
@@ -1518,6 +1539,14 @@ export async function applyChange(repo: string, change: RepoChange): Promise<voi
     if (!change.stash.removed.every(has) || change.stash.added.some(has)) throw changed
   }
 
+  // HEAD moves with files (a hard reset redone): `reset --keep` refuses their local changes, which are kept in the
+  // change. They go back to HEAD first, and the files take the change's content after the move.
+  const headMoves = from.branch !== change.head.to.branch || from.hash !== change.head.to.hash
+  if (change.files?.length && headMoves && from.hash)
+    await filesToHead(
+      repo,
+      change.files.map((f) => f.path)
+    )
   await moveRefsAndHead(repo, change, concludesMerge)
   if (change.files?.length) await writeFiles(repo, change.files)
   if (change.stash) await moveStashes(repo, change.stash)
