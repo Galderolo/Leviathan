@@ -18,7 +18,15 @@ import {
 import { parseCommitTemplate, type CommitDraftText } from '../../shared/commitTemplate'
 import { parseChangesBlock, type ChangesBlock } from '../../shared/localChanges'
 import { unchangedGaps } from '../../shared/diffGaps'
-import { IMAGE_PREVIEW_MAX, imageType, parseLfsPointer, type ImagePair, type ImageVersion } from '../../shared/images'
+import {
+  IMAGE_PREVIEW_MAX,
+  imageType,
+  parseLfsPointer,
+  TGA_TYPE,
+  type ImagePair,
+  type ImageVersion
+} from '../../shared/images'
+import { decodeTga } from '../../shared/tga'
 import { LARGE_FILE_BYTES } from '../../shared/lfs'
 import type {
   Commit,
@@ -59,6 +67,7 @@ import type {
   Snapshot,
   StashEntry
 } from '../../shared/undo'
+import { encodePng } from '../png'
 import { listRefs } from './refs'
 import { GitError, NON_INTERACTIVE_ENV, git, holdingIndex } from './runner'
 import { lfsFilesAmong, plainLfs, POINTER_MAX_BYTES, stagedBlobs } from './staged'
@@ -529,6 +538,16 @@ async function imageVersion(
     const object = await readLfsObject(repo, pointer.oid)
     if (!object) return { url: null, bytes: pointer.size, missing: 'lfs' }
     content = object
+  }
+  if (type === TGA_TYPE) {
+    // The window cannot draw a TGA: it gets the pixels as a PNG.
+    try {
+      const { width, height, rgba } = decodeTga(content)
+      const png = await encodePng(width, height, rgba)
+      return { url: `data:image/png;base64,${png.toString('base64')}`, bytes: content.length }
+    } catch {
+      return { url: null, bytes: content.length, missing: 'unreadable' }
+    }
   }
   return { url: `data:${type};base64,${content.toString('base64')}`, bytes: content.length }
 }
