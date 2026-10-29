@@ -303,8 +303,19 @@ describe('closePullRequest', () => {
   })
 
   it('says when the token may not change pull requests', async () => {
+    const { fn } = fakeFetch({ 'https://api.github.com/repos/org/app/pulls/7': { status: 401, body: {} } })
+    await expect(closePullRequest('github', 'github.com', 'org/app', TOKEN, 7, fn)).rejects.toThrow(
+      /rejected the token \(401\)\. It needs permission/
+    )
+  })
+
+  // A 403 is a refusal: the account may lack the role on the project as well as the token its permission.
+  it('does not blame the token alone for a refusal without a reason', async () => {
     const { fn } = fakeFetch({ 'https://api.github.com/repos/org/app/pulls/7': { status: 403, body: {} } })
-    await expect(closePullRequest('github', 'github.com', 'org/app', TOKEN, 7, fn)).rejects.toThrow(/permission/)
+    const error = await closePullRequest('github', 'github.com', 'org/app', TOKEN, 7, fn).catch((e: Error) => e)
+    expect((error as Error).message).not.toContain('rejected the token')
+    expect((error as Error).message).toMatch(/role on this project/)
+    expect((error as Error).message).toMatch(/permission/)
   })
 })
 
