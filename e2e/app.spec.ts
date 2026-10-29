@@ -1605,6 +1605,33 @@ test('offers to pull and push again when the remote has commits that are not her
   expect(box.git(origin, 'log', '--format=%s', 'main')).toContain('theirs')
 })
 
+test('pulls over uncommitted changes in its way: stashed, pulled, and brought back', async () => {
+  const origin = join(box.root, 'origin.git')
+  box.git(box.root, 'init', '-q', '--bare', '-b', 'main', origin)
+  const repo = box.repo('game', { 'a.txt': 'one\ntwo\nthree\n' })
+  box.git(repo, 'remote', 'add', 'origin', origin)
+  box.git(repo, 'push', '-q', '-u', 'origin', 'main')
+  // Someone else changes the first line; here the last one is changed and not committed.
+  const other = join(box.root, 'other')
+  box.git(box.root, 'clone', '-q', origin, other)
+  box.write(other, { 'a.txt': 'ONE\ntwo\nthree\n' })
+  box.git(other, 'commit', '-qam', 'theirs')
+  box.git(other, 'push', '-q')
+  box.write(repo, { 'a.txt': 'one\ntwo\nTHREE\n' })
+  await open(repo)
+
+  await toolbarButton('Pull').click()
+  const modal = page.locator('.modal')
+  await expect(modal).toContainText('Pulling would overwrite the uncommitted changes of this file')
+  await expect(modal.locator('.modal-list')).toHaveText('a.txt')
+  await modal.getByRole('button', { name: 'Stash and bring them back' }).click()
+
+  await expect.poll(() => box.read(repo, 'a.txt')).toBe('ONE\ntwo\nTHREE\n')
+  expect(box.git(repo, 'log', '-1', '--format=%s')).toBe('theirs')
+  const stashes = () => spawnSync('git', ['stash', 'list'], { cwd: repo, env: box.env, encoding: 'utf8' }).stdout
+  await expect.poll(stashes).toBe('')
+})
+
 test('asks where to publish a branch started from another remote, then keeps the upstream chosen for it', async () => {
   const origin = join(box.root, 'origin.git')
   const upstream = join(box.root, 'upstream.git')

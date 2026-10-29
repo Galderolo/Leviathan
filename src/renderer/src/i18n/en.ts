@@ -339,6 +339,22 @@ const en = {
   'dlg.checkoutStash': 'Stash and check out',
   'dlg.checkoutCarry': 'Take them along',
   'dlg.checkoutDiscard': 'Discard and check out',
+  'dlg.opBlocked':
+    '{what} would overwrite the uncommitted changes of these {count} files, so git did not do it (nothing was changed):',
+  'dlg.opBlocked_one':
+    '{what} would overwrite the uncommitted changes of this file, so git did not do it (nothing was changed):',
+  'dlg.opBlockedAll': '{what} cannot start with uncommitted changes, so git did not do it (nothing was changed).',
+  'dlg.opBlockedCarry':
+    '• Stash and bring them back: your changes go to a stash and come back once it is done. If it stops for conflicts, they wait in the stash until you finish.',
+  'dlg.opBlockedStash': '• Only stash: your changes stay in a stash, to apply whenever you want.',
+  'dlg.opCarry': 'Stash and bring them back',
+  'dlg.opStash': 'Only stash',
+  'dlg.whatPull': 'Pulling',
+  'dlg.whatMerge': 'Merging {name}',
+  'dlg.whatRebase': 'Rebasing onto {name}',
+  'dlg.whatCherryPick': 'Cherry-picking {name}',
+  'dlg.whatRevert': 'Reverting {name}',
+  'toast.changesWaitInStash': 'Your changes wait in the stash "{name}": apply it once you finish.',
   'toast.revealedExecutable': 'For safety this file is shown in its folder instead of being opened.',
 
   'error.noGit': 'Git was not found. Install Git (https://git-scm.com) and restart Git Leviathan.',

@@ -16,7 +16,7 @@ import {
   untrackedDiff
 } from '../../shared/parsers'
 import { parseCommitTemplate, type CommitDraftText } from '../../shared/commitTemplate'
-import { parseCheckoutBlock, type CheckoutBlock } from '../../shared/checkout'
+import { parseChangesBlock, type ChangesBlock } from '../../shared/localChanges'
 import { unchangedGaps } from '../../shared/diffGaps'
 import { IMAGE_PREVIEW_MAX, imageType, parseLfsPointer, type ImagePair, type ImageVersion } from '../../shared/images'
 import { LARGE_FILE_BYTES } from '../../shared/lfs'
@@ -663,26 +663,32 @@ export async function ignore(repo: string, pattern: string): Promise<void> {
 // Branches and history
 
 /**
- * Runs a checkout. Uncommitted changes in its way come back as what blocked it instead of an error (git changed
- * nothing); git's message is read in English for that.
+ * Runs a checkout, merge, pull, rebase, cherry-pick or revert. Uncommitted changes in its way come back as what
+ * blocked it instead of an error, when git changed nothing (no operation left under way); git's message is read in
+ * English for that.
  */
-async function switchTo(repo: string, args: string[]): Promise<CheckoutBlock | null> {
+async function unlessBlocked(
+  repo: string,
+  args: string[],
+  extra: Partial<Parameters<typeof git>[1]> = {}
+): Promise<ChangesBlock | null> {
   try {
-    await run(repo, args, { env: { LC_ALL: 'C', LANGUAGE: 'C' } })
+    await git(args, { cwd: repo, ...extra, env: { ...extra.env, LC_ALL: 'C', LANGUAGE: 'C' } })
     return null
   } catch (err) {
-    const block = err instanceof GitError ? parseCheckoutBlock(err.stderr) : null
-    if (!block) throw err
+    const block = err instanceof GitError ? parseChangesBlock(err.stderr) : null
+    // A rebase that stopped part-way says the same of the commit it could not apply: it did start.
+    if (!block || (await currentOperation(repo))) throw err
     return { message: (err as GitError).message, ...block }
   }
 }
 
-export async function checkout(repo: string, ref: string): Promise<CheckoutBlock | null> {
+export async function checkout(repo: string, ref: string): Promise<ChangesBlock | null> {
   assertSafeArg(ref, 'ref')
-  return switchTo(repo, ['checkout', '-q', ref, '--'])
+  return unlessBlocked(repo, ['checkout', '-q', ref, '--'])
 }
 
-export async function checkoutRemote(repo: string, remoteBranch: string): Promise<CheckoutBlock | null> {
+export async function checkoutRemote(repo: string, remoteBranch: string): Promise<ChangesBlock | null> {
   assertSafeArg(remoteBranch, 'branch')
   const remotes = parseRemotes(await run(repo, ['remote', '-v']))
     .map((r) => r.name)
@@ -693,13 +699,13 @@ export async function checkoutRemote(repo: string, remoteBranch: string): Promis
     cwd: repo,
     okCodes: [0, 1]
   })
-  if (exitCode === 0) return switchTo(repo, ['checkout', '-q', local, '--'])
-  return switchTo(repo, ['checkout', '-q', '-b', local, '--track', remoteBranch])
+  if (exitCode === 0) return unlessBlocked(repo, ['checkout', '-q', local, '--'])
+  return unlessBlocked(repo, ['checkout', '-q', '-b', local, '--track', remoteBranch])
 }
 
-export async function checkoutDetached(repo: string, hash: string): Promise<CheckoutBlock | null> {
+export async function checkoutDetached(repo: string, hash: string): Promise<ChangesBlock | null> {
   assertSafeArg(hash, 'commit')
-  return switchTo(repo, ['checkout', '-q', '--detach', hash])
+  return unlessBlocked(repo, ['checkout', '-q', '--detach', hash])
 }
 
 export async function createBranch(
@@ -759,14 +765,14 @@ export async function deleteRemoteBranch(
   await git(['push', '--progress', remote, '--delete', branch], { cwd: repo, onProgress })
 }
 
-export async function merge(repo: string, ref: string): Promise<void> {
+export async function merge(repo: string, ref: string): Promise<ChangesBlock | null> {
   assertSafeArg(ref, 'ref')
-  await run(repo, ['merge', '--no-edit', ref])
+  return unlessBlocked(repo, ['merge', '--no-edit', ref])
 }
 
-export async function rebase(repo: string, onto: string): Promise<void> {
+export async function rebase(repo: string, onto: string): Promise<ChangesBlock | null> {
   assertSafeArg(onto, 'ref')
-  await run(repo, ['rebase', onto])
+  return unlessBlocked(repo, ['rebase', onto])
 }
 
 /** The commits an interactive rebase onto `base` would rewrite (`base..HEAD`), oldest first. */
@@ -880,14 +886,14 @@ async function removeRebaseFiles(repo: string): Promise<void> {
     .catch(() => {})
 }
 
-export async function cherryPick(repo: string, hash: string): Promise<void> {
+export async function cherryPick(repo: string, hash: string): Promise<ChangesBlock | null> {
   assertSafeArg(hash, 'commit')
-  await run(repo, ['cherry-pick', hash])
+  return unlessBlocked(repo, ['cherry-pick', hash])
 }
 
-export async function revert(repo: string, hash: string): Promise<void> {
+export async function revert(repo: string, hash: string): Promise<ChangesBlock | null> {
   assertSafeArg(hash, 'commit')
-  await run(repo, ['revert', '--no-edit', hash])
+  return unlessBlocked(repo, ['revert', '--no-edit', hash])
 }
 
 export async function reset(repo: string, hash: string, mode: ResetMode): Promise<void> {
@@ -1038,9 +1044,9 @@ export async function fetchAll(repo: string, onProgress: ProgressFn, background 
   })
 }
 
-export async function pull(repo: string, mode: PullMode, onProgress: ProgressFn): Promise<void> {
+export async function pull(repo: string, mode: PullMode, onProgress: ProgressFn): Promise<ChangesBlock | null> {
   const modeArgs = mode === 'rebase' ? ['--rebase'] : mode === 'ff-only' ? ['--ff-only'] : ['--no-rebase', '--ff']
-  await git(['pull', '--progress', ...modeArgs], { cwd: repo, onProgress })
+  return unlessBlocked(repo, ['pull', '--progress', ...modeArgs], { onProgress })
 }
 
 async function configValue(repo: string, key: string): Promise<string | null> {
@@ -1087,7 +1093,7 @@ export async function checkoutPullRequest(
   remote: string,
   pr: { number: number; sourceBranch: string; fromFork: boolean },
   provider: Provider
-): Promise<CheckoutBlock | null> {
+): Promise<ChangesBlock | null> {
   assertSafeArg(remote, 'remote')
   if (!Number.isInteger(pr.number) || pr.number <= 0) throw new Error(`Invalid pull request number: ${pr.number}`)
   if (!pr.fromFork) {
@@ -1098,7 +1104,7 @@ export async function checkoutPullRequest(
     await git(['fetch', remote, `+refs/heads/${branch}:${tracking}`], { cwd: repo })
     const local = await refValue(repo, `refs/heads/${branch}`)
     if (!local && (await branchNameFree(repo, branch))) {
-      return switchTo(repo, ['checkout', '-q', '--track', `${remote}/${branch}`])
+      return unlessBlocked(repo, ['checkout', '-q', '--track', `${remote}/${branch}`])
     }
     const follows =
       !!local &&
@@ -1107,7 +1113,7 @@ export async function checkoutPullRequest(
     if (local && follows) {
       const target = (await refValue(repo, tracking))!
       if (await isAncestor(repo, local, target)) await moveBranch(repo, branch, local, target)
-      return switchTo(repo, ['checkout', '-q', branch, '--'])
+      return unlessBlocked(repo, ['checkout', '-q', branch, '--'])
     }
     // A local branch with that name holds other work, or is in the way of it: leave it alone and use pr/N.
   }
@@ -1126,7 +1132,7 @@ export async function checkoutPullRequest(
     throw new Error(
       `${branch} has commits of its own that the pull request does not have. Rename or delete ${branch} to check out its latest version.`
     )
-  return switchTo(repo, ['checkout', '-q', branch, '--'])
+  return unlessBlocked(repo, ['checkout', '-q', branch, '--'])
 }
 
 /** Where the remote keeps a pull request's latest version. */
