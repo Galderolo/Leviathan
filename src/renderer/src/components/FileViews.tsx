@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import { ArrowLeft, GitCommitHorizontal, History, X } from 'lucide-react'
-import type { BlameLine, Commit, FileChange, FileCommit, FileDiff } from '../../../shared/types'
+import { imageType } from '../../../shared/images'
+import type { BlameLine, Commit, DiffSource, FileChange, FileCommit, FileDiff } from '../../../shared/types'
 import { BLAME_MAX_LINES, HISTORY_MAX, HISTORY_PAGE } from '../../../shared/types'
 import { blameBefore, closeFileView, fileViewBack, loadAvatars, openFolderHistory, showCommitInGraph } from '../actions'
 import { useT } from '../i18n'
@@ -11,6 +12,7 @@ import { cx, formatDate, relativeDate, shortHash, splitPath } from '../utils'
 import { filesInFolder, folderSteps, historyDiffSource } from '../historyDiff'
 import { Avatar, StatusBadge } from './common'
 import { highlightHunks } from '../syntax'
+import { ImageDiff } from './ImageDiff'
 import { DiffLayoutToggle, LineText, SplitHunkLines, wordSpans } from './DiffLines'
 
 const api = window.leviathan
@@ -120,19 +122,20 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
 
   const picked = Math.max(0, items?.findIndex((entry) => entry.commit.hash === pickedHash) ?? 0)
   const item = items?.[picked]
+  const source = useMemo(() => (item ? historyDiffSource(item) : null), [item])
   useEffect(() => {
-    if (!item) return
+    if (!source) return
     let live = true
     setDiff(null)
     setDiffError(null)
     api
-      .getDiff(path, historyDiffSource(item))
+      .getDiff(path, source)
       .then((d) => live && setDiff(d))
       .catch((err) => live && setDiffError(errorMessage(err)))
     return () => {
       live = false
     }
-  }, [path, item])
+  }, [path, source])
 
   return (
     <div className="diff-view file-view">
@@ -166,7 +169,7 @@ function FileHistoryView({ path, file, rev }: { path: string; file: string; rev:
           <div className="diff-body">
             {diffError && <div className="empty-state error">{diffError}</div>}
             {!diffError && !diff && <div className="empty-state">{t('graph.loading')}</div>}
-            {diff && <ReadOnlyDiff data={diff} />}
+            {diff && <ReadOnlyDiff data={diff} repo={path} source={source} />}
           </div>
         </div>
       )}
@@ -273,26 +276,33 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
     }
   }, [path, folder, commit])
 
+  const source = useMemo<DiffSource | null>(
+    () =>
+      commit && file
+        ? {
+            kind: 'commit',
+            hash: commit.hash,
+            parent: commit.parents[0] ?? null,
+            path: file.path,
+            // Only a rename compares with the old name (after a copy the original is still there).
+            ...(file.status === 'R' && file.origPath ? { oldPath: file.origPath } : {})
+          }
+        : null,
+    [commit, file]
+  )
   useEffect(() => {
-    if (!commit || !file) return
+    if (!source) return
     let live = true
     setDiff(null)
     setDiffError(null)
     api
-      .getDiff(path, {
-        kind: 'commit',
-        hash: commit.hash,
-        parent: commit.parents[0] ?? null,
-        path: file.path,
-        // Only a rename compares with the old name (after a copy the original is still there).
-        ...(file.status === 'R' && file.origPath ? { oldPath: file.origPath } : {})
-      })
+      .getDiff(path, source)
       .then((d) => live && setDiff(d))
       .catch((err) => live && setDiffError(errorMessage(err)))
     return () => {
       live = false
     }
-  }, [path, commit, file])
+  }, [path, source])
 
   return (
     <div className="diff-view file-view folder-history">
@@ -346,7 +356,7 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
             <div className="diff-body">
               {diffError && <div className="empty-state error">{diffError}</div>}
               {!diffError && (!files || (file && !diff)) && <div className="empty-state">{t('graph.loading')}</div>}
-              {diff && file && <ReadOnlyDiff data={diff} />}
+              {diff && file && <ReadOnlyDiff data={diff} repo={path} source={source} />}
             </div>
           </div>
         </div>
@@ -355,13 +365,16 @@ function FolderHistoryView({ path, folder, rev }: { path: string; folder: string
   )
 }
 
-/** Hunks of a diff, read-only. */
-export function ReadOnlyDiff({ data }: { data: FileDiff }) {
+/** Hunks of a diff, read-only; with the `source` it was read from, an image shows as its pictures. */
+export function ReadOnlyDiff({ data, repo, source }: { data: FileDiff; repo?: string; source?: DiffSource | null }) {
   const t = useT()
   const [showAll, setShowAll] = useState(false)
   const layout = useStore((s) => s.diffLayout)
   const spansByHunk = useMemo(() => data.hunks.map(wordSpans), [data])
   const syntaxByHunk = useMemo(() => highlightHunks(data.hunks, data.path), [data])
+  if (repo && source && imageType(source.path) && !data.submodule) {
+    return <ImageDiff key={JSON.stringify(source)} repo={repo} source={source} version={data} />
+  }
   if (data.binary) return <div className="empty-state">{t('diff.binary')}</div>
   if (!data.hunks.length) {
     return (

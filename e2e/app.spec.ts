@@ -1155,6 +1155,44 @@ test('marks beside the scrollbar where the changes of a whole file are, and goes
   await expect(ruler.locator('.change-mark.add')).toHaveCount(2)
 })
 
+test('shows an image change as the pictures before and after, with their sizes', async () => {
+  // A red 4×2 picture, then a blue 3×5 one.
+  const red = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg==',
+    'base64'
+  )
+  const blue = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAMAAAAFCAIAAAAPE8H1AAAAD0lEQVR4nGNgYPgPQ8SxAGbZDvIwYYikAAAAAElFTkSuQmCC',
+    'base64'
+  )
+  const repo = box.repo('game', { 'readme.txt': 'one\n' })
+  writeFileSync(join(repo, 'shot.png'), red)
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'picture')
+  writeFileSync(join(repo, 'shot.png'), blue)
+  await open(repo)
+  const before = page.locator('.image-side.before')
+  const after = page.locator('.image-side.after')
+
+  await page.locator('.graph-row.row-wip').click()
+  await unstaged().locator('.file-row', { hasText: 'shot.png' }).click()
+  await expect(before.locator('figcaption')).toContainText('Before')
+  await expect(before.locator('.image-meta')).toContainText('4 × 2')
+  await expect(after.locator('.image-meta')).toContainText('3 × 5')
+  await expect(after.locator('img')).toHaveAttribute('src', `data:image/png;base64,${blue.toString('base64')}`)
+  await expect(page.locator('.diff-view')).not.toContainText('Binary file')
+
+  await expect(after.locator('.image-meta')).toContainText(`${blue.length} B`)
+
+  // The commit that added it: only the picture it added.
+  await page.keyboard.press('Escape')
+  await commitRows().filter({ hasText: 'picture' }).click()
+  await page.locator('.right-panel .file-row', { hasText: 'shot.png' }).click()
+  await expect(after.locator('figcaption')).toContainText('Added')
+  await expect(after.locator('.image-meta')).toContainText('4 × 2')
+  await expect(before).toHaveCount(0)
+})
+
 test('shows the whole file around a change, and still stages its hunk', async () => {
   const lines = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`)
   const repo = box.repo('game', { 'f.txt': lines.join('\n') + '\n' })

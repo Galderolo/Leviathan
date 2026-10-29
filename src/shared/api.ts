@@ -26,6 +26,7 @@ import type {
   WorkingFile
 } from './types'
 import type { CheckoutBlock } from './checkout'
+import type { ImagePair } from './images'
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
 import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
@@ -81,6 +82,8 @@ export interface LeviathanInvokeApi {
   getCommitDetails(repo: string, hash: string): Promise<CommitDetails>
   /** `fullFile`: also the unchanged lines around the hunks (`FileDiff.gaps`). */
   getDiff(repo: string, source: DiffSource, fullFile?: boolean): Promise<FileDiff>
+  /** An image's two sides for that diff, to show instead of it. */
+  getImages(repo: string, source: DiffSource): Promise<ImagePair>
   /** Refs, HEAD and the stash list; with `paths`, a copy of those files too (`tooLarge`: the ones too big to keep). */
   /** `'changes'`: every uncommitted change as git sees it now. */
   getSnapshot(repo: string, paths?: string[] | 'changes'): Promise<Snapshot>
@@ -357,6 +360,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getLog: true,
   getCommitDetails: true,
   getDiff: true,
+  getImages: true,
   getSnapshot: true,
   stashPaths: true,
   getFileHistory: true,

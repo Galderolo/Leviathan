@@ -26,6 +26,8 @@ export interface RunOptions {
   noLockWait?: boolean
   /** Stops the command: git is ended and the call fails with `STOPPED`. */
   signal?: AbortSignal
+  /** The output is bytes (a file's content), given as `bytes` and not decoded into `stdout`. */
+  binary?: boolean
 }
 
 /** The message of a command stopped through its `signal`. */
@@ -35,6 +37,8 @@ export interface RunResult {
   stdout: string
   stderr: string
   exitCode: number
+  /** The output as it came, with `binary`. */
+  bytes?: Buffer
 }
 
 /**
@@ -227,9 +231,10 @@ function gitOnce(args: string[], opts: RunOptions): Promise<RunResult> {
 
     child.on('close', (code) => {
       const exitCode = code ?? -1
-      const stdout = Buffer.concat(out).toString('utf8')
+      const bytes = Buffer.concat(out)
+      const stdout = opts.binary ? '' : bytes.toString('utf8')
       if ((opts.okCodes ?? [0]).includes(exitCode)) {
-        resolve({ stdout, stderr, exitCode })
+        resolve(opts.binary ? { stdout, stderr, exitCode, bytes } : { stdout, stderr, exitCode })
       } else {
         const message =
           cleanMessage(stderr) || cleanMessage(stdout) || `git ${args[0]} failed with exit code ${exitCode}`

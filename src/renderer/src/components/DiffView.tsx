@@ -1,11 +1,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
+import { imageType } from '../../../shared/images'
 import { supportsLineSelection } from '../../../shared/patch'
 import type { DiffHunk, FileChange, SubmoduleChange } from '../../../shared/types'
 import { applyHunk, applyLines, closeDiff, discardFiles, openInEditor, stageFiles, unstageFiles } from '../actions'
 import { useT } from '../i18n'
 import { ChangeRuler } from './ChangeRuler'
 import { ConflictView } from './ConflictView'
+import { ImageDiff } from './ImageDiff'
 import { useRepo, useRepoSetting, useStore } from '../store'
 import { highlightHunks } from '../syntax'
 import { DiffFullFileToggle, DiffLayoutToggle, GapLines, LineText, SplitHunkLines, wordSpans } from './DiffLines'
@@ -42,6 +44,8 @@ export function DiffView({ path }: { path: string }) {
   }
   const { source, error } = diff
   const { dir, name } = splitPath(source.path)
+  // Pictures instead of "binary file", or of the text of a Git LFS pointer.
+  const image = !!imageType(source.path) && !!data && !data.submodule
 
   const asChange: FileChange = {
     path: source.path,
@@ -123,8 +127,8 @@ export function DiffView({ path }: { path: string }) {
               {t('diff.unstageFile')}
             </button>
           )}
-          <DiffFullFileToggle />
-          <DiffLayoutToggle />
+          {!image && <DiffFullFileToggle />}
+          {!image && <DiffLayoutToggle />}
           {source.kind !== 'commit' && (
             <button
               className="icon-btn"
@@ -144,14 +148,16 @@ export function DiffView({ path }: { path: string }) {
         <div className="diff-body" ref={body}>
           {error && <div className="empty-state error">{error}</div>}
           {!error && !data && <div className="empty-state">{t('graph.loading')}</div>}
-          {data?.binary && <div className="empty-state">{t('diff.binary')}</div>}
+          {image && <ImageDiff key={JSON.stringify(source)} repo={path} source={source} version={data} />}
+          {data?.binary && !image && <div className="empty-state">{t('diff.binary')}</div>}
           {data?.submodule && <SubmoduleSummary change={data.submodule} />}
-          {data && !data.binary && !data.submodule && data.hunks.length === 0 && (
+          {data && !image && !data.binary && !data.submodule && data.hunks.length === 0 && (
             <div className="empty-state">
               {data.oldPath ? t('diff.renamedOnly', { path: data.oldPath }) : t('diff.noChanges')}
             </div>
           )}
           {data &&
+            !image &&
             !data.binary &&
             !data.submodule &&
             data.hunks.map((hunk, hi) => {
@@ -272,7 +278,7 @@ export function DiffView({ path }: { path: string }) {
             </div>
           )}
         </div>
-        <ChangeRuler body={body} shown={[data, layout, showAll]} />
+        {!image && <ChangeRuler body={body} shown={[data, layout, showAll]} />}
       </div>
     </div>
   )

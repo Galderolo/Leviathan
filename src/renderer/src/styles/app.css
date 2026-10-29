@@ -3726,3 +3726,77 @@ img.avatar {
   width: 100%;
   resize: vertical;
 }
+
+/* Image changes: the pictures before and after, side by side. */
+.image-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.image-same {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.image-sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.image-side {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.image-side figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--border);
+  font-family: var(--font);
+  font-size: 12px;
+}
+
+.image-side.before figcaption {
+  border-bottom-color: var(--red);
+}
+
+.image-side.after figcaption {
+  border-bottom-color: var(--green);
+}
+
+.image-label {
+  font-weight: 600;
+}
+
+.image-meta {
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+/* A checkerboard behind the picture, so its transparent parts show as such. */
+.image-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: repeating-conic-gradient(var(--bg-2) 0% 25%, var(--bg-1) 0% 50%) 0 0 / 16px 16px;
+}
+
+.image-frame img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
