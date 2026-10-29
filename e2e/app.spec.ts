@@ -951,6 +951,7 @@ test('adds an account again with a new token: one account, with the name typed, 
   await page.locator('.toolbar-right .icon-btn').click()
   await page.locator('.settings-nav-item', { hasText: 'Accounts' }).click()
   const section = page.locator('.settings-body:visible')
+  await expect(section).toContainText('GitHub Enterprise, a GitLab of your own or Gitea: Add account')
   // "Other": the account is who the form says, nothing to ask a server.
   const add = async (token: string, name: string) => {
     await section.getByRole('button', { name: 'Add account' }).click()

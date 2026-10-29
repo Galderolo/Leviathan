@@ -338,17 +338,20 @@ export function AccountsSection() {
           </div>
         </div>
       ) : (
-        <div className="ssh-actions">
-          <button type="button" className="btn small btn-primary" onClick={() => void signIn()}>
-            {t('accounts.signInGitHub')}
-          </button>
-          <button type="button" className="btn small btn-primary" onClick={() => void signInGitLab()}>
-            {t('accounts.signInGitLab')}
-          </button>
-          <button type="button" className="btn small" onClick={() => setDraft(emptyDraft())}>
-            {t('accounts.add')}
-          </button>
-        </div>
+        <>
+          <div className="ssh-actions">
+            <button type="button" className="btn small btn-primary" onClick={() => void signIn()}>
+              {t('accounts.signInGitHub')}
+            </button>
+            <button type="button" className="btn small btn-primary" onClick={() => void signInGitLab()}>
+              {t('accounts.signInGitLab')}
+            </button>
+            <button type="button" className="btn small" onClick={() => setDraft(emptyDraft())}>
+              {t('accounts.add')}
+            </button>
+          </div>
+          <div className="dim small">{t('accounts.ownServerHint')}</div>
+        </>
       )}
     </div>
   )

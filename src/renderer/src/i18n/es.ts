@@ -384,6 +384,8 @@ const es: Record<keyof typeof en, string> = {
   'accounts.copyAndOpen': 'Copiar código y abrir GitHub',
   'accounts.waiting': 'Esperando a que autorices Leviathan en el navegador…',
   'accounts.add': 'Añadir cuenta',
+  'accounts.ownServerHint':
+    'GitHub Enterprise, un GitLab propio o Gitea: Añadir cuenta, con el servidor como host y un token creado allí (Crear un token abre su página).',
   'accounts.other': 'Otro',
   'accounts.host': 'Host (p. ej. github.com)',
   'accounts.token': 'Token personal',
