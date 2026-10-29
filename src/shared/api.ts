@@ -25,6 +25,7 @@ import type {
   Submodule,
   WorkingFile
 } from './types'
+import type { CheckoutBlock } from './checkout'
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
 import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
@@ -114,6 +115,8 @@ export interface LeviathanInvokeApi {
   unstage(repo: string, paths: string[]): Promise<void>
   unstageAll(repo: string): Promise<void>
   discard(repo: string, paths: string[], untracked: string[]): Promise<void>
+  /** Files back as HEAD has them (staged changes too), untracked ones deleted: what was in the way of a checkout. */
+  restoreFromHead(repo: string, paths: string[], untracked: string[]): Promise<void>
   discardAll(repo: string): Promise<void>
   applyPatch(repo: string, patch: string, opts: { cached: boolean; reverse: boolean }): Promise<void>
   commit(repo: string, message: string, amend: boolean): Promise<void>
@@ -121,9 +124,10 @@ export interface LeviathanInvokeApi {
   ignore(repo: string, pattern: string): Promise<void>
 
   // Branches & refs
-  checkout(repo: string, ref: string): Promise<void>
-  checkoutRemote(repo: string, remoteBranch: string): Promise<void>
-  checkoutDetached(repo: string, hash: string): Promise<void>
+  // A checkout stopped by uncommitted changes in its way returns them (nothing changed); any other failure throws.
+  checkout(repo: string, ref: string): Promise<CheckoutBlock | null>
+  checkoutRemote(repo: string, remoteBranch: string): Promise<CheckoutBlock | null>
+  checkoutDetached(repo: string, hash: string): Promise<CheckoutBlock | null>
   createBranch(repo: string, name: string, startPoint: string | null, checkout: boolean): Promise<void>
   renameBranch(repo: string, oldName: string, newName: string): Promise<void>
   deleteBranch(repo: string, name: string, force: boolean): Promise<void>
@@ -242,7 +246,7 @@ export interface LeviathanInvokeApi {
     remote: string,
     pr: { number: number; sourceBranch: string; fromFork: boolean },
     provider: Provider
-  ): Promise<void>
+  ): Promise<CheckoutBlock | null>
   /** Creates an ed25519 key in ~/.ssh; refuses to overwrite. */
   generateSshKey(opts: { email: string; passphrase: string; fileName: string }): Promise<SshKey>
 
@@ -368,6 +372,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   unstage: true,
   unstageAll: true,
   discard: true,
+  restoreFromHead: true,
   discardAll: true,
   applyPatch: true,
   commit: true,

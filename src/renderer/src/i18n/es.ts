@@ -305,6 +305,21 @@ const es: Record<keyof typeof en, string> = {
   'dlg.stashClashConfirm': 'Guardar los míos y aplicar',
   'stash.setAside': 'Apartado para aplicar: {name}',
   'toast.stashSetAside': 'Tus cambios están en un stash nuevo ("Apartado para aplicar…"): aplícalo para recuperarlos.',
+  'toast.stashConflicts':
+    'El stash choca con los archivos de aquí: quedan con conflictos para resolver. El stash se conserva, por si acaso.',
+  'dlg.checkoutBlockedTitle': 'Cambios sin commit en medio',
+  'dlg.checkoutBlocked':
+    'Cambiar a {name} machacaría los cambios sin commit de estos {count} archivos, así que git no lo ha hecho (no se ha tocado nada):',
+  'dlg.checkoutBlocked_one':
+    'Cambiar a {name} machacaría los cambios sin commit de este archivo, así que git no lo ha hecho (no se ha tocado nada):',
+  'dlg.checkoutBlockedStash': '• Stash: tus cambios se guardan en un stash, para aplicarlos cuando quieras.',
+  'dlg.checkoutBlockedCarry':
+    '• Llevarlos: se guardan en un stash y se aplican en {name}. Donde choquen, los archivos quedan con conflictos para resolver y el stash se conserva.',
+  'dlg.checkoutBlockedDiscard':
+    '• Descartar: estos archivos vuelven a como los tiene el último commit. Deshacer los recupera.',
+  'dlg.checkoutStash': 'Guardar en stash y cambiar',
+  'dlg.checkoutCarry': 'Llevarlos',
+  'dlg.checkoutDiscard': 'Descartar y cambiar',
   'toast.revealedExecutable': 'Por seguridad, este archivo se muestra en su carpeta en lugar de abrirlo.',
 
   'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Git Leviathan.',

@@ -120,6 +120,7 @@ const handlers: LeviathanInvokeApi = {
   unstage: (path, paths) => repo.unstage(path, paths),
   unstageAll: (path) => repo.unstageAll(path),
   discard: (path, paths, untracked) => repo.discard(path, paths, untracked),
+  restoreFromHead: (path, paths, untracked) => repo.restoreFromHead(path, paths, untracked),
   discardAll: (path) => repo.discardAll(path),
   applyPatch: (path, patch, opts) => repo.applyPatch(path, patch, opts),
   commit: (path, message, amend) => repo.commit(path, message, amend),

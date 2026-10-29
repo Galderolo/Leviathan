@@ -16,6 +16,7 @@ import {
   untrackedDiff
 } from '../../shared/parsers'
 import { parseCommitTemplate, type CommitDraftText } from '../../shared/commitTemplate'
+import { parseCheckoutBlock, type CheckoutBlock } from '../../shared/checkout'
 import { unchangedGaps } from '../../shared/diffGaps'
 import { LARGE_FILE_BYTES } from '../../shared/lfs'
 import type {
@@ -499,6 +500,20 @@ export async function discard(repo: string, paths: string[], untracked: string[]
   }
 }
 
+/**
+ * Puts files back as HEAD has them, staged changes included (a file HEAD does not have goes away), and deletes
+ * the untracked ones: what was in the way of a checkout.
+ */
+export async function restoreFromHead(repo: string, paths: string[], untracked: string[]): Promise<void> {
+  if (paths.length) {
+    const ps = pathspecInput(paths)
+    await run(repo, ['restore', '--source=HEAD', '--staged', '--worktree', ...ps.args], ps.opts)
+  }
+  for (const file of untracked) {
+    await fs.rm(insideRepo(repo, file), { recursive: true, force: true })
+  }
+}
+
 export async function discardAll(repo: string): Promise<void> {
   if (await hasHead(repo)) await run(repo, ['reset', '--hard', '-q'])
   await run(repo, ['clean', '-fdq'])
@@ -567,12 +582,27 @@ export async function ignore(repo: string, pattern: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // Branches and history
 
-export async function checkout(repo: string, ref: string): Promise<void> {
-  assertSafeArg(ref, 'ref')
-  await run(repo, ['checkout', '-q', ref, '--'])
+/**
+ * Runs a checkout. Uncommitted changes in its way come back as what blocked it instead of an error (git changed
+ * nothing); git's message is read in English for that.
+ */
+async function switchTo(repo: string, args: string[]): Promise<CheckoutBlock | null> {
+  try {
+    await run(repo, args, { env: { LC_ALL: 'C', LANGUAGE: 'C' } })
+    return null
+  } catch (err) {
+    const block = err instanceof GitError ? parseCheckoutBlock(err.stderr) : null
+    if (!block) throw err
+    return { message: (err as GitError).message, ...block }
+  }
 }
 
-export async function checkoutRemote(repo: string, remoteBranch: string): Promise<void> {
+export async function checkout(repo: string, ref: string): Promise<CheckoutBlock | null> {
+  assertSafeArg(ref, 'ref')
+  return switchTo(repo, ['checkout', '-q', ref, '--'])
+}
+
+export async function checkoutRemote(repo: string, remoteBranch: string): Promise<CheckoutBlock | null> {
   assertSafeArg(remoteBranch, 'branch')
   const remotes = parseRemotes(await run(repo, ['remote', '-v']))
     .map((r) => r.name)
@@ -583,13 +613,13 @@ export async function checkoutRemote(repo: string, remoteBranch: string): Promis
     cwd: repo,
     okCodes: [0, 1]
   })
-  if (exitCode === 0) await run(repo, ['checkout', '-q', local, '--'])
-  else await run(repo, ['checkout', '-q', '-b', local, '--track', remoteBranch])
+  if (exitCode === 0) return switchTo(repo, ['checkout', '-q', local, '--'])
+  return switchTo(repo, ['checkout', '-q', '-b', local, '--track', remoteBranch])
 }
 
-export async function checkoutDetached(repo: string, hash: string): Promise<void> {
+export async function checkoutDetached(repo: string, hash: string): Promise<CheckoutBlock | null> {
   assertSafeArg(hash, 'commit')
-  await run(repo, ['checkout', '-q', '--detach', hash])
+  return switchTo(repo, ['checkout', '-q', '--detach', hash])
 }
 
 export async function createBranch(
@@ -956,7 +986,7 @@ export async function checkoutPullRequest(
   remote: string,
   pr: { number: number; sourceBranch: string; fromFork: boolean },
   provider: Provider
-): Promise<void> {
+): Promise<CheckoutBlock | null> {
   assertSafeArg(remote, 'remote')
   if (!Number.isInteger(pr.number) || pr.number <= 0) throw new Error(`Invalid pull request number: ${pr.number}`)
   if (!pr.fromFork) {
@@ -967,8 +997,7 @@ export async function checkoutPullRequest(
     await git(['fetch', remote, `+refs/heads/${branch}:${tracking}`], { cwd: repo })
     const local = await refValue(repo, `refs/heads/${branch}`)
     if (!local && (await branchNameFree(repo, branch))) {
-      await run(repo, ['checkout', '-q', '--track', `${remote}/${branch}`])
-      return
+      return switchTo(repo, ['checkout', '-q', '--track', `${remote}/${branch}`])
     }
     const follows =
       !!local &&
@@ -977,8 +1006,7 @@ export async function checkoutPullRequest(
     if (local && follows) {
       const target = (await refValue(repo, tracking))!
       if (await isAncestor(repo, local, target)) await moveBranch(repo, branch, local, target)
-      await run(repo, ['checkout', '-q', branch, '--'])
-      return
+      return switchTo(repo, ['checkout', '-q', branch, '--'])
     }
     // A local branch with that name holds other work, or is in the way of it: leave it alone and use pr/N.
   }
@@ -997,7 +1025,7 @@ export async function checkoutPullRequest(
     throw new Error(
       `${branch} has commits of its own that the pull request does not have. Rename or delete ${branch} to check out its latest version.`
     )
-  await run(repo, ['checkout', '-q', branch, '--'])
+  return switchTo(repo, ['checkout', '-q', branch, '--'])
 }
 
 /** Where the remote keeps a pull request's latest version. */

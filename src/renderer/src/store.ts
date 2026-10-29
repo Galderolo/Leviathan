@@ -208,12 +208,26 @@ export interface FormField {
   options?: { value: string; label: string }[]
 }
 
+/** A button of a dialog that offers several ways on; `primary` is the one Enter picks. */
+export interface DialogChoice {
+  key: string
+  label: string
+  danger?: boolean
+  primary?: boolean
+}
+
 export interface DialogState {
   title: string
   message?: string
+  /** Shown below the message, one per line (file names). */
+  list?: string[]
+  /** Shown below the list. */
+  note?: string
   fields: FormField[]
   confirmText: string
   danger?: boolean
+  /** Buttons in place of the confirm one, in this order; the dialog resolves with `{ choice: key }`. */
+  choices?: DialogChoice[]
   resolve: (values: Record<string, string> | null) => void
 }
 
