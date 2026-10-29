@@ -345,6 +345,23 @@ const es: Record<keyof typeof en, string> = {
   'dlg.checkoutStash': 'Guardar en stash y cambiar',
   'dlg.checkoutCarry': 'Llevarlos',
   'dlg.checkoutDiscard': 'Descartar y cambiar',
+  'dlg.opBlocked':
+    '{what} machacaría los cambios sin commit de estos {count} archivos, así que git no lo ha hecho (no se ha tocado nada):',
+  'dlg.opBlocked_one':
+    '{what} machacaría los cambios sin commit de este archivo, así que git no lo ha hecho (no se ha tocado nada):',
+  'dlg.opBlockedAll':
+    '{what} no puede empezar con cambios sin commit, así que git no lo ha hecho (no se ha tocado nada).',
+  'dlg.opBlockedCarry':
+    '• Guardar en stash y recuperarlos: tus cambios van a un stash y vuelven al terminar. Si se para por conflictos, esperan en el stash hasta que acabes.',
+  'dlg.opBlockedStash': '• Solo guardar en stash: tus cambios se quedan en un stash, para aplicarlos cuando quieras.',
+  'dlg.opCarry': 'Guardar en stash y recuperarlos',
+  'dlg.opStash': 'Solo guardar en stash',
+  'dlg.whatPull': 'El pull',
+  'dlg.whatMerge': 'El merge de {name}',
+  'dlg.whatRebase': 'El rebase sobre {name}',
+  'dlg.whatCherryPick': 'El cherry-pick de {name}',
+  'dlg.whatRevert': 'El revert de {name}',
+  'toast.changesWaitInStash': 'Tus cambios esperan en el stash "{name}": aplícalo cuando acabes.',
   'toast.revealedExecutable': 'Por seguridad, este archivo se muestra en su carpeta en lugar de abrirlo.',
 
   'error.noGit': 'No se encontró Git. Instala Git (https://git-scm.com) y reinicia Git Leviathan.',

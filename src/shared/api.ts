@@ -25,7 +25,7 @@ import type {
   Submodule,
   WorkingFile
 } from './types'
-import type { CheckoutBlock } from './checkout'
+import type { ChangesBlock } from './localChanges'
 import type { ImagePair } from './images'
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
@@ -129,19 +129,20 @@ export interface LeviathanInvokeApi {
 
   // Branches & refs
   // A checkout stopped by uncommitted changes in its way returns them (nothing changed); any other failure throws.
-  checkout(repo: string, ref: string): Promise<CheckoutBlock | null>
-  checkoutRemote(repo: string, remoteBranch: string): Promise<CheckoutBlock | null>
-  checkoutDetached(repo: string, hash: string): Promise<CheckoutBlock | null>
+  checkout(repo: string, ref: string): Promise<ChangesBlock | null>
+  checkoutRemote(repo: string, remoteBranch: string): Promise<ChangesBlock | null>
+  checkoutDetached(repo: string, hash: string): Promise<ChangesBlock | null>
   createBranch(repo: string, name: string, startPoint: string | null, checkout: boolean): Promise<void>
   renameBranch(repo: string, oldName: string, newName: string): Promise<void>
   /** For each local branch, how many of its commits no other branch, remote branch or tag has. */
   commitsOnlyOn(repo: string, names: string[]): Promise<Record<string, number>>
   deleteBranch(repo: string, name: string, force: boolean): Promise<void>
   deleteRemoteBranch(repo: string, remote: string, branch: string): Promise<void>
-  merge(repo: string, ref: string): Promise<void>
-  rebase(repo: string, onto: string): Promise<void>
-  cherryPick(repo: string, hash: string): Promise<void>
-  revert(repo: string, hash: string): Promise<void>
+  // Like checkout: uncommitted changes in the way come back (nothing changed) instead of an error.
+  merge(repo: string, ref: string): Promise<ChangesBlock | null>
+  rebase(repo: string, onto: string): Promise<ChangesBlock | null>
+  cherryPick(repo: string, hash: string): Promise<ChangesBlock | null>
+  revert(repo: string, hash: string): Promise<ChangesBlock | null>
   reset(repo: string, hash: string, mode: ResetMode): Promise<void>
   abortOperation(repo: string): Promise<void>
   continueOperation(repo: string): Promise<void>
@@ -163,7 +164,7 @@ export interface LeviathanInvokeApi {
   // Remotes
   /** `background` fetches never prompt for credentials. */
   fetch(repo: string, background?: boolean): Promise<void>
-  pull(repo: string, mode: PullMode): Promise<void>
+  pull(repo: string, mode: PullMode): Promise<ChangesBlock | null>
   /** Fast-forwards a branch that is not checked out to its upstream. */
   pullBranch(repo: string, branch: string): Promise<void>
   push(repo: string, opts: { force: boolean; branch?: string; remote?: string }): Promise<void>
@@ -252,7 +253,7 @@ export interface LeviathanInvokeApi {
     remote: string,
     pr: { number: number; sourceBranch: string; fromFork: boolean },
     provider: Provider
-  ): Promise<CheckoutBlock | null>
+  ): Promise<ChangesBlock | null>
   /** Creates an ed25519 key in ~/.ssh; refuses to overwrite. */
   generateSshKey(opts: { email: string; passphrase: string; fileName: string }): Promise<SshKey>
 

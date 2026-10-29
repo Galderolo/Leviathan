@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as repo from '../src/main/git/repository'
 import { git } from '../src/main/git/runner'
-import { parseCheckoutBlock } from '../src/shared/checkout'
+import { parseChangesBlock } from '../src/shared/localChanges'
 
 let dir: string
 
@@ -38,7 +38,7 @@ afterEach(() => {
   rmSync(join(dir, '..'), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
-describe('parseCheckoutBlock', () => {
+describe('parseChangesBlock', () => {
   it("reads the files of git's refusal, each kind on its own", () => {
     const stderr = [
       'error: Your local changes to the following files would be overwritten by checkout:',
@@ -59,22 +59,23 @@ describe('parseCheckoutBlock', () => {
       'Please move or remove them before you switch branches.',
       'Aborting'
     ].join('\n')
-    expect(parseCheckoutBlock(stderr)).toEqual({
+    expect(parseChangesBlock(stderr)).toEqual({
       changed: ['staged.txt', ' a b.txt ', 'Assets/Tables/Rising Shared Data.asset'],
       untracked: ['new.txt', 'gone.txt'],
-      folders: ['d']
+      folders: ['d'],
+      all: false
     })
   })
 
   it('reads lines ending in CRLF', () => {
     const stderr =
       'error: Your local changes to the following files would be overwritten by checkout:\r\n\ta.txt\r\nAborting\r\n'
-    expect(parseCheckoutBlock(stderr)).toEqual({ changed: ['a.txt'], untracked: [], folders: [] })
+    expect(parseChangesBlock(stderr)).toEqual({ changed: ['a.txt'], untracked: [], folders: [], all: false })
   })
 
   it('is nothing for any other failure', () => {
-    expect(parseCheckoutBlock("error: pathspec 'nope' did not match any file(s) known to git")).toBeNull()
-    expect(parseCheckoutBlock('')).toBeNull()
+    expect(parseChangesBlock("error: pathspec 'nope' did not match any file(s) known to git")).toBeNull()
+    expect(parseChangesBlock('')).toBeNull()
   })
 })
 
