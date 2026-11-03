@@ -469,6 +469,14 @@ const es: Record<keyof typeof en, string> = {
     '¿Quitar la cuenta {name}? Los repos que la usan vuelven a tus credenciales normales de git.',
   'accounts.added': 'Cuenta {name} añadida',
   'accounts.renewed': 'Cuenta {name} actualizada con el token nuevo',
+  'auth.title': 'Vuelve a iniciar sesión en {host}',
+  'auth.rejected':
+    '{host} ya no acepta el token de {account}: se revocó o caducó. GitHub, por ejemplo, guarda diez inicios de sesión por cuenta y app, y volver a iniciar sesión (aquí o en otro PC) revoca el más antiguo. Inicia sesión otra vez para tener un token nuevo.',
+  'auth.unreadable':
+    'El token de {account} ya no se puede leer en este PC ({reason}). Inicia sesión otra vez para guardar uno nuevo.',
+  'auth.missing': 'git no tenía ningún token de {account} que enviar. Inicia sesión otra vez para guardar uno.',
+  'auth.noReason': 'sin motivo',
+  'auth.signInAgain': 'Volver a iniciar sesión',
   'accounts.noneOption': 'Ninguna (credenciales normales de git)',
   'menu.repoAccount': 'Cuenta de este repositorio…',
   'menu.repoSettings': 'Ajustes de este repositorio…',

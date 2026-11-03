@@ -198,6 +198,8 @@ export interface LeviathanInvokeApi {
 
   // Accounts (tokens never leave the main process)
   listAccounts(): Promise<Account[]>
+  /** Whether an account's token can be read here, and if not why (not whether the server still takes it). */
+  accountTokenState(id: string): Promise<{ readable: boolean; reason: string | null }>
   addAccount(input: {
     provider: Provider
     host: string
@@ -443,6 +445,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   answerAskpass: true,
   listSshKeys: true,
   listAccounts: true,
+  accountTokenState: true,
   addAccount: true,
   updateAccount: true,
   removeAccount: true,

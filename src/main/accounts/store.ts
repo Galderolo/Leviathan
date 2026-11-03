@@ -29,6 +29,7 @@ interface StoredAccount extends Account {
 /** Accounts persisted in a JSON file; tokens are only ever written encrypted. */
 export class AccountStore {
   private accounts: StoredAccount[]
+  private reasons = new Map<string, string>()
 
   constructor(
     private readonly file: string,
@@ -99,6 +100,11 @@ export class AccountStore {
     return (await this.cipher.encrypt(text)).toString('base64')
   }
 
+  /** Why the last read of an account's token failed (the system's own words), or null when it was read. */
+  unreadable(id: string): string | null {
+    return this.reasons.get(id) ?? null
+  }
+
   /** A stored secret in clear; encrypted again, and saved, when the key changed since. Null when unreadable. */
   private async open(found: StoredAccount, field: 'token' | 'refresh'): Promise<string | null> {
     try {
@@ -107,8 +113,10 @@ export class AccountStore {
         found[field] = await this.seal(text)
         this.save()
       }
+      if (field === 'token') this.reasons.delete(found.id)
       return text
-    } catch {
+    } catch (err) {
+      if (field === 'token') this.reasons.set(found.id, err instanceof Error ? err.message : String(err))
       return null
     }
   }

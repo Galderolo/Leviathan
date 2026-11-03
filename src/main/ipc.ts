@@ -209,6 +209,7 @@ const handlers: LeviathanInvokeApi = {
   answerAskpass: async (id, value) => answerAskpass(id, value),
   listSshKeys: () => listKeys(),
   listAccounts: async () => accounts.listAccounts(),
+  accountTokenState: (id) => accounts.accountTokenState(id),
   addAccount: (input) => accounts.addAccount(input),
   updateAccount: (id, patch) => accounts.updateAccount(id, patch),
   removeAccount: async (id) => accounts.removeAccount(id),

@@ -104,6 +104,15 @@ export function listAccounts(): Account[] {
   return accounts().list()
 }
 
+/**
+ * Whether an account's token can be read here; if not, why (the system's own words: a key that changed, a profile
+ * copied from another computer...). Says nothing of whether the server still accepts it.
+ */
+export async function accountTokenState(id: string): Promise<{ readable: boolean; reason: string | null }> {
+  const token = await freshToken(id).catch(() => null)
+  return token ? { readable: true, reason: null } : { readable: false, reason: accounts().unreadable(id) }
+}
+
 function normaliseHost(host: string): string {
   const clean = host
     .trim()
@@ -306,7 +315,10 @@ async function repoProject(repo: string) {
   // Saved by another computer or user account (a copied or restored profile): the account is there, its token is not.
   if (!token) {
     const { username, host } = project.account
-    throw new Error(`The token of ${username}@${host} can no longer be read on this system: add the account again.`)
+    const reason = accounts().unreadable(project.account.id)
+    throw new Error(
+      `The token of ${username}@${host} can no longer be read on this system${reason ? ` (${reason})` : ''}: add the account again.`
+    )
   }
   return { ...project, token }
 }

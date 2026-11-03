@@ -70,6 +70,11 @@ describe('AccountStore', () => {
     })
     expect(await broken.token(account.id)).toBeNull()
     expect(broken.list()).toHaveLength(1)
+    // Why, for the message that asks to add it again.
+    expect(broken.unreadable(account.id)).toBe('keyring changed')
+    const fixed = new AccountStore(file, fakeCipher)
+    expect(await fixed.token(account.id)).toBe(TOKEN)
+    expect(fixed.unreadable(account.id)).toBeNull()
   })
 
   it('encrypts a token again when secure storage says its key changed', async () => {

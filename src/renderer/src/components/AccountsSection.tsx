@@ -4,6 +4,7 @@ import { DEFAULT_HOSTS, PROVIDERS, tokenPageUrl } from '../../../shared/provider
 import type { Account, Provider } from '../../../shared/types'
 import { openExternal, reloadAllPullRequests } from '../actions'
 import { useT } from '../i18n'
+import { useStore } from '../store'
 import { confirmDialog, errorMessage, formDialog, toast } from '../ui'
 
 const api = window.leviathan
@@ -128,6 +129,15 @@ export function AccountsSection() {
     void api.cancelGitLabLogin()
     setGitlab(null)
   }
+
+  // Opened to sign in again (a repository's token was refused): that sign-in starts at once.
+  const again = useStore((s) => s.signInAgain)
+  useEffect(() => {
+    if (!again) return
+    useStore.setState({ signInAgain: null })
+    if (again === 'github') void signIn()
+    else void signInGitLab()
+  }, [again])
 
   const label = (p: Provider) => (p === 'other' ? t('accounts.other') : PROVIDER_LABELS[p])
 

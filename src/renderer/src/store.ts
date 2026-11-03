@@ -264,6 +264,8 @@ export interface AppState {
   settingsOpen: boolean
   /** The section Settings shows (the last one shown, unless something opens another). */
   settingsSection: SettingsSection
+  /** Settings → Accounts was opened to sign in again with this provider: it starts at once. */
+  signInAgain: 'github' | 'gitlab' | null
   whatsNewOpen: boolean
   /** Interactive rebase dialog: the commits after `base` in repository `path`. */
   rebase: { path: string; base: string; commits: RebaseCommit[]; script: string | null } | null
@@ -295,6 +297,7 @@ export const useStore = create<AppState>(() => ({
   toasts: [],
   settingsOpen: false,
   settingsSection: 'general',
+  signInAgain: null,
   whatsNewOpen: false,
   rebase: null,
   cloneProgress: null,
