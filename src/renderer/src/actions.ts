@@ -49,6 +49,7 @@ import {
   useStore,
   writeGraphScope,
   type BusyKind,
+  type Comparison,
   type GraphScope,
   type LfsView,
   type RepoView,
@@ -460,7 +461,7 @@ export async function closePullRequest(path: string, pr: PullRequest): Promise<v
 
 /** Opens a pull request's review in the center panel: its files and their diff, and its conversation. */
 export function openReview(path: string, pr: PullRequest): void {
-  patchRepo(path, { review: pr, fileView: null, diff: null })
+  patchRepo(path, { review: pr, fileView: null, diff: null, compare: null })
 }
 
 export function closeReview(path: string): void {
@@ -787,17 +788,17 @@ export function selectWip(path: string, keepFileView = false): void {
 
 /** History of a file from HEAD, or (`rev`) from a commit of another branch. The open diff gives way to it. */
 export function openFileHistory(path: string, file: string, rev: string | null = null): void {
-  patchRepo(path, { fileView: { kind: 'history', path: file, rev }, diff: null, review: null })
+  patchRepo(path, { fileView: { kind: 'history', path: file, rev }, diff: null, review: null, compare: null })
 }
 
 /** History of a folder: the commits that changed anything inside it, from HEAD or from `rev`. */
 export function openFolderHistory(path: string, folder: string, rev: string | null = null): void {
-  patchRepo(path, { fileView: { kind: 'folder', path: folder, rev }, diff: null, review: null })
+  patchRepo(path, { fileView: { kind: 'folder', path: folder, rev }, diff: null, review: null, compare: null })
 }
 
 /** Blame of a file in the working tree (`rev` null) or as it was in a commit. */
 export function openBlame(path: string, file: string, rev: string | null): void {
-  patchRepo(path, { fileView: { kind: 'blame', path: file, rev }, diff: null, review: null })
+  patchRepo(path, { fileView: { kind: 'blame', path: file, rev }, diff: null, review: null, compare: null })
 }
 
 /**
@@ -830,12 +831,27 @@ export function closeFileView(path: string): void {
   patchRepo(path, { fileView: null })
 }
 
+/** Compares commit `from` with commit `to`, or with the working tree when `to` is null, in the center panel. */
+export function openCompare(path: string, from: Comparison['from'], to: Comparison['to']): void {
+  patchRepo(path, { compare: { from, to }, review: null, fileView: null })
+}
+
+export function closeCompare(path: string): void {
+  patchRepo(path, { compare: null })
+}
+
+/** Compares the other way round (two commits only: the working tree is always the newer side). */
+export function swapCompare(path: string): void {
+  const compare = getRepo(path)?.compare
+  if (compare?.to) patchRepo(path, { compare: { from: compare.to, to: compare.from } })
+}
+
 /**
  * Leaves the file view for the graph, with that commit selected and in sight.
  * Older commits than the graph holds are loaded first (within reason).
  */
 export async function showCommitInGraph(path: string, hash: string): Promise<void> {
-  patchRepo(path, { fileView: null, diff: null, review: null })
+  patchRepo(path, { fileView: null, diff: null, review: null, compare: null })
   const loaded = () => getRepo(path)?.commits.some((c) => c.hash === hash) ?? false
   for (let round = 0; round < 10 && !loaded() && getRepo(path)?.hasMore; round++) await loadMore(path)
   if (!loaded()) toast('info', t('history.notInGraph'))
@@ -910,7 +926,7 @@ function sameSource(a: DiffSource, b: DiffSource): boolean {
 }
 
 export async function openDiff(path: string, source: DiffSource): Promise<void> {
-  patchRepo(path, { diff: { source, data: null }, fileView: null, review: null })
+  patchRepo(path, { diff: { source, data: null }, fileView: null, review: null, compare: null })
   await loadDiff(path, source)
 }
 

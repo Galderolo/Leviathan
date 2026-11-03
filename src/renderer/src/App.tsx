@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   autoFetchTick,
   closeDiff,
+  closeCompare,
   closeFileView,
   closeReview,
   closeTab,
@@ -33,6 +34,7 @@ import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import { RebaseDialog } from './components/RebaseDialog'
 import { FileView } from './components/FileViews'
+import { CompareView } from './components/CompareView'
 import { PullRequestView } from './components/PullRequestView'
 import { SettingsModal } from './components/SettingsModal'
 import { WhatsNew } from './components/WhatsNew'
@@ -174,6 +176,8 @@ export function App() {
         }
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.review && !isTyping(e.target)) {
         closeReview(active.path)
+      } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.compare && !isTyping(e.target)) {
+        closeCompare(active.path)
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.fileView && !isTyping(e.target)) {
         closeFileView(active.path)
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.diff) {
@@ -207,6 +211,7 @@ function RepoScreen({ path }: { path: string }) {
   const hasDiff = useStore((s) => !!s.repos[path]?.diff)
   const hasFileView = useStore((s) => !!s.repos[path]?.fileView)
   const hasReview = useStore((s) => !!s.repos[path]?.review)
+  const hasCompare = useStore((s) => !!s.repos[path]?.compare)
   const terminalOpen = useStore((s) => !!s.repos[path]?.terminalOpen)
   const [left, setLeft] = useState(settings.leftPanelWidth)
   const [right, setRight] = useState(settings.rightPanelWidth)
@@ -229,6 +234,8 @@ function RepoScreen({ path }: { path: string }) {
           <div className="center-main">
             {hasReview ? (
               <PullRequestView path={path} />
+            ) : hasCompare ? (
+              <CompareView path={path} />
             ) : hasFileView ? (
               <FileView path={path} />
             ) : hasDiff ? (

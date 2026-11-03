@@ -31,7 +31,7 @@ import {
   type GraphColumns,
   type OptionalColumn
 } from '../graphColumns'
-import { useRepo, useStore } from '../store'
+import { getRepo, useRepo, useStore } from '../store'
 import { wipShown } from '../checkoutView'
 import { openMenu } from '../ui'
 import { cx, formatDate, groupRefs, initials, laneColor, matchesFilter, shortHash, type RefLabel } from '../utils'
@@ -246,10 +246,12 @@ export function CommitGraph({ path }: { path: string }) {
   }
 
   const onContext = (e: React.MouseEvent, item: GraphItem) => {
+    // The commit selected before this click: the menu offers to compare with it.
+    const before = getRepo(path)?.selection
     selectItem(item)
     if (item.kind === 'wip') openMenu(e, wipMenu(path))
     else if (item.kind === 'stash') openMenu(e, stashMenu(path, item.stash))
-    else openMenu(e, commitMenu(path, item.hash))
+    else openMenu(e, commitMenu(path, item.hash, before?.kind === 'commit' ? before.hash : null))
   }
 
   const unpushedList = view?.state?.unpushed

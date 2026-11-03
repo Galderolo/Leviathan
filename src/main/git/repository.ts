@@ -467,6 +467,12 @@ async function getFileDiff(repo: string, source: DiffSource, extraArgs: string[]
           : await run(repo, ['show', '--format=', ...diffArgs, source.hash, '--', ...paths], { env: LITERAL_PATHS })
       return parseDiff(out, source.path)
     }
+    case 'tree': {
+      assertSafeArg(source.base, 'commit')
+      const paths = source.oldPath ? [source.oldPath, source.path] : [source.path]
+      const out = await run(repo, ['diff', ...diffArgs, source.base, '--', ...paths], { env: LITERAL_PATHS })
+      return parseDiff(out, source.path)
+    }
   }
 }
 
@@ -506,6 +512,9 @@ function imageSides(source: DiffSource): (ImageSide | null)[] {
         source.parent ? { blob: `${source.parent}:${source.oldPath ?? source.path}` } : null,
         { blob: `${source.hash}:${source.path}` }
       ]
+    case 'tree':
+      assertSafeArg(source.base, 'commit')
+      return [{ blob: `${source.base}:${source.oldPath ?? source.path}` }, { file: source.path }]
   }
 }
 
@@ -1227,6 +1236,13 @@ export async function getRangeFiles(repo: string, base: string, head: string): P
   assertSafeArg(base, 'commit')
   assertSafeArg(head, 'commit')
   return parseNameStatus(await run(repo, ['diff', '--name-status', '-z', '-M', base, head, '--']))
+}
+
+/** Files that differ between commit `from` and commit `to`, or the working tree (staged or not) when `to` is null. */
+export async function compareFiles(repo: string, from: string, to: string | null): Promise<FileChange[]> {
+  if (to) return getRangeFiles(repo, from, to)
+  assertSafeArg(from, 'commit')
+  return parseNameStatus(await run(repo, ['diff', '--name-status', '-z', '-M', from, '--']))
 }
 
 const HISTORY_FORMAT = '%x1e%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%cn%x1f%ce%x1f%ct%x1f%s%x1f'

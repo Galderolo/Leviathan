@@ -84,6 +84,8 @@ export interface LeviathanInvokeApi {
   getDiff(repo: string, source: DiffSource, fullFile?: boolean): Promise<FileDiff>
   /** An image's two sides for that diff, to show instead of it. */
   getImages(repo: string, source: DiffSource): Promise<ImagePair>
+  /** Files that differ between commit `from` and commit `to`, or the working tree when `to` is null. */
+  compareFiles(repo: string, from: string, to: string | null): Promise<FileChange[]>
   /** Refs, HEAD and the stash list; with `paths`, a copy of those files too (`tooLarge`: the ones too big to keep). */
   /** `'changes'`: every uncommitted change as git sees it now. */
   getSnapshot(repo: string, paths?: string[] | 'changes'): Promise<Snapshot>
@@ -362,6 +364,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getCommitDetails: true,
   getDiff: true,
   getImages: true,
+  compareFiles: true,
   getSnapshot: true,
   stashPaths: true,
   getFileHistory: true,

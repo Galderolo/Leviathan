@@ -133,6 +133,10 @@ export async function openDiffTool(repo: string, source: DiffSource): Promise<vo
     assertHash(source.parent)
     if (source.oldPath) insideRepo(repo, source.oldPath)
   }
+  if (source.kind === 'tree') {
+    assertHash(source.base)
+    if (source.oldPath) insideRepo(repo, source.oldPath)
+  }
   const tool = settingsFor(loadSettings(), repo).diffTool || null
   // git difftool falls back to merge.tool when diff.tool is not set.
   if (!tool && !(await configured(repo, ['diff.tool', 'merge.tool']))) throw new Error(NO_DIFF_TOOL)

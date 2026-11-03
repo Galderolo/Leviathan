@@ -15,7 +15,7 @@ export function sameDiff(a: FileDiff | null | undefined, b: FileDiff | null): bo
  * conflict.
  */
 export function followDiff(source: DiffSource, status: WorkingStatus): DiffSource | null {
-  if (source.kind === 'commit') return source
+  if (source.kind === 'commit' || source.kind === 'tree') return source
   const unstaged = status.unstaged.find((f) => f.path === source.path)
   const staged = status.staged.find((f) => f.path === source.path)
   const conflicted = status.conflicted.some((f) => f.path === source.path)
