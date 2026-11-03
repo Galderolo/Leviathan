@@ -1439,7 +1439,8 @@ test('refreshes an open file history and blame after a commit', async () => {
 test('opens a branch in a worktree of its own, in a new tab, and removes it', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   box.git(repo, 'branch', 'develop')
-  const folder = `${repo}-develop`
+  // The app works with the folder's real path (a short Windows name such as RUNNER~1 spelled out).
+  const folder = `${realpathSync.native(repo)}-develop`
   await open(repo)
 
   await page.locator('.left-panel').getByText('develop', { exact: true }).click({ button: 'right' })
