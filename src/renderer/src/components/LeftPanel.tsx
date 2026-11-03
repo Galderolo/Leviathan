@@ -15,6 +15,7 @@ import {
   Download,
   EyeOff,
   Folder,
+  FolderGit2,
   GitBranch,
   GitPullRequest,
   GitPullRequestDraft,
@@ -40,6 +41,8 @@ import {
   loadLfsLocks,
   openExternal,
   openSubmodule,
+  openWorktree,
+  pruneWorktrees,
   selectRef,
   selectStash,
   setupLfs,
@@ -57,11 +60,12 @@ import {
   remoteMenu,
   stashMenu,
   submoduleMenu,
+  worktreeMenu,
   tagMenu
 } from '../menus'
 import { useStore } from '../store'
 import { openMenu } from '../ui'
-import { buildTree, cx, formatDate, relativeDate, shortHash, visibleTreeRows, type TreeNode } from '../utils'
+import { basename, buildTree, cx, formatDate, relativeDate, shortHash, visibleTreeRows, type TreeNode } from '../utils'
 import { VirtualRows } from './VirtualRows'
 import { LockIcon } from './common'
 import { refDragProps, refDropProps } from './refDnd'
@@ -78,6 +82,7 @@ export function LeftPanel({ path }: { path: string }) {
         selection: r?.selection,
         lfs: r?.lfs,
         submodules: r?.submodules,
+        worktrees: r?.worktrees ?? [],
         busy: r?.busy
       }
     })
@@ -391,6 +396,57 @@ export function LeftPanel({ path }: { path: string }) {
                 <span className="side-name">{sub.path}</span>
                 {sub.dirty && <span className="sub-tag dirty">{t('sub.dirty')}</span>}
                 {sub.state !== 'clean' && <span className={cx('sub-tag', sub.state)}>{t(`sub.${sub.state}`)}</span>}
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {view.worktrees.length > 1 && (
+          <Section
+            id="worktrees"
+            icon={<FolderGit2 size={14} />}
+            title={t('left.worktrees')}
+            count={view.worktrees.length}
+            collapsed={collapsed}
+            toggle={toggle}
+            action={
+              view.worktrees.some((w) => w.prunable) ? (
+                <button
+                  className="icon-btn small"
+                  title={t('left.pruneWorktrees')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void pruneWorktrees(path)
+                  }}
+                >
+                  <Eraser size={14} />
+                </button>
+              ) : undefined
+            }
+          >
+            {view.worktrees.map((wt) => (
+              <div
+                key={wt.path}
+                className={cx('side-row worktree-row', wt.current && 'head', wt.prunable && 'gone')}
+                title={wt.path}
+                onDoubleClick={() => !wt.current && void openWorktree(wt)}
+                onContextMenu={(e) => openMenu(e, worktreeMenu(path, wt))}
+              >
+                {wt.current ? (
+                  <Check size={13} className="head-icon" strokeWidth={3} />
+                ) : (
+                  <FolderGit2 size={13} className="dim" />
+                )}
+                <span className="side-name">{wt.branch ?? t('wt.detached', { hash: wt.head?.slice(0, 7) ?? '' })}</span>
+                <span className="side-date">
+                  {wt.prunable
+                    ? t('wt.gone')
+                    : wt.current
+                      ? t('wt.current')
+                      : wt.main
+                        ? t('wt.main')
+                        : basename(wt.path)}
+                </span>
               </div>
             ))}
           </Section>

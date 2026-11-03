@@ -27,6 +27,7 @@ import type {
 } from './types'
 import type { ChangesBlock } from './localChanges'
 import type { ImagePair } from './images'
+import type { Worktree } from './worktrees'
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
 import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
@@ -302,6 +303,15 @@ export interface LeviathanInvokeApi {
 
   // Submodules
   getSubmodules(repo: string): Promise<Submodule[]>
+
+  // Worktrees
+  getWorktrees(repo: string): Promise<Worktree[]>
+  /** Checks `branch` out in a new worktree at `folder` (a full path); a remote branch gets a local one following it. */
+  addWorktree(repo: string, folder: string, branch: string, remote: boolean): Promise<string>
+  /** Removes a worktree and its folder; with changes there, only with `force`. */
+  removeWorktree(repo: string, folder: string, force: boolean): Promise<void>
+  /** Forgets the worktrees whose folder was deleted by hand. */
+  pruneWorktrees(repo: string): Promise<void>
   /** Initializes and checks out `paths` (or every submodule) at the recorded commits, recursively. */
   updateSubmodules(repo: string, paths: string[] | null): Promise<void>
 
@@ -482,6 +492,10 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getLfsInstallOffer: true,
   installGitLfs: true,
   getSubmodules: true,
+  getWorktrees: true,
+  addWorktree: true,
+  removeWorktree: true,
+  pruneWorktrees: true,
   updateSubmodules: true,
   terminalStart: true,
   terminalWrite: true,

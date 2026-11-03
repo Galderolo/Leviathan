@@ -22,6 +22,7 @@ import * as lfs from './git/lfs'
 import * as lfsInstall from './lfsInstall'
 import * as repo from './git/repository'
 import * as submodules from './git/submodules'
+import * as worktrees from './git/worktrees'
 import { LatestRun } from './latestRun'
 import { Terminals, integratedShell } from './terminal'
 import { loadSettings, saveSettings } from './settings'
@@ -280,6 +281,10 @@ const handlers: LeviathanInvokeApi = {
   getLfsInstallOffer: () => lfsInstall.getLfsInstallOffer(),
   installGitLfs: (path) => lfsInstall.installGitLfs(progress(path)),
   getSubmodules: (path) => submodules.getSubmodules(path),
+  getWorktrees: (path) => worktrees.getWorktrees(path),
+  addWorktree: (path, folder, branch, remote) => worktrees.addWorktree(path, folder, branch, remote === true),
+  removeWorktree: (path, folder, force) => worktrees.removeWorktree(path, folder, force === true),
+  pruneWorktrees: (path) => worktrees.pruneWorktrees(path),
   updateSubmodules: (path, paths) => submodules.updateSubmodules(path, paths, progress(path)),
   openExternal: async (url) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('Only http(s) links can be opened')
