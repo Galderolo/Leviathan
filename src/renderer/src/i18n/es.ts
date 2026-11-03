@@ -378,6 +378,8 @@ const es: Record<keyof typeof en, string> = {
   'dlg.whatRebase': 'El rebase sobre {name}',
   'dlg.whatCherryPick': 'El cherry-pick de {name}',
   'dlg.whatRevert': 'El revert de {name}',
+  'dlg.whatInteractiveRebase': 'El rebase interactivo',
+  'dlg.whatCheckoutMerge': 'El checkout de {into} y el merge de {from}',
   'toast.changesWaitInStash': 'Tus cambios esperan en el stash "{name}": aplícalo cuando acabes.',
   'toast.revealedExecutable': 'Por seguridad, este archivo se muestra en su carpeta en lugar de abrirlo.',
 

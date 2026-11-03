@@ -1172,7 +1172,10 @@ export async function pullBranch(path: string, ref: GitRef): Promise<boolean> {
 }
 
 export async function push(path: string, opts: { force?: boolean; branch?: string } = {}): Promise<boolean> {
-  const branch = opts.branch ?? headBranch(path)
+  // Pressed before the repository's state was read (just opened): git tells the branch and the remotes, so where to
+  // publish is still asked.
+  const state = getRepo(path)?.state ?? (await api.getState(path).catch(() => null))
+  const branch = opts.branch ?? state?.head.branch ?? null
   if (!branch) {
     toast('error', t('error.detachedPush'))
     return false
@@ -1186,7 +1189,6 @@ export async function push(path: string, opts: { force?: boolean; branch?: strin
     })
     if (!ok) return false
   }
-  const state = getRepo(path)?.state
   const choices = state ? remotesToChooseFrom(branch, state.refs, state.remotes) : null
   let remote: string | undefined
   if (choices) {
@@ -1557,14 +1559,11 @@ export async function checkoutAndMerge(path: string, into: string, from: string)
     confirmText: t('dlg.checkoutMergeConfirm')
   })
   if (!ok) return false
-  return runOp(
-    path,
-    async () => {
-      const block = (await api.checkout(path, into)) ?? (await api.merge(path, from))
-      if (block) throw new Error(block.message)
-    },
-    { undo: { label: t('undo.merge', { name: from }) } }
-  )
+  // Uncommitted changes in the way of either step: the same choice as for a merge.
+  return runPastChanges(path, async () => (await api.checkout(path, into)) ?? (await api.merge(path, from)), {
+    label: t('undo.merge', { name: from }),
+    ask: (block) => askOpWay(t('dlg.whatCheckoutMerge', { into, from }), block)
+  })
 }
 
 export function rebaseOnto(path: string, name: string): Promise<boolean> {
@@ -1593,11 +1592,11 @@ export function closeInteractiveRebase(): void {
   useStore.setState({ rebase: null })
 }
 
-/** Runs the rebase; when it stops for a conflict, the operation banner takes over. */
 /**
  * Runs the rebase. The dialog closes once it finished, or stopped part-way
  * (the operation banner takes over); when it was refused before starting
- * (uncommitted changes, a stale list...), it stays open with what was typed.
+ * (a stale list...), it stays open with what was typed. With uncommitted changes in the way, it asks whether to
+ * stash them and bring them back once it is done (they wait in the stash when it stops), or only stash them.
  */
 export async function startInteractiveRebase(
   path: string,
@@ -1606,16 +1605,48 @@ export async function startInteractiveRebase(
 ): Promise<'done' | 'stopped' | 'refused'> {
   // A rebase (or another operation) already under way is a refusal, not this rebase stopping.
   const before = (await api.getState(path).catch(() => null))?.operation ?? null
+  const label = t('undo.interactiveRebase')
+  // The changes stashed to let it run, and whether they come back after.
+  let aside: { stash: Stash | undefined; carry: boolean } | null = null
+  const waitInStash = () => {
+    if (aside?.carry && aside.stash) toast('info', t('toast.changesWaitInStash', { name: aside.stash.message }))
+  }
   try {
-    await recordUndo(path, t('undo.interactiveRebase'), 'keep', () => api.interactiveRebase(path, base, items))
+    const block = await recordUndo(path, label, 'keep', () => api.interactiveRebase(path, base, items))
+    if (block) {
+      const way = await askOpWay(t('dlg.whatInteractiveRebase'), block)
+      if (!way) return 'refused'
+      const stashes = new Set(getRepo(path)?.state?.stashes.map((s) => s.hash))
+      // A failure is thrown once recorded: what was stashed stays undoable.
+      const failure = await recordUndo(
+        path,
+        label,
+        'keep',
+        async () => {
+          await api.stashSave(path, null)
+          try {
+            const still = await api.interactiveRebase(path, base, items)
+            return still ? new Error(still.message) : null
+          } catch (err) {
+            return err
+          }
+        },
+        'changes'
+      )
+      const stash = (await api.getState(path).catch(() => null))?.stashes.find((s) => !stashes.has(s.hash))
+      aside = { stash, carry: way === 'carry' }
+      if (failure) throw failure
+    }
     closeInteractiveRebase()
     // git stops without an error at a commit to edit: say so and show the banner, not "rebased".
     if ((await api.getState(path).catch(() => null))?.editing) {
       toast('info', t('toast.rebaseEditStop'))
+      waitInStash()
       selectWip(path)
       return 'stopped'
     }
     toast('success', t('toast.rebased'))
+    if (aside?.carry && aside.stash) await restoreStash(path, aside.stash, true)
     return 'done'
   } catch (err) {
     const stopped = stoppedOperation(before, await api.getState(path).catch(() => null))
@@ -1625,6 +1656,7 @@ export async function startInteractiveRebase(
       if (stopped.conflicts) toast('info', t('toast.stoppedForConflicts'))
       else if (reason) toast('error', t('toast.rebaseStoppedFor', { reason }))
       else toast('info', t('toast.rebaseStopped'))
+      waitInStash()
       closeInteractiveRebase()
       // Show the banner and the conflicted files.
       selectWip(path)

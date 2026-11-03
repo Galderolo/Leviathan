@@ -880,11 +880,13 @@ async function rebaseScript(repo: string, base: string): Promise<string> {
  * list written beforehand, and rewords read their message from a file. Stops,
  * like any rebase, when a commit does not apply cleanly.
  */
-export async function interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<void> {
+export async function interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<ChangesBlock | null> {
   const operation = await currentOperation(repo)
   if (operation) throw new Error(`A ${operation} is in progress. Finish or abort it first.`)
+  // As git refuses a rebase: any uncommitted change of a tracked file is in its way.
   if ((await run(repo, ['status', '--porcelain', '--untracked-files=no'])).trim()) {
-    throw new Error('Commit or stash your uncommitted changes before rebasing.')
+    const message = 'Commit or stash your uncommitted changes before rebasing.'
+    return { message, changed: [], untracked: [], folders: [], all: true }
   }
   if (items.some((i) => !REBASE_ACTIONS.includes(i.action))) throw new Error('Unknown rebase action')
   // The list was read earlier: it must still be exactly the commits to rewrite.
@@ -921,6 +923,7 @@ export async function interactiveRebase(repo: string, base: string, items: Rebas
     env: { GIT_SEQUENCE_EDITOR: `cp ${shQuote(file('todo'))}` }
   })
   await removeRebaseFiles(repo)
+  return null
 }
 
 /** The todo list and messages of an interactive rebase, once no rebase needs them any more. */

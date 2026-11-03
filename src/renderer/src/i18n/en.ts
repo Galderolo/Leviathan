@@ -371,6 +371,8 @@ const en = {
   'dlg.whatRebase': 'Rebasing onto {name}',
   'dlg.whatCherryPick': 'Cherry-picking {name}',
   'dlg.whatRevert': 'Reverting {name}',
+  'dlg.whatInteractiveRebase': 'Rebasing interactively',
+  'dlg.whatCheckoutMerge': 'Checking out {into} and merging {from}',
   'toast.changesWaitInStash': 'Your changes wait in the stash "{name}": apply it once you finish.',
   'toast.revealedExecutable': 'For safety this file is shown in its folder instead of being opened.',
 
