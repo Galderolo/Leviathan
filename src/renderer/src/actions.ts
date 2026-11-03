@@ -19,6 +19,7 @@ import type {
 } from '../../shared/types'
 import type { ChangesBlock } from '../../shared/localChanges'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
+import { worktreeFolder, type Worktree } from '../../shared/worktrees'
 import { canInstall } from '../../shared/lfsInstall'
 import type { ReleaseNote } from '../../shared/releaseNotes'
 import { buildPartialPatch } from '../../shared/patch'
@@ -724,6 +725,7 @@ async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
       followLfs(path, state)
       // Submodules change with commits and checkouts; once known, edits inside them count too.
       if (withLog || getRepo(path)?.submodules.length) void loadSubmodules(path)
+      if (withLog) void loadWorktrees(path)
       const v = getRepo(path)
       if (v?.diff && v.diff.source.kind !== 'commit') {
         // The file may have been staged, unstaged or discarded meanwhile: follow it, or close the diff.
@@ -2646,6 +2648,108 @@ export async function openSubmodule(path: string, sub: Submodule): Promise<void>
 
 export function openSubmoduleFolder(path: string, sub: Submodule): void {
   api.openPath(joinPath(path, sub.path)).catch((err) => toast('error', errorMessage(err)))
+}
+
+// ---------------------------------------------------------------------------
+// Worktrees
+
+const worktreeSeq: Record<string, number> = {}
+
+export async function loadWorktrees(path: string): Promise<void> {
+  const seq = (worktreeSeq[path] = (worktreeSeq[path] ?? 0) + 1)
+  try {
+    const worktrees = await api.getWorktrees(path)
+    if (worktreeSeq[path] === seq && getRepo(path)) patchRepo(path, { worktrees })
+  } catch {
+    // not critical: the section keeps what it showed
+  }
+}
+
+/**
+ * Checks `ref` out in a new worktree (a folder of its own, next to the repository's by default, asked first) and
+ * opens it in a new tab.
+ */
+export async function openInNewWorktree(path: string, ref: GitRef): Promise<void> {
+  const remote = ref.type === 'remote'
+  // A remote branch is checked out as the local branch of its name (without the remote's).
+  const local = remote ? ref.name.slice(ref.name.indexOf('/') + 1) : ref.name
+  const values = await formDialog({
+    title: t('dlg.newWorktreeTitle', { name: ref.name }),
+    message: t('dlg.newWorktree', { name: local }),
+    confirmText: t('dlg.create'),
+    fields: [{ key: 'folder', label: t('dlg.newWorktreeFolder'), value: worktreeFolder(path, local) }]
+  })
+  const folder = values?.folder?.trim()
+  if (!folder) return
+  try {
+    const created = await api.addWorktree(path, folder, ref.name, remote)
+    await loadWorktrees(path)
+    await refreshRepo(path)
+    await openRepository(created)
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+}
+
+export async function openWorktree(worktree: Worktree): Promise<void> {
+  if (worktree.prunable) {
+    toast('info', t('wt.goneHint'))
+    return
+  }
+  try {
+    await openRepository(worktree.path)
+  } catch (err) {
+    toast('error', errorMessage(err))
+  }
+}
+
+/**
+ * Removes a worktree and its folder, after asking; with uncommitted changes there, asks again before they are lost.
+ * Its tab, if open, closes first.
+ */
+export async function removeWorktree(path: string, worktree: Worktree): Promise<void> {
+  const name = worktree.branch ?? worktree.head?.slice(0, 7) ?? ''
+  const ok = await confirmDialog({
+    title: t('menu.removeWorktree'),
+    message: t('dlg.removeWorktree', { folder: worktree.path, name }),
+    confirmText: t('menu.removeWorktree'),
+    danger: true
+  })
+  if (!ok) return
+  const tab = useStore.getState().tabs.find((x) => x.path && sameFolder(x.path, worktree.path))
+  if (tab) closeTab(tab.id)
+  try {
+    await api.removeWorktree(path, worktree.path, false)
+  } catch (err) {
+    if (!/--force/.test(errorMessage(err))) {
+      toast('error', errorMessage(err))
+      return
+    }
+    const force = await confirmDialog({
+      title: t('menu.removeWorktree'),
+      message: t('dlg.removeWorktreeForce', { folder: worktree.path }),
+      confirmText: t('dlg.removeWorktreeForceConfirm'),
+      danger: true
+    })
+    if (!force) return
+    await api.removeWorktree(path, worktree.path, true).catch((e) => toast('error', errorMessage(e)))
+  }
+  await loadWorktrees(path)
+  await refreshRepo(path)
+}
+
+export async function pruneWorktrees(path: string): Promise<void> {
+  await api.pruneWorktrees(path).catch((err) => toast('error', errorMessage(err)))
+  await loadWorktrees(path)
+}
+
+/** Whether two folder paths name the same folder, however git and the user spelled it (slashes, Windows case). */
+function sameFolder(a: string, b: string): boolean {
+  const norm = (p: string) => {
+    const s = p.replace(/\\/g, '/').replace(/\/+$/, '')
+    return /^[a-z]:\//i.test(s) ? s.toLowerCase() : s
+  }
+  return norm(a) === norm(b)
 }
 
 // ---------------------------------------------------------------------------

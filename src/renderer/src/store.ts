@@ -20,6 +20,7 @@ import type { CommitDraftText } from '../../shared/commitTemplate'
 import type { LfsInfo, LfsLock } from '../../shared/lfs'
 import type { LfsInstallOffer } from '../../shared/lfsInstall'
 import type { UpdateState } from '../../shared/updates'
+import type { Worktree } from '../../shared/worktrees'
 import type { Lang } from './i18n'
 import type { UndoEntry } from './undoStack'
 
@@ -95,6 +96,8 @@ export interface RepoView {
   /** Git LFS patterns and locks; null until read. */
   lfs: LfsView | null
   submodules: Submodule[]
+  /** The repository's worktrees (folders with a branch of their own), the main one first. */
+  worktrees: Worktree[]
   /** The terminal at the bottom shows (its consoles live on while hidden). */
   terminalOpen: boolean
   /** The terminal's consoles, in tab order (`shell`: its program, once started), and the one showing. */
@@ -338,6 +341,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     redo: [],
     lfs: null,
     submodules: [],
+    worktrees: [],
     terminalOpen: false,
     consoles: [],
     activeConsole: null

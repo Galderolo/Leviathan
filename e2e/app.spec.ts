@@ -1436,6 +1436,36 @@ test('refreshes an open file history and blame after a commit', async () => {
   await expect(page.locator('.history-row').first()).toContainText('add three')
 })
 
+test('opens a branch in a worktree of its own, in a new tab, and removes it', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(repo, 'branch', 'develop')
+  const folder = `${repo}-develop`
+  await open(repo)
+
+  await page.locator('.left-panel').getByText('develop', { exact: true }).click({ button: 'right' })
+  await menuItem('Open develop in a new worktree…').click()
+  await expect(page.locator('.modal input')).toHaveValue(folder)
+  await page.locator('.modal .btn-primary').click()
+
+  // A tab of its own, on develop, and both folders listed.
+  await expect(page.locator('.tab')).toHaveCount(2)
+  await expect(page.locator('.toolbar')).toContainText('develop')
+  expect(box.read(folder, 'a.txt')).toBe('one\n')
+  const rows = page.locator('.worktree-row')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.filter({ hasText: 'this folder' })).toContainText('develop')
+
+  // Back in the first tab: removing it closes its tab and deletes its folder, the branch stays.
+  await page.locator('.tab', { hasText: 'game' }).first().click()
+  await page.locator('.worktree-row', { hasText: 'develop' }).click({ button: 'right' })
+  await menuItem('Remove worktree…').click()
+  await page.locator('.modal .btn-danger').click()
+  await expect(page.locator('.tab')).toHaveCount(1)
+  await expect.poll(() => existsSync(folder)).toBe(false)
+  await expect(page.locator('.worktree-row')).toHaveCount(0)
+  expect(box.git(repo, 'branch', '--list', 'develop')).toContain('develop')
+})
+
 test('picks several commits with Ctrl or Shift to cherry-pick or revert them at once', async () => {
   const repo = box.repo('game', { 'a.txt': 'base\n' })
   box.git(repo, 'checkout', '-qb', 'feature')

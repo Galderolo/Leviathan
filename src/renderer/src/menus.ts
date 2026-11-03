@@ -1,6 +1,7 @@
 import { lfsPatternFor, type LfsLock, type LfsPattern } from '../../shared/lfs'
 import { ignoreExtension, ignoreFile } from '../../shared/gitignore'
 import type { Identity } from '../../shared/identity'
+import type { Worktree } from '../../shared/worktrees'
 import { oldestFirst } from './commitPicks'
 import type { Account, DiffSource, FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
 import {
@@ -34,7 +35,9 @@ import {
   openFile,
   openInDiffTool,
   openInEditor,
+  openInFileManager,
   openInMergeTool,
+  openInNewWorktree,
   openCompare,
   openFileHistory,
   openFolderHistory,
@@ -42,6 +45,7 @@ import {
   openReview,
   openSubmodule,
   openSubmoduleFolder,
+  openWorktree,
   popStash,
   pullBranch,
   stashFiles,
@@ -50,6 +54,7 @@ import {
   repoSettings,
   rebaseOnto,
   removeRemote,
+  removeWorktree,
   renameBranch,
   resetTo,
   revertCommit,
@@ -232,6 +237,16 @@ export function branchMenu(path: string, ref: GitRef): MenuItem[] {
     items.push({
       label: t('menu.compareBranch', { name: ref.name, current: branch ?? 'HEAD' }),
       onClick: () => openCompare(path, { hash: head, label: branch ?? 'HEAD' }, { hash: ref.hash, label: ref.name })
+    })
+  }
+  if (!ref.isHead && (ref.type === 'head' || ref.type === 'remote')) {
+    // git checks a branch out in one worktree at a time.
+    const taken = ref.type === 'head' && !!getRepo(path)?.worktrees.some((w) => w.branch === ref.name)
+    items.push({
+      label: t('menu.newWorktree', { name: ref.name }),
+      hint: taken ? t('menu.inWorktree') : undefined,
+      disabled: taken,
+      onClick: () => void openInNewWorktree(path, ref)
     })
   }
   items.push({ separator: true })
@@ -518,6 +533,26 @@ export function fileMenu(
   items.push(...lfsFileItems(path, file, area))
   items.push({ label: t('menu.copyPath'), onClick: () => void copyText(file.path, t('toast.copied')) })
   return items
+}
+
+/** A worktree's menu: open it in a tab or its folder, copy its path, remove it (never the folder open here). */
+export function worktreeMenu(path: string, worktree: Worktree): MenuItem[] {
+  return [
+    {
+      label: t('menu.openWorktree'),
+      disabled: worktree.current || worktree.prunable,
+      onClick: () => void openWorktree(worktree)
+    },
+    { label: t('menu.showInFolder'), disabled: worktree.prunable, onClick: () => openInFileManager(worktree.path) },
+    { label: t('menu.copyFolderPath'), onClick: () => void copyText(worktree.path, t('toast.copied')) },
+    { separator: true },
+    {
+      label: t('menu.removeWorktree'),
+      danger: true,
+      disabled: worktree.current || worktree.main,
+      onClick: () => void removeWorktree(path, worktree)
+    }
+  ]
 }
 
 export function submoduleMenu(path: string, sub: Submodule): MenuItem[] {

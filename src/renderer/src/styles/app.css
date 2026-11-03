@@ -868,6 +868,11 @@ a:hover {
   background: color-mix(in srgb, var(--lane) 24%, transparent);
 }
 
+/* A worktree whose folder was deleted by hand. */
+.worktree-row.gone {
+  opacity: 0.55;
+}
+
 /* One of several commits picked together (Ctrl or Shift and a click). */
 .graph-row.picked {
   background: color-mix(in srgb, var(--accent) 18%, transparent);

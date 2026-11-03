@@ -10,6 +10,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Worktrees**: a branch's menu → *Open {branch} in a new worktree…* checks it out in a folder of its own (next to the repository's by default) and opens it in a new tab, without switching branch here; both share their history and commits. A WORKTREES section in the side panel lists them (open in a tab, show the folder, copy its path, remove one, asking again when it has uncommitted changes) and forgets those whose folder was deleted by hand.
 - **Several commits at once**: Ctrl+click (⌘ on macOS) adds a commit of the graph to those picked, Shift+click picks the ones between; right-click one of them to cherry-pick them all (oldest first), revert them all (newest first) or copy their SHAs. Undo takes the whole lot back.
 - **The interactive rebase and *Checkout and merge* with uncommitted changes in the way** offer the same choice as a merge or a pull: stash them and bring them back once it is done (when the rebase stops at a commit to edit or for conflicts, they wait in the stash), or only stash them.
 - **Squash merge**: a branch's menu → *Merge {branch} into {current} as one commit (squash)* stages its changes as one, and gives the commit box a message listing its commits (when nothing is typed in it); clashes are left as conflicts to resolve first. Undo takes it back.
