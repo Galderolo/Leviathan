@@ -799,6 +799,23 @@ export async function merge(repo: string, ref: string): Promise<ChangesBlock | n
   return unlessBlocked(repo, ['merge', '--no-edit', ref])
 }
 
+/**
+ * A merge of `ref` as one change: its commits' changes are staged, to be committed as one commit (`--squash`); no
+ * merge is left under way.
+ */
+export async function mergeSquash(repo: string, ref: string): Promise<ChangesBlock | null> {
+  assertSafeArg(ref, 'ref')
+  return unlessBlocked(repo, ['merge', '--squash', ref])
+}
+
+/** What a squash merge of `ref` brings: the subjects of its commits not on HEAD (oldest first), and the files they change. */
+export async function squashInfo(repo: string, ref: string): Promise<{ subjects: string[]; paths: string[] }> {
+  assertSafeArg(ref, 'ref')
+  const subjects = await run(repo, ['log', '--reverse', '--no-merges', '-n', '200', '--format=%s', `HEAD..${ref}`])
+  const paths = await run(repo, ['diff', '--name-only', '-z', '--no-renames', `HEAD...${ref}`, '--'])
+  return { subjects: subjects.split('\n').filter(Boolean), paths: paths.split('\0').filter(Boolean) }
+}
+
 export async function rebase(repo: string, onto: string): Promise<ChangesBlock | null> {
   assertSafeArg(onto, 'ref')
   return unlessBlocked(repo, ['rebase', onto])

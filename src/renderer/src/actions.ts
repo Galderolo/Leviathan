@@ -693,6 +693,12 @@ async function hasChanges(path: string): Promise<boolean> {
   return !!st && st.staged.length + st.unstaged.length + st.conflicted.length > 0
 }
 
+/** The paths of the uncommitted changes git sees now (a rename's old one too). */
+async function changedNow(path: string): Promise<string[]> {
+  const st = (await api.getState(path).catch(() => null))?.status
+  return [...new Set([...(st?.staged ?? []), ...(st?.unstaged ?? [])].flatMap(changePaths))]
+}
+
 // Refreshes requested while one runs (file changes that never stop, actions finishing) become one more refresh
 // after it, instead of piling up and throwing each other's results away.
 const refreshCoalesced = coalesce(
@@ -1366,11 +1372,22 @@ type ChangesWay = 'stash' | 'carry' | 'discard'
 async function runPastChanges(
   path: string,
   op: () => Promise<ChangesBlock | null>,
-  opts: { label: string; busy?: BusyKind; ask: (block: ChangesBlock) => Promise<ChangesWay | null> }
+  opts: {
+    label: string
+    busy?: BusyKind
+    ask: (block: ChangesBlock) => Promise<ChangesWay | null>
+    /** Files the operation changes without moving HEAD (a squash merge), copied to undo it. */
+    paths?: string[]
+    quiet?: (err: unknown, after: RepoState | null) => boolean
+  }
 ): Promise<boolean> {
-  const { label, busy } = opts
+  const { label, busy, quiet } = opts
   const first: { block: ChangesBlock | null } = { block: null }
-  const ran = await runOp(path, async () => void (first.block = await op()), { busy, undo: { label } })
+  const ran = await runOp(path, async () => void (first.block = await op()), {
+    busy,
+    quiet,
+    undo: { label, paths: opts.paths }
+  })
   const block = first.block
   if (!ran) return false
   if (!block) return true
@@ -1383,7 +1400,11 @@ async function runPastChanges(
           paths: [...block.changed, ...block.untracked],
           run: () => api.restoreFromHead(path, block.changed, block.untracked)
         }
-      : { paths: 'changes' as const, run: () => api.stashSave(path, null) }
+      : {
+          // With files of its own, those and the changes as git sees them now.
+          paths: opts.paths ? [...new Set([...(await changedNow(path)), ...opts.paths])] : ('changes' as const),
+          run: () => api.stashSave(path, null)
+        }
   const done = await runOp(
     path,
     async () => {
@@ -1405,7 +1426,7 @@ async function runPastChanges(
       )
       if (failure) throw failure
     },
-    { busy }
+    { busy, quiet }
   )
   const stash = getRepo(path)?.state?.stashes.find((s) => !stashes.has(s.hash))
   if (way !== 'carry' || !stash) return done
@@ -1488,6 +1509,33 @@ export function checkoutRef(path: string, ref: GitRef): Promise<boolean> {
 
 export function checkoutCommit(path: string, hash: string): Promise<boolean> {
   return switchTo(path, hash.slice(0, 7), () => api.checkoutDetached(path, hash))
+}
+
+/**
+ * Merges `name` as one change: its commits' changes staged, the commit box given a message listing them (when
+ * nothing is typed in it), for the user to commit. Clashes are left as conflicts to resolve first.
+ */
+export async function squashMergeRef(path: string, name: string): Promise<boolean> {
+  const info = await api.squashInfo(path, name).catch(() => ({ subjects: [] as string[], paths: [] as string[] }))
+  let clashed = false
+  const ok = await runPastChanges(path, () => api.mergeSquash(path, name), {
+    label: t('undo.squashMerge', { name }),
+    paths: info.paths,
+    ask: (block) => askOpWay(t('dlg.whatSquash', { name }), block),
+    quiet: (_, after) => (clashed = !!after?.status.conflicted.length)
+  })
+  if (!ok && !clashed) return false
+  const view = getRepo(path)
+  if (view && draftUntouched(view)) {
+    updateDraft(path, {
+      summary: t('squash.summary', { name }),
+      body: info.subjects.map((s) => `- ${s}`).join('\n'),
+      amend: false
+    })
+  }
+  toast('info', t(clashed ? 'toast.squashConflicts' : 'toast.squashStaged', { name }))
+  selectWip(path)
+  return ok
 }
 
 export function mergeRef(path: string, name: string): Promise<boolean> {

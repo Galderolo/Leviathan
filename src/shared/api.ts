@@ -142,6 +142,10 @@ export interface LeviathanInvokeApi {
   deleteRemoteBranch(repo: string, remote: string, branch: string): Promise<void>
   // Like checkout: uncommitted changes in the way come back (nothing changed) instead of an error.
   merge(repo: string, ref: string): Promise<ChangesBlock | null>
+  /** `ref` merged as one change, staged and not committed (`--squash`). */
+  mergeSquash(repo: string, ref: string): Promise<ChangesBlock | null>
+  /** The subjects of the commits a squash merge of `ref` brings, and the files they change. */
+  squashInfo(repo: string, ref: string): Promise<{ subjects: string[]; paths: string[] }>
   rebase(repo: string, onto: string): Promise<ChangesBlock | null>
   cherryPick(repo: string, hash: string): Promise<ChangesBlock | null>
   revert(repo: string, hash: string): Promise<ChangesBlock | null>
@@ -398,6 +402,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   deleteBranch: true,
   deleteRemoteBranch: true,
   merge: true,
+  mergeSquash: true,
+  squashInfo: true,
   rebase: true,
   cherryPick: true,
   revert: true,

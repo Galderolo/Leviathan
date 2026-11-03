@@ -54,6 +54,7 @@ import {
   showFileInFolder,
   showInGraph,
   soloInGraph,
+  squashMergeRef,
   stageFiles,
   stashChanges,
   trackLfsPattern,
@@ -186,6 +187,10 @@ export function branchMenu(path: string, ref: GitRef): MenuItem[] {
     items.push(
       { separator: true },
       { label: t('menu.merge', { name: ref.name, current: branch }), onClick: () => void mergeRef(path, ref.name) },
+      {
+        label: t('menu.squashMerge', { name: ref.name, current: branch }),
+        onClick: () => void squashMergeRef(path, ref.name)
+      },
       { label: t('menu.rebase', { name: ref.name, current: branch }), onClick: () => void rebaseOnto(path, ref.name) }
     )
   }
