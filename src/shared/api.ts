@@ -147,8 +147,8 @@ export interface LeviathanInvokeApi {
   /** The subjects of the commits a squash merge of `ref` brings, and the files they change. */
   squashInfo(repo: string, ref: string): Promise<{ subjects: string[]; paths: string[] }>
   rebase(repo: string, onto: string): Promise<ChangesBlock | null>
-  cherryPick(repo: string, hash: string): Promise<ChangesBlock | null>
-  revert(repo: string, hash: string): Promise<ChangesBlock | null>
+  cherryPick(repo: string, hashes: string | string[]): Promise<ChangesBlock | null>
+  revert(repo: string, hashes: string | string[]): Promise<ChangesBlock | null>
   reset(repo: string, hash: string, mode: ResetMode): Promise<void>
   abortOperation(repo: string): Promise<void>
   continueOperation(repo: string): Promise<void>

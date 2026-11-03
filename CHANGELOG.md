@@ -10,6 +10,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Added
 
+- **Several commits at once**: Ctrl+click (⌘ on macOS) adds a commit of the graph to those picked, Shift+click picks the ones between; right-click one of them to cherry-pick them all (oldest first), revert them all (newest first) or copy their SHAs. Undo takes the whole lot back.
 - **The interactive rebase and *Checkout and merge* with uncommitted changes in the way** offer the same choice as a merge or a pull: stash them and bring them back once it is done (when the rebase stops at a commit to edit or for conflicts, they wait in the stash), or only stash them.
 - **Squash merge**: a branch's menu → *Merge {branch} into {current} as one commit (squash)* stages its changes as one, and gives the commit box a message listing its commits (when nothing is typed in it); clashes are left as conflicts to resolve first. Undo takes it back.
 - **Compare two commits, a branch with the current one, or a commit with your changes**: select a commit, right-click another one → *Compare with …, selected before*; or a branch's menu → *Compare {current} with {branch}*; or a commit's menu → *Compare with my changes (working tree)*. The files that differ are listed with their diffs (images included), the two sides can be swapped, and Esc closes it.

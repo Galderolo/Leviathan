@@ -14,7 +14,8 @@ import { laneX, linePath, type GraphGeometry } from '../../../shared/graphPaths'
 import { checkoutRef, clearHighlight, loadMore, selectCommit, selectWip, showAllInGraph } from '../actions'
 import { ancestry, highlightTip, pullRequestsByRef } from '../graphFocus'
 import { useT } from '../i18n'
-import { commitMenu, refMenu, stashMenu, wipMenu } from '../menus'
+import { pickCommits } from '../commitPicks'
+import { commitMenu, pickedMenu, refMenu, stashMenu, wipMenu } from '../menus'
 import {
   DEFAULT_COLUMNS,
   clampGraphScroll,
@@ -31,7 +32,7 @@ import {
   type GraphColumns,
   type OptionalColumn
 } from '../graphColumns'
-import { getRepo, useRepo, useStore } from '../store'
+import { getRepo, patchRepo, useRepo, useStore } from '../store'
 import { wipShown } from '../checkoutView'
 import { openMenu } from '../ui'
 import { cx, formatDate, groupRefs, initials, laneColor, matchesFilter, shortHash, type RefLabel } from '../utils'
@@ -226,9 +227,25 @@ export function CommitGraph({ path }: { path: string }) {
 
   const selectItem = (item: GraphItem) => {
     clearHighlight(path)
+    if (getRepo(path)?.picked.length) patchRepo(path, { picked: [] })
     if (item.kind === 'wip') selectWip(path)
     else void selectCommit(path, item.hash)
   }
+
+  // Ctrl adds a commit to those picked (or takes it out), Shift picks the ones between; a plain click picks one.
+  const clickItem = (item: GraphItem, e: React.MouseEvent) => {
+    if (item.kind !== 'commit' || !(e.ctrlKey || e.metaKey || e.shiftKey)) return selectItem(item)
+    const current = getRepo(path)
+    const selected = current?.selection?.kind === 'commit' ? current.selection.hash : null
+    const order = items.filter((i) => i.kind === 'commit').map((i) => i.hash)
+    const picked = pickCommits(current?.picked ?? [], selected, item.hash, e.shiftKey ? 'range' : 'toggle', order)
+    patchRepo(path, { picked })
+    void selectCommit(path, item.hash)
+  }
+  const picked = useMemo(
+    () => new Set(view?.picked.length && view.picked.length > 1 ? view.picked : []),
+    [view?.picked]
+  )
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!items.length) return
@@ -246,6 +263,8 @@ export function CommitGraph({ path }: { path: string }) {
   }
 
   const onContext = (e: React.MouseEvent, item: GraphItem) => {
+    // On one of several picked commits: what can be done with all of them.
+    if (item.kind === 'commit' && picked.has(item.hash)) return openMenu(e, pickedMenu(path, [...picked]))
     // The commit selected before this click: the menu offers to compare with it.
     const before = getRepo(path)?.selection
     selectItem(item)
@@ -275,6 +294,7 @@ export function CommitGraph({ path }: { path: string }) {
         labels={refMap.get(item.hash)}
         prs={prs}
         selected={i === selectedIndex}
+        picked={picked.has(item.hash)}
         dimmed={
           item.kind === 'commit' &&
           ((!!filter && !matchesFilter(item.commit, filter)) || (!!inBranch && !inBranch.has(item.hash)))
@@ -284,7 +304,7 @@ export function CommitGraph({ path }: { path: string }) {
         lang={lang}
         wipLabel={t('graph.wip')}
         unpushedTitle={item.kind === 'commit' && unpushed.has(item.hash) ? t('graph.unpushed') : null}
-        onSelect={selectItem}
+        onSelect={clickItem}
         onContext={onContext}
       />
     )
@@ -433,6 +453,8 @@ interface RowProps {
   /** Open pull requests by branch (full ref name). */
   prs: Map<string, number[]>
   selected: boolean
+  /** One of several commits picked together. */
+  picked: boolean
   dimmed: boolean
   draft: string
   changeCount: number
@@ -440,7 +462,7 @@ interface RowProps {
   wipLabel: string
   /** Set (as its tooltip) when the commit is not pushed yet. */
   unpushedTitle: string | null
-  onSelect: (item: GraphItem) => void
+  onSelect: (item: GraphItem, e: React.MouseEvent) => void
   onContext: (e: React.MouseEvent, item: GraphItem) => void
 }
 
@@ -485,9 +507,15 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
 
   return (
     <div
-      className={cx('graph-row', selected && 'selected', dimmed && 'dimmed', `row-${item.kind}`)}
+      className={cx(
+        'graph-row',
+        selected && 'selected',
+        props.picked && 'picked',
+        dimmed && 'dimmed',
+        `row-${item.kind}`
+      )}
       style={style}
-      onMouseDown={(e) => e.button === 0 && props.onSelect(item)}
+      onMouseDown={(e) => e.button === 0 && props.onSelect(item, e)}
       onContextMenu={(e) => props.onContext(e, item)}
     >
       <div className="cell refs-cell">

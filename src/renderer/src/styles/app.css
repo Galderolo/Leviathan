@@ -868,6 +868,12 @@ a:hover {
   background: color-mix(in srgb, var(--lane) 24%, transparent);
 }
 
+/* One of several commits picked together (Ctrl or Shift and a click). */
+.graph-row.picked {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .graph-row.dimmed {
   opacity: 0.28;
 }
