@@ -519,6 +519,30 @@ test('asks before saving a file edited by hand that still has conflict markers, 
   await expect(page.locator('.conflict-block')).toHaveCount(2)
 })
 
+test('merges a branch as one commit: its changes staged with a message listing its commits, and undoes it', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.git(repo, 'checkout', '-qb', 'feature')
+  box.write(repo, { 'a.txt': 'two\n' })
+  box.git(repo, 'commit', '-qam', 'change a')
+  box.write(repo, { 'b.txt': 'new\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'add b')
+  box.git(repo, 'checkout', '-q', 'main')
+  const head = box.git(repo, 'rev-parse', 'HEAD')
+  await open(repo)
+
+  await page.locator('.left-panel').getByText('feature', { exact: true }).click({ button: 'right' })
+  await menuItem('Merge feature into main as one commit (squash)').click()
+  await expect(page.locator('.toast', { hasText: 'staged as one' })).toBeVisible()
+  await expect.poll(() => box.git(repo, 'diff', '--cached', '--name-only')).toBe('a.txt\nb.txt')
+  expect(box.git(repo, 'rev-parse', 'HEAD')).toBe(head)
+  await expect(page.getByPlaceholder('Summary')).toHaveValue('feature (squashed)')
+  await expect(page.getByPlaceholder('Description')).toHaveValue('- change a\n- add b')
+
+  await toolbarButton('Undo').click()
+  await expect.poll(() => box.git(repo, 'status', '--porcelain')).toBe('')
+})
+
 test('asks before a dropped branch switches to another one to merge into it', async () => {
   const repo = box.repo('game', { 'a.txt': 'base\n' })
   box.git(repo, 'branch', 'target')
