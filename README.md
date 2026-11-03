@@ -38,7 +38,7 @@ The most comfortable Git GUIs keep their best features behind subscriptions or r
 - **Remotes**: fetch, pull (fast-forward, fast-forward only, rebase), push and force-push with lease, add and remove remotes, choose the remote when publishing a branch, **automatic background fetch**.
 - **Private repositories**: HTTPS usernames/tokens, SSH key passphrases and unknown host keys are asked in the app; your credential helper (for example Git Credential Manager) keeps working. List, copy and generate **SSH keys** from Settings.
 - **Stash**: save (including untracked files), apply, pop, delete.
-- **Conflicts**: a banner during merge/rebase/cherry-pick with *Abort* and *Continue*, and a conflict editor that shows current and incoming versions side by side so you can pick one, the other or both per block, then edit the whole file by hand if you like — or take a whole side of the file.
+- **Conflicts**: a banner during merge/rebase/cherry-pick with *Abort* and *Continue*, and a conflict editor that shows current and incoming versions side by side (or one over the other), coloured as a diff, with the rest of the file folded, marks by the scrollbar and Alt+↑/↓ from one conflict to the next, so you can pick one, the other or both per block, then edit the whole file by hand if you like — or take a whole side of the file.
 - **Clone, init and open** repositories; recent repositories list.
 - **Search** commits by message, author or SHA.
 - **Live refresh** when files change on disk.

@@ -314,6 +314,58 @@ test('undoes discarding changes and stashing them, and redoes them', async () =>
   expect(box.read(repo, 'new.txt')).toBe('new\n')
 })
 
+test('finds the conflicts of a long file: folds the rest, marks them by the scrollbar, goes from one to the next', async () => {
+  const base = Array.from({ length: 120 }, (_, i) => `int line${i + 1} = ${i + 1};`)
+  const version = (speed: string, jump: string) =>
+    base.map((line, i) => (i === 29 ? `float speed = ${speed};` : i === 89 ? `int jump = ${jump};` : line)).join('\n') +
+    '\n'
+  const repo = box.repo('game', { 'Player.cs': base.join('\n') + '\n' })
+  box.git(repo, 'checkout', '-qb', 'other')
+  box.write(repo, { 'Player.cs': version('8f', '2') })
+  box.git(repo, 'commit', '-qam', 'theirs')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'Player.cs': version('6.5f', '3') })
+  box.git(repo, 'commit', '-qam', 'ours')
+  try {
+    box.git(repo, 'merge', 'other')
+  } catch {
+    // stops for the conflicts
+  }
+  await open(repo)
+  await page.locator('.graph-row.row-wip').click()
+  await page.locator('.file-row', { hasText: 'Player.cs' }).first().click()
+  const blocks = page.locator('.conflict-block')
+
+  // Opens at the first conflict, the rest of the file folded away around them.
+  await expect(blocks).toHaveCount(2)
+  await expect(blocks.first()).toHaveClass(/\bcurrent\b/)
+  await expect(page.locator('.conflict-fold')).toHaveText([
+    '⋯ 26 lines without conflicts — show',
+    '⋯ 53 lines without conflicts — show',
+    '⋯ 27 lines without conflicts — show'
+  ])
+  await expect(blocks.first().locator('.conflict-side.ours .word-change')).toHaveText('6.5f')
+  await expect(blocks.first().locator('.conflict-side.theirs .word-change')).toHaveText('8f')
+  await expect(blocks.first().locator('.conflict-side.ours .ln')).toHaveText('30')
+
+  // The whole file: a mark by the scrollbar for each conflict, green once resolved.
+  for (let i = 0; i < 3; i++) await page.locator('.conflict-fold').first().click()
+  await expect(page.locator('.conflict-fold')).toHaveCount(0)
+  await expect(page.locator('.change-mark.open')).toHaveCount(2)
+  await page.keyboard.press('Alt+ArrowDown')
+  await expect(blocks.nth(1)).toHaveClass(/\bcurrent\b/)
+  await expect(page.locator('.conflict-nav')).toContainText('Conflict 2 of 2')
+  await expect(blocks.nth(1)).toBeInViewport()
+  await blocks.nth(1).getByRole('button', { name: 'Use incoming' }).click()
+  await expect(page.locator('.change-mark.resolved')).toHaveCount(1)
+  await expect(page.locator('.change-mark.open')).toHaveCount(1)
+
+  // One over the other, or side by side, as the diff.
+  await expect(page.locator('.conflict-sides.stacked')).toHaveCount(2)
+  await page.locator('.conflict-footer .layout-toggle .icon-btn').nth(1).click()
+  await expect(page.locator('.conflict-sides.stacked')).toHaveCount(0)
+})
+
 test('shows a merge stopped by a conflict, and aborts it', async () => {
   const repo = box.repo('game', { 'a.txt': 'base\n' })
   box.git(repo, 'checkout', '-qb', 'other')

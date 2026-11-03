@@ -29,4 +29,12 @@ describe('changeMarks', () => {
     expect(changeMarks([], 1000)).toEqual([])
     expect(changeMarks([line('add', 0)], 0)).toEqual([])
   })
+
+  it("marks a conflict editor's blocks, resolved or not, in the order they come", () => {
+    const block = (kind: 'open' | 'resolved', top: number) => ({ kind, top, height: 100 })
+    expect(changeMarks([block('resolved', 500), block('open', 100)], 1000, ['open', 'resolved'])).toEqual([
+      { kind: 'open', top: 0.1, height: 0.1 },
+      { kind: 'resolved', top: 0.5, height: 0.1 }
+    ])
+  })
 })
