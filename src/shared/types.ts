@@ -272,6 +272,8 @@ export type DiffSource =
       /** An untracked file of a stash, kept in the stash's third parent. */
       untracked?: boolean
     }
+  /** The working tree (staged or not) against commit `base`: a comparison. */
+  | { kind: 'tree'; base: string; path: string; oldPath?: string }
 
 export type PullMode = 'ff' | 'ff-only' | 'rebase'
 export type ThemeSetting = 'dark' | 'light' | 'system'

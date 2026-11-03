@@ -33,6 +33,7 @@ import {
   openInDiffTool,
   openInEditor,
   openInMergeTool,
+  openCompare,
   openFileHistory,
   openFolderHistory,
   openInteractiveRebase,
@@ -100,7 +101,29 @@ function current(path: string): { branch: string | null; head: string | null } {
   return { branch: head?.branch ?? null, head: head?.hash ?? null }
 }
 
-export function commitMenu(path: string, hash: string): MenuItem[] {
+/**
+ * Comparing this commit with `selected`, the one selected before (the older one first, as the graph tells), or with
+ * the working tree.
+ */
+function compareItems(path: string, hash: string, selected: string | null): MenuItem[] {
+  const view = getRepo(path)
+  const side = (h: string) => ({ hash: h, label: h.slice(0, 7) })
+  const items: MenuItem[] = []
+  if (selected && selected !== hash) {
+    // Newest first in the graph: the one further down is older.
+    const order = (h: string) => view?.commits.findIndex((c) => c.hash === h) ?? -1
+    const [older, newer] = order(selected) >= order(hash) ? [selected, hash] : [hash, selected]
+    items.push({
+      label: t('menu.compareSelected', { name: selected.slice(0, 7) }),
+      onClick: () => openCompare(path, side(older), side(newer))
+    })
+  }
+  items.push({ label: t('menu.compareWorkingTree'), onClick: () => openCompare(path, side(hash), null) })
+  return items
+}
+
+/** A commit's menu; `selected`: the commit selected before it was right-clicked, to compare with. */
+export function commitMenu(path: string, hash: string, selected: string | null = null): MenuItem[] {
   const { branch, head } = current(path)
   const target = branch ?? 'HEAD'
   const isHead = hash === head
@@ -108,6 +131,8 @@ export function commitMenu(path: string, hash: string): MenuItem[] {
     { label: t('menu.createBranchHere'), onClick: () => void createBranch(path, hash) },
     { label: t('menu.createTagHere'), onClick: () => void createTag(path, hash) },
     { label: t('menu.checkoutCommit'), disabled: isHead, onClick: () => void checkoutCommit(path, hash) },
+    { separator: true },
+    ...compareItems(path, hash, selected),
     { separator: true },
     { label: t('menu.cherryPick'), disabled: isHead, onClick: () => void cherryPick(path, hash) },
     { label: t('menu.revert'), onClick: () => void revertCommit(path, hash) },
@@ -163,6 +188,13 @@ export function branchMenu(path: string, ref: GitRef): MenuItem[] {
       { label: t('menu.merge', { name: ref.name, current: branch }), onClick: () => void mergeRef(path, ref.name) },
       { label: t('menu.rebase', { name: ref.name, current: branch }), onClick: () => void rebaseOnto(path, ref.name) }
     )
+  }
+  const head = current(path).head
+  if (head && !ref.isHead && ref.hash !== head) {
+    items.push({
+      label: t('menu.compareBranch', { name: ref.name, current: branch ?? 'HEAD' }),
+      onClick: () => openCompare(path, { hash: head, label: branch ?? 'HEAD' }, { hash: ref.hash, label: ref.name })
+    })
   }
   items.push({ separator: true })
   if (ref.type === 'head') {

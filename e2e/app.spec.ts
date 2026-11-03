@@ -1412,6 +1412,49 @@ test('refreshes an open file history and blame after a commit', async () => {
   await expect(page.locator('.history-row').first()).toContainText('add three')
 })
 
+test('compares two commits, a branch with the current one, and a commit with my changes', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n', 'b.txt': 'b\n' })
+  box.write(repo, { 'a.txt': 'two\n' })
+  box.git(repo, 'commit', '-qam', 'second')
+  box.write(repo, { 'c.txt': 'c\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-qm', 'third')
+  box.git(repo, 'branch', 'other', 'HEAD~1')
+  box.write(repo, { 'a.txt': 'mine\n' })
+  await open(repo)
+  const view = page.locator('.compare-view')
+  const files = view.locator('.history-list .file-row .file-path')
+
+  // The first commit selected, the third compared with it: what changed from one to the other. (The row of the
+  // uncommitted changes comes first, moving the others down.)
+  await expect(page.locator('.graph-row.row-wip')).toBeVisible()
+  await commitRows().filter({ hasText: 'first' }).click()
+  await expect(page.locator('.right-panel')).toContainText('b.txt')
+  await commitRows().filter({ hasText: 'third' }).click({ button: 'right' })
+  await menuItem(/^Compare with [0-9a-f]{7}, selected before$/).click()
+  await expect(view.locator('.diff-title')).toContainText(/[0-9a-f]{7}\s*→\s*[0-9a-f]{7}/)
+  await expect(files).toHaveText(['a.txt', 'c.txt'])
+  await expect(view.locator('.diff-line.del')).toHaveText(/one/)
+  await expect(view.locator('.diff-line.add')).toHaveText(/two/)
+  await view.getByTitle('Swap the two sides').click()
+  await expect(view.locator('.diff-line.del')).toHaveText(/two/)
+  await page.keyboard.press('Escape')
+  await expect(view).toHaveCount(0)
+
+  // A branch with the current one.
+  await page.locator('.left-panel').getByText('other', { exact: true }).click({ button: 'right' })
+  await menuItem('Compare main with other').click()
+  await expect(files).toHaveText(['c.txt'])
+  await page.keyboard.press('Escape')
+
+  // A commit with the files as they are now, uncommitted changes included.
+  await commitRows().filter({ hasText: 'second' }).click({ button: 'right' })
+  await menuItem('Compare with my changes (working tree)').click()
+  await expect(view.locator('.diff-title')).toContainText('my changes (working tree)')
+  await expect(files).toHaveText(['a.txt', 'c.txt'])
+  await expect(view.locator('.diff-line.add')).toHaveText(/mine/)
+})
+
 test('says that a commit only renamed a file', async () => {
   const repo = box.repo('game', { 'old.txt': 'same\n' })
   box.git(repo, 'mv', 'old.txt', 'new.txt')

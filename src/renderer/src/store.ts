@@ -26,6 +26,12 @@ import type { UndoEntry } from './undoStack'
 export type Selection =
   { kind: 'wip' } | { kind: 'commit'; hash: string } | { kind: 'stash'; hash: string; index: number } | null
 
+/** Two commits compared (`to` the newer side), or a commit and the working tree (`to` null). */
+export interface Comparison {
+  from: { hash: string; label: string }
+  to: { hash: string; label: string } | null
+}
+
 export type BusyKind = 'fetch' | 'pull' | 'push' | 'lfs' | 'submodules'
 
 export interface DiffView {
@@ -79,6 +85,8 @@ export interface RepoView {
   fileView: FileView | null
   /** The pull request under review in the center panel. */
   review: PullRequest | null
+  /** Two commits compared in the center panel, or a commit and the working tree. */
+  compare: Comparison | null
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
   undo: UndoEntry[]
   redo: UndoEntry[]
@@ -320,6 +328,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     pullRequests: null,
     fileView: null,
     review: null,
+    compare: null,
     graphScope: readGraphScope(path),
     highlight: null,
     undo: [],

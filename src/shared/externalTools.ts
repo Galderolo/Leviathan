@@ -142,8 +142,10 @@ export function difftoolArgs(source: DiffSource, tool: string | null): string[] 
   ]
   if (source.kind === 'staged') args.push('--cached')
   if (source.kind === 'commit') args.push(source.parent ?? EMPTY_TREE, source.hash)
+  // The working tree against a commit: only the commit is named.
+  if (source.kind === 'tree') args.push(source.base)
   // A renamed file: both paths, so the tool compares its old and new versions.
-  const old = source.kind === 'commit' && source.oldPath ? [source.oldPath] : []
+  const old = (source.kind === 'commit' || source.kind === 'tree') && source.oldPath ? [source.oldPath] : []
   return [...args, '--', ...old, source.path]
 }
 

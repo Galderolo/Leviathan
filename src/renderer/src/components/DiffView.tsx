@@ -63,7 +63,7 @@ export function DiffView({ path }: { path: string }) {
   let context: string
   if (source.kind === 'unstaged') context = source.conflicted ? t('diff.conflicted') : t('diff.unstaged')
   else if (source.kind === 'staged') context = t('diff.staged')
-  else context = `${t('commit.commit')} ${shortHash(source.hash)}`
+  else context = `${t('commit.commit')} ${shortHash(source.kind === 'tree' ? source.base : source.hash)}`
 
   /** Click on the gutter toggles a line; shift-click selects a range within the hunk. */
   const pickLine = (hunkIndex: number, lineIndex: number, range: boolean) => {

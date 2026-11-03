@@ -98,6 +98,7 @@ const handlers: LeviathanInvokeApi = {
   getCommitDetails: (path, hash) => repo.getCommitDetails(path, hash),
   getDiff: (path, source, fullFile) => repo.getDiff(path, source, fullFile === true),
   getImages: (path, source) => repo.getImages(path, source),
+  compareFiles: (path, from, to) => repo.compareFiles(path, from, typeof to === 'string' ? to : null),
   getSnapshot: (path, paths) =>
     repo.getSnapshot(
       path,
