@@ -1436,6 +1436,41 @@ test('refreshes an open file history and blame after a commit', async () => {
   await expect(page.locator('.history-row').first()).toContainText('add three')
 })
 
+test('picks several commits with Ctrl or Shift to cherry-pick or revert them at once', async () => {
+  const repo = box.repo('game', { 'a.txt': 'base\n' })
+  box.git(repo, 'checkout', '-qb', 'feature')
+  for (const n of ['one', 'two', 'three']) {
+    box.write(repo, { [`${n}.txt`]: `${n}\n` })
+    box.git(repo, 'add', '.')
+    box.git(repo, 'commit', '-qm', n)
+  }
+  box.git(repo, 'checkout', '-q', 'main')
+  const subjects = () => box.git(repo, 'log', '--format=%s', 'main')
+  await open(repo)
+  const row = (subject: string) => commitRows().filter({ hasText: subject })
+
+  // Two of them: applied oldest first, as one thing to undo.
+  await row('three').click()
+  await row('one').click({ modifiers: ['Control'] })
+  await expect(page.locator('.graph-row.picked')).toHaveCount(2)
+  await row('one').click({ button: 'right' })
+  await menuItem('Cherry pick 2 commits').click()
+  await expect.poll(subjects).toBe('three\none\nfirst')
+  await expect(page.locator('.graph-row.picked')).toHaveCount(0)
+  await toolbarButton('Undo').click()
+  await expect.poll(subjects).toBe('first')
+
+  // A run of them with Shift, reverted newest first: main back where it was.
+  box.git(repo, 'merge', '-q', '--ff-only', 'feature')
+  await expect(commitRows()).toHaveCount(4)
+  await row('three').click()
+  await row('one').click({ modifiers: ['Shift'] })
+  await expect(page.locator('.graph-row.picked')).toHaveCount(3)
+  await row('two').click({ button: 'right' })
+  await menuItem('Revert 3 commits').click()
+  await expect.poll(subjects).toBe('Revert "one"\nRevert "two"\nRevert "three"\nthree\ntwo\none\nfirst')
+})
+
 test('compares two commits, a branch with the current one, and a commit with my changes', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n', 'b.txt': 'b\n' })
   box.write(repo, { 'a.txt': 'two\n' })

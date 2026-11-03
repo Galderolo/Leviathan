@@ -87,6 +87,8 @@ export interface RepoView {
   review: PullRequest | null
   /** Two commits compared in the center panel, or a commit and the working tree. */
   compare: Comparison | null
+  /** Commits picked together in the graph with Ctrl or Shift (two or more act as one selection). */
+  picked: string[]
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
   undo: UndoEntry[]
   redo: UndoEntry[]
@@ -329,6 +331,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     fileView: null,
     review: null,
     compare: null,
+    picked: [],
     graphScope: readGraphScope(path),
     highlight: null,
     undo: [],

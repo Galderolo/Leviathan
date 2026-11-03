@@ -935,14 +935,18 @@ async function removeRebaseFiles(repo: string): Promise<void> {
     .catch(() => {})
 }
 
-export async function cherryPick(repo: string, hash: string): Promise<ChangesBlock | null> {
-  assertSafeArg(hash, 'commit')
-  return unlessBlocked(repo, ['cherry-pick', hash])
+/** Applies a commit, or several in the order given (git stops at one that does not apply cleanly). */
+export async function cherryPick(repo: string, hashes: string | string[]): Promise<ChangesBlock | null> {
+  const list = typeof hashes === 'string' ? [hashes] : hashes
+  for (const hash of list) assertSafeArg(hash, 'commit')
+  return unlessBlocked(repo, ['cherry-pick', ...list])
 }
 
-export async function revert(repo: string, hash: string): Promise<ChangesBlock | null> {
-  assertSafeArg(hash, 'commit')
-  return unlessBlocked(repo, ['revert', '--no-edit', hash])
+/** Reverts a commit, or several in the order given (newest first, so each one's changes are still there). */
+export async function revert(repo: string, hashes: string | string[]): Promise<ChangesBlock | null> {
+  const list = typeof hashes === 'string' ? [hashes] : hashes
+  for (const hash of list) assertSafeArg(hash, 'commit')
+  return unlessBlocked(repo, ['revert', '--no-edit', ...list])
 }
 
 export async function reset(repo: string, hash: string, mode: ResetMode): Promise<void> {

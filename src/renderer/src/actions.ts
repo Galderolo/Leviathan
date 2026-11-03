@@ -1838,6 +1838,28 @@ export function cherryPick(path: string, hash: string): Promise<boolean> {
   })
 }
 
+/** Cherry-picks several commits in the order given (oldest first), as one change to undo; the picks end. */
+export async function cherryPickMany(path: string, hashes: string[]): Promise<boolean> {
+  const count = hashes.length
+  const ok = await runPastChanges(path, () => api.cherryPick(path, hashes), {
+    label: t('undo.cherryPickMany', { count }),
+    ask: (block) => askOpWay(t('dlg.whatCherryPickMany', { count }), block)
+  })
+  patchRepo(path, { picked: [] })
+  return ok
+}
+
+/** Reverts several commits in the order given (newest first), as one change to undo; the picks end. */
+export async function revertMany(path: string, hashes: string[]): Promise<boolean> {
+  const count = hashes.length
+  const ok = await runPastChanges(path, () => api.revert(path, hashes), {
+    label: t('undo.revertMany', { count }),
+    ask: (block) => askOpWay(t('dlg.whatRevertMany', { count }), block)
+  })
+  patchRepo(path, { picked: [] })
+  return ok
+}
+
 export function revertCommit(path: string, hash: string): Promise<boolean> {
   const name = hash.slice(0, 7)
   return runPastChanges(path, () => api.revert(path, hash), {

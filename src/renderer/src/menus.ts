@@ -1,6 +1,7 @@
 import { lfsPatternFor, type LfsLock, type LfsPattern } from '../../shared/lfs'
 import { ignoreExtension, ignoreFile } from '../../shared/gitignore'
 import type { Identity } from '../../shared/identity'
+import { oldestFirst } from './commitPicks'
 import type { Account, DiffSource, FileChange, GitRef, PullRequest, Stash, Submodule } from '../../shared/types'
 import {
   applyStash,
@@ -11,6 +12,7 @@ import {
   checkoutPullRequest,
   closePullRequest,
   checkoutRef,
+  cherryPickMany,
   cherryPick,
   createBranch,
   createPullRequestFor,
@@ -51,6 +53,7 @@ import {
   renameBranch,
   resetTo,
   revertCommit,
+  revertMany,
   showFileInFolder,
   showInGraph,
   soloInGraph,
@@ -121,6 +124,36 @@ function compareItems(path: string, hash: string, selected: string | null): Menu
   }
   items.push({ label: t('menu.compareWorkingTree'), onClick: () => openCompare(path, side(hash), null) })
   return items
+}
+
+/**
+ * The menu of several commits picked together: cherry-picked oldest first, reverted newest first. Neither is offered
+ * with a merge commit among them (git needs to be told which side to take).
+ */
+export function pickedMenu(path: string, picked: string[]): MenuItem[] {
+  const view = getRepo(path)
+  const order = view?.commits.map((c) => c.hash) ?? []
+  const merges = picked.some((h) => (view?.commits.find((c) => c.hash === h)?.parents.length ?? 0) > 1)
+  const isHead = picked.includes(view?.state?.head.hash ?? '')
+  const oldest = oldestFirst(picked, order)
+  const count = picked.length
+  const hint = merges ? t('menu.noMerges') : undefined
+  return [
+    {
+      label: t('menu.cherryPickMany', { count }),
+      hint,
+      disabled: merges || isHead,
+      onClick: () => void cherryPickMany(path, oldest)
+    },
+    {
+      label: t('menu.revertMany', { count }),
+      hint,
+      disabled: merges,
+      onClick: () => void revertMany(path, [...oldest].reverse())
+    },
+    { separator: true },
+    { label: t('menu.copyShas', { count }), onClick: () => void copyText(oldest.join('\n'), t('toast.copied')) }
+  ]
 }
 
 /** A commit's menu; `selected`: the commit selected before it was right-clicked, to compare with. */
