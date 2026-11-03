@@ -92,6 +92,16 @@ describe('interactiveRebase with merges', () => {
 })
 
 describe('interactiveRebase', () => {
+  it('says uncommitted changes are in its way, rewriting nothing', async () => {
+    const before = await messages()
+    writeFileSync(join(dir, 'one.txt'), 'changed here\n')
+    expect(await repo.interactiveRebase(dir, base, [pick('two'), pick('one'), pick('three')])).toMatchObject({
+      all: true
+    })
+    expect(await messages()).toEqual(before)
+    expect((await repo.getState(dir)).operation).toBeNull()
+  })
+
   it('reorders commits', async () => {
     await repo.interactiveRebase(dir, base, [pick('two'), pick('one'), pick('three')])
     expect(await messages()).toEqual(['three', 'one', 'two'])
@@ -126,14 +136,6 @@ describe('interactiveRebase', () => {
     const head = await commitFile('four.txt', 'four\n', 'four')
     await expect(repo.interactiveRebase(dir, base, items)).rejects.toThrow(/changed/)
     expect((await git(['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim()).toBe(head)
-  })
-
-  it('refuses with uncommitted changes to tracked files', async () => {
-    writeFileSync(join(dir, 'one.txt'), 'edited\n')
-    await expect(repo.interactiveRebase(dir, base, [pick('two'), pick('one'), pick('three')])).rejects.toThrow(
-      /uncommitted|stash/i
-    )
-    expect(await messages()).toEqual(['three', 'two', 'one'])
   })
 
   it('refuses unknown actions', async () => {

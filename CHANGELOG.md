@@ -4,8 +4,13 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Fixed
+
+- **Push right after opening a repository** asks where to publish a branch, as it does later: pressed before the app had read the repository, it pushed without asking (or said the branch was detached).
+
 ### Added
 
+- **The interactive rebase and *Checkout and merge* with uncommitted changes in the way** offer the same choice as a merge or a pull: stash them and bring them back once it is done (when the rebase stops at a commit to edit or for conflicts, they wait in the stash), or only stash them.
 - **Squash merge**: a branch's menu → *Merge {branch} into {current} as one commit (squash)* stages its changes as one, and gives the commit box a message listing its commits (when nothing is typed in it); clashes are left as conflicts to resolve first. Undo takes it back.
 - **Compare two commits, a branch with the current one, or a commit with your changes**: select a commit, right-click another one → *Compare with …, selected before*; or a branch's menu → *Compare {current} with {branch}*; or a commit's menu → *Compare with my changes (working tree)*. The files that differ are listed with their diffs (images included), the two sides can be swapped, and Esc closes it.
 - **Conflicts that are easy to find and read**: the conflict editor colours the code and marks the words that differ between the current and the incoming side, as the diff does, with line numbers. It opens at the first conflict, folds the long stretches without conflicts, marks each conflict by the scrollbar (orange, green once resolved; a click goes there), and "Conflict 1 of 3" with its arrows (or Alt+↑ / Alt+↓) goes from one to the next. The two sides show side by side or one over the other, with the same switch as the diff.

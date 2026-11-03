@@ -113,7 +113,7 @@ export interface LeviathanInvokeApi {
   // Interactive rebase
   getRebaseCommits(repo: string, base: string): Promise<RebaseList>
   /** Refused when the branch no longer holds exactly the commits in `items`. */
-  interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<void>
+  interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<ChangesBlock | null>
 
   // Working tree
   stage(repo: string, paths: string[]): Promise<void>

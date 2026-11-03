@@ -32,6 +32,7 @@ const stub: Record<string, ReturnType<typeof vi.fn>> = {
   checkout: vi.fn(),
   merge: vi.fn(async () => null),
   rebase: vi.fn(),
+  interactiveRebase: vi.fn(),
   stashSave: vi.fn(async () => {
     stashes = [{ index: 0, hash: 'new', message: 'WIP on main' }, ...stashes.map((s) => ({ ...s, index: s.index + 1 }))]
   }),
@@ -48,7 +49,8 @@ vi.stubGlobal('window', {
 })
 vi.stubGlobal('navigator', { language: 'en' })
 
-const { checkoutAndMerge, checkoutRef, mergeRef, rebaseOnto } = await import('../src/renderer/src/actions')
+const { checkoutAndMerge, checkoutRef, mergeRef, rebaseOnto, startInteractiveRebase } =
+  await import('../src/renderer/src/actions')
 const { newRepoView, useStore } = await import('../src/renderer/src/store')
 
 const other = { name: 'other', type: 'head', hash: 'h2' } as GitRef
@@ -66,6 +68,7 @@ beforeEach(() => {
   stub.checkout.mockReset()
   stub.merge.mockReset()
   stub.rebase.mockReset()
+  stub.interactiveRebase.mockReset()
   operation = null
   stashes = [{ index: 0, hash: 'old', message: 'earlier' }]
   conflicted = []
@@ -169,13 +172,29 @@ describe('a checkout with uncommitted changes in its way', () => {
     expect(useStore.getState().toasts.map((t) => [t.kind, t.text])).toContainEqual(['error', block.message])
   })
 
-  it('does not merge into the branch it is still on', async () => {
+  it('does not merge into the branch it is still on, and offers to set the changes in the way aside', async () => {
     stub.checkout.mockResolvedValueOnce(block)
     const going = checkoutAndMerge('/r', 'other', 'feature')
     await answer({})
+    await vi.waitFor(() => expect(useStore.getState().dialog?.choices).toBeTruthy())
+    const dialog = await answer(null)
 
+    expect(dialog.message).toContain('Checking out other and merging feature would overwrite')
     expect(await going).toBe(false)
     expect(stub.merge).not.toHaveBeenCalled()
+  })
+
+  it('checks out and merges once the changes are stashed, and brings them back', async () => {
+    stub.checkout.mockResolvedValueOnce(block).mockResolvedValueOnce(null)
+    stub.merge.mockResolvedValueOnce(null)
+    const going = checkoutAndMerge('/r', 'other', 'feature')
+    await answer({})
+    await vi.waitFor(() => expect(useStore.getState().dialog?.choices).toBeTruthy())
+    await answer('carry')
+
+    expect(await going).toBe(true)
+    expect(stub.merge).toHaveBeenCalledWith('/r', 'feature')
+    expect(stub.stashPop).toHaveBeenCalledWith('/r', 0, 'new')
   })
 })
 
@@ -243,5 +262,34 @@ describe('a merge, pull, rebase, cherry-pick or revert with uncommitted changes 
     expect(dialog.list).toBeUndefined()
     expect(await going).toBe(true)
     expect(stub.stashPop).toHaveBeenCalled()
+  })
+
+  it('asks the same of an interactive rebase, and brings the changes back once it is done', async () => {
+    const all = {
+      message: 'Commit or stash your uncommitted changes before rebasing.',
+      changed: [],
+      untracked: [],
+      folders: [],
+      all: true
+    }
+    stub.interactiveRebase.mockResolvedValueOnce(all).mockResolvedValueOnce(null)
+    const going = startInteractiveRebase('/r', 'base', [])
+    const dialog = await answer('carry')
+
+    expect(dialog.message).toContain('Rebasing interactively cannot start with uncommitted changes')
+    expect(await going).toBe('done')
+    expect(stub.stashSave).toHaveBeenCalled()
+    expect(stub.interactiveRebase).toHaveBeenCalledTimes(2)
+    expect(stub.stashPop).toHaveBeenCalledWith('/r', 0, 'new')
+  })
+
+  it('keeps the dialog of the interactive rebase when the changes are not set aside', async () => {
+    stub.interactiveRebase.mockResolvedValueOnce({ message: '', changed: [], untracked: [], folders: [], all: true })
+    const going = startInteractiveRebase('/r', 'base', [])
+    await answer(null)
+
+    expect(await going).toBe('refused')
+    expect(stub.interactiveRebase).toHaveBeenCalledTimes(1)
+    expect(stub.stashSave).not.toHaveBeenCalled()
   })
 })
