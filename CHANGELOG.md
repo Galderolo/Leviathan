@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-03
+
 ### Fixed
 
 - **Push right after opening a repository** asks where to publish a branch, as it does later: pressed before the app had read the repository, it pushed without asking (or said the branch was detached).
