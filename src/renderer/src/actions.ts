@@ -1,4 +1,5 @@
 import type {
+  Account,
   AskpassRequest,
   BlameLine,
   Commit,
@@ -17,6 +18,7 @@ import type {
   Stash,
   Submodule
 } from '../../shared/types'
+import { authProblem } from '../../shared/authErrors'
 import type { ChangesBlock } from '../../shared/localChanges'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
 import { worktreeFolder, type Worktree } from '../../shared/worktrees'
@@ -371,6 +373,44 @@ async function loadCommitTemplate(path: string): Promise<void> {
       ? { draft: { ...r.draft, ...template } }
       : {})
   }))
+}
+
+/**
+ * Settings → Accounts, signing in again at once with GitHub or GitLab (their own sites); an account of another
+ * server needs a new token typed there.
+ */
+export function signInAgain(account: Account): void {
+  const flow =
+    account.provider === 'github' && account.host === 'github.com'
+      ? 'github'
+      : account.provider === 'gitlab' && account.host === 'gitlab.com'
+        ? 'gitlab'
+        : null
+  useStore.setState({ settingsOpen: true, settingsSection: 'accounts', signInAgain: flow })
+}
+
+/**
+ * In place of git's message when the remote refused the credentials of the repository's account, or git had none:
+ * why (its token cannot be read here, or the server no longer takes it: revoked, expired), and a way to sign in again.
+ */
+async function explainAuth(path: string, message: string): Promise<void> {
+  const account = getRepo(path)?.account
+  if (!account) return toast('error', message)
+  const name = `${account.username}@${account.host}`
+  const state = await api.accountTokenState(account.id).catch(() => null)
+  const why =
+    state && !state.readable
+      ? t('auth.unreadable', { account: name, reason: state.reason ?? t('auth.noReason') })
+      : authProblem(message) === 'missing'
+        ? t('auth.missing', { account: name })
+        : t('auth.rejected', { account: name, host: account.host })
+  const choice = await choiceDialog({
+    title: t('auth.title', { host: account.host }),
+    message: why,
+    note: message,
+    choices: [{ key: 'signin', label: t('auth.signInAgain'), primary: true }]
+  })
+  if (choice === 'signin') signInAgain(account)
 }
 
 export async function loadRepoAccount(path: string): Promise<void> {
@@ -1059,6 +1099,9 @@ async function runOp(
       // Stopped for something else: git's reason, without its hints about commands the app does not offer.
       const reason = stopReason(errorMessage(err))
       toast('error', reason ? t('toast.stoppedFor', { reason }) : errorMessage(err))
+    } else if (authProblem(errorMessage(err)) && getRepo(path)?.account) {
+      // The repository's account: say what is wrong with its token and offer to sign in again.
+      void explainAuth(path, errorMessage(err))
     } else toast('error', opts.errorText ?? errorMessage(err))
     // Show the banner and the conflicted files.
     if (stopped) selectWip(path)

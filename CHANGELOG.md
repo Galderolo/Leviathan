@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Fixed
+
+- **A token the server no longer accepts is explained**: when a fetch, pull or push fails because the remote refused the credentials of the repository's account ("Invalid username or token"), the app says the token was revoked or has expired — GitHub keeps ten sign-ins per account and app, and signing in again elsewhere revokes the oldest — and offers *Sign in again*, which opens Settings → Accounts and starts signing in with GitHub (or GitLab). A token that cannot be read on this computer says why (the system's own words), in that message and when the pull requests or the account are read.
+
 ## [0.22.0] - 2026-11-03
 
 ### Fixed

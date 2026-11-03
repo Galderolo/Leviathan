@@ -463,6 +463,14 @@ const en = {
     'Remove the account {name}? Repositories that use it go back to your normal git credentials.',
   'accounts.added': 'Account {name} added',
   'accounts.renewed': 'Account {name} updated with the new token',
+  'auth.title': 'Sign in again to {host}',
+  'auth.rejected':
+    '{host} no longer accepts the token of {account}: it was revoked or has expired. GitHub, for one, keeps ten sign-ins per account and app, and signing in again (here or on another computer) revokes the oldest. Sign in again to get a new token.',
+  'auth.unreadable':
+    'The token of {account} can no longer be read on this computer ({reason}). Sign in again to keep a new one.',
+  'auth.missing': 'git had no token of {account} to send. Sign in again to keep one.',
+  'auth.noReason': 'no reason given',
+  'auth.signInAgain': 'Sign in again',
   'accounts.noneOption': 'None (normal git credentials)',
   'menu.repoAccount': 'Account for this repository…',
   'menu.repoSettings': 'Settings of this repository…',
