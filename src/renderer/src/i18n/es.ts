@@ -488,6 +488,13 @@ const es: Record<keyof typeof en, string> = {
   'dlg.takeSideLosesEdits':
     '{name} ha cambiado desde que git lo dejó en conflicto (editado a mano o en un editor). Tomar una versión del archivo entero lo sustituye y esos cambios se pierden.',
   'conflict.progress': '{done} de {count} conflictos resueltos',
+  'conflict.position': 'Conflicto {index} de {count}',
+  'conflict.previous': 'Conflicto anterior (Alt+↑)',
+  'conflict.next': 'Conflicto siguiente (Alt+↓)',
+  'conflict.resolved': 'resuelto',
+  'conflict.unresolved': 'sin resolver',
+  'conflict.folded': '⋯ {count} líneas sin conflicto — mostrar',
+  'conflict.ruler': 'Dónde están los conflictos (naranja: sin resolver, verde: resuelto). Clic para ir.',
   'conflict.save': 'Guardar y marcar resuelto',
   'identity.as': 'Commit como',
   'identity.none': 'sin identidad',

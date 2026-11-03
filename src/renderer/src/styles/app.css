@@ -2007,8 +2007,8 @@ img.avatar {
   padding: 10px 12px 24px;
 }
 
-.conflict-common .conflict-lines {
-  color: var(--text-dim);
+.diff-scroll[hidden] {
+  display: none;
 }
 
 .conflict-lines {
@@ -2019,39 +2019,131 @@ img.avatar {
   overflow-x: auto;
 }
 
+/* A line: its number in its version, then its code. */
 .conflict-line {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+}
+
+.conflict-line .ln {
+  padding-right: 8px;
+  text-align: right;
+  color: var(--ln);
+  background: var(--ln-bg);
+  user-select: none;
+}
+
+.conflict-line .code {
   padding: 0 10px;
+}
+
+/* Unconflicted lines left out, shown on a click. */
+.conflict-fold {
+  display: block;
+  width: 100%;
+  margin: 3px 0;
+  padding: 2px 10px 2px 54px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: var(--bg-1);
+  color: var(--text-dim);
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.conflict-fold:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
 }
 
 .conflict-block {
   margin: 8px 0;
-  border: 1px solid color-mix(in srgb, var(--orange) 60%, var(--border));
+  border: 1px solid var(--orange);
   border-radius: 6px;
   overflow: hidden;
 }
 
-.conflict-block.resolved {
-  border-color: color-mix(in srgb, var(--green) 60%, var(--border));
+.conflict-block.current {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 25%, transparent);
 }
 
+.conflict-block.resolved {
+  border-color: color-mix(in srgb, var(--green) 70%, var(--border));
+}
+
+.conflict-block.resolved.current {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent);
+}
+
+.conflict-block-title {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 10px;
+  background: color-mix(in srgb, var(--orange) 18%, transparent);
+  color: var(--orange);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.conflict-block.resolved .conflict-block-title {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green-text);
+}
+
+/* The two sides: side by side, or one over the other (as the diff's layout). */
 .conflict-sides {
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
 
+.conflict-sides.stacked {
+  grid-template-columns: 1fr;
+}
+
 .conflict-side {
   min-width: 0;
-  background: var(--bg-1);
-  opacity: 0.75;
+}
+
+.conflict-side.ours {
+  background: color-mix(in srgb, var(--blue) 10%, var(--bg-0));
+}
+
+.conflict-side.theirs {
+  background: color-mix(in srgb, var(--green) 10%, var(--bg-0));
 }
 
 .conflict-side + .conflict-side {
   border-left: 1px solid var(--border);
 }
 
+.conflict-sides.stacked .conflict-side + .conflict-side {
+  border-top: 1px solid var(--border);
+  border-left: 0;
+}
+
+/* Once a choice is made, the side left out fades. */
+.conflict-block.resolved .conflict-side:not(.chosen) {
+  opacity: 0.5;
+}
+
 .conflict-side.chosen {
-  opacity: 1;
-  background: color-mix(in srgb, var(--green) 12%, var(--bg-1));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.conflict-side.ours .word-change {
+  background: color-mix(in srgb, var(--blue) 40%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.conflict-side.theirs .word-change {
+  background: rgba(63, 185, 80, 0.38);
+  color: inherit;
+  border-radius: 2px;
 }
 
 .conflict-side-title {
@@ -2062,6 +2154,46 @@ img.avatar {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   font-family: var(--font);
+}
+
+.conflict-side.ours .conflict-side-title {
+  color: var(--blue);
+}
+
+.conflict-side.theirs .conflict-side-title {
+  color: var(--green-text);
+}
+
+.conflict-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* "Conflict 1 of 3" with its arrows. */
+.conflict-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The conflict editor's marks by the scrollbar: not resolved, resolved. */
+.change-mark.open,
+.change-mark.resolved {
+  left: 1px;
+  right: 1px;
+  width: auto;
+  background: var(--orange);
+}
+
+.change-mark.resolved {
+  background: var(--green);
 }
 
 .conflict-choices {

@@ -481,6 +481,13 @@ const en = {
   'dlg.takeSideLosesEdits':
     '{name} was changed after git left it in conflict (edited by hand or in an editor). Taking one side of the whole file replaces it, and those changes are lost.',
   'conflict.progress': '{done} of {count} conflicts resolved',
+  'conflict.position': 'Conflict {index} of {count}',
+  'conflict.previous': 'Previous conflict (Alt+↑)',
+  'conflict.next': 'Next conflict (Alt+↓)',
+  'conflict.resolved': 'resolved',
+  'conflict.unresolved': 'not resolved',
+  'conflict.folded': '⋯ {count} lines without conflicts — show',
+  'conflict.ruler': 'Where the conflicts are (orange: not resolved, green: resolved). Click to go there.',
   'conflict.save': 'Save and mark resolved',
   'identity.as': 'Commit as',
   'identity.none': 'no identity set',

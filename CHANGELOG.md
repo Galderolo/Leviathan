@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Conflicts that are easy to find and read**: the conflict editor colours the code and marks the words that differ between the current and the incoming side, as the diff does, with line numbers. It opens at the first conflict, folds the long stretches without conflicts, marks each conflict by the scrollbar (orange, green once resolved; a click goes there), and "Conflict 1 of 3" with its arrows (or Alt+↑ / Alt+↓) goes from one to the next. The two sides show side by side or one over the other, with the same switch as the diff.
+
 ## [0.21.0] - 2026-10-29
 
 ### Added
