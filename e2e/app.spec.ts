@@ -217,6 +217,46 @@ test('stages the changes and commits them', async () => {
   expect(box.git(repo, 'status', '--porcelain')).toBe('')
 })
 
+test('searches in what commits change, and goes from one commit found to the next', async () => {
+  const repo = box.repo('game', { 'a.txt': 'let speed = 10\n' })
+  box.write(repo, { 'b.txt': 'other\n' })
+  box.git(repo, 'add', '.')
+  box.git(repo, 'commit', '-q', '-m', 'speed in the message only')
+  box.write(repo, { 'a.txt': 'let velocity = 10\n' })
+  box.git(repo, 'commit', '-q', '-am', 'rename')
+  await open(repo)
+  await expect(commitRows()).toHaveCount(3)
+
+  const search = page.locator('#graph-search')
+  const dimmed = page.locator('.graph-row.row-commit.dimmed')
+  const subject = page.locator('.commit-subject')
+  // In messages, as typed.
+  await search.fill('speed')
+  await expect(dimmed).toHaveCount(2)
+  // In the changes: Enter searches, then goes through what it found.
+  await page.getByRole('button', { name: /Search in the changes/ }).click()
+  await expect(dimmed).toHaveCount(0)
+  await commitRows().filter({ hasText: 'speed in the message only' }).click()
+  await search.press('Enter')
+  await expect(page.locator('.search-count')).toHaveText('2')
+  await expect(dimmed).toHaveCount(1)
+  await expect(commitRows().filter({ hasText: 'speed in the message only' })).toHaveClass(/dimmed/)
+  await expect(subject).toHaveText('first')
+  await search.press('Enter')
+  await expect(subject).toHaveText('rename')
+  await search.press('Shift+Enter')
+  await expect(subject).toHaveText('first')
+
+  // Nothing found: it says so.
+  await search.fill('nowhere')
+  await search.press('Enter')
+  await expect(page.locator('.toasts')).toContainText('No commit adds or removes “nowhere”')
+  await search.press('Escape')
+  await expect(search).toHaveValue('')
+  await expect(dimmed).toHaveCount(0)
+  await expect(page.locator('.toast.error')).toHaveCount(0)
+})
+
 test('creates a branch and switches between branches', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   await open(repo)

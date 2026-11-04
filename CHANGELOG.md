@@ -8,6 +8,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 - **Signed commits**: a signed commit shows its signature under its author, checked here: *Verified* (by a key trusted here, or one of your own SSH keys), *Signed* (valid, by a key nothing here vouches for), *Bad signature*, expired, revoked, or not checked (the key or gpg missing); the tooltip says why. Settings → General (every repository, git's global config) and Settings → This repository pick whether commits are signed and with which key, one of your SSH keys in ~/.ssh or a secret GPG key. The commit box shows whether the commit will be signed (a click leads to the setting), and when signing fails nothing is committed: the app offers to commit without signing this once.
 
+- **Search in the changes**: the button at the end of the search box makes it look for the commits that add or remove the text typed (git's pickaxe, `git log -S`, ignoring case) instead of messages, authors and SHAs. Enter searches the branches the graph shows and goes to the next commit found (Shift+Enter, the one before), the others are dimmed and the box says how many there are; one older than the commits loaded is loaded to show it.
+
 ### Fixed
 
 - **A key's passphrase is asked for with Windows' own OpenSSH too** (signing a commit with an SSH key, or ssh itself): it could not run the app's prompt.

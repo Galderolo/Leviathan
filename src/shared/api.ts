@@ -81,6 +81,17 @@ export interface LeviathanInvokeApi {
     limit: number,
     scope?: { hidden?: string[]; solo?: string | null }
   ): Promise<{ commits: Commit[]; hasMore: boolean }>
+  /**
+   * The commits of the graph's `scope` that add or remove `text` (`git log -S`, ignoring case), newest first, at most
+   * a thousand (`more` when there are others). A newer search of `repo` stops the one before.
+   */
+  searchChanges(
+    repo: string,
+    text: string,
+    scope?: { hidden?: string[]; solo?: string | null }
+  ): Promise<{ hashes: string[]; more: boolean }>
+  /** Stops the search in the changes of `repo` under way. */
+  stopSearchChanges(repo: string): Promise<void>
   getCommitDetails(repo: string, hash: string): Promise<CommitDetails>
   /** `fullFile`: also the unchanged lines around the hunks (`FileDiff.gaps`). */
   getDiff(repo: string, source: DiffSource, fullFile?: boolean): Promise<FileDiff>
@@ -387,6 +398,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   unwatchRepo: true,
   getState: true,
   getLog: true,
+  searchChanges: true,
+  stopSearchChanges: true,
   getCommitDetails: true,
   getDiff: true,
   getImages: true,

@@ -9,6 +9,7 @@ import {
   ArrowUpToLine,
   ChevronDown,
   ChevronRight,
+  FileCode,
   GitBranchPlus,
   Search,
   Settings,
@@ -26,8 +27,11 @@ import {
   popStash,
   pull,
   push,
+  nextChangeMatch,
+  searchInChanges,
   selectCommit,
   setFilter,
+  setSearchMode,
   stashChanges,
   checkoutRef,
   chooseRepoAccount,
@@ -47,6 +51,14 @@ import { Spinner } from './common'
 function jumpToMatch(path: string, backwards: boolean): void {
   const view = getRepo(path)
   if (!view || !view.filter.trim()) return
+  if (view.searchMode === 'changes') {
+    // Enter searches the text typed, then goes through what it found.
+    const found = view.changeSearch
+    if (found?.text !== view.filter.trim()) {
+      void searchInChanges(path).then((hashes) => hashes && nextChangeMatch(path, hashes, backwards))
+    } else if (found.hashes) void nextChangeMatch(path, found.hashes, backwards)
+    return
+  }
   const commits = view.commits
   const sel = view.selection
   const current = sel && sel.kind !== 'wip' ? commits.findIndex((c) => c.hash === sel.hash) : -1
@@ -104,6 +116,21 @@ export function Toolbar({ path }: { path: string }) {
   const remoteBusy = busy !== null
   const lastUndo = view?.undo[view.undo.length - 1]
   const lastRedo = view?.redo[view.redo.length - 1]
+  // Searching in what commits change: the search of the text typed, running (no hashes yet) or done.
+  const inChanges = view?.searchMode === 'changes'
+  const found = inChanges && view.changeSearch?.text === view.filter.trim() ? view.changeSearch : null
+  const foundTitle = (() => {
+    if (!found?.hashes || !view) return undefined
+    const loaded = new Set(view.commits.map((c) => c.hash))
+    const older = found.hashes.filter((h) => !loaded.has(h)).length
+    return [
+      t('search.found', { count: found.hashes.length }),
+      older ? t('search.foundOlder', { count: older }) : '',
+      found.more ? t('search.foundMore', { count: found.hashes.length }) : ''
+    ]
+      .filter(Boolean)
+      .join(' ')
+  })()
 
   const pullLabels: Record<PullMode, string> = {
     ff: t('pull.ff'),
@@ -258,11 +285,12 @@ export function Toolbar({ path }: { path: string }) {
       </div>
 
       <div className="toolbar-right">
-        <div className="search-box">
-          <Search size={14} />
+        <div className={cx('search-box', inChanges && 'in-changes')}>
+          {found && !found.hashes ? <Spinner size={14} /> : <Search size={14} />}
           <input
             id="graph-search"
-            placeholder={t('toolbar.search')}
+            placeholder={inChanges ? t('search.changesPlaceholder') : t('toolbar.search')}
+            title={found && !found.hashes ? t('search.searching') : undefined}
             value={view?.filter ?? ''}
             spellCheck={false}
             onChange={(e) => setFilter(path, e.target.value)}
@@ -274,6 +302,12 @@ export function Toolbar({ path }: { path: string }) {
               }
             }}
           />
+          {found?.hashes && (
+            <span className="search-count" title={foundTitle}>
+              {found.hashes.length}
+              {found.more && '+'}
+            </span>
+          )}
           {view?.filter && (
             <button
               className="search-clear"
@@ -285,6 +319,15 @@ export function Toolbar({ path }: { path: string }) {
               <X size={13} />
             </button>
           )}
+          <button
+            className={cx('search-mode', inChanges && 'on')}
+            title={inChanges ? t('search.inChangesOn') : t('search.inChanges')}
+            aria-pressed={inChanges}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setSearchMode(path, inChanges ? 'message' : 'changes')}
+          >
+            <FileCode size={14} />
+          </button>
         </div>
         <button
           className="icon-btn"
