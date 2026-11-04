@@ -220,7 +220,7 @@ Pull requests were tested for real on a private GitHub repository (create as dra
 
 1. On a `release/x.y.z` branch: set the version in `package.json` and `package-lock.json` (`npm version x.y.z --no-git-tag-version`), rename `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - <date>` with an empty `[Unreleased]` above it, and add the version to the table above and to the line at the top. Commit as `release: x.y.z`.
 2. Push the branch, merge it into `main` with `--no-ff` once CI on `main` is green, and tag the merge: `git tag vx.y.z && git push origin main vx.y.z`.
-3. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again.
+3. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again. Since 2026-11-04 the workflows use the Node 24 actions (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `download-artifact@v8`, which fails on an artifact whose digest does not match); 0.22.1 was the last release built with the older ones, so check the first release after it.
 
 ### 3. Sign in with the browser
 
