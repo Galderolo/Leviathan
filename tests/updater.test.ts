@@ -19,7 +19,8 @@ function fakeUpdater() {
       emitter.emit('download-progress', { percent: 42.4 })
       emitter.emit('update-downloaded', { version: '0.5.0' })
     }),
-    quitAndInstall: vi.fn()
+    quitAndInstall: vi.fn(),
+    setFeedURL: vi.fn()
   })
   return updater as unknown as UpdaterLike & typeof updater
 }
@@ -130,5 +131,64 @@ describe('createUpdater failures and guards', () => {
     const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
     await u.check()
     expect(u.state().status).toBe('unsupported')
+  })
+})
+
+describe('createUpdater and releases still being published', () => {
+  const missing = new Error(
+    'Cannot find latest.yml in the latest release artifacts (https://github.com/Galderolo/Leviathan/releases/download/v0.6.0/latest.yml): HttpError: 404'
+  )
+
+  it('looks for the update in the newest published release, not in the newest tag', async () => {
+    const updater = fakeUpdater()
+    const locate = vi.fn(async () => 'v0.5.0')
+    const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn(), locate })
+    await u.check()
+    expect(updater.setFeedURL).toHaveBeenCalledWith({
+      provider: 'generic',
+      url: 'https://github.com/Galderolo/Leviathan/releases/download/v0.5.0',
+      useMultipleRangeRequest: false
+    })
+    expect(updater.setFeedURL.mock.invocationCallOrder[0]).toBeLessThan(
+      updater.checkForUpdates.mock.invocationCallOrder[0]
+    )
+    expect(u.state()).toMatchObject({ status: 'available', version: '0.5.0' })
+  })
+
+  it("falls back to GitHub's own feed when the releases cannot be looked up", async () => {
+    for (const locate of [vi.fn(async () => null), vi.fn(async () => Promise.reject(new Error('offline')))]) {
+      const updater = fakeUpdater()
+      const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn(), locate })
+      await u.check()
+      expect(updater.setFeedURL).toHaveBeenCalledWith({ provider: 'github', owner: 'Galderolo', repo: 'Leviathan' })
+      expect(u.state()).toMatchObject({ status: 'available', version: '0.5.0' })
+    }
+  })
+
+  it('keeps an update already found when a later check runs into a release still being published', async () => {
+    const updater = fakeUpdater()
+    const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
+    await u.check()
+    updater.checkForUpdates.mockImplementationOnce(async () => {
+      updater.emit('checking-for-update')
+      updater.emit('error', missing)
+      throw missing
+    })
+    await u.check()
+    expect(u.state()).toMatchObject({ status: 'available', version: '0.5.0' })
+  })
+
+  it('keeps an update already found when a later check fails on the way', async () => {
+    const updater = fakeUpdater()
+    const u = createUpdater({ updater, mode: 'install', broadcast: () => {}, openExternal: vi.fn() })
+    await u.check()
+    const offline = new Error('net::ERR_INTERNET_DISCONNECTED')
+    updater.checkForUpdates.mockImplementationOnce(async () => {
+      updater.emit('checking-for-update')
+      updater.emit('error', offline)
+      throw offline
+    })
+    await u.check()
+    expect(u.state()).toMatchObject({ status: 'available', version: '0.5.0' })
   })
 })

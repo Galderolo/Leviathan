@@ -1,32 +1,57 @@
 name: Release
 
-# Push a tag like `v0.3.0` to build installers for every platform and publish
-# them as a GitHub pre-release, with that version's CHANGELOG section as notes.
+# Run by hand on main (Actions → Release → Run workflow) to build installers for
+# every platform from that commit and publish them as a GitHub pre-release named
+# after the version in package.json, with that version's CHANGELOG section as notes.
 # Nothing is uploaded unless every platform builds.
+#
+# The tag is not pushed beforehand: GitHub creates it when the release is published.
+# Its releases feed lists a tag as soon as it exists, and the app's updater (up to
+# 0.23.0) looks only at the newest tag listed: while that release was still a draft,
+# no copy of the app saw any update.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
 
 jobs:
   # A draft to fill in, with the notes, so the release can be checked before the installers land.
   draft:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.draft.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
       - name: Create the draft release
+        id: draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Releases are made from main, not $GITHUB_REF_NAME."
+            exit 1
+          fi
+          version="$(node -p "require('./package.json').version")"
+          tag="v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "::error::$tag already exists: set the next version in package.json first."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           # The lines under "## [<version>]" in CHANGELOG.md, up to the next version.
           awk -v v="$version" 'index($0, "## [" v "]") == 1 { on = 1; next } on && /^## \[/ { exit } on { print }' CHANGELOG.md > notes.md
           printf '\n---\n\n[Code signing policy](https://github.com/%s#code-signing-policy) · [Privacy policy](https://github.com/%s#privacy-policy)\n' "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" >> notes.md
-          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md
+          # A draft has no tag yet, only the commit to tag. One left by an earlier run that failed is reused.
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --notes-file notes.md
+          else
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "$tag" --notes-file notes.md
+          fi
 
   # Builds only keep their installers as artifacts: uploading from each build
   # depends on the release still being a draft when that build gets a runner.
@@ -73,9 +98,9 @@ jobs:
             dist/*.blockmap
             dist/latest*.yml
 
-  # Only when every platform built: upload everything, then publish.
+  # Only when every platform built: upload everything, then publish (which creates the tag).
   publish:
-    needs: build
+    needs: [draft, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -86,7 +111,8 @@ jobs:
       - name: Upload the installers and publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.draft.outputs.tag }}
         run: |
           ls -l installers
-          gh release upload "$GITHUB_REF_NAME" installers/* --repo "$GITHUB_REPOSITORY" --clobber
-          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
+          gh release upload "$TAG" installers/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

@@ -38,6 +38,40 @@ export function releasePageUrl(version: string): string {
   return `${RELEASES}/tag/v${version}`
 }
 
+/** GitHub's feed of the releases, newest first. */
+export const RELEASES_FEED_URL = `${RELEASES}.atom`
+
+/** The folder a release's installers and update files are downloaded from. */
+export function releaseDownloadUrl(tag: string): string {
+  return `${RELEASES}/download/${tag}`
+}
+
+/** The file of each release that electron-updater reads on this platform. */
+export function updateFileName(platform: string): string {
+  if (platform === 'darwin') return 'latest-mac.yml'
+  if (platform === 'linux') return 'latest-linux.yml'
+  return 'latest.yml'
+}
+
+/** The tags in GitHub's releases feed, newest first (the notes in it are escaped, so only the entries' own links count). */
+export function feedTags(xml: string): string[] {
+  const tags = [...xml.matchAll(/<link\b[^>]*\bhref="[^"]*\/releases\/tag\/([^"/]+)"/g)].map((m) => m[1])
+  return [...new Set(tags)]
+}
+
+/**
+ * The newest of the first few tags whose release is published. GitHub's feed lists a tag as soon as it is
+ * pushed, while its release may still be a draft whose files cannot be downloaded yet. A failed lookup throws.
+ */
+export async function newestPublished(
+  tags: string[],
+  published: (tag: string) => Promise<boolean>,
+  limit = 5
+): Promise<string | null> {
+  for (const tag of tags.slice(0, limit)) if (await published(tag)) return tag
+  return null
+}
+
 /** How often to look for a new release while the app runs, and the shortest gap when the user comes back to it. */
 const CHECK_EVERY_MS = 30 * 60_000
 const FOCUS_GAP_MS = 10 * 60_000
