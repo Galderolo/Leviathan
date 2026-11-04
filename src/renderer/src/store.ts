@@ -103,6 +103,8 @@ export interface RepoView {
   review: PullRequest | null
   /** Two commits compared in the center panel, or a commit and the working tree. */
   compare: Comparison | null
+  /** The reflog shows in the center panel: where HEAD has been, to get lost commits back. */
+  reflog: boolean
   /** Commits picked together in the graph with Ctrl or Shift (two or more act as one selection). */
   picked: string[]
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
@@ -355,6 +357,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     fileView: null,
     review: null,
     compare: null,
+    reflog: false,
     picked: [],
     graphScope: readGraphScope(path),
     highlight: null,

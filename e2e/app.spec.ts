@@ -1587,6 +1587,43 @@ test('compares two commits, a branch with the current one, and a commit with my 
   await expect(view.locator('.diff-line.add')).toHaveText(/new here/)
 })
 
+test('lists where HEAD has been in the reflog, and gets a commit left behind by a reset back on a branch', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.write(repo, { 'a.txt': 'two\n' })
+  box.git(repo, 'commit', '-qam', 'work to get back')
+  const lost = box.git(repo, 'rev-parse', 'HEAD')
+  box.git(repo, 'reset', '-q', '--hard', 'HEAD~1')
+  await open(repo)
+  await expect(commitRows()).toHaveCount(1)
+
+  await page.locator('.toolbar-field', { hasText: 'Repository' }).click()
+  await menuItem('Reflog: get lost commits back').click()
+  const view = page.locator('.reflog-view')
+  const rows = view.locator('.reflog-row')
+  await expect(rows).toHaveCount(3)
+  await expect(rows.nth(0)).toContainText('reset')
+  await expect(rows.nth(0)).toContainText('to HEAD~1')
+  await expect(rows.filter({ hasText: 'On no branch' })).toHaveCount(1)
+  await view.getByLabel('Only those on no branch (1)').check()
+  await expect(rows).toHaveCount(1)
+
+  // Picked, its commit shows on the right, files and all; a branch on it keeps it.
+  await rows.first().click()
+  await expect(page.locator('.commit-subject')).toHaveText('work to get back')
+  await expect(page.locator('.right-panel')).toContainText('a.txt')
+  await rows.first().getByRole('button', { name: 'Create branch' }).click()
+  await page.locator('.modal input').first().fill('rescued')
+  await page.locator('.modal .btn-primary').click()
+  await expect.poll(() => box.branch(repo)).toBe('rescued')
+  expect(box.git(repo, 'rev-parse', 'rescued')).toBe(lost)
+  await expect(view).toContainText('No commit has been left behind')
+  await expect(view.getByLabel('Only those on no branch (0)')).toBeChecked()
+
+  await page.keyboard.press('Escape')
+  await expect(view).toHaveCount(0)
+  await expect(commitRows()).toHaveCount(2)
+})
+
 test('says that a commit only renamed a file', async () => {
   const repo = box.repo('game', { 'old.txt': 'same\n' })
   box.git(repo, 'mv', 'old.txt', 'new.txt')

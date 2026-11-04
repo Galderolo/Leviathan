@@ -10,6 +10,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 - **Search in the changes**: the button at the end of the search box makes it look for the commits that add or remove the text typed (git's pickaxe, `git log -S`, ignoring case) instead of messages, authors and SHAs. Enter searches the branches the graph shows and goes to the next commit found (Shift+Enter, the one before), the others are dimmed and the box says how many there are; one older than the commits loaded is loaded to show it.
 
+- **Reflog: get lost commits back**: the repository menu → *Reflog* lists every move of HEAD, newest first (commits, amends, checkouts, resets, rebases, merges), and marks the commits that no branch, tag or remote branch has any more — left behind by a reset, an amend, a rebase or a deleted branch, even outside the app. Picking one shows it on the right, files and diffs included; *Create branch* keeps it. Its menu is a commit's (check out, cherry-pick, compare…), double-click shows it in the graph, and Esc closes it.
+
 ### Fixed
 
 - **A key's passphrase is asked for with Windows' own OpenSSH too** (signing a commit with an SSH key, or ssh itself): it could not run the app's prompt.

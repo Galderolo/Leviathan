@@ -3,6 +3,7 @@ import {
   autoFetchTick,
   closeDiff,
   closeCompare,
+  closeReflog,
   closeFileView,
   closeReview,
   closeTab,
@@ -35,6 +36,7 @@ import { RightPanel } from './components/RightPanel'
 import { RebaseDialog } from './components/RebaseDialog'
 import { FileView } from './components/FileViews'
 import { CompareView } from './components/CompareView'
+import { ReflogView } from './components/ReflogView'
 import { PullRequestView } from './components/PullRequestView'
 import { SettingsModal } from './components/SettingsModal'
 import { WhatsNew } from './components/WhatsNew'
@@ -183,6 +185,8 @@ export function App() {
       } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.diff) {
         const target = e.target as HTMLElement
         if (!['INPUT', 'TEXTAREA'].includes(target.tagName)) closeDiff(active.path)
+      } else if (e.key === 'Escape' && active?.path && getRepo(active.path)?.reflog && !isTyping(e.target)) {
+        closeReflog(active.path)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -212,6 +216,7 @@ function RepoScreen({ path }: { path: string }) {
   const hasFileView = useStore((s) => !!s.repos[path]?.fileView)
   const hasReview = useStore((s) => !!s.repos[path]?.review)
   const hasCompare = useStore((s) => !!s.repos[path]?.compare)
+  const hasReflog = useStore((s) => !!s.repos[path]?.reflog)
   const terminalOpen = useStore((s) => !!s.repos[path]?.terminalOpen)
   const [left, setLeft] = useState(settings.leftPanelWidth)
   const [right, setRight] = useState(settings.rightPanelWidth)
@@ -240,6 +245,8 @@ function RepoScreen({ path }: { path: string }) {
               <FileView path={path} />
             ) : hasDiff ? (
               <DiffView path={path} />
+            ) : hasReflog ? (
+              <ReflogView path={path} />
             ) : (
               <CommitGraph path={path} />
             )}
