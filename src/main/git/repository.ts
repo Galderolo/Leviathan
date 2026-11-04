@@ -469,6 +469,12 @@ async function getFileDiff(repo: string, source: DiffSource, extraArgs: string[]
     }
     case 'tree': {
       assertSafeArg(source.base, 'commit')
+      if (source.untracked) {
+        // Not tracked: all of it is new, as in the uncommitted changes.
+        const { binary, content } = await readPreview(repo, source.path)
+        if (binary) return { path: source.path, binary: true, header: '', hunks: [] }
+        return untrackedDiff(source.path, content)
+      }
       const paths = source.oldPath ? [source.oldPath, source.path] : [source.path]
       const out = await run(repo, ['diff', ...diffArgs, source.base, '--', ...paths], { env: LITERAL_PATHS })
       return parseDiff(out, source.path)
@@ -854,24 +860,31 @@ export async function getRebaseCommits(repo: string, base: string): Promise<Reba
 
 /**
  * The list `git rebase -i --rebase-merges` starts from. git makes it; an editor keeps a copy and fails, so the rebase
- * stops before doing anything. Hooks are off: a pre-rebase hook must not run for a list.
+ * stops before doing anything. It runs in a throwaway clone sharing the repository's objects, with no file checked
+ * out (a sparse checkout of nothing): whatever is uncommitted here does not stop it, and nothing here changes, not
+ * even for a moment. Hooks are off: a pre-rebase hook must not run for a list.
  */
 async function rebaseScript(repo: string, base: string): Promise<string> {
   const dir = await fs.mkdtemp(join(tmpdir(), 'leviathan-rebase-list-'))
+  const probe = join(dir, 'probe')
+  const hooks = join(dir, 'hooks')
   const copy = join(dir, 'todo').replace(/\\/g, '/')
   try {
-    await git(['-c', `core.hooksPath=${dir.replace(/\\/g, '/')}`, 'rebase', '-i', '--rebase-merges', base], {
-      cwd: repo,
+    await fs.mkdir(hooks)
+    const head = (await run(repo, ['rev-parse', 'HEAD'])).trim()
+    await git(['clone', '-q', '--shared', '--no-checkout', '--no-tags', repo, probe], { cwd: dir })
+    await git(['sparse-checkout', 'set', '--no-cone', '/.leviathan-none'], { cwd: probe })
+    await git(['checkout', '-q', '--detach', head], { cwd: probe })
+    await git(['-c', `core.hooksPath=${hooks.replace(/\\/g, '/')}`, 'rebase', '-i', '--rebase-merges', base], {
+      cwd: probe,
       okCodes: [0, 1, 128],
       env: { GIT_SEQUENCE_EDITOR: `f() { cp "$1" ${shQuote(copy)}; exit 1; }; f` }
     })
     const script = await fs.readFile(copy, 'utf8').catch(() => null)
-    // git refused before making a list (uncommitted changes in the way).
-    if (script === null) throw new Error('Commit or stash your uncommitted changes before rebasing.')
+    if (script === null) throw new Error('git did not make the list of this rebase.')
     return script
   } finally {
-    if ((await currentOperation(repo)) === 'rebase') await run(repo, ['rebase', '--abort'])
-    await fs.rm(dir, { recursive: true, force: true })
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   }
 }
 
@@ -1266,7 +1279,12 @@ export async function getRangeFiles(repo: string, base: string, head: string): P
 export async function compareFiles(repo: string, from: string, to: string | null): Promise<FileChange[]> {
   if (to) return getRangeFiles(repo, from, to)
   assertSafeArg(from, 'commit')
-  return parseNameStatus(await run(repo, ['diff', '--name-status', '-z', '-M', from, '--']))
+  const tracked = parseNameStatus(await run(repo, ['diff', '--name-status', '-z', '-M', from, '--']))
+  // New files git does not track are part of the working tree too (ignored ones are not).
+  const others = (await run(repo, ['ls-files', '--others', '--exclude-standard', '-z'])).split('\0').filter(Boolean)
+  const known = new Set(tracked.map((f) => f.path))
+  const untracked = others.filter((p) => !known.has(p)).map((path): FileChange => ({ path, status: '?' }))
+  return [...tracked, ...untracked].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
 }
 
 const HISTORY_FORMAT = '%x1e%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%cn%x1f%ce%x1f%ct%x1f%s%x1f'

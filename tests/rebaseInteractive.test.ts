@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -61,6 +61,29 @@ describe('getRebaseCommits', () => {
     expect(script).toMatch(/^merge -C [0-9a-f]+ /m)
     // Nothing started: no rebase in progress, the branch where it was.
     expect((await repo.getState(dir)).operation).toBeNull()
+  })
+
+  it('lists a range with merges with uncommitted changes here too, leaving them and the config alone', async () => {
+    await mergeSide()
+    writeFileSync(join(dir, 'one.txt'), 'changed here\n')
+    const config = (await git(['config', '--local', '--list'], { cwd: dir })).stdout
+
+    const { commits, script } = await repo.getRebaseCommits(dir, base)
+    expect(commits.map((c) => c.subject)).toEqual(['side', 'one', 'two', 'three'])
+    expect(script).toMatch(/^merge -C [0-9a-f]+ /m)
+    expect(readFileSync(join(dir, 'one.txt'), 'utf8')).toBe('changed here\n')
+    expect((await git(['config', '--local', '--list'], { cwd: dir })).stdout).toBe(config)
+    expect((await repo.getState(dir)).operation).toBeNull()
+    // The rebase itself then asks to set them aside, as any rebase does.
+    expect(
+      await repo.interactiveRebase(
+        dir,
+        base,
+        commits.map((c) => ({ hash: c.hash, action: 'pick' }))
+      )
+    ).toMatchObject({
+      all: true
+    })
   })
 })
 
