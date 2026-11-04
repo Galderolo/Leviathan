@@ -23,6 +23,7 @@ import {
   fetchAll,
   openInFileManager,
   openInEditor,
+  openReflog,
   openTerminal,
   popStash,
   pull,
@@ -162,6 +163,8 @@ export function Toolbar({ path }: { path: string }) {
         label: t('menu.repoSettings'),
         onClick: () => useStore.setState({ settingsOpen: true, settingsSection: 'repo' })
       },
+      { separator: true },
+      { label: t('menu.reflog'), onClick: () => openReflog(path) },
       { separator: true },
       ...(repoSettings(path).editor.trim()
         ? [{ label: t('tools.openInEditor'), onClick: () => openInEditor(path, null) }]

@@ -2695,6 +2695,66 @@ img.avatar {
   white-space: nowrap;
 }
 
+/* The reflog in the center panel: each move of HEAD, the commits left behind marked. */
+.reflog-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.reflog-intro {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.45;
+}
+
+.reflog-row .history-text {
+  flex: 1;
+}
+
+.reflog-kind {
+  flex-shrink: 0;
+  min-width: 74px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.reflog-kind.commit,
+.reflog-kind.amend {
+  color: var(--green-text);
+}
+
+.reflog-kind.reset {
+  color: var(--red-text);
+}
+
+.reflog-kind.rebase,
+.reflog-kind.cherry-pick,
+.reflog-kind.revert {
+  color: var(--yellow);
+}
+
+.reflog-kind.checkout,
+.reflog-kind.merge,
+.reflog-kind.pull {
+  color: var(--blue);
+}
+
+.reflog-lost {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid var(--orange);
+  border-radius: 3px;
+  color: var(--orange);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 /* A folder in a history header: it opens that folder's history. */
 .path-step {
   padding: 0;

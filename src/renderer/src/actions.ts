@@ -923,12 +923,21 @@ export function swapCompare(path: string): void {
   if (compare?.to) patchRepo(path, { compare: { from: compare.to, to: compare.from } })
 }
 
+/** Shows the reflog in the center panel (a diff, file view or comparison opened from it shows over it, Esc goes back). */
+export function openReflog(path: string): void {
+  patchRepo(path, { reflog: true, diff: null, fileView: null, review: null, compare: null })
+}
+
+export function closeReflog(path: string): void {
+  patchRepo(path, { reflog: false })
+}
+
 /**
  * Leaves the file view for the graph, with that commit selected and in sight.
  * Older commits than the graph holds are loaded first (within reason).
  */
 export async function showCommitInGraph(path: string, hash: string): Promise<void> {
-  patchRepo(path, { fileView: null, diff: null, review: null, compare: null })
+  patchRepo(path, { fileView: null, diff: null, review: null, compare: null, reflog: false })
   const loaded = () => getRepo(path)?.commits.some((c) => c.hash === hash) ?? false
   for (let round = 0; round < 10 && !loaded() && getRepo(path)?.hasMore; round++) await loadMore(path)
   if (!loaded()) toast('info', t('history.notInGraph'))

@@ -218,6 +218,10 @@ Fetch prunes (`--prune`), so a branch deleted on the server leaves its local bra
 
 The search box's toggle (`searchMode` in a repository's view: `message`, filtering as typed with `matchesFilter`, or `changes`) runs `searchChanges` in `repository.ts` on Enter: `git log -i -S<text>` over what the graph walks (`logRevs`, shared with `getLog`: the branches hidden or the one shown alone), hashes only, at most `CHANGE_SEARCH_MAX` (1000, `more` beyond). A newer search of the repository stops the one before (`LatestRun` in `ipc.ts`), and clearing the box or switching back stops it too. `changeSearch` holds its text and what it found (null hashes while it runs: a spinner in the box); the graph dims the rest only while the box still holds that text, and Enter / Shift+Enter (`nextChangeMatch` in `actions.ts`) go through them in the graph's order after the selected commit, the older ones not loaded last, loading up to five pages of commits to show one. Merges are not searched (git's pickaxe leaves them out without `-m`).
 
+## Reflog
+
+The repository menu's *Reflog* sets `reflog` in a repository's view: `ReflogView` takes the center panel below a diff, a file view, a comparison or a review (those opened from it show over it and Esc comes back to it; `showCommitInGraph` closes it). `getReflog` in `src/main/git/reflog.ts` reads `git log -g --date=unix HEAD` (the time of each move from its `HEAD@{<time>}` selector, at most `REFLOG_MAX`, 500, `more` beyond) and marks `lost` the commits `git rev-list --stdin --not --branches --tags --remotes HEAD` still lists: on no branch, tag or remote branch, nor checked out (the app's own `refs/leviathan/` refs do not count). It is read again whenever HEAD or a ref moves. `reflogKind` in `src/shared/reflog.ts` names the move from git's action for its label; "moving from a to b" and "moving to x" are said in the app's words, the rest as git wrote it. An entry's menu is `commitMenu`. Only HEAD's reflog is listed: a deleted branch's own reflog goes with it, and the commits made on it are found through HEAD's.
+
 ## Next steps
 
 ### 1. Pull requests on real servers

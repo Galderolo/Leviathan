@@ -34,6 +34,7 @@ import type { CommitSignature, GpgKey, SigningSetting, SigningState } from './si
 import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
 import type { LfsInstallOffer } from './lfsInstall'
 import type { RebaseItem } from './rebase'
+import type { Reflog } from './reflog'
 import type { ReleaseNote } from './releaseNotes'
 import type { RepoChange, Snapshot } from './undo'
 import type { UpdateState } from './updates'
@@ -99,6 +100,8 @@ export interface LeviathanInvokeApi {
   getImages(repo: string, source: DiffSource): Promise<ImagePair>
   /** Files that differ between commit `from` and commit `to`, or the working tree when `to` is null. */
   compareFiles(repo: string, from: string, to: string | null): Promise<FileChange[]>
+  /** Where HEAD has been, newest first; `lost` entries are on no branch any more. */
+  getReflog(repo: string): Promise<Reflog>
   /** Refs, HEAD and the stash list; with `paths`, a copy of those files too (`tooLarge`: the ones too big to keep). */
   /** `'changes'`: every uncommitted change as git sees it now. */
   getSnapshot(repo: string, paths?: string[] | 'changes'): Promise<Snapshot>
@@ -404,6 +407,7 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   getDiff: true,
   getImages: true,
   compareFiles: true,
+  getReflog: true,
   getSnapshot: true,
   stashPaths: true,
   getFileHistory: true,

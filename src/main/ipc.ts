@@ -21,6 +21,7 @@ import { answerAskpass, askpassScripts } from './askpass'
 import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
 import * as lfsInstall from './lfsInstall'
+import * as reflog from './git/reflog'
 import * as repo from './git/repository'
 import * as signing from './git/signing'
 import * as submodules from './git/submodules'
@@ -115,6 +116,7 @@ const handlers: LeviathanInvokeApi = {
   getDiff: (path, source, fullFile) => repo.getDiff(path, source, fullFile === true),
   getImages: (path, source) => repo.getImages(path, source),
   compareFiles: (path, from, to) => repo.compareFiles(path, from, typeof to === 'string' ? to : null),
+  getReflog: (path) => reflog.getReflog(path),
   getSnapshot: (path, paths) =>
     repo.getSnapshot(
       path,
