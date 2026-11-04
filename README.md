@@ -105,7 +105,7 @@ On macOS use `Cmd` instead of `Ctrl`.
 
 Windows releases are going to be signed through [SignPath](https://signpath.io): free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). The application is pending; until it is approved, the installers are not signed.
 
-- **What is signed:** only the Windows installers and executables built from this repository by the [Release workflow](.github/workflows/release.yml) on GitHub Actions, from a version tag. Nothing built on a personal machine is ever signed.
+- **What is signed:** only the Windows installers and executables built from this repository by the [Release workflow](.github/workflows/release.yml) on GitHub Actions, from the `main` branch, tagged with its version when the release is published. Nothing built on a personal machine is ever signed.
 - **Committers and reviewers:** [Galderolo](https://github.com/Galderolo)
 - **Approvers** (every signing request is approved by hand): [Galderolo](https://github.com/Galderolo)
 - **Privacy:** see the [privacy policy](#privacy-policy) below.

@@ -1,4 +1,4 @@
-import { releasePageUrl, type UpdateMode, type UpdateState } from '../shared/updates'
+import { RELEASE_REPO, releaseDownloadUrl, releasePageUrl, type UpdateMode, type UpdateState } from '../shared/updates'
 
 /** The parts of electron-updater's `autoUpdater` used here (a fake in tests). */
 export interface UpdaterLike {
@@ -9,6 +9,7 @@ export interface UpdaterLike {
   downloadUpdate(): Promise<unknown>
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void
   on(event: string, listener: (...args: never[]) => void): unknown
+  setFeedURL(options: Record<string, unknown>): void
 }
 
 /**
@@ -21,6 +22,8 @@ export function createUpdater(opts: {
   mode: UpdateMode
   broadcast: (state: UpdateState) => void
   openExternal: (url: string) => void
+  /** The tag of the newest published release (null: none found). */
+  locate?: () => Promise<string | null>
 }) {
   const { updater, mode } = opts
   let state: UpdateState = { mode, status: 'idle' }
@@ -38,7 +41,10 @@ export function createUpdater(opts: {
     updater.autoDownload = false
     updater.autoInstallOnAppQuit = mode === 'install'
     updater.allowPrerelease = true
-    updater.on('checking-for-update', () => set({ status: 'checking', error: undefined }))
+    // Looking again leaves an update already found on show, whatever this check runs into.
+    updater.on('checking-for-update', () =>
+      set(state.status === 'available' ? { error: undefined } : { status: 'checking', error: undefined })
+    )
     updater.on('update-available', (info: { version: string }) => set({ status: 'available', version: info.version }))
     updater.on('update-not-available', () => set({ status: 'none' }))
     updater.on('download-progress', (p: { percent: number }) =>
@@ -58,11 +64,27 @@ export function createUpdater(opts: {
     })
   }
 
+  /**
+   * electron-updater's GitHub feed takes the newest tag, which is pushed (or created) before its release is
+   * published: until then it finds no update file and newer releases already published go unseen. So the
+   * check is pointed at the newest published release; when that cannot be looked up, GitHub's feed decides.
+   */
+  const pointAtNewestPublished = async () => {
+    const tag = opts.locate ? await opts.locate().catch(() => null) : null
+    updater.setFeedURL(
+      tag
+        ? // GitHub's downloads do not take several ranges in one request (its own provider says so too).
+          { provider: 'generic', url: releaseDownloadUrl(tag), useMultipleRangeRequest: false }
+        : { provider: 'github', ...RELEASE_REPO }
+    )
+  }
+
   return {
     state: () => state,
     async check(): Promise<UpdateState> {
       // An update on its way or ready to install stays as it is.
       if (mode === 'off' || state.status === 'downloading' || state.status === 'ready') return state
+      await pointAtNewestPublished()
       try {
         // electron-updater answers null, with no events, when it has no updater for this install.
         if ((await updater.checkForUpdates()) === null) set({ status: 'unsupported' })

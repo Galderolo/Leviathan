@@ -1,6 +1,15 @@
-import { app, shell } from 'electron'
+import { app, net, shell } from 'electron'
 import electronUpdater from 'electron-updater'
-import { RELEASE_REPO, updateCheckDue, updateMode, type UpdateState } from '../shared/updates'
+import {
+  feedTags,
+  newestPublished,
+  RELEASES_FEED_URL,
+  releaseDownloadUrl,
+  updateCheckDue,
+  updateFileName,
+  updateMode,
+  type UpdateState
+} from '../shared/updates'
 import { loadSettings } from './settings'
 import { createUpdater, type UpdaterLike } from './updater'
 
@@ -16,25 +25,38 @@ const idle: UpdaterLike = {
   checkForUpdates: async () => null,
   downloadUpdate: async () => null,
   quitAndInstall: () => {},
-  on: () => idle
+  on: () => idle,
+  setFeedURL: () => {}
 }
 
 let updates: ReturnType<typeof createUpdater> | null = null
+
+/** The newest release whose update file for this platform can be downloaded (a draft's cannot). */
+async function locateRelease(): Promise<string | null> {
+  const feed = await net.fetch(RELEASES_FEED_URL, { headers: { Accept: 'application/atom+xml' } })
+  if (!feed.ok) throw new Error(`GitHub answered ${feed.status}`)
+  const file = updateFileName(process.platform)
+  return newestPublished(feedTags(await feed.text()), async (tag) => {
+    const res = await net.fetch(`${releaseDownloadUrl(tag)}/${file}`, { method: 'HEAD' })
+    if (res.status === 404) return false
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}`)
+    return true
+  })
+}
 
 /** Sets up update checks against the GitHub releases: shortly after start, every half hour, and on coming back to the app. */
 export function initUpdates(broadcast: (state: UpdateState) => void): void {
   const mode = updateMode(process.platform, process.env, app.isPackaged)
   let updater = idle
-  if (mode !== 'off') {
-    // Said here rather than read from app-update.yml, which portable and unpacked builds lack.
-    electronUpdater.autoUpdater.setFeedURL({ provider: 'github', ...RELEASE_REPO })
-    updater = electronUpdater.autoUpdater as unknown as UpdaterLike
-  }
+  // The feed is said before each check (see createUpdater) rather than read from app-update.yml, which
+  // portable and unpacked builds lack.
+  if (mode !== 'off') updater = electronUpdater.autoUpdater as unknown as UpdaterLike
   updates = createUpdater({
     updater,
     mode,
     broadcast,
-    openExternal: (url) => void shell.openExternal(url)
+    openExternal: (url) => void shell.openExternal(url),
+    locate: locateRelease
   })
   if (mode === 'off') return
   let last: number | null = null
