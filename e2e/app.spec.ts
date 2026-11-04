@@ -2018,6 +2018,62 @@ test('generates an SSH key protected by its passphrase', async () => {
   await expect(page.locator('.toast.error')).toHaveCount(0)
 })
 
+test('signs commits with an SSH key picked in the settings, shows them verified, and commits unsigned when asked', async () => {
+  // The app's home, so the key goes nowhere near the real ~/.ssh.
+  const home = join(box.root, 'home')
+  mkdirSync(join(home, '.ssh'), { recursive: true })
+  box.env.HOME = home
+  box.env.USERPROFILE = home
+  const key = join(home, '.ssh', 'id_sign')
+  execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'e2e@example.invalid', '-f', key])
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  box.write(repo, { 'a.txt': 'two\n' })
+  await open(repo)
+
+  await page.locator('.graph-row.row-wip').click()
+  // Not signed: the commit box says so, and leads to where it is set.
+  const signing = page.locator('.commit-signing')
+  await expect(signing).toHaveAttribute('title', /not signed/)
+  await signing.click()
+  const choice = page.locator('.settings-body:not([hidden]) .field', { hasText: 'Sign commits' }).locator('select')
+  await expect(choice.locator('option', { hasText: 'id_sign.pub' })).toHaveCount(1)
+  await choice.selectOption({ label: 'SSH key id_sign.pub — e2e@example.invalid' })
+  await expect.poll(() => box.git(repo, 'config', '--local', '--default', '', '--get', 'commit.gpgsign')).toBe('true')
+  await page.keyboard.press('Escape')
+  await expect(signing).toHaveAttribute('title', /signed with SSH key id_sign\.pub/)
+
+  await page.getByRole('button', { name: 'Stage all changes' }).click()
+  await page.locator('.summary-input').fill('Signed change')
+  await page.locator('.btn-commit').click()
+  await expect(commitRows()).toHaveCount(2)
+  expect(box.git(repo, 'cat-file', 'commit', 'HEAD')).toContain('BEGIN SSH SIGNATURE')
+
+  const badge = page.locator('.commit-signature')
+  await commitRows().first().click()
+  await expect(badge).toContainText('Verified')
+  await expect(badge).toContainText('your key id_sign.pub')
+  // The first commit is not signed.
+  await commitRows().nth(1).click()
+  await expect(page.locator('.commit-subject')).toHaveText('first')
+  await expect(badge).toHaveCount(0)
+
+  // The key is gone: the commit cannot be signed, and goes in unsigned when asked.
+  rmSync(key)
+  rmSync(`${key}.pub`)
+  box.write(repo, { 'a.txt': 'three\n' })
+  await page.locator('.graph-row.row-wip').click()
+  await page.getByRole('button', { name: 'Stage all changes' }).click()
+  await page.locator('.summary-input').fill('Unsigned change')
+  await page.locator('.btn-commit').click()
+  const modal = page.locator('.modal')
+  await expect(modal).toContainText('The commit could not be signed')
+  await modal.getByRole('button', { name: 'Commit without signing' }).click()
+  await expect(commitRows()).toHaveCount(3)
+  expect(box.git(repo, 'log', '-1', '--format=%s')).toBe('Unsigned change')
+  expect(box.git(repo, 'cat-file', 'commit', 'HEAD')).not.toContain('SIGNATURE')
+  await expect(page.locator('.toast.error')).toHaveCount(0)
+})
+
 test('asks once to install git-lfs for a repository that uses it, and offers it in the LFS section', async () => {
   // git for Windows ships git-lfs next to git: the app is told to act as if it were missing.
   box.env.LEVIATHAN_E2E_NO_GIT_LFS = '1'

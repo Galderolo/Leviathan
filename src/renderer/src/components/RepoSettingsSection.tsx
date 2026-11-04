@@ -7,6 +7,7 @@ import { useT } from '../i18n'
 import { useActiveTab, useStore } from '../store'
 import { basename } from '../utils'
 import { CommandChoice, GENERAL, commandLabel } from './ExternalToolsSettings'
+import { SigningChoice } from './SigningSettings'
 
 const FETCH_MINUTES = [0, 1, 5, 10, 30]
 const PULL_MODES: PullMode[] = ['ff', 'ff-only', 'rebase']
@@ -156,6 +157,7 @@ function RepoSettingsOf({ path }: { path: string }) {
         ]}
         save={(v) => save('diffTool', v)}
       />
+      <SigningChoice repo={path} />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import type { Settings, ThemeSetting } from '../../../shared/types'
 import { AccountsSection } from './AccountsSection'
 import { ExternalToolsSettings } from './ExternalToolsSettings'
 import { RepoSettingsSection } from './RepoSettingsSection'
+import { SigningChoice } from './SigningSettings'
 import { SshKeysSection } from './SshKeysSection'
 import { UpdateSettings } from './UpdateNotice'
 
@@ -174,6 +175,7 @@ function GeneralSettings() {
         </label>
         <div className="dim small">{t('settings.avatarsHint')}</div>
       </div>
+      <SigningChoice repo={null} />
     </>
   )
 }

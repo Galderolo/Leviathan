@@ -1,8 +1,19 @@
 import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { AlertTriangle, ChevronDown, Copy, Lock, PencilLine } from 'lucide-react'
+import {
+  AlertTriangle,
+  ChevronDown,
+  Copy,
+  Lock,
+  PencilLine,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldX
+} from 'lucide-react'
 import { lfsPatternFor, type LfsLock } from '../../../shared/lfs'
 import { canInstall } from '../../../shared/lfsInstall'
+import type { CommitSignature, SignatureFormat, SignatureStatus } from '../../../shared/signing'
 import type { DiffSource, FileChange } from '../../../shared/types'
 import {
   abortOperation,
@@ -18,6 +29,7 @@ import {
   saveSettingFor,
   openDiff,
   openExternal,
+  openSigningSettings,
   popStash,
   selectCommit,
   selectWip,
@@ -39,15 +51,16 @@ import {
   toggleAll,
   type FileSelection
 } from '../fileSelection'
-import { useT } from '../i18n'
+import { useT, type TKey } from '../i18n'
 import { formatSize, lockFor, lockedByOthers } from '../lfsView'
 import { pushAfterCommitTarget } from '../pushTarget'
 import { fileMenu, filesMenu, identityMenu } from '../menus'
 import { fileKey, nextAfter, neighbour } from '../shortcuts'
 import { getRepo, useRepo, useRepoSetting, useStore, type RepoView } from '../store'
 import { copyText, openMenu } from '../ui'
-import { cx, formatDate, shortHash, splitPath } from '../utils'
+import { basename, cx, formatDate, shortHash, splitPath } from '../utils'
 import { Avatar, LockIcon, StatusBadge } from './common'
+import { signingLabel } from './SigningSettings'
 import { FILE_ROW_HEIGHT, VirtualRows, revealRow } from './VirtualRows'
 
 export function RightPanel({ path }: { path: string }) {
@@ -590,7 +603,10 @@ function CommitBox({ path }: { path: string }) {
           {t('wip.amend')}
         </label>
       </div>
-      <CommitIdentity path={path} view={view} />
+      <div className="commit-identity-row">
+        <CommitIdentity path={path} view={view} />
+        <SigningIndicator view={view} />
+      </div>
       <div className="summary-wrap">
         <input
           className="summary-input"
@@ -661,6 +677,106 @@ function CommitIdentity({ path, view }: { path: string; view: RepoView }) {
       </span>
       <ChevronDown size={12} />
     </button>
+  )
+}
+
+/** Whether the commit will be signed, and with which key; a click opens the settings where that is set. */
+function SigningIndicator({ view }: { view: RepoView }) {
+  const t = useT()
+  const signing = view.signing?.effective
+  if (!signing) return null
+  const title = signing.sign ? t('signing.on', { key: signingLabel(t, signing) }) : t('signing.off')
+  return (
+    <button
+      type="button"
+      className={cx('icon-btn small commit-signing', signing.sign && 'on')}
+      title={title}
+      aria-label={title}
+      onClick={openSigningSettings}
+    >
+      {signing.sign ? <ShieldCheck size={14} /> : <Shield size={14} />}
+    </button>
+  )
+}
+
+const SIGNATURE_LABEL: Record<SignatureStatus, TKey> = {
+  good: 'signature.good',
+  valid: 'signature.valid',
+  expired: 'signature.expired',
+  revoked: 'signature.revoked',
+  bad: 'signature.bad',
+  unchecked: 'signature.unchecked'
+}
+const FORMAT_NAME: Record<SignatureFormat, string> = { openpgp: 'GPG', ssh: 'SSH', x509: 'X.509' }
+const CHECKER: Record<SignatureFormat, string> = { openpgp: 'gpg', ssh: 'ssh-keygen', x509: 'gpgsm' }
+
+/** Why a signature reads as it does. */
+function signatureDetail(t: ReturnType<typeof useT>, sig: CommitSignature): string {
+  const vars = {
+    format: FORMAT_NAME[sig.format],
+    key: sig.key || '?',
+    signer: sig.signer || '?',
+    file: sig.ownKey ? basename(sig.ownKey) : '',
+    program: CHECKER[sig.format]
+  }
+  if (sig.ownKey) return t('signature.ownDetail', vars)
+  switch (sig.status) {
+    case 'good':
+      return t('signature.goodDetail', vars)
+    case 'valid':
+      return t(sig.format === 'ssh' ? 'signature.validSsh' : 'signature.validGpg', vars)
+    case 'expired':
+      return t('signature.expiredDetail', vars)
+    case 'revoked':
+      return t('signature.revokedDetail', vars)
+    case 'bad':
+      return t('signature.badDetail', vars)
+    default:
+      return t('signature.uncheckedDetail', vars)
+  }
+}
+
+/** A key's fingerprint cut to what tells it apart at a glance. */
+function shortKey(key: string): string {
+  if (key.startsWith('SHA256:')) return `${key.slice(0, 15)}…`
+  return key.length > 16 ? key.slice(-16) : key
+}
+
+/** A signed commit's signature, as checked here: verified, valid by a key nothing vouches for, bad… */
+function SignatureLine({ path, hash }: { path: string; hash: string }) {
+  const t = useT()
+  const [sig, setSig] = useState<CommitSignature | null>(null)
+  useEffect(() => {
+    let live = true
+    window.leviathan.getCommitSignature(path, hash).then(
+      (s) => live && setSig(s),
+      () => live && setSig(null)
+    )
+    return () => {
+      live = false
+    }
+  }, [path, hash])
+  if (!sig) return null
+  // A valid signature by one of the user's own keys is theirs, allowed signers file or not.
+  const verified = sig.status === 'good' || (sig.status === 'valid' && !!sig.ownKey)
+  const tone = verified
+    ? 'good'
+    : sig.status === 'bad' || sig.status === 'revoked'
+      ? 'bad'
+      : sig.status === 'expired'
+        ? 'warn'
+        : 'plain'
+  const Icon = tone === 'good' ? ShieldCheck : tone === 'bad' ? ShieldX : tone === 'warn' ? ShieldAlert : Shield
+  const who = sig.ownKey ? t('signature.yourKey', { file: basename(sig.ownKey) }) : sig.signer || shortKey(sig.key)
+  return (
+    <div className={cx('commit-signature small', tone)} title={signatureDetail(t, sig)}>
+      <Icon size={14} />
+      <span className="commit-signature-label">{t(verified ? 'signature.good' : SIGNATURE_LABEL[sig.status])}</span>
+      <span className="dim commit-signature-who">
+        {FORMAT_NAME[sig.format]}
+        {who && ` · ${who}`}
+      </span>
+    </div>
   )
 }
 
@@ -841,6 +957,7 @@ function CommitPanel({ path, view }: { path: string; view: RepoView }) {
           {(c.committerName !== c.authorName || c.committerEmail !== c.authorEmail) && (
             <div className="dim small">{t('commit.committedBy', { name: c.committerName })}</div>
           )}
+          {!stash && <SignatureLine key={c.hash} path={path} hash={c.hash} />}
           {c.parents.length > 0 && (
             <div className="commit-parents small">
               <span className="dim">{t('commit.parents')}:</span>

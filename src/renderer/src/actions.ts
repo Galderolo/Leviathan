@@ -30,6 +30,7 @@ import type { RebaseItem } from '../../shared/rebase'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
+import { signingFailed, type SigningSetting } from '../../shared/signing'
 import { isFetchDue } from './autofetch'
 import { coalesce } from './coalesce'
 import { followDiff, sameDiff } from './diffFollow'
@@ -357,6 +358,33 @@ async function loadAccountAndIdentity(path: string): Promise<void> {
   }
 }
 
+/** Whether a repository's commits are signed, and with which key: the commit box says so. */
+export async function loadSigning(path: string): Promise<void> {
+  const signing = await api.getSigning(path).catch(() => null)
+  patchRepo(path, { signing })
+}
+
+/**
+ * Makes a repository's commits (`path`) or all repositories' (null) signed or not; `setting` null leaves the
+ * repository to the global config.
+ */
+export async function chooseSigning(path: string | null, setting: SigningSetting | null): Promise<boolean> {
+  try {
+    await api.setSigning(path, setting)
+  } catch (err) {
+    toast('error', errorMessage(err))
+    return false
+  }
+  // The global setting applies to every open repository without one of its own.
+  for (const view of Object.values(useStore.getState().repos)) void loadSigning(view.path)
+  return true
+}
+
+/** Settings → Repository, where commit signing is set. */
+export function openSigningSettings(): void {
+  useStore.setState({ settingsOpen: true, settingsSection: 'repo' })
+}
+
 /** A commit box with nothing typed in it: empty, or the template it was given. */
 function draftUntouched(view: RepoView): boolean {
   const { summary, body } = view.draft
@@ -415,6 +443,7 @@ async function explainAuth(path: string, message: string): Promise<void> {
 
 export async function loadRepoAccount(path: string): Promise<void> {
   void loadCommitTemplate(path)
+  void loadSigning(path)
   await loadAccountAndIdentity(path)
   void loadPullRequests(path)
   // A repository with no identity of its own takes the one of the account that owns it or may push to it.
@@ -2098,15 +2127,38 @@ export async function setAmend(path: string, amend: boolean): Promise<void> {
   }
 }
 
-export async function commit(path: string): Promise<boolean> {
+/** Commits what is staged with the message typed; `noSign`: not signed this once (signing it failed). */
+export async function commit(path: string, noSign = false): Promise<boolean> {
   const view = getRepo(path)
   if (!view) return false
   const { summary, body, amend } = view.draft
   const message = body.trim() ? `${summary.trim()}\n\n${body.trim()}\n` : `${summary.trim()}\n`
   const rewritesPushed = !!view.state && amendsPushedCommit(amend, view.state)
-  const ok = await runOp(path, () => api.commit(path, message, amend), {
-    undo: { label: t(amend ? 'undo.amend' : 'undo.commit', { name: summary.trim() }), mode: 'soft' }
+  const signing = { failed: null as string | null }
+  const ok = await runOp(path, () => api.commit(path, message, amend, noSign), {
+    undo: { label: t(amend ? 'undo.amend' : 'undo.commit', { name: summary.trim() }), mode: 'soft' },
+    quiet: (err) => {
+      const text = errorMessage(err)
+      if (noSign || !signingFailed(text) || getRepo(path)?.signing?.effective.sign === false) return false
+      signing.failed = text
+      return true
+    }
   })
+  if (signing.failed !== null) {
+    // Nothing was committed: the key could not sign (missing, locked, gpg not set up).
+    const choice = await choiceDialog({
+      title: t('signing.failedTitle'),
+      message: t('signing.failed'),
+      note: signing.failed,
+      choices: [
+        { key: 'unsigned', label: t('signing.commitUnsigned'), primary: true },
+        { key: 'settings', label: t('signing.openSettings') }
+      ]
+    })
+    if (choice === 'unsigned') return commit(path, true)
+    if (choice === 'settings') openSigningSettings()
+    return false
+  }
   if (ok) {
     // The next commit starts from the template again.
     const template = getRepo(path)?.template

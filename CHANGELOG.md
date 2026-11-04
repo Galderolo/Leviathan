@@ -4,8 +4,13 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Signed commits**: a signed commit shows its signature under its author, checked here: *Verified* (by a key trusted here, or one of your own SSH keys), *Signed* (valid, by a key nothing here vouches for), *Bad signature*, expired, revoked, or not checked (the key or gpg missing); the tooltip says why. Settings → General (every repository, git's global config) and Settings → This repository pick whether commits are signed and with which key, one of your SSH keys in ~/.ssh or a secret GPG key. The commit box shows whether the commit will be signed (a click leads to the setting), and when signing fails nothing is committed: the app offers to commit without signing this once.
+
 ### Fixed
 
+- **A key's passphrase is asked for with Windows' own OpenSSH too** (signing a commit with an SSH key, or ssh itself): it could not run the app's prompt.
 - **The interactive rebase of a range with merges opens with uncommitted changes too**: git's list of it is made in a throwaway clone with nothing checked out, so the changes no longer stop the dialog, and starting the rebase offers to set them aside as any rebase does.
 - **Compare with my changes lists the new files git does not track yet**, with their contents as added.
 

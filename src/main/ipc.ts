@@ -13,6 +13,7 @@ import {
   type LeviathanInvokeApi,
   type IpcResult
 } from '../shared/api'
+import type { SigningSetting } from '../shared/signing'
 import * as accounts from './accounts'
 import { AvatarCache } from './avatars'
 import { cloneWithAccount } from './clone'
@@ -21,6 +22,7 @@ import { installCommandLine, takeLaunchFolders } from './cli'
 import * as lfs from './git/lfs'
 import * as lfsInstall from './lfsInstall'
 import * as repo from './git/repository'
+import * as signing from './git/signing'
 import * as submodules from './git/submodules'
 import * as worktrees from './git/worktrees'
 import { LatestRun } from './latestRun'
@@ -68,6 +70,15 @@ function identityChoice(choice: unknown): Parameters<typeof accounts.setCommitId
   if (typeof c.account === 'string') return { account: c.account }
   if (typeof c.name === 'string' && typeof c.email === 'string') return { name: c.name, email: c.email }
   throw new Error('Invalid commit identity')
+}
+
+/** A signing setting from the window, checked; null leaves a repository to the global config. */
+function signingSetting(value: unknown): SigningSetting | null {
+  if (value === null) return null
+  const v = (value ?? {}) as Record<string, unknown>
+  const format = v.format === 'ssh' || v.format === 'x509' || v.format === 'openpgp' ? v.format : null
+  if (typeof v.sign !== 'boolean' || !format || typeof v.key !== 'string') throw new Error('Invalid signing setting')
+  return { sign: v.sign, format, key: v.key }
 }
 
 const handlers: LeviathanInvokeApi = {
@@ -133,8 +144,12 @@ const handlers: LeviathanInvokeApi = {
   restoreFromHead: (path, paths, untracked) => repo.restoreFromHead(path, paths, untracked),
   discardAll: (path) => repo.discardAll(path),
   applyPatch: (path, patch, opts) => repo.applyPatch(path, patch, opts),
-  commit: (path, message, amend) => repo.commit(path, message, amend),
+  commit: (path, message, amend, noSign) => repo.commit(path, message, amend, noSign === true),
   headMessage: (path) => repo.headMessage(path),
+  getCommitSignature: (path, hash) => signing.readSignature(path, hash),
+  getSigning: (path) => signing.readSigning(typeof path === 'string' ? path : null),
+  setSigning: (path, setting) => signing.writeSigning(typeof path === 'string' ? path : null, signingSetting(setting)),
+  listGpgKeys: (path) => signing.listGpgKeys(typeof path === 'string' ? path : null),
   ignore: (path, pattern) => repo.ignore(path, pattern),
 
   checkout: (path, ref) => repo.checkout(path, ref),
