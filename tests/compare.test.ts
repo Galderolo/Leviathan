@@ -62,6 +62,22 @@ describe('comparing two commits, or a commit with the working tree', () => {
     expect(diff.hunks[0].lines.map((l) => `${l.type}:${l.text}`)).toEqual(['del:one', 'add:three'])
   })
 
+  it('lists the new files not tracked yet when compared with the working tree, and shows them', async () => {
+    const first = await commitFiles({ 'a.txt': 'one\n' }, 'first')
+    writeFileSync(join(dir, 'new.txt'), 'brand new\n')
+    writeFileSync(join(dir, 'a.txt'), 'two\n')
+
+    expect(await repo.compareFiles(dir, first, null)).toEqual([
+      { path: 'a.txt', status: 'M' },
+      { path: 'new.txt', status: '?' }
+    ])
+    const diff = await repo.getDiff(dir, { kind: 'tree', base: first, path: 'new.txt', untracked: true })
+    expect(diff.hunks[0].lines.map((l) => `${l.type}:${l.text}`)).toEqual(['add:brand new'])
+    // Between two commits, nothing untracked comes in.
+    const second = await commitFiles({ 'a.txt': 'two\n' }, 'second')
+    expect(await repo.compareFiles(dir, first, second)).toEqual([{ path: 'a.txt', status: 'M' }])
+  })
+
   it('shows an image compared with the working tree as the commit has it and as it is now', async () => {
     const png = (n: number) => Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, n])
     writeFileSync(join(dir, 'shot.png'), png(1))

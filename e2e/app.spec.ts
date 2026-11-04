@@ -1510,7 +1510,7 @@ test('compares two commits, a branch with the current one, and a commit with my 
   box.git(repo, 'add', '.')
   box.git(repo, 'commit', '-qm', 'third')
   box.git(repo, 'branch', 'other', 'HEAD~1')
-  box.write(repo, { 'a.txt': 'mine\n' })
+  box.write(repo, { 'a.txt': 'mine\n', 'd.txt': 'new here\n' })
   await open(repo)
   const view = page.locator('.compare-view')
   const files = view.locator('.history-list .file-row .file-path')
@@ -1537,12 +1537,14 @@ test('compares two commits, a branch with the current one, and a commit with my 
   await expect(files).toHaveText(['c.txt'])
   await page.keyboard.press('Escape')
 
-  // A commit with the files as they are now, uncommitted changes included.
+  // A commit with the files as they are now, uncommitted changes and new files included.
   await commitRows().filter({ hasText: 'second' }).click({ button: 'right' })
   await menuItem('Compare with my changes (working tree)').click()
   await expect(view.locator('.diff-title')).toContainText('my changes (working tree)')
-  await expect(files).toHaveText(['a.txt', 'c.txt'])
+  await expect(files).toHaveText(['a.txt', 'c.txt', 'd.txt'])
   await expect(view.locator('.diff-line.add')).toHaveText(/mine/)
+  await files.filter({ hasText: 'd.txt' }).click()
+  await expect(view.locator('.diff-line.add')).toHaveText(/new here/)
 })
 
 test('says that a commit only renamed a file', async () => {

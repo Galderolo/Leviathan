@@ -60,7 +60,13 @@ function Comparison({
     const oldPath = picked.status === 'R' ? picked.origPath : undefined
     return to
       ? { kind: 'commit', hash: to.hash, parent: from.hash, path: picked.path, ...(oldPath ? { oldPath } : {}) }
-      : { kind: 'tree', base: from.hash, path: picked.path, ...(oldPath ? { oldPath } : {}) }
+      : {
+          kind: 'tree',
+          base: from.hash,
+          path: picked.path,
+          ...(oldPath ? { oldPath } : {}),
+          ...(picked.status === '?' ? { untracked: true } : {})
+        }
   }, [picked, from.hash, to])
 
   useEffect(() => {

@@ -4,6 +4,11 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Fixed
+
+- **The interactive rebase of a range with merges opens with uncommitted changes too**: git's list of it is made in a throwaway clone with nothing checked out, so the changes no longer stop the dialog, and starting the rebase offers to set them aside as any rebase does.
+- **Compare with my changes lists the new files git does not track yet**, with their contents as added.
+
 ## [0.22.1] - 2026-11-04
 
 ### Fixed
