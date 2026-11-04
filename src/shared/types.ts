@@ -1,3 +1,5 @@
+import type { BisectState } from './bisect'
+
 export interface Commit {
   hash: string
   parents: string[]
@@ -89,6 +91,8 @@ export interface RepoState {
   operation: RepoOperation
   /** The commit an interactive rebase stopped at for the user to edit (`edit`), or null. */
   editing: string | null
+  /** The bisect under way, or null. */
+  bisect: BisectState | null
   /** Commits of the checked-out branch that are not pushed yet, newest first. */
   unpushed: string[]
   /** Changed files (staged, unstaged or conflicted) that go through Git LFS. */

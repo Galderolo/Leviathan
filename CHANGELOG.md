@@ -12,6 +12,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 - **Reflog: get lost commits back**: the repository menu → *Reflog* lists every move of HEAD, newest first (commits, amends, checkouts, resets, rebases, merges), and marks the commits that no branch, tag or remote branch has any more — left behind by a reset, an amend, a rebase or a deleted branch, even outside the app. Picking one shows it on the right, files and diffs included; *Create branch* keeps it. Its menu is a commit's (check out, cherry-pick, compare…), double-click shows it in the graph, and Esc closes it.
 
+- **Bisect: find the commit that broke something**: a commit's menu → *Bisect: this one works, {branch} has the problem…* starts `git bisect` between that commit and the one checked out. A bar under the toolbar shows the commit to test, checked out, and roughly how many steps are left, with *Good*, *Bad* and *Skip* (any commit's menu marks that commit instead); the graph marks the commits good, bad, skipped and the one to test. Once found, the bar names the first bad commit, selected in the graph, and *Finish* goes back to the branch it started from (*Stop bisecting* does too, at any time). Uncommitted changes in the way of the next checkout can be stashed and the bisect goes on. A bisect started in a terminal shows the same, with its own words for good and bad.
+
 ### Fixed
 
 - **A key's passphrase is asked for with Windows' own OpenSSH too** (signing a commit with an SSH key, or ssh itself): it could not run the app's prompt.

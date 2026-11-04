@@ -19,6 +19,7 @@ import type {
   Submodule
 } from '../../shared/types'
 import { authProblem } from '../../shared/authErrors'
+import type { BisectMark } from '../../shared/bisect'
 import type { ChangesBlock } from '../../shared/localChanges'
 import type { LfsLock, LfsPattern } from '../../shared/lfs'
 import { worktreeFolder, type Worktree } from '../../shared/worktrees'
@@ -1736,6 +1737,78 @@ export async function openInteractiveRebase(path: string, base: string): Promise
   } catch (err) {
     toast('error', errorMessage(err))
   }
+}
+
+/**
+ * Runs a bisect step (start, mark, finish), which checks out another commit. With uncommitted changes in the way,
+ * git checked out nothing: it offers to stash them (they wait in the stash) and run the step again.
+ */
+async function runBisect(path: string, step: () => Promise<ChangesBlock | null>): Promise<boolean> {
+  const first: { block: ChangesBlock | null } = { block: null }
+  if (!(await runOp(path, async () => void (first.block = await step())))) return false
+  const block = first.block
+  if (!block) return true
+  const list = [...block.changed, ...block.untracked, ...block.folders.map((f) => f + '/')]
+  const choice = await choiceDialog({
+    title: t('dlg.checkoutBlockedTitle'),
+    message: t('bisect.blocked', { count: list.length }),
+    list: list.length ? list : undefined,
+    choices: [{ key: 'stash', label: t('bisect.stashAndGoOn'), primary: true }]
+  })
+  if (choice !== 'stash') return false
+  return runOp(
+    path,
+    async () => {
+      await api.stashSave(path, t('bisect.stashMessage'))
+      const still = await step()
+      if (still) throw new Error(still.message)
+    },
+    { success: t('bisect.stashed') }
+  )
+}
+
+/** After a bisect step: the commit to test now, or the first bad one once found, selected and in sight. */
+function showBisect(path: string): void {
+  const state = getRepo(path)?.state
+  const bisect = state?.bisect
+  if (!bisect) return
+  const hash = bisect.firstBad ?? state.head.hash
+  if (bisect.firstBad) toast('success', t('bisect.foundToast', { hash: bisect.firstBad.slice(0, 7) }))
+  if (hash) void selectCommit(path, hash, true)
+}
+
+/** Starts a bisect: commit `good` does not have the problem, the one checked out does. */
+export async function startBisect(path: string, good: string): Promise<void> {
+  const head = getRepo(path)?.state?.head
+  const ok = await confirmDialog({
+    title: t('bisect.startTitle'),
+    message: t('bisect.startMessage', { good: good.slice(0, 7), bad: head?.branch ?? 'HEAD' }),
+    confirmText: t('bisect.start')
+  })
+  if (!ok) return
+  if (await runBisect(path, () => api.bisectStart(path, 'HEAD', good))) showBisect(path)
+}
+
+/** Marks `hash` (the commit checked out when null) good, bad or skipped; git checks out the next one to test. */
+export async function markBisect(path: string, mark: BisectMark, hash: string | null = null): Promise<void> {
+  if (await runBisect(path, () => api.bisectMark(path, mark, hash))) showBisect(path)
+}
+
+/** Ends the bisect, back where it started; asks first while it has not found the first bad commit. */
+export async function finishBisect(path: string): Promise<void> {
+  const bisect = getRepo(path)?.state?.bisect
+  if (!bisect) return
+  if (!bisect.firstBad && !bisect.suspects) {
+    const ok = await confirmDialog({
+      title: t('bisect.stopTitle'),
+      message: t('bisect.stopMessage', {
+        start: /^[0-9a-f]{40,64}$/.test(bisect.start) ? bisect.start.slice(0, 7) : bisect.start
+      }),
+      confirmText: t('bisect.stop')
+    })
+    if (!ok) return
+  }
+  await runBisect(path, () => api.bisectReset(path))
 }
 
 export function closeInteractiveRebase(): void {

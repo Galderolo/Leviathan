@@ -25,6 +25,7 @@ import type {
   Submodule,
   WorkingFile
 } from './types'
+import type { BisectMark } from './bisect'
 import type { ChangesBlock } from './localChanges'
 import type { ImagePair } from './images'
 import type { Worktree } from './worktrees'
@@ -175,6 +176,12 @@ export interface LeviathanInvokeApi {
   cherryPick(repo: string, hashes: string | string[]): Promise<ChangesBlock | null>
   revert(repo: string, hashes: string | string[]): Promise<ChangesBlock | null>
   reset(repo: string, hash: string, mode: ResetMode): Promise<void>
+  /** Starts a bisect between `bad` and `good`; a block when changes are in the way of its first checkout. */
+  bisectStart(repo: string, bad: string, good: string): Promise<ChangesBlock | null>
+  /** Marks `hash` (the commit checked out when null) and moves on to the next one to test. */
+  bisectMark(repo: string, mark: BisectMark, hash: string | null): Promise<ChangesBlock | null>
+  /** Ends the bisect, back where it started. */
+  bisectReset(repo: string): Promise<ChangesBlock | null>
   abortOperation(repo: string): Promise<void>
   continueOperation(repo: string): Promise<void>
   createTag(repo: string, name: string, hash: string, message: string | null): Promise<void>
@@ -451,6 +458,9 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   cherryPick: true,
   revert: true,
   reset: true,
+  bisectStart: true,
+  bisectMark: true,
+  bisectReset: true,
   abortOperation: true,
   continueOperation: true,
   createTag: true,
