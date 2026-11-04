@@ -48,6 +48,14 @@ export interface CommitDraft {
   amend: boolean
 }
 
+/** A search in what commits change (`git log -S`): its text, and the commits found (null while it runs). */
+export interface ChangeSearch {
+  text: string
+  hashes: string[] | null
+  /** More commits than those found add or remove it. */
+  more: boolean
+}
+
 export interface RepoView {
   path: string
   state: RepoState | null
@@ -63,6 +71,10 @@ export interface RepoView {
   details: CommitDetails | null
   diff: DiffView | null
   filter: string
+  /** What the search box looks in: messages, authors and SHAs as typed, or what commits change (on Enter). */
+  searchMode: 'message' | 'changes'
+  /** The last search in what commits change; null when there is none. */
+  changeSearch: ChangeSearch | null
   draft: CommitDraft
   /** Incremented to ask the graph to scroll the selection into view. */
   scrollNonce: number
@@ -328,6 +340,8 @@ export function newRepoView(path: string, limit: number): RepoView {
     details: null,
     diff: null,
     filter: '',
+    searchMode: 'message',
+    changeSearch: null,
     draft: { summary: '', body: '', amend: false },
     scrollNonce: 0,
     applying: false,

@@ -213,6 +213,14 @@ export function CommitGraph({ path }: { path: string }) {
   }, [last, items.length, view?.hasMore, path])
 
   const filter = view?.filter ?? ''
+  // Searching in what commits change, the graph marks what the search of the text typed found (once it is done).
+  const inChanges = view?.searchMode === 'changes'
+  const changeSearch = view?.changeSearch
+  const changeMatches = useMemo(
+    () =>
+      inChanges && changeSearch?.hashes && changeSearch.text === filter.trim() ? new Set(changeSearch.hashes) : null,
+    [inChanges, changeSearch, filter]
+  )
   const commitsList = view?.commits
   const prList = view?.pullRequests
   const refList = view?.state?.refs
@@ -297,7 +305,10 @@ export function CommitGraph({ path }: { path: string }) {
         picked={picked.has(item.hash)}
         dimmed={
           item.kind === 'commit' &&
-          ((!!filter && !matchesFilter(item.commit, filter)) || (!!inBranch && !inBranch.has(item.hash)))
+          ((inChanges
+            ? !!changeMatches && !changeMatches.has(item.hash)
+            : !!filter && !matchesFilter(item.commit, filter)) ||
+            (!!inBranch && !inBranch.has(item.hash)))
         }
         draft={item.kind === 'wip' ? (view?.draft.summary ?? '') : ''}
         changeCount={item.kind === 'wip' ? changeCount : 0}

@@ -291,19 +291,13 @@ export interface LogScope {
   solo?: string | null
 }
 
-export async function getLog(
-  repo: string,
-  limit: number,
-  scope: LogScope = {}
-): Promise<{ commits: Commit[]; hasMore: boolean }> {
+/** What `git log` walks for the graph's `scope` (`input`: refs given on stdin); null when there is nothing to walk. */
+async function logRevs(repo: string, scope: LogScope): Promise<{ revs: string[]; input?: string } | null> {
   const isRef = (r: unknown): r is string => typeof r === 'string' && r.startsWith('refs/') && !/\s/.test(r)
   const hidden = new Set((scope.hidden ?? []).filter(isRef))
   const solo = isRef(scope.solo) && (await refValue(repo, scope.solo)) ? scope.solo : null
-  let revs: string[]
-  let input: string | undefined
-  if (solo) {
-    revs = [solo]
-  } else if (hidden.size) {
+  if (solo) return { revs: [solo] }
+  if (hidden.size) {
     // Every ref but the hidden ones, through stdin: there can be thousands.
     const all = (await run(repo, ['for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes', 'refs/tags']))
       .split('\n')
@@ -311,35 +305,72 @@ export async function getLog(
       .filter((r) => r && !hidden.has(r))
     const head = await currentHead(repo)
     if (head.hash && !(head.branch && hidden.has(`refs/heads/${head.branch}`))) all.push('HEAD')
-    if (!all.length) return { commits: [], hasMore: false }
-    revs = ['--stdin']
-    input = all.join('\n') + '\n'
-  } else {
-    // Decide what to log up front instead of parsing (localised) error messages:
-    // HEAD may be unborn (new repo, orphan branch) while other branches exist.
-    revs = ['--branches', '--remotes', '--tags']
-    if (await hasHead(repo)) revs.push('HEAD')
-    else {
-      const anyRef = await run(repo, [
-        'for-each-ref',
-        '--count=1',
-        '--format=%(refname)',
-        'refs/heads',
-        'refs/remotes',
-        'refs/tags'
-      ])
-      if (!anyRef.trim()) return { commits: [], hasMore: false }
-    }
+    if (!all.length) return null
+    return { revs: ['--stdin'], input: all.join('\n') + '\n' }
   }
+  // Decide what to log up front instead of parsing (localised) error messages:
+  // HEAD may be unborn (new repo, orphan branch) while other branches exist.
+  const revs = ['--branches', '--remotes', '--tags']
+  if (await hasHead(repo)) return { revs: [...revs, 'HEAD'] }
+  const anyRef = await run(repo, [
+    'for-each-ref',
+    '--count=1',
+    '--format=%(refname)',
+    'refs/heads',
+    'refs/remotes',
+    'refs/tags'
+  ])
+  return anyRef.trim() ? { revs } : null
+}
+
+export async function getLog(
+  repo: string,
+  limit: number,
+  scope: LogScope = {}
+): Promise<{ commits: Commit[]; hasMore: boolean }> {
+  const walk = await logRevs(repo, scope)
+  if (!walk) return { commits: [], hasMore: false }
   const out = await run(
     repo,
-    ['log', '--date-order', `--max-count=${limit + 1}`, `--format=${LOG_FORMAT}`, ...revs, '--'],
-    {
-      input
-    }
+    ['log', '--date-order', `--max-count=${limit + 1}`, `--format=${LOG_FORMAT}`, ...walk.revs, '--'],
+    { input: walk.input }
   )
   const commits = parseLog(out)
   return { commits: commits.slice(0, limit), hasMore: commits.length > limit }
+}
+
+/** Commits a search in what commits change returns at most. */
+export const CHANGE_SEARCH_MAX = 1000
+
+/**
+ * The commits of the graph's `scope` that add or remove `text` (`git log -S`, ignoring case), newest first, at most
+ * `CHANGE_SEARCH_MAX` (`more` when there are others). It reads every commit's diff: `signal` stops it.
+ */
+export async function searchChanges(
+  repo: string,
+  text: string,
+  scope: LogScope = {},
+  signal?: AbortSignal
+): Promise<{ hashes: string[]; more: boolean }> {
+  if (!text || /[\0\r\n]/.test(text)) throw new Error('Invalid search')
+  const walk = await logRevs(repo, scope)
+  if (!walk) return { hashes: [], more: false }
+  const out = await run(
+    repo,
+    [
+      'log',
+      '--date-order',
+      '-i',
+      `-S${text}`,
+      `--max-count=${CHANGE_SEARCH_MAX + 1}`,
+      '--format=%H',
+      ...walk.revs,
+      '--'
+    ],
+    { input: walk.input, signal }
+  )
+  const hashes = out.split('\n').filter(Boolean)
+  return { hashes: hashes.slice(0, CHANGE_SEARCH_MAX), more: hashes.length > CHANGE_SEARCH_MAX }
 }
 
 export async function getCommitDetails(repo: string, hash: string): Promise<CommitDetails> {

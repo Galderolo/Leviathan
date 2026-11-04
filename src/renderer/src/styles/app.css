@@ -3605,6 +3605,39 @@ img.avatar {
   background: var(--bg-2);
 }
 
+/* Searching in what commits change instead of their messages: a toggle at the end of the box. */
+.search-mode {
+  display: flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.search-mode:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+
+.search-mode.on {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.search-box.in-changes {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.search-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Resizable graph columns */
 .graph-header > div.resizable {
   position: relative;

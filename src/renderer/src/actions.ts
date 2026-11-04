@@ -1045,7 +1045,74 @@ export function closeDiff(path: string): void {
 }
 
 export function setFilter(path: string, filter: string): void {
+  // Cleared: a search in the changes under way is of no use any more.
+  if (!filter.trim() && getRepo(path)?.changeSearch) stopChangeSearch(path)
   patchRepo(path, { filter })
+}
+
+function stopChangeSearch(path: string): void {
+  void api.stopSearchChanges(path).catch(() => {})
+  patchRepo(path, { changeSearch: null })
+}
+
+/** Makes the search box look in messages, authors and SHAs, or in what commits change; a search under way stops. */
+export function setSearchMode(path: string, mode: RepoView['searchMode']): void {
+  stopChangeSearch(path)
+  patchRepo(path, { searchMode: mode })
+}
+
+/** The commits of the graph that add or remove the text in the search box (`git log -S`), for it to mark them. */
+export async function searchInChanges(path: string): Promise<string[] | null> {
+  const view = getRepo(path)
+  const text = view?.filter.trim()
+  if (!view || !text) return null
+  patchRepo(path, { changeSearch: { text, hashes: null, more: false } })
+  const current = () => {
+    const now = getRepo(path)?.changeSearch
+    return now?.text === text && now.hashes === null
+  }
+  try {
+    const { hashes, more } = await api.searchChanges(path, text, view.graphScope)
+    // Another search started meanwhile, or this one was put away.
+    if (!current()) return null
+    patchRepo(path, { changeSearch: { text, hashes, more } })
+    if (!hashes.length) toast('info', t('search.noneInChanges', { text }))
+    return hashes
+  } catch (err) {
+    if (!current()) return null
+    patchRepo(path, { changeSearch: null })
+    toast('error', errorMessage(err))
+    return null
+  }
+}
+
+/** Commits loaded at most to reach a commit found by a search: a few pages more. */
+const SEARCH_LOAD_PAGES = 5
+
+/**
+ * Selects the next (or previous) commit the search in the changes found, after the one selected, in the graph's
+ * order; one older than the commits loaded is loaded first, a few pages at most (it is selected anyway).
+ */
+export async function nextChangeMatch(path: string, hashes: string[], backwards: boolean): Promise<void> {
+  const view = getRepo(path)
+  if (!view || !hashes.length) return
+  // Where each commit is: in the graph's order, then those not loaded yet (older), newest first.
+  const index = new Map(view.commits.map((c, i) => [c.hash, i]))
+  const older = hashes.filter((h) => !index.has(h))
+  const rank = (hash: string) =>
+    index.get(hash) ?? (older.includes(hash) ? view.commits.length + older.indexOf(hash) : -1)
+  const order = [...hashes.filter((h) => index.has(h)).sort((a, b) => rank(a) - rank(b)), ...older]
+  const sel = view.selection
+  const from = sel && sel.kind !== 'wip' ? rank(sel.hash) : -1
+  const next = backwards
+    ? ([...order].reverse().find((h) => rank(h) < from) ?? order[order.length - 1])
+    : (order.find((h) => rank(h) > from) ?? order[0])
+  for (let page = 0; page < SEARCH_LOAD_PAGES; page++) {
+    const now = getRepo(path)
+    if (!now?.hasMore || now.commits.some((c) => c.hash === next)) break
+    await loadMore(path)
+  }
+  await selectCommit(path, next, true)
 }
 
 // ---------------------------------------------------------------------------

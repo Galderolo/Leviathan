@@ -43,6 +43,7 @@ function broadcast(channel: string, payload: unknown): void {
 
 let avatarCache: AvatarCache | null = null
 const fileViewRuns = new LatestRun()
+const changeSearchRuns = new LatestRun()
 const terminals = new Terminals({
   data: (id, data) => broadcast(IPC_TERMINAL_DATA, { id, data }),
   exit: (id, code) => broadcast(IPC_TERMINAL_EXIT, { id, code })
@@ -107,6 +108,9 @@ const handlers: LeviathanInvokeApi = {
 
   getState: (path) => repo.getState(path),
   getLog: (path, limit, scope) => repo.getLog(path, limit, scope),
+  searchChanges: (path, text, scope) =>
+    repo.searchChanges(path, String(text), scope ?? {}, changeSearchRuns.start(path)),
+  stopSearchChanges: async (path) => changeSearchRuns.stop(path),
   getCommitDetails: (path, hash) => repo.getCommitDetails(path, hash),
   getDiff: (path, source, fullFile) => repo.getDiff(path, source, fullFile === true),
   getImages: (path, source) => repo.getImages(path, source),
