@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-11-04, with 0.22.1 released (810 tests, 68 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-11-04, with 0.23.0 released (844 tests, 72 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -41,6 +41,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.21.0 | 2026-10-29 | Images in the diff (TGA too, Git LFS ones, conflicted ones, swipe and overlay), a dialog for uncommitted changes in the way of a checkout, pull, merge, rebase, cherry-pick or revert, interactive rebase with merges, deleting branches whose remote branch is gone, undo for discards and stashes, several consoles in the terminal, polish batches 5 and 6 |
 | 0.22.0 | 2026-11-03 | Conflict editor coloured as a diff (folds, marks by the scrollbar, Alt+↑/↓), compare commits / branches / a commit with my changes, squash merge, several commits cherry-picked or reverted at once, worktrees, the local-changes dialog for the interactive rebase and Checkout and merge, Push right after opening asks where to publish |
 | 0.22.1 | 2026-11-04 | A token the server refused is explained, with *Sign in again*; a stored token that cannot be read says why |
+| 0.23.0 | 2026-11-04 | Signed commits (shown verified or not, signing set per repository or for all), search in the changes (`git log -S`), reflog to get lost commits back, guided bisect; Windows OpenSSH asks for passphrases, interactive rebase with merges opens with uncommitted changes, compare with my changes lists untracked files |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
@@ -236,7 +237,7 @@ Pull requests were tested for real on a private GitHub repository (create as dra
 
 1. On a `release/x.y.z` branch: set the version in `package.json` and `package-lock.json` (`npm version x.y.z --no-git-tag-version`), rename `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - <date>` with an empty `[Unreleased]` above it, and add the version to the table above and to the line at the top. Commit as `release: x.y.z`.
 2. Push the branch, merge it into `main` with `--no-ff` once CI on `main` is green, and tag the merge: `git tag vx.y.z && git push origin main vx.y.z`.
-3. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again. Since 2026-11-04 the workflows use the Node 24 actions (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `download-artifact@v8`, which fails on an artifact whose digest does not match); 0.22.1 was the last release built with the older ones, so check the first release after it.
+3. The Release workflow builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release. There is nothing to click: publishing the draft by hand earlier is harmless, the upload still happens. If a build fails, the release stays an empty draft: fix, delete the draft and the tag, and tag again. Since 2026-11-04 the workflows use the Node 24 actions (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `download-artifact@v8`, which fails on an artifact whose digest does not match); 0.22.1 was the last release built with the older ones; 0.23.0 is the first built with them.
 
 ### 3. Sign in with the browser
 
