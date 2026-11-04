@@ -29,6 +29,7 @@ import {
   ignorePattern,
   lockFiles,
   makeLockable,
+  markBisect,
   mergeRef,
   openExternal,
   openBlame,
@@ -64,6 +65,7 @@ import {
   soloInGraph,
   squashMergeRef,
   stageFiles,
+  startBisect,
   stashChanges,
   trackLfsPattern,
   unlockFile,
@@ -161,6 +163,23 @@ export function pickedMenu(path: string, picked: string[]): MenuItem[] {
   ]
 }
 
+/**
+ * Bisect from a commit: before one, starting it (this commit works, the checked-out one has the problem); while one
+ * looks for the first bad commit, marking this one good, bad or skipped.
+ */
+function bisectItems(path: string, hash: string, target: string, isHead: boolean): MenuItem[] {
+  const bisect = getRepo(path)?.state?.bisect
+  if (!bisect) {
+    return [{ label: t('menu.bisectStart', { target }), disabled: isHead, onClick: () => void startBisect(path, hash) }]
+  }
+  if (bisect.firstBad || bisect.suspects) return []
+  return [
+    { label: t('menu.bisectGood'), onClick: () => void markBisect(path, 'good', hash) },
+    { label: t('menu.bisectBad'), onClick: () => void markBisect(path, 'bad', hash) },
+    { label: t('menu.bisectSkip'), onClick: () => void markBisect(path, 'skip', hash) }
+  ]
+}
+
 /** A commit's menu; `selected`: the commit selected before it was right-clicked, to compare with. */
 export function commitMenu(path: string, hash: string, selected: string | null = null): MenuItem[] {
   const { branch, head } = current(path)
@@ -180,6 +199,7 @@ export function commitMenu(path: string, hash: string, selected: string | null =
       disabled: isHead,
       onClick: () => void openInteractiveRebase(path, hash)
     },
+    ...bisectItems(path, hash, target, isHead),
     { separator: true },
     {
       label: t('menu.resetSoft', { branch: target }),

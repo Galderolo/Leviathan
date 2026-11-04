@@ -28,6 +28,7 @@ import {
   undo
 } from './actions'
 import { globalShortcut } from './shortcuts'
+import { BisectBar } from './components/BisectBar'
 import { CommitGraph } from './components/CommitGraph'
 import { ContextMenu, Dialog, Resizer, Toasts } from './components/common'
 import { DiffView } from './components/DiffView'
@@ -224,6 +225,7 @@ function RepoScreen({ path }: { path: string }) {
   return (
     <>
       <Toolbar path={path} />
+      <BisectBar path={path} />
       <div className="workspace">
         <div className="left-panel" style={{ width: left }}>
           <LeftPanel path={path} />

@@ -20,6 +20,7 @@ function state(hash: string, unstaged: FileChange[], staged: FileChange[] = []):
     status: { staged, unstaged, conflicted: [] },
     operation: null,
     editing: null,
+    bisect: null,
     unpushed: [],
     lfsFiles: [],
     largeFiles: [],

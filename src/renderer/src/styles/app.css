@@ -230,6 +230,107 @@ a:hover {
   background: var(--bg-0);
 }
 
+/* Above the center panel while a bisect is under way. */
+.bisect-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 5px 10px 5px 12px;
+  background: rgba(76, 157, 243, 0.1);
+  border-bottom: 1px solid rgba(76, 157, 243, 0.4);
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.bisect-icon {
+  flex-shrink: 0;
+  color: var(--blue);
+}
+
+.bisect-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.bisect-text .dim {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bisect-commit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 45%;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-1);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.bisect-commit:hover {
+  background: var(--bg-3);
+}
+
+.bisect-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bisect-actions .bisect-good svg {
+  color: var(--green-text);
+}
+
+.bisect-actions .bisect-bad svg {
+  color: var(--red-text);
+}
+
+/* A commit's mark in the graph during a bisect. */
+.bisect-mark {
+  flex-shrink: 0;
+  margin-right: 6px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 10.5px;
+  line-height: 15px;
+  white-space: nowrap;
+}
+
+.bisect-mark.good {
+  color: var(--green-text);
+}
+
+.bisect-mark.bad,
+.bisect-mark.first {
+  color: var(--red-text);
+}
+
+.bisect-mark.first {
+  font-weight: 600;
+}
+
+.bisect-mark.skip,
+.bisect-mark.suspect {
+  color: var(--text-dim);
+}
+
+.bisect-mark.testing {
+  color: var(--blue);
+}
+
 /* The graph, diff or file view, above the terminal when it shows. */
 .center-main {
   flex: 1;

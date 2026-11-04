@@ -15,6 +15,13 @@ import {
   unquotePath,
   untrackedDiff
 } from '../../shared/parsers'
+import {
+  parseBisectRefs,
+  parseBisectTerms,
+  parseBisectVars,
+  type BisectMark,
+  type BisectState
+} from '../../shared/bisect'
 import { parseCommitTemplate, type CommitDraftText } from '../../shared/commitTemplate'
 import { parseChangesBlock, type ChangesBlock } from '../../shared/localChanges'
 import { unchangedGaps } from '../../shared/diffGaps'
@@ -176,6 +183,40 @@ async function currentOperation(repo: string): Promise<RepoOperation> {
   return null
 }
 
+/** The bisect under way, or null: what it started from, the commits marked, what is left, and what it found. */
+async function currentBisect(repo: string): Promise<BisectState | null> {
+  const dir = await gitDir(repo)
+  const start = await fs.readFile(join(dir, 'BISECT_START'), 'utf8').catch(() => null)
+  if (start === null) return null
+  const terms = parseBisectTerms(await fs.readFile(join(dir, 'BISECT_TERMS'), 'utf8').catch(() => ''))
+  const marks = parseBisectRefs(
+    await run(repo, ['for-each-ref', '--format=%(objectname) %(refname)', 'refs/bisect/']),
+    terms
+  )
+  const state: BisectState = {
+    start: start.trim(),
+    terms,
+    ...marks,
+    left: null,
+    steps: null,
+    firstBad: null,
+    suspects: null
+  }
+  if (!marks.bad || !marks.good.length) return state
+  const range = [marks.bad, '--not', ...marks.good, '--']
+  const vars = parseBisectVars(await run(repo, ['rev-list', '--bisect-vars', ...range]))
+  // Only the bad one left: it is the first.
+  if (vars.all <= 1) return { ...state, left: 0, steps: 0, firstBad: marks.bad }
+  if (vars.all - 1 <= marks.skipped.length) {
+    // Maybe only skipped ones left: then git cannot tell which of them is the first.
+    const candidates = (await run(repo, ['rev-list', ...range])).split('\n').filter(Boolean)
+    const skipped = new Set(marks.skipped)
+    if (candidates.every((c) => c === marks.bad || skipped.has(c)))
+      return { ...state, left: 0, steps: 0, suspects: candidates }
+  }
+  return { ...state, left: vars.left, steps: vars.steps }
+}
+
 /** The commit an interactive rebase stopped at to be edited: git leaves `rebase-merge/amend` then (not for a conflict). */
 async function editingCommit(repo: string, operation: RepoOperation): Promise<string | null> {
   if (operation !== 'rebase') return null
@@ -219,7 +260,7 @@ async function maybeRefreshIndex(repo: string, statusMs: number): Promise<void> 
 export async function getState(repo: string): Promise<RepoState> {
   const statusStart = Date.now()
   let statusMs = 0
-  const [statusOut, remotesOut, refsOut, stashOut, operation] = await Promise.all([
+  const [statusOut, remotesOut, refsOut, stashOut, operation, bisect] = await Promise.all([
     run(repo, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all']).then((out) => {
       statusMs = Date.now() - statusStart
       return out
@@ -227,7 +268,8 @@ export async function getState(repo: string): Promise<RepoState> {
     run(repo, ['remote', '-v']),
     listRefs(repo),
     run(repo, ['stash', 'list', `--format=${STASH_FORMAT}`]),
-    currentOperation(repo)
+    currentOperation(repo),
+    currentBisect(repo)
   ])
   const remotes = parseRemotes(remotesOut)
   const { head, status } = parseStatus(statusOut)
@@ -254,6 +296,7 @@ export async function getState(repo: string): Promise<RepoState> {
     status,
     operation,
     editing,
+    bisect,
     unpushed,
     lfsFiles,
     // Files that go through LFS are staged as small pointers: big ones are only those outside LFS.
@@ -993,6 +1036,39 @@ export async function revert(repo: string, hashes: string | string[]): Promise<C
   const list = typeof hashes === 'string' ? [hashes] : hashes
   for (const hash of list) assertSafeArg(hash, 'commit')
   return unlessBlocked(repo, ['revert', '--no-edit', ...list])
+}
+
+// ---------------------------------------------------------------------------
+// Bisect
+
+/** Starts a bisect between `bad` (has the problem) and `good` (has not): git checks out a commit halfway to test. */
+export async function bisectStart(repo: string, bad: string, good: string): Promise<ChangesBlock | null> {
+  assertSafeArg(bad, 'commit')
+  assertSafeArg(good, 'commit')
+  // git would drop the one under way and start again.
+  if (await currentBisect(repo)) throw new Error('A bisect is under way already: finish it first')
+  // When the first checkout cannot be done, git undoes the start: it can simply start again.
+  return unlessBlocked(repo, ['bisect', 'start', bad, good, '--'])
+}
+
+/**
+ * Marks `hash` (the commit checked out when null) good, bad or skipped, and git checks out the next one to test.
+ * When a change is in the way of that checkout, the mark is made all the same: marking it again only moves on.
+ */
+export async function bisectMark(repo: string, mark: BisectMark, hash: string | null): Promise<ChangesBlock | null> {
+  if (!['good', 'bad', 'skip'].includes(mark)) throw new Error(`Invalid mark: ${mark}`)
+  if (hash) assertSafeArg(hash, 'commit')
+  const state = await currentBisect(repo)
+  if (!state) throw new Error('No bisect under way')
+  const word = mark === 'skip' ? 'skip' : state.terms[mark]
+  if (!/^[A-Za-z][\w-]*$/.test(word)) throw new Error(`Invalid bisect term: ${word}`)
+  // Only skipped commits left: git says so with exit code 2, and the state tells as much.
+  return unlessBlocked(repo, ['bisect', word, ...(hash ? [hash] : [])], { okCodes: [0, 2] })
+}
+
+/** Ends the bisect, back on the branch (or commit) it started from. */
+export async function bisectReset(repo: string): Promise<ChangesBlock | null> {
+  return unlessBlocked(repo, ['bisect', 'reset'])
 }
 
 export async function reset(repo: string, hash: string, mode: ResetMode): Promise<void> {

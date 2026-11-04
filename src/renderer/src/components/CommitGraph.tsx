@@ -10,6 +10,7 @@ import {
   type GraphItem,
   type GraphRow
 } from '../../../shared/graph'
+import { bisectMarks, type BisectState } from '../../../shared/bisect'
 import { laneX, linePath, type GraphGeometry } from '../../../shared/graphPaths'
 import { checkoutRef, clearHighlight, loadMore, selectCommit, selectWip, showAllInGraph } from '../actions'
 import { ancestry, highlightTip, pullRequestsByRef } from '../graphFocus'
@@ -283,11 +284,17 @@ export function CommitGraph({ path }: { path: string }) {
 
   const unpushedList = view?.state?.unpushed
   const unpushed = useMemo(() => new Set(unpushedList ?? []), [unpushedList])
+  const bisect = view?.state?.bisect ?? null
+  const bisectMarked = useMemo(() => bisectMarks(bisect), [bisect])
+  // The commit to test now: the one checked out while the bisect has not found the first bad one.
+  const testing =
+    bisect?.bad && bisect.good.length && !bisect.firstBad && !bisect.suspects ? (view?.state?.head.hash ?? null) : null
 
   const rows = []
   for (let i = first; i < last; i++) {
     const item = items[i]
     const row = layout.rows[i]
+    const mark = item.kind === 'commit' ? graphBisectMark(item.hash, bisectMarked, bisect, testing) : null
     rows.push(
       <GraphRowView
         key={item.hash}
@@ -315,6 +322,9 @@ export function CommitGraph({ path }: { path: string }) {
         lang={lang}
         wipLabel={t('graph.wip')}
         unpushedTitle={item.kind === 'commit' && unpushed.has(item.hash) ? t('graph.unpushed') : null}
+        bisect={mark}
+        bisectLabel={mark ? t(`bisect.mark.${mark}`) : ''}
+        bisectTitle={mark ? t(`bisect.markTitle.${mark}`) : ''}
         onSelect={clickItem}
         onContext={onContext}
       />
@@ -449,6 +459,19 @@ export function CommitGraph({ path }: { path: string }) {
   )
 }
 
+type GraphBisectMark = ReturnType<typeof bisectMarks> extends Map<string, infer M> ? M | 'suspect' | 'testing' : never
+
+/** A commit's mark in the graph during a bisect: as marked, one the first bad may be, or the one to test now. */
+function graphBisectMark(
+  hash: string,
+  marked: ReturnType<typeof bisectMarks>,
+  bisect: BisectState | null,
+  testing: string | null
+): GraphBisectMark | null {
+  if (!bisect) return null
+  return marked.get(hash) ?? (bisect.suspects?.includes(hash) ? 'suspect' : hash === testing ? 'testing' : null)
+}
+
 interface RowProps {
   path: string
   item: GraphItem
@@ -473,6 +496,10 @@ interface RowProps {
   wipLabel: string
   /** Set (as its tooltip) when the commit is not pushed yet. */
   unpushedTitle: string | null
+  /** How a bisect under way marked the commit, or that it is the one to test now. */
+  bisect: GraphBisectMark | null
+  bisectLabel: string
+  bisectTitle: string
   onSelect: (item: GraphItem, e: React.MouseEvent) => void
   onContext: (e: React.MouseEvent, item: GraphItem) => void
 }
@@ -505,7 +532,16 @@ const GraphRowView = memo(function GraphRowView(props: RowProps) {
     sha = shortHash(item.hash)
   } else {
     const c = item.commit
-    message = <span className="ellipsis">{c.subject}</span>
+    message = (
+      <>
+        {props.bisect && (
+          <span className={cx('bisect-mark', props.bisect)} title={props.bisectTitle}>
+            {props.bisectLabel}
+          </span>
+        )}
+        <span className="ellipsis">{c.subject}</span>
+      </>
+    )
     author = (
       <>
         <Avatar name={c.authorName} email={c.authorEmail} size={18} />

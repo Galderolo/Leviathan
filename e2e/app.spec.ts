@@ -1624,6 +1624,52 @@ test('lists where HEAD has been in the reflog, and gets a commit left behind by 
   await expect(commitRows()).toHaveCount(2)
 })
 
+test('bisects from a commit that works to the first bad one, marking each commit to test, and goes back', async () => {
+  const repo = box.repo('game', { 'n.txt': '1\n' })
+  for (let n = 2; n <= 6; n++) {
+    box.write(repo, { 'n.txt': `${n}\n` })
+    box.git(repo, 'commit', '-qam', `step ${n}`)
+  }
+  await open(repo)
+  // From 4 on, it is broken.
+  const broken = () => Number(box.git(repo, 'show', 'HEAD:n.txt')) >= 4
+  const head = () => box.git(repo, 'rev-parse', 'HEAD')
+
+  await commitRows().filter({ hasText: 'first' }).click({ button: 'right' })
+  await menuItem('Bisect: this one works, main has the problem…').click()
+  await page.locator('.modal .btn-primary', { hasText: 'Start bisecting' }).click()
+  const bar = page.locator('.bisect-bar')
+  await expect(bar).toContainText('Bisecting: test')
+  await expect(page.locator('.bisect-mark.good')).toHaveCount(1)
+  await expect(page.locator('.bisect-mark.bad')).toHaveCount(1)
+  await expect(page.locator('.bisect-mark.testing')).toHaveCount(1)
+
+  // Uncommitted changes in the way of the next checkout: stashed, and on it goes.
+  box.write(repo, { 'n.txt': 'mine\n' })
+  let before = head()
+  await bar.getByRole('button', { name: broken() ? 'Bad' : 'Good', exact: true }).click()
+  await page.locator('.modal').getByRole('button', { name: 'Stash them and go on' }).click()
+  await expect.poll(head).not.toBe(before)
+  expect(box.git(repo, 'stash', 'list')).toContain('Set aside while bisecting')
+
+  for (let round = 0; round < 5 && !(await bar.textContent())?.includes('First bad commit'); round++) {
+    before = head()
+    await bar.getByRole('button', { name: broken() ? 'Bad' : 'Good', exact: true }).click()
+    await expect
+      .poll(async () => head() !== before || !!(await bar.textContent())?.includes('First bad commit'))
+      .toBe(true)
+  }
+  await expect(bar).toContainText('First bad commit:')
+  await expect(bar).toContainText('step 4')
+  await expect(commitRows().filter({ hasText: 'step 4' }).locator('.bisect-mark.first')).toBeVisible()
+  await expect(page.locator('.commit-subject')).toHaveText('step 4')
+
+  await bar.getByRole('button', { name: 'Finish' }).click()
+  await expect(bar).toHaveCount(0)
+  await expect.poll(() => box.branch(repo)).toBe('main')
+  await expect(page.locator('.bisect-mark')).toHaveCount(0)
+})
+
 test('says that a commit only renamed a file', async () => {
   const repo = box.repo('game', { 'old.txt': 'same\n' })
   box.git(repo, 'mv', 'old.txt', 'new.txt')
