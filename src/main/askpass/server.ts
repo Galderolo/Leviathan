@@ -84,7 +84,9 @@ export function startAskpassServer(handler: AskpassHandler, opts: AskpassOptions
       resolve({
         env: {
           GIT_ASKPASS: script,
-          SSH_ASKPASS: script,
+          // Windows' own OpenSSH (ssh, and ssh-keygen signing commits) starts askpass with CreateProcess, which runs a
+          // .cmd but not a shell script; git for Windows' ssh runs the .cmd too.
+          SSH_ASKPASS: process.platform === 'win32' ? join(opts.scriptDir, 'askpass.cmd') : script,
           // OpenSSH 8.4+: use askpass even without a display or when a tty exists.
           SSH_ASKPASS_REQUIRE: 'force',
           DISPLAY: process.env.DISPLAY || ':0',

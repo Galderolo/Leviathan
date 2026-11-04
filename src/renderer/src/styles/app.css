@@ -1510,6 +1510,67 @@ img.avatar {
   flex-shrink: 0;
 }
 
+/* The identity, and at the end of the line whether the commit will be signed. */
+.commit-identity-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.commit-identity-row .commit-identity {
+  flex: 0 1 auto;
+}
+
+.commit-signing {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.commit-signing.on {
+  color: var(--green-text);
+}
+
+/* A commit's signature as checked here. */
+.commit-signature {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  cursor: default;
+}
+
+.commit-signature svg {
+  flex-shrink: 0;
+}
+
+.commit-signature-label {
+  font-weight: 600;
+}
+
+.commit-signature-who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-signature.good {
+  color: var(--green-text);
+}
+
+.commit-signature.bad {
+  color: var(--red-text);
+}
+
+.commit-signature.warn {
+  color: var(--yellow);
+}
+
+.commit-signature.plain {
+  color: var(--text-dim);
+}
+
 .checkbox {
   display: flex;
   align-items: center;

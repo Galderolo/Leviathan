@@ -646,9 +646,11 @@ export async function applyPatch(
   await run(repo, args, { input: patch })
 }
 
-export async function commit(repo: string, message: string, amend: boolean): Promise<void> {
+/** `noSign`: not signed this once, whatever `commit.gpgsign` says. */
+export async function commit(repo: string, message: string, amend: boolean, noSign = false): Promise<void> {
   const args = ['commit', '-q']
   if (amend) args.push('--amend')
+  if (noSign) args.push('--no-gpg-sign')
   if (amend && !message.trim()) args.push('--no-edit')
   else {
     if (!message.trim()) throw new Error('Commit message is empty')

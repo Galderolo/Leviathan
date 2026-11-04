@@ -30,6 +30,7 @@ import type { ImagePair } from './images'
 import type { Worktree } from './worktrees'
 import type { CommitDraftText } from './commitTemplate'
 import type { CommitIdentity, Identity } from './identity'
+import type { CommitSignature, GpgKey, SigningSetting, SigningState } from './signing'
 import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
 import type { LfsInstallOffer } from './lfsInstall'
 import type { RebaseItem } from './rebase'
@@ -126,8 +127,17 @@ export interface LeviathanInvokeApi {
   restoreFromHead(repo: string, paths: string[], untracked: string[]): Promise<void>
   discardAll(repo: string): Promise<void>
   applyPatch(repo: string, patch: string, opts: { cached: boolean; reverse: boolean }): Promise<void>
-  commit(repo: string, message: string, amend: boolean): Promise<void>
+  /** `noSign`: not signed this once, whatever git's config says. */
+  commit(repo: string, message: string, amend: boolean, noSign?: boolean): Promise<void>
   headMessage(repo: string): Promise<string>
+  /** A commit's signature and what checking it here finds; null when it is not signed. */
+  getCommitSignature(repo: string, hash: string): Promise<CommitSignature | null>
+  /** Signing as a repository's config has it and the global one does (`repo` null: the global only). */
+  getSigning(repo: string | null): Promise<SigningState>
+  /** A repository's commits signed or not (`repo` null: all repositories'); `null` leaves a repository to the global. */
+  setSigning(repo: string | null, setting: SigningSetting | null): Promise<void>
+  /** The secret OpenPGP keys that can sign, as the gpg git uses sees them. */
+  listGpgKeys(repo: string | null): Promise<GpgKey[]>
   ignore(repo: string, pattern: string): Promise<void>
 
   // Branches & refs
@@ -404,6 +414,10 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   applyPatch: true,
   commit: true,
   headMessage: true,
+  getCommitSignature: true,
+  getSigning: true,
+  setSigning: true,
+  listGpgKeys: true,
   ignore: true,
   checkout: true,
   checkoutRemote: true,

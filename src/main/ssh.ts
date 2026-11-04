@@ -58,10 +58,7 @@ function run(command: string, args: string[], env?: Record<string, string>): Pro
 async function keygenWithPassphrase(args: string[], keyPath: string, passphrase: string, askpass: AskpassOptions) {
   const bridge = await startAskpassServer(async (prompt) => (/passphrase/i.test(prompt) ? passphrase : null), askpass)
   try {
-    // Windows' own ssh-keygen starts askpass with CreateProcess, which runs a .cmd but not a shell script.
-    const env =
-      process.platform === 'win32' ? { ...bridge.env, SSH_ASKPASS: join(askpass.scriptDir, 'askpass.cmd') } : bridge.env
-    await run('ssh-keygen', [...args, '-f', keyPath], env)
+    await run('ssh-keygen', [...args, '-f', keyPath], bridge.env)
   } finally {
     await bridge.close()
   }

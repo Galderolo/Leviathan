@@ -16,6 +16,7 @@ import type {
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import { settingsFor } from '../../shared/repoSettings'
 import type { CommitIdentity } from '../../shared/identity'
+import type { SigningState } from '../../shared/signing'
 import type { CommitDraftText } from '../../shared/commitTemplate'
 import type { LfsInfo, LfsLock } from '../../shared/lfs'
 import type { LfsInstallOffer } from '../../shared/lfsInstall'
@@ -74,6 +75,8 @@ export interface RepoView {
   account: Account | null
   /** Who the next commit will be by; null until read. */
   identity: CommitIdentity | null
+  /** Whether its commits are signed, and with which key; null until read. */
+  signing: SigningState | null
   /** git's commit.template, the message each commit starts from; null without one. */
   template: CommitDraftText | null
   /** Open pull requests; null when no account can reach the repository's remote. */
@@ -332,6 +335,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     lastFetchError: null,
     account: null,
     identity: null,
+    signing: null,
     template: null,
     pullRequests: null,
     fileView: null,
