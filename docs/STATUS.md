@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-11-04, with 0.23.0 released (844 tests, 72 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-11-05, with 0.23.1 released (863 tests, 72 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -42,6 +42,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.22.0 | 2026-11-03 | Conflict editor coloured as a diff (folds, marks by the scrollbar, Alt+↑/↓), compare commits / branches / a commit with my changes, squash merge, several commits cherry-picked or reverted at once, worktrees, the local-changes dialog for the interactive rebase and Checkout and merge, Push right after opening asks where to publish |
 | 0.22.1 | 2026-11-04 | A token the server refused is explained, with *Sign in again*; a stored token that cannot be read says why |
 | 0.23.0 | 2026-11-04 | Signed commits (shown verified or not, signing set per repository or for all), search in the changes (`git log -S`), reflog to get lost commits back, guided bisect; Windows OpenSSH asks for passphrases, interactive rebase with merges opens with uncommitted changes, compare with my changes lists untracked files |
+| 0.23.1 | 2026-11-05 | Updates offered while the next version is being built, the question about a new SSH host whole again on Windows, a bisect whose good commit comes after the bad one, interactive rebase with merges and `rebase.updateRefs`, compare leaves out a repository inside the working tree |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
@@ -250,10 +251,24 @@ Still to do: GitHub Enterprise and self-managed GitLab (each server needs its ow
 ### 4. Small decisions pending
 
 - Optionally bring the UI accent colour (teal) closer to the blue of the new icon.
+- Whether the checkboxes in the staged list should leave files out of the commit (see Multi-file selection below), or go.
 
 Set aside on 2026-10-26, not to be brought up again unless asked: a Windows `.zip` target; commit messages written by AI; author profiles per group of repositories (the commit identity picker and the owning account's identity by default cover it); translations by the maintainer (more languages come from native speakers).
 
 Set aside on 2026-10-29 by the user, until someone asks: signing in with the browser to GitHub Enterprise or a GitLab of one's own (each server would need an OAuth app made there and its client ID typed in, more work than the token those servers already take; the Accounts section says how); code signing (paid: Azure Trusted Signing or a certificate for Windows, Apple Developer for macOS), so installers still show the SmartScreen warning and macOS asks to open the app with a right click the first time.
+
+### 5. Polishing (planned after 0.23.1)
+
+Two batches, each on its own `fix/…` branch, released together when asked:
+
+- **Fixes from Known minor issues below**, each with a test that fails first:
+  1. Interactive rebase: when the commit a squash group melds into ends up empty, its messages are lost; merge them into the previous commit.
+  2. Interactive rebase: a rebase that stopped for a conflict and was continued cannot be undone; record it.
+  3. Undo / redo: apply a change in one `git update-ref --stdin` transaction, so a failure leaves nothing half done.
+  4. Pull requests on Gitea: a server whose page limit is below 50 lists only its first page; ask its limit (`GET /api/v1/settings/api`, `max_response_items`) or keep going while pages come back full.
+  5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path, and add the CI check that the AppImage has no `package-type` file.
+  6. Git LFS: lock lookups per file row are linear in the number of locks; index them by path.
+- **Pruning this list**: check each entry against the code and drop what is already done (for example "Nested repositories match the first registered repository": compare with `argsForCwd` in `src/main/git/runner.ts`); move entries that only describe how something works (SSH aliases, Avatars, parts of Accounts and Automatic updates, the undo of an empty repository's first commit, which keeps its files staged as any undone commit does) to the section of that feature.
 
 ## Known minor issues
 

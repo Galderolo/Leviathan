@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-11-05
+
 ### Fixed
 
 - **New versions show up while the next one is being built**: the app looked only at the newest version listed on GitHub, and while that one's installers were still being built (most of an hour) it found no update at all, even with newer versions already published, and hid the one it had found. It now offers the newest version that is published, and keeps showing an update found while later checks fail.
