@@ -78,6 +78,14 @@ describe('comparing two commits, or a commit with the working tree', () => {
     expect(await repo.compareFiles(dir, first, second)).toEqual([{ path: 'a.txt', status: 'M' }])
   })
 
+  it('leaves out a repository inside the working tree, which git lists as a folder', async () => {
+    const first = await commitFiles({ 'a.txt': 'one\n' }, 'first')
+    await repo.initRepo(join(dir, 'inner'), 'main')
+    writeFileSync(join(dir, 'inner', 'x.txt'), 'x\n')
+    writeFileSync(join(dir, 'new.txt'), 'new\n')
+    expect(await repo.compareFiles(dir, first, null)).toEqual([{ path: 'new.txt', status: '?' }])
+  })
+
   it('shows an image compared with the working tree as the commit has it and as it is now', async () => {
     const png = (n: number) => Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, n])
     writeFileSync(join(dir, 'shot.png'), png(1))

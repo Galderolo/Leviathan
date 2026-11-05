@@ -8,6 +8,7 @@ import * as repo from '../src/main/git/repository'
 import { git, setGitEnv } from '../src/main/git/runner'
 import { readSignature, readSigning, sshFingerprint, writeSigning } from '../src/main/git/signing'
 import {
+  SIGNING_CONFIG_REGEXP,
   configBool,
   parseGpgSecretKeys,
   signatureFormat,
@@ -261,6 +262,8 @@ describe('reading signatures and signing config', () => {
       global: { sign: false, format: 'openpgp', key: '' },
       effective: { sign: false, format: 'openpgp', key: '' }
     })
+    // The entries read are the ones written and taken away.
+    expect(SIGNING_CONFIG_REGEXP).toBe('^(commit\\.gpgsign|gpg\\.format|user\\.signingkey)$')
   })
 
   it('lists the secret GPG keys that can sign', () => {

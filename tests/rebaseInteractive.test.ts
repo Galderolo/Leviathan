@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -84,6 +84,36 @@ describe('getRebaseCommits', () => {
     ).toMatchObject({
       all: true
     })
+  })
+
+  it("makes git's list with no hook and no update-ref line, whatever the user's own config says", async () => {
+    await mergeSide()
+    const outside = join(dir, '..')
+    const hooks = join(outside, 'hooks')
+    const ran = join(outside, 'hook-ran').replace(/\\/g, '/')
+    mkdirSync(hooks)
+    writeFileSync(join(hooks, 'post-checkout'), `#!/bin/sh\necho ran > "${ran}"\n`, { mode: 0o755 })
+    const global = join(outside, 'global.gitconfig')
+    writeFileSync(global, `[core]\n\thooksPath = ${hooks.replace(/\\/g, '/')}\n[rebase]\n\tupdateRefs = true\n`)
+    const saved = process.env.GIT_CONFIG_GLOBAL
+    process.env.GIT_CONFIG_GLOBAL = global
+    try {
+      const { script } = await repo.getRebaseCommits(dir, base)
+      expect(script).not.toMatch(/^update-ref /m)
+      expect(existsSync(ran)).toBe(false)
+      // The branch's own update-ref line would make git fail at the end, after rebasing it.
+      await repo.interactiveRebase(dir, base, [
+        pick('side'),
+        pick('one'),
+        pick('two', 'reword', 'two again'),
+        pick('three')
+      ])
+      expect(await messages()).toContain('two again')
+      expect((await repo.getState(dir)).operation).toBeNull()
+    } finally {
+      if (saved === undefined) delete process.env.GIT_CONFIG_GLOBAL
+      else process.env.GIT_CONFIG_GLOBAL = saved
+    }
   })
 })
 

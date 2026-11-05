@@ -200,13 +200,17 @@ async function currentBisect(repo: string): Promise<BisectState | null> {
     left: null,
     steps: null,
     firstBad: null,
-    suspects: null
+    suspects: null,
+    crossed: false
   }
   if (!marks.bad || !marks.good.length) return state
   const range = [marks.bad, '--not', ...marks.good, '--']
-  const vars = parseBisectVars(await run(repo, ['rev-list', '--bisect-vars', ...range]))
+  // Exit code 1 for nothing to list.
+  const vars = parseBisectVars(await run(repo, ['rev-list', '--bisect-vars', ...range], { okCodes: [0, 1] }))
+  // Nothing at all: the bad one is in the history of a good one (git said "Some good revs are not ancestors...").
+  if (vars.all === 0) return { ...state, crossed: true }
   // Only the bad one left: it is the first.
-  if (vars.all <= 1) return { ...state, left: 0, steps: 0, firstBad: marks.bad }
+  if (vars.all === 1) return { ...state, left: 0, steps: 0, firstBad: marks.bad }
   if (vars.all - 1 <= marks.skipped.length) {
     // Maybe only skipped ones left: then git cannot tell which of them is the first.
     const candidates = (await run(repo, ['rev-list', ...range])).split('\n').filter(Boolean)
@@ -938,7 +942,7 @@ export async function getRebaseCommits(repo: string, base: string): Promise<Reba
  * The list `git rebase -i --rebase-merges` starts from. git makes it; an editor keeps a copy and fails, so the rebase
  * stops before doing anything. It runs in a throwaway clone sharing the repository's objects, with no file checked
  * out (a sparse checkout of nothing): whatever is uncommitted here does not stop it, and nothing here changes, not
- * even for a moment. Hooks are off: a pre-rebase hook must not run for a list.
+ * even for a moment. Hooks are off there: a checkout or pre-rebase hook must not run for a list.
  */
 async function rebaseScript(repo: string, base: string): Promise<string> {
   const dir = await fs.mkdtemp(join(tmpdir(), 'leviathan-rebase-list-'))
@@ -949,9 +953,13 @@ async function rebaseScript(repo: string, base: string): Promise<string> {
     await fs.mkdir(hooks)
     const head = (await run(repo, ['rev-parse', 'HEAD'])).trim()
     await git(['clone', '-q', '--shared', '--no-checkout', '--no-tags', repo, probe], { cwd: dir })
+    // Over the user's own config: no hook at all, and no `update-ref` line for the clone's copy of the branch
+    // (rebase.updateRefs), which the rebase here, moving that branch itself, would fail to update at the end.
+    await git(['config', 'core.hooksPath', hooks.replace(/\\/g, '/')], { cwd: probe })
+    await git(['config', 'rebase.updateRefs', 'false'], { cwd: probe })
     await git(['sparse-checkout', 'set', '--no-cone', '/.leviathan-none'], { cwd: probe })
     await git(['checkout', '-q', '--detach', head], { cwd: probe })
-    await git(['-c', `core.hooksPath=${hooks.replace(/\\/g, '/')}`, 'rebase', '-i', '--rebase-merges', base], {
+    await git(['rebase', '-i', '--rebase-merges', base], {
       cwd: probe,
       okCodes: [0, 1, 128],
       env: { GIT_SEQUENCE_EDITOR: `f() { cp "$1" ${shQuote(copy)}; exit 1; }; f` }
@@ -1058,9 +1066,11 @@ export async function bisectStart(repo: string, bad: string, good: string): Prom
 export async function bisectMark(repo: string, mark: BisectMark, hash: string | null): Promise<ChangesBlock | null> {
   if (!['good', 'bad', 'skip'].includes(mark)) throw new Error(`Invalid mark: ${mark}`)
   if (hash) assertSafeArg(hash, 'commit')
-  const state = await currentBisect(repo)
-  if (!state) throw new Error('No bisect under way')
-  const word = mark === 'skip' ? 'skip' : state.terms[mark]
+  // Only its words are needed, not the walk through history currentBisect makes.
+  const dir = await gitDir(repo)
+  if (!existsSync(join(dir, 'BISECT_START'))) throw new Error('No bisect under way')
+  const terms = parseBisectTerms(await fs.readFile(join(dir, 'BISECT_TERMS'), 'utf8').catch(() => ''))
+  const word = mark === 'skip' ? 'skip' : terms[mark]
   if (!/^[A-Za-z][\w-]*$/.test(word)) throw new Error(`Invalid bisect term: ${word}`)
   // Only skipped commits left: git says so with exit code 2, and the state tells as much.
   return unlessBlocked(repo, ['bisect', word, ...(hash ? [hash] : [])], { okCodes: [0, 2] })
@@ -1389,8 +1399,11 @@ export async function compareFiles(repo: string, from: string, to: string | null
   if (to) return getRangeFiles(repo, from, to)
   assertSafeArg(from, 'commit')
   const tracked = parseNameStatus(await run(repo, ['diff', '--name-status', '-z', '-M', from, '--']))
-  // New files git does not track are part of the working tree too (ignored ones are not).
-  const others = (await run(repo, ['ls-files', '--others', '--exclude-standard', '-z'])).split('\0').filter(Boolean)
+  // New files git does not track are part of the working tree too (ignored ones are not). A repository inside it is
+  // listed as a folder (`inner/`): it has no contents to compare.
+  const others = (await run(repo, ['ls-files', '--others', '--exclude-standard', '-z']))
+    .split('\0')
+    .filter((p) => p && !p.endsWith('/'))
   const known = new Set(tracked.map((f) => f.path))
   const untracked = others.filter((p) => !known.has(p)).map((path): FileChange => ({ path, status: '?' }))
   return [...tracked, ...untracked].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))

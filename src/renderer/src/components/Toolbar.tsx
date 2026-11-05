@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import { useMemo, type ComponentType } from 'react'
 import {
   Archive,
   ArchiveRestore,
@@ -120,9 +120,11 @@ export function Toolbar({ path }: { path: string }) {
   // Searching in what commits change: the search of the text typed, running (no hashes yet) or done.
   const inChanges = view?.searchMode === 'changes'
   const found = inChanges && view.changeSearch?.text === view.filter.trim() ? view.changeSearch : null
-  const foundTitle = (() => {
-    if (!found?.hashes || !view) return undefined
-    const loaded = new Set(view.commits.map((c) => c.hash))
+  const commits = view?.commits
+  // Not on every render (progress, typing): only when the commits found or loaded change.
+  const foundTitle = useMemo(() => {
+    if (!found?.hashes || !commits) return undefined
+    const loaded = new Set(commits.map((c) => c.hash))
     const older = found.hashes.filter((h) => !loaded.has(h)).length
     return [
       t('search.found', { count: found.hashes.length }),
@@ -131,7 +133,7 @@ export function Toolbar({ path }: { path: string }) {
     ]
       .filter(Boolean)
       .join(' ')
-  })()
+  }, [found, commits, t])
 
   const pullLabels: Record<PullMode, string> = {
     ff: t('pull.ff'),

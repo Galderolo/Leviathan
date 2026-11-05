@@ -5,6 +5,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
   SIGNING_CONFIG_REGEXP,
+  SIGNING_KEYS,
   parseGpgSecretKeys,
   signatureFormat,
   signatureStatus,
@@ -104,8 +105,6 @@ export async function readSigning(repo: string | null): Promise<SigningState> {
   // Away from a repository, a home folder that is one says nothing about the others.
   return repo ? state : { local: null, global: state.global, effective: state.global }
 }
-
-const SIGNING_KEYS = ['commit.gpgsign', 'gpg.format', 'user.signingkey']
 
 /**
  * Makes a repository's commits signed or not (`repo`, its own config), or all repositories' (`repo` null, the global

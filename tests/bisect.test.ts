@@ -115,6 +115,18 @@ describe('bisect', () => {
     await expect(repo.bisectMark(dir, 'nice' as 'good', null)).rejects.toThrow()
   })
 
+  it('says so, and finds nothing, when a commit marked good comes after the bad one; a later bad one goes on', async () => {
+    await repo.bisectStart(dir, commits[3], commits[0])
+    // git keeps the mark and fails ("Some good revs are not ancestors of the bad rev").
+    await expect(repo.bisectMark(dir, 'good', commits[6])).rejects.toThrow()
+    const state = await bisect()
+    expect(state).toMatchObject({ bad: commits[3], firstBad: null, suspects: null, crossed: true })
+    expect(state!.good).toContain(commits[6])
+
+    await repo.bisectMark(dir, 'bad', commits[7])
+    expect(await bisect()).toMatchObject({ bad: commits[7], firstBad: commits[7], crossed: false })
+  })
+
   it('uses the words a bisect started in a terminal took for good and bad', async () => {
     await git(['bisect', 'start', '--term-new=broken', '--term-old=fixed', 'HEAD', commits[0]], { cwd: dir })
     expect((await bisect())!.terms).toEqual({ bad: 'broken', good: 'fixed' })
@@ -153,7 +165,8 @@ describe('reading a bisect', () => {
       left: 0,
       steps: 0,
       firstBad: 'b',
-      suspects: null
+      suspects: null,
+      crossed: false
     }
     expect([...bisectMarks(state)]).toEqual([
       ['s', 'skip'],

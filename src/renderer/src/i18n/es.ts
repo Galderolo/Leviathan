@@ -289,6 +289,9 @@ const es: Record<keyof typeof en, string> = {
   'bisect.found': 'Primer commit malo:',
   'bisect.foundToast': 'Encontrado: {hash} es el primer commit con el problema.',
   'bisect.onlySkipped': 'Solo quedan commits saltados: el primero malo es uno de estos {count}:',
+  'bisect.crossed':
+    'Un commit marcado como bueno va después del marcado como malo: no hay nada entre ellos que probar.',
+  'bisect.crossedHint': 'Marca como malo un commit posterior que tenga el problema (clic derecho en el grafo), o para.',
   'bisect.needBad': 'Marca como malo el commit que tiene el problema (clic derecho en el grafo).',
   'bisect.needGood': 'Marca como bueno un commit en el que aún funcionaba (clic derecho en el grafo).',
   'bisect.headBad': 'El que está en el checkout es malo',

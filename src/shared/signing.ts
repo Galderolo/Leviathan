@@ -96,11 +96,12 @@ export function configBool(value: string | null): boolean {
   return /^-?\d+$/.test(v) && Number(v) !== 0
 }
 
-const SIGNING_KEYS = ['commit.gpgsign', 'gpg.format', 'user.signingkey'] as const
+/** The config entries that say whether and how commits are signed: read, written and taken away together. */
+export const SIGNING_KEYS = ['commit.gpgsign', 'gpg.format', 'user.signingkey'] as const
 type SigningKey = (typeof SIGNING_KEYS)[number]
 
 /** The config entries `signingFromConfig` reads, as `git config --show-scope -z --get-regexp` lists them. */
-export const SIGNING_CONFIG_REGEXP = '^(commit\\.gpgsign|gpg\\.format|user\\.signingkey)$'
+export const SIGNING_CONFIG_REGEXP = `^(${SIGNING_KEYS.map((key) => key.replace(/\./g, '\\.')).join('|')})$`
 
 function asFormat(value: string | undefined): SignatureFormat {
   return value === 'ssh' || value === 'x509' ? value : 'openpgp'
