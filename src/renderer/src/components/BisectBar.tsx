@@ -47,6 +47,14 @@ export function BisectBar({ path }: { path: string }) {
       </>
     )
     actions = finish(true)
+  } else if (bisect.crossed) {
+    body = (
+      <>
+        <strong>{t('bisect.crossed')}</strong>
+        <span className="dim">{t('bisect.crossedHint')}</span>
+      </>
+    )
+    actions = finish(false)
   } else if (!bisect.bad || !bisect.good.length) {
     body = (
       <>

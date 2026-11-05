@@ -32,6 +32,15 @@ const toolbarButton = (label: string) => page.locator('.tool-button', { hasText:
 const menuItem = (label: string | RegExp) => page.locator('.context-menu').getByText(label, { exact: true })
 
 /**
+ * `git stash list`, or "error" while git cannot list it: as a stash is dropped, refs/stash is half gone for a moment
+ * ("bad revision 'refs/stash'"), and an empty answer then would not mean there is none.
+ */
+function stashList(repo: string): string {
+  const out = spawnSync('git', ['stash', 'list'], { cwd: repo, env: box.env, encoding: 'utf8' })
+  return out.status === 0 ? out.stdout.trim() : 'error'
+}
+
+/**
  * Drags `source` onto `target`, at `at` within it; `marked` (`source` itself by default) takes the class `dragging`
  * once the drag starts. A busy window takes the moves late, all at once, with the release right behind, and no drag
  * starts. So it nudges until the drag has started, then goes on, as a hand would.
@@ -292,7 +301,8 @@ test('asks what to do with uncommitted changes in the way of a checkout, and und
   // One step back: on main with the changes again, and no stash.
   await toolbarButton('Undo').click()
   await expect.poll(() => box.branch(repo)).toBe('main')
-  await expect.poll(() => box.git(repo, 'stash', 'list')).toBe('')
+  // While the stash is dropped, refs/stash is half gone and git fails to list it: poll for an answer, not an error.
+  await expect.poll(() => stashList(repo)).toBe('')
   expect(box.read(repo, 'Shared Data.asset')).toBe('mine\n')
   expect(box.read(repo, 'b.txt')).toBe('mine too\n')
 
@@ -320,8 +330,7 @@ test('stashes the changes and pops them back', async () => {
   await toolbarButton('Pop').click()
   // git drops the stash only once all of it is back, new files included (they come a moment after the others).
   // While it drops it, refs/stash is half gone and git fails to list it: poll for an answer, not an error.
-  const stashes = () => spawnSync('git', ['stash', 'list'], { cwd: repo, env: box.env, encoding: 'utf8' }).stdout
-  await expect.poll(stashes).toBe('')
+  await expect.poll(() => stashList(repo)).toBe('')
   expect(box.read(repo, 'a.txt')).toBe('mine\n')
   expect(box.read(repo, 'new.txt')).toBe('new\n')
 })
@@ -2017,8 +2026,7 @@ test('pulls over uncommitted changes in its way: stashed, pulled, and brought ba
 
   await expect.poll(() => box.read(repo, 'a.txt')).toBe('ONE\ntwo\nTHREE\n')
   expect(box.git(repo, 'log', '-1', '--format=%s')).toBe('theirs')
-  const stashes = () => spawnSync('git', ['stash', 'list'], { cwd: repo, env: box.env, encoding: 'utf8' }).stdout
-  await expect.poll(stashes).toBe('')
+  await expect.poll(() => stashList(repo)).toBe('')
 })
 
 test('asks where to publish a branch started from another remote, then keeps the upstream chosen for it', async () => {

@@ -1109,9 +1109,9 @@ export async function nextChangeMatch(path: string, hashes: string[], backwards:
   // Where each commit is: in the graph's order, then those not loaded yet (older), newest first.
   const index = new Map(view.commits.map((c, i) => [c.hash, i]))
   const older = hashes.filter((h) => !index.has(h))
-  const rank = (hash: string) =>
-    index.get(hash) ?? (older.includes(hash) ? view.commits.length + older.indexOf(hash) : -1)
-  const order = [...hashes.filter((h) => index.has(h)).sort((a, b) => rank(a) - rank(b)), ...older]
+  for (const [i, hash] of older.entries()) index.set(hash, view.commits.length + i)
+  const rank = (hash: string) => index.get(hash) ?? -1
+  const order = [...hashes].sort((a, b) => rank(a) - rank(b))
   const sel = view.selection
   const from = sel && sel.kind !== 'wip' ? rank(sel.hash) : -1
   const next = backwards

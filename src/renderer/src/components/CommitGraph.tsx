@@ -288,7 +288,9 @@ export function CommitGraph({ path }: { path: string }) {
   const bisectMarked = useMemo(() => bisectMarks(bisect), [bisect])
   // The commit to test now: the one checked out while the bisect has not found the first bad one.
   const testing =
-    bisect?.bad && bisect.good.length && !bisect.firstBad && !bisect.suspects ? (view?.state?.head.hash ?? null) : null
+    bisect?.bad && bisect.good.length && !bisect.firstBad && !bisect.suspects && !bisect.crossed
+      ? (view?.state?.head.hash ?? null)
+      : null
 
   const rows = []
   for (let i = first; i < last; i++) {

@@ -7,6 +7,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Fixed
 
 - **New versions show up while the next one is being built**: the app looked only at the newest version listed on GitHub, and while that one's installers were still being built (most of an hour) it found no update at all, even with newer versions already published, and hid the one it had found. It now offers the newest version that is published, and keeps showing an update found while later checks fail.
+- **Connecting to a new SSH host asks whether to trust it again on Windows**: since 0.23.0 ssh's question reached the app cut to its first line, so instead of the dialog with the host's fingerprint a plain text box came up. Its three lines now arrive whole, with Windows' own OpenSSH and with git for Windows' ssh.
+- **A bisect where a commit marked good comes after the one marked bad says so**: it showed the bad one as found (or failed to load the repository). The bar now says there is nothing between them to test, until a later commit is marked bad or the bisect stops.
+- **The interactive rebase of a range with merges no longer fails at the end with `rebase.updateRefs` on**, and no hook of the user (a global `post-checkout`) runs while it reads the list.
+- **Compare with my changes leaves out a repository inside the working tree**, which it listed as a file that could not be opened.
 
 ## [0.23.0] - 2026-11-04
 

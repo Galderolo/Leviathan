@@ -287,6 +287,8 @@ const en = {
   'bisect.found': 'First bad commit:',
   'bisect.foundToast': 'Found: {hash} is the first commit with the problem.',
   'bisect.onlySkipped': 'Only skipped commits are left: the first bad one is one of these {count}:',
+  'bisect.crossed': 'A commit marked good comes after the one marked bad: there is nothing between them to test.',
+  'bisect.crossedHint': 'Mark a later commit that has the problem as bad (right-click it in the graph), or stop.',
   'bisect.needBad': 'Mark the commit that has the problem as bad (right-click it in the graph).',
   'bisect.needGood': 'Mark a commit where it still worked as good (right-click it in the graph).',
   'bisect.headBad': 'The checked-out one is bad',

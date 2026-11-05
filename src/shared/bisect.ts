@@ -15,6 +15,11 @@ export interface BisectState {
   firstBad: string | null
   /** Only skipped commits are left: the first bad one is one of these (the bad commit among them). */
   suspects: string[] | null
+  /**
+   * A commit marked good comes after the one marked bad (the bad one is part of its history): there is nothing between
+   * them to test, and git cannot go on until another commit is marked bad, or it stops.
+   */
+  crossed: boolean
 }
 
 export type BisectMark = 'good' | 'bad' | 'skip'
