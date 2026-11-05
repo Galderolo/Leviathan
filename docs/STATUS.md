@@ -238,7 +238,7 @@ Pull requests were tested for real on a private GitHub repository (create as dra
 
 1. On a `release/x.y.z` branch: set the version in `package.json` and `package-lock.json` (`npm version x.y.z --no-git-tag-version`), rename `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - <date>` with an empty `[Unreleased]` above it, and add the version to the table above and to the line at the top. Commit as `release: x.y.z`.
 2. Push the branch, merge it into `main` with `--no-ff` once CI on `main` is green, and push `main` (no tag).
-3. Run the Release workflow on `main`: Actions → Release → *Run workflow* (or `gh workflow run release.yml --ref main`). It refuses another branch and a version whose tag already exists. It creates a draft with the CHANGELOG notes for the commit, builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release; publishing creates the tag `vx.y.z` on that commit (`git fetch --tags` to have it here). Do not push the tag nor publish the draft by hand: GitHub's releases feed lists a tag as soon as it exists, and copies up to 0.23.0 look only at the newest tag listed, so until the installers are up they see no update at all (since 0.23.1 the app looks for the newest release that is published). If a build fails, the release stays an empty draft with no tag: fix on `main` and run the workflow again, which reuses the draft for the new commit. Since 2026-11-04 the workflows use the Node 24 actions (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `download-artifact@v8`, which fails on an artifact whose digest does not match); 0.22.1 was the last release built with the older ones; 0.23.0 is the first built with them.
+3. Run the Release workflow on `main`: Actions → Release → *Run workflow* (or `gh workflow run release.yml --ref main`, or a `POST` to `https://api.github.com/repos/Galderolo/Leviathan/actions/workflows/release.yml/dispatches` with `{"ref":"main"}` and a token that may write to the repository). It refuses another branch and a version whose tag already exists. It creates a draft with the CHANGELOG notes for the commit, builds Windows, macOS and Linux and, when all three succeed, uploads the installers and publishes the release as a pre-release; publishing creates the tag `vx.y.z` on that commit (`git fetch --tags` to have it here). Do not push the tag nor publish the draft by hand: GitHub's releases feed lists a tag as soon as it exists, and copies up to 0.23.0 look only at the newest tag listed, so until the installers are up they see no update at all (since 0.23.1 the app looks for the newest release that is published). If a build fails, the release stays an empty draft with no tag: fix on `main` and run the workflow again, which reuses the draft for the new commit. Since 2026-11-04 the workflows use the Node 24 actions (`checkout@v7`, `setup-node@v7`, `upload-artifact@v7`, `download-artifact@v8`, which fails on an artifact whose digest does not match); 0.22.1 was the last release built with the older ones; 0.23.0 is the first built with them.
 
 ### 3. Sign in with the browser
 
@@ -252,6 +252,7 @@ Still to do: GitHub Enterprise and self-managed GitLab (each server needs its ow
 
 - Optionally bring the UI accent colour (teal) closer to the blue of the new icon.
 - Whether the checkboxes in the staged list should leave files out of the commit (see Multi-file selection below), or go.
+- Whether releases stop being pre-releases (`--prerelease` in `.github/workflows/release.yml`), now or at 1.0. Updates find them either way.
 
 Set aside on 2026-10-26, not to be brought up again unless asked: a Windows `.zip` target; commit messages written by AI; author profiles per group of repositories (the commit identity picker and the owning account's identity by default cover it); translations by the maintainer (more languages come from native speakers).
 
@@ -269,6 +270,8 @@ Two batches, each on its own `fix/…` branch, released together when asked:
   5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path, and add the CI check that the AppImage has no `package-type` file.
   6. Git LFS: lock lookups per file row are linear in the number of locks; index them by path.
 - **Pruning this list**: check each entry against the code and drop what is already done (for example "Nested repositories match the first registered repository": compare with `argsForCwd` in `src/main/git/runner.ts`); move entries that only describe how something works (SSH aliases, Avatars, parts of Accounts and Automatic updates, the undo of an empty repository's first commit, which keeps its files staged as any undone commit does) to the section of that feature.
+
+Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): first the pruning (20–30 min, docs only), fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first.
 
 ## Known minor issues
 
