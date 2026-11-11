@@ -108,6 +108,51 @@ describe('applyChange', () => {
     await expect(repo.applyChange(dir, invertChange(change))).rejects.toThrow(/can no longer be undone/)
   })
 
+  it('moves no ref when one of them cannot be moved', async () => {
+    const head = (await repo.getSnapshot(dir)).head.hash!
+    await repo.createTag(dir, 'v1', head, null)
+    await repo.createTag(dir, 'v2', head, null)
+    const change = await track(async () => {
+      await repo.deleteTag(dir, 'v1')
+      await repo.deleteTag(dir, 'v2')
+    })
+    // Another git is changing v2.
+    writeFileSync(join(dir, '.git', 'refs', 'tags', 'v2.lock'), '')
+    await expect(repo.applyChange(dir, invertChange(change))).rejects.toThrow()
+    expect((await repo.getSnapshot(dir)).refs['refs/tags/v1']).toBeUndefined()
+  })
+
+  it('moves no ref back when HEAD cannot go back', async () => {
+    await repo.createBranch(dir, 'side', null, true)
+    await commitFile('a.txt', 'side version\n', 'side edits a')
+    await repo.checkout(dir, 'main')
+    const change = await track(async () => {
+      await repo.merge(dir, 'side')
+      await repo.createTag(dir, 'merged', (await repo.getSnapshot(dir)).head.hash!, null)
+    })
+    writeFileSync(join(dir, 'a.txt'), 'my unsaved work\n')
+    await expect(repo.applyChange(dir, invertChange(change))).rejects.toThrow()
+    expect(readFileSync(join(dir, 'a.txt'), 'utf8')).toBe('my unsaved work\n')
+    expect((await repo.getSnapshot(dir)).refs['refs/tags/merged']).toBeDefined()
+  })
+
+  it('moves no ref back when the branch it left cannot be checked out again', async () => {
+    await repo.createBranch(dir, 'topic', null, true)
+    await commitFile('a.txt', 'topic version\n', 'topic edits a')
+    await repo.checkout(dir, 'main')
+    await repo.createTag(dir, 'old', (await repo.getSnapshot(dir)).head.hash!, null)
+    const change = await track(async () => {
+      await repo.deleteTag(dir, 'old')
+      await repo.checkout(dir, 'topic')
+    })
+    writeFileSync(join(dir, 'a.txt'), 'my unsaved work\n')
+    await expect(repo.applyChange(dir, invertChange(change))).rejects.toThrow()
+    const snap = await repo.getSnapshot(dir)
+    expect(snap.head.branch).toBe('topic')
+    expect(snap.refs['refs/tags/old']).toBeUndefined()
+    expect(readFileSync(join(dir, 'a.txt'), 'utf8')).toBe('my unsaved work\n')
+  })
+
   it('never overwrites local changes that conflict', async () => {
     await repo.createBranch(dir, 'side', null, true)
     await commitFile('a.txt', 'side version\n', 'side edits a')
