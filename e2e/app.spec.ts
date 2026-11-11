@@ -1798,8 +1798,9 @@ test('reorders commits by dragging them in the interactive rebase', async () => 
   await expect.poll(() => box.git(repo, 'log', '--format=%s', '-3')).toBe('one\nthree\ntwo')
 })
 
-test('stops at a commit to edit it, and goes on after amending it', async () => {
+test('stops at a commit to edit it, goes on after amending it, and undoes it all in one step', async () => {
   const repo = threeCommits()
+  const before = box.git(repo, 'rev-parse', 'HEAD')
   await open(repo)
   await openRebaseFromBase()
 
@@ -1825,6 +1826,11 @@ test('stops at a commit to edit it, and goes on after amending it', async () => 
   await expect(page.locator('.op-banner')).toHaveCount(0)
   expect(box.git(repo, 'log', '--format=%s', '-3')).toBe('three\ntwo, edited\none')
   expect(box.git(repo, 'show', 'HEAD~1:two.txt')).toBe('two, edited')
+
+  // The amend made while it was stopped is part of the rebase: one undo goes back to before it.
+  await toolbarButton('Undo').click()
+  await expect.poll(() => box.git(repo, 'rev-parse', 'HEAD')).toBe(before)
+  await expect(toolbarButton('Undo')).toBeDisabled()
 })
 
 test("says why an interactive rebase stopped when it was not for conflicts, and goes on once that's fixed", async () => {
@@ -1848,6 +1854,34 @@ test("says why an interactive rebase stopped when it was not for conflicts, and 
   await page.locator('.op-banner').getByRole('button', { name: 'Continue' }).click()
   await expect(page.locator('.op-banner')).toHaveCount(0)
   expect(box.git(repo, 'log', '--format=%s', '-4')).toBe('untrack two\nthree\ntwo\nfirst')
+})
+
+test('undoes a rebase that stopped for a conflict and was continued, in one step', async () => {
+  const repo = box.repo('game', { 'a.txt': 'base\n' })
+  box.git(repo, 'checkout', '-qb', 'feature')
+  box.write(repo, { 'a.txt': 'feature\n' })
+  box.git(repo, 'commit', '-qam', 'feature edits a')
+  box.git(repo, 'checkout', '-q', 'main')
+  box.write(repo, { 'a.txt': 'main\n' })
+  box.git(repo, 'commit', '-qam', 'main edits a')
+  box.git(repo, 'checkout', '-q', 'feature')
+  const before = box.git(repo, 'rev-parse', 'HEAD')
+  await open(repo)
+
+  await page.locator('.side-row', { has: page.locator('.side-name', { hasText: /^main$/ }) }).click({ button: 'right' })
+  await menuItem('Rebase feature onto main').click()
+  await expect(page.locator('.op-banner')).toBeVisible()
+  // Resolved outside the app, as an editor would.
+  box.write(repo, { 'a.txt': 'both\n' })
+  box.git(repo, 'add', 'a.txt')
+  await page.locator('.op-banner').getByRole('button', { name: 'Continue' }).click()
+  await expect(page.locator('.op-banner')).toHaveCount(0)
+  expect(box.git(repo, 'log', '--format=%s', '-2')).toBe('feature edits a\nmain edits a')
+
+  await toolbarButton('Undo').click()
+  await expect.poll(() => box.git(repo, 'rev-parse', 'HEAD')).toBe(before)
+  expect(box.git(repo, 'branch', '--show-current')).toBe('feature')
+  expect(box.read(repo, 'a.txt')).toBe('feature\n')
 })
 
 test("says why a rebase stopped when it was not for conflicts, without git's hints", async () => {
