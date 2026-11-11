@@ -6,6 +6,8 @@ import {
   popRedo,
   popUndo,
   pushEntry,
+  leftUnderWay,
+  settleStopped,
   undoModeForReset,
   type Stacks,
   type UndoEntry
@@ -16,6 +18,48 @@ const entry = (label: string): UndoEntry => ({
   change: { refs: [], head: { from: { branch: 'a', hash: '1' }, to: { branch: 'b', hash: '2' } }, mode: 'keep' }
 })
 const empty: Stacks = { undo: [], redo: [] }
+
+describe('an action that stopped part way', () => {
+  it('waits for the rebase, cherry-pick or revert it left under way, not for a merge', () => {
+    expect(leftUnderWay(null, 'rebase')).toBe(true)
+    expect(leftUnderWay(null, 'cherry-pick')).toBe(true)
+    expect(leftUnderWay(null, 'revert')).toBe(true)
+    // The commit that concludes a merge is recorded, and undoing it brings the merge back with what was resolved.
+    expect(leftUnderWay(null, 'merge')).toBe(false)
+    expect(leftUnderWay(null, null)).toBe(false)
+    // One already under way before the action is not its own.
+    expect(leftUnderWay('rebase', 'rebase')).toBe(false)
+  })
+
+  it('is recorded once over, in place of what was recorded while it was under way', () => {
+    const before = entry('commit')
+    const rebase = entry('rebase')
+    const stacks: Stacks = { undo: [before, entry('amend while stopped')], redo: [] }
+    expect(settleStopped(stacks, { label: 'rebase', since: before }, rebase.change)).toEqual({
+      undo: [before, { label: 'rebase', change: rebase.change }],
+      redo: []
+    })
+    // It started with nothing to undo.
+    expect(
+      settleStopped({ undo: [entry('amend')], redo: [] }, { label: 'rebase', since: null }, rebase.change)
+    ).toEqual({ undo: [{ label: 'rebase', change: rebase.change }], redo: [] })
+  })
+
+  it('records nothing once aborted, and drops what was recorded while it was under way', () => {
+    const before = entry('commit')
+    const stacks: Stacks = { undo: [before, entry('amend while stopped')], redo: [entry('redo')] }
+    expect(settleStopped(stacks, { label: 'rebase', since: before }, null)).toEqual({
+      undo: [before],
+      redo: [entry('redo')]
+    })
+  })
+
+  it('keeps the entries when the one it started after is no longer there (the oldest go past the limit)', () => {
+    const stacks: Stacks = { undo: [entry('a'), entry('b')], redo: [] }
+    const settled = settleStopped(stacks, { label: 'rebase', since: entry('gone') }, entry('rebase').change)
+    expect(settled.undo.map((e) => e.label)).toEqual(['a', 'b', 'rebase'])
+  })
+})
 
 describe('undo stacks', () => {
   it('pushing a new action clears redo', () => {

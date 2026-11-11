@@ -29,7 +29,7 @@ import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import type { RebaseItem } from '../../shared/rebase'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
-import { diffSnapshots, invertChange, type RepoChange } from '../../shared/undo'
+import { diffSnapshots, invertChange, type RepoChange, type Snapshot } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
 import { signingFailed, type SigningSetting } from '../../shared/signing'
 import { isFetchDue } from './autofetch'
@@ -44,7 +44,16 @@ import { viewAfterCheckout, wipShown } from './checkoutView'
 import { moveTab } from './tabOrder'
 import { addConsole, closeTerminal } from './terminals'
 import { inFlight } from './inFlight'
-import { isStaleUndoError, popRedo, popUndo, pushEntry, staleHistoryKey, undoModeForReset } from './undoStack'
+import {
+  isStaleUndoError,
+  leftUnderWay,
+  popRedo,
+  popUndo,
+  pushEntry,
+  settleStopped,
+  staleHistoryKey,
+  undoModeForReset
+} from './undoStack'
 import { resolveLang, t } from './i18n'
 import {
   DIFF_FULL_FILE_KEY,
@@ -791,6 +800,7 @@ async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
     (state) => {
       if (stateSeq[path] !== sSeq || !getRepo(path)) return
       patchRepo(path, { state, error: null, loading: false })
+      if (!state.operation && getRepo(path)?.stopped) void settleStoppedAction(path)
       fixSelection(path)
       followLfs(path, state)
       // Submodules change with commits and checkouts; once known, edits inside them count too.
@@ -830,6 +840,22 @@ async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
       )
     : Promise.resolve()
   await Promise.all([statePromise, logPromise])
+}
+
+/**
+ * Records an action that stopped part way once what it left under way is over, however it ended: continued here or
+ * in a terminal (its change, holding what was recorded meanwhile), or aborted (nothing).
+ */
+async function settleStoppedAction(path: string): Promise<void> {
+  const stopped = getRepo(path)?.stopped
+  if (!stopped) return
+  // Taken at once: the refreshes that follow must not record it again.
+  patchRepo(path, { stopped: null })
+  await whileRecording(path, async () => {
+    const after = await api.getSnapshot(path, stopped.paths).catch(() => null)
+    const change = after ? diffSnapshots(stopped.before, after, stopped.mode) : null
+    patchRepo(path, (r) => settleStopped(r, stopped, change))
+  })
 }
 
 /** Picks a sensible selection when nothing is selected or the WIP row disappeared. */
@@ -1141,33 +1167,57 @@ async function recordUndo<T>(
   fn: () => Promise<T>,
   paths: string[] | 'changes' = []
 ): Promise<T> {
-  // A background fetch would bring its tags into what this action changed, and undoing it would delete them: one
-  // under way ends first, and none starts until the action is recorded.
-  recording.set(path, (recording.get(path) ?? 0) + 1)
-  try {
-    await backgroundFetches.idle(path)
+  return whileRecording(path, async () => {
     const before = await api.getSnapshot(path, paths).catch(() => null)
-    const result = await fn()
+    const copied = paths === 'changes' ? Object.keys(before?.files ?? {}) : paths
+    // Stopped part way (conflicts, a commit to edit): recorded once it is over (`settleStoppedAction`).
+    const waitsToEnd = (now: Snapshot | null) => {
+      if (!before || before.tooLarge?.length) return false
+      if (!leftUnderWay(before.operation ?? null, now?.operation ?? null)) return false
+      patchRepo(path, (r) => ({
+        stopped: { label, mode, before, paths: copied, since: r.undo[r.undo.length - 1] ?? null }
+      }))
+      return true
+    }
+    let result: T
+    try {
+      result = await fn()
+    } catch (err) {
+      waitsToEnd(await api.getSnapshot(path, []).catch(() => null))
+      throw err
+    }
     if (before?.tooLarge?.length) {
       // Without a copy of those files, undoing would lose them: better nothing to undo.
       const [name] = before.tooLarge
       toast('info', t('toast.undoTooLarge', { name: basename(name), count: before.tooLarge.length }))
       return result
     }
-    const copied = paths === 'changes' ? Object.keys(before?.files ?? {}) : paths
     const after = before ? await api.getSnapshot(path, copied).catch(() => null) : null
+    if (waitsToEnd(after)) return result
     const change = before && after ? diffSnapshots(before, after, mode) : null
     if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
     return result
+  })
+}
+
+/** Repositories with an action being recorded for undo, and how many. */
+const recording = new Map<string, number>()
+
+/**
+ * Runs `work`, which records something for undo. A background fetch would bring its tags into what was recorded, and
+ * undoing it would delete them: one under way ends first, and none starts until `work` is over.
+ */
+async function whileRecording<T>(path: string, work: () => Promise<T>): Promise<T> {
+  recording.set(path, (recording.get(path) ?? 0) + 1)
+  try {
+    await backgroundFetches.idle(path)
+    return await work()
   } finally {
     const left = (recording.get(path) ?? 1) - 1
     if (left) recording.set(path, left)
     else recording.delete(path)
   }
 }
-
-/** Repositories with an action being recorded for undo, and how many. */
-const recording = new Map<string, number>()
 
 async function runOp(
   path: string,
@@ -1244,7 +1294,8 @@ const backgroundFetches = inFlight()
 /** Quiet fetch used by auto-fetch: no prompts, no toasts; errors go to the status bar. */
 export async function fetchInBackground(path: string): Promise<void> {
   const view = getRepo(path)
-  if (!view?.state?.remotes.length || view.busy || recording.has(path)) return
+  // Nor while an action that stopped part way waits to be recorded: the tags it brought would be undone with it.
+  if (!view?.state?.remotes.length || view.busy || recording.has(path) || view.stopped) return
   await backgroundFetches.run(path, async () => {
     patchRepo(path, { lastFetchAt: Date.now() })
     try {

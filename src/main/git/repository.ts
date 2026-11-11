@@ -1806,19 +1806,20 @@ export async function getSnapshot(
   maxBytes = UNDO_FILE_MAX
 ): Promise<Snapshot> {
   const paths = which === 'changes' ? await changedPaths(repo) : which
-  const [out, head, config, stash, files] = await Promise.all([
+  const [out, head, config, stash, files, operation] = await Promise.all([
     run(repo, ['for-each-ref', '--format=%(refname)%1f%(objectname)', 'refs/heads', 'refs/tags']),
     currentHead(repo),
     branchConfig(repo),
     stashList(repo),
-    paths.length ? fileVersions(repo, paths, true, maxBytes) : null
+    paths.length ? fileVersions(repo, paths, true, maxBytes) : null,
+    currentOperation(repo)
   ])
   const refs: Record<string, string> = {}
   for (const line of out.split('\n')) {
     const [ref, hash] = line.replace(/\r$/, '').split('\x1f')
     if (ref && hash) refs[ref] = hash
   }
-  const snapshot: Snapshot = { head, refs, config, stash }
+  const snapshot: Snapshot = { head, refs, config, stash, operation }
   if (files) snapshot.files = files.versions
   if (files?.skipped.length) snapshot.tooLarge = files.skipped
   return snapshot

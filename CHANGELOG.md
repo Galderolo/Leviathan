@@ -7,6 +7,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 ### Fixed
 
 - **Every open pull request of a Gitea server that gives fewer than 50 per page is listed**: only its first page was (a server's `MAX_RESPONSE_ITEMS` may be lower). The app now goes on while the server says there are more.
+- **A rebase, cherry-pick or revert that stopped part way can be undone once it is over**: one that stopped for conflicts, or at a commit to edit, was not recorded, so after *Continue* there was nothing to undo. It is now recorded when it ends (continued here or in a terminal; an abort records nothing), as one step that holds what was done while it was stopped, such as amending the commit to edit. A merge is still undone through the commit that concludes it, which brings it back with what was resolved.
 - **An undo or redo that fails leaves the branches and tags as they were**: when one of them could not be moved (another git was changing it) or HEAD could not go back (uncommitted changes in the way), the ones moved before stayed moved. They now move all together or not at all, and are put back when moving HEAD fails.
 - **The interactive rebase keeps the messages of commits squashed into one that ends up empty**: git drops that commit and what was squashed melds into the commit before it, which kept only its own message. It now takes the squashed messages after its own, as git's own squash does.
 - **The changed files of a repository with thousands of Git LFS locks show faster**: each row went through the whole list of locks to find its own.

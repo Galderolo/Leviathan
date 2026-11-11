@@ -1,3 +1,5 @@
+import type { RepoOperation } from './types'
+
 /** Where HEAD points: a branch (with its tip) or a detached commit. */
 export interface HeadState {
   branch: string | null
@@ -34,6 +36,8 @@ export interface Snapshot {
   tooLarge?: string[]
   /** The stash list, newest first. */
   stash?: StashEntry[]
+  /** The merge, rebase, cherry-pick or revert under way, if any (an action that stops part way is recorded once over). */
+  operation?: RepoOperation
 }
 
 export interface FileMove {

@@ -23,7 +23,7 @@ import type { LfsInstallOffer } from '../../shared/lfsInstall'
 import type { UpdateState } from '../../shared/updates'
 import type { Worktree } from '../../shared/worktrees'
 import type { Lang } from './i18n'
-import type { UndoEntry } from './undoStack'
+import type { StoppedAction, UndoEntry } from './undoStack'
 
 export type Selection =
   { kind: 'wip' } | { kind: 'commit'; hash: string } | { kind: 'stash'; hash: string; index: number } | null
@@ -110,6 +110,11 @@ export interface RepoView {
   /** Actions that can be undone (newest last) and undone actions that can be redone. */
   undo: UndoEntry[]
   redo: UndoEntry[]
+  /**
+   * An action that stopped part way (a rebase, cherry-pick or revert with conflicts, or at a commit to edit), recorded
+   * once that is over: the repository before it, and the entry on top of `undo` then.
+   */
+  stopped: StoppedAction | null
   /** Git LFS patterns and locks; null until read. */
   lfs: LfsView | null
   submodules: Submodule[]
@@ -363,6 +368,7 @@ export function newRepoView(path: string, limit: number): RepoView {
     highlight: null,
     undo: [],
     redo: [],
+    stopped: null,
     lfs: null,
     submodules: [],
     worktrees: [],
