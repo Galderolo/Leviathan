@@ -1884,12 +1884,33 @@ async function moveStashes(repo: string, stash: RepoChange['stash']): Promise<vo
   }
 }
 
-async function moveRef(repo: string, move: RefMove): Promise<void> {
-  assertSafeArg(move.ref, 'ref')
-  if (move.to === null) await run(repo, ['update-ref', '-d', move.ref])
-  else await run(repo, ['update-ref', move.ref, move.to])
+/**
+ * Moves refs in one `update-ref --stdin` transaction: all of them or none, each only from where the change found it
+ * (a ref another git holds, or one that moved meanwhile, stops them all).
+ */
+async function moveRefs(repo: string, moves: RefMove[]): Promise<void> {
+  if (!moves.length) return
+  const lines = moves.map((move) => {
+    assertSafeArg(move.ref, 'ref')
+    // A ref name has no spaces or line breaks; refuse a recorded one that would read as another command.
+    if (/\s/.test(move.ref)) throw new Error(`Invalid ref: ${move.ref}`)
+    if (move.to === null) return `delete ${move.ref}${move.from ? ` ${move.from}` : ''}`
+    return move.from === null ? `create ${move.ref} ${move.to}` : `update ${move.ref} ${move.to} ${move.from}`
+  })
+  await run(repo, ['update-ref', '--stdin'], { input: lines.join('\n') + '\n' })
+}
+
+/** Puts back refs moved by `moveRefs` when what came after them failed: the change is then not applied at all. */
+async function moveRefsBack(repo: string, moves: RefMove[]): Promise<void> {
+  await moveRefs(
+    repo,
+    moves.map((m) => ({ ref: m.ref, from: m.to, to: m.from }))
+  ).catch(() => {})
+}
+
+/** A branch that appears or disappears: its settings (upstream, ...) go with it. */
+async function moveBranchConfig(repo: string, move: RefMove): Promise<void> {
   if (!move.ref.startsWith('refs/heads/') || (move.from !== null && move.to !== null)) return
-  // A branch appears or disappears: its settings (upstream, ...) go with it.
   const section = `branch.${move.ref.slice('refs/heads/'.length)}`
   await git(['config', '--local', '--remove-section', section], { cwd: repo, okCodes: [0, 128] })
   if (move.to === null) return
@@ -1960,26 +1981,37 @@ async function moveRefsAndHead(repo: string, change: RepoChange, concludesMerge:
     if (change.refs.some((m) => m.ref === startRef && m.to === null) && !unborn) {
       throw new Error('The checked-out branch cannot be deleted')
     }
-    for (const move of change.refs) if (move.ref !== startRef) await moveRef(repo, move)
+    const others = change.refs.filter((m) => m.ref !== startRef)
+    const settle = async () => {
+      for (const move of others) await moveBranchConfig(repo, move)
+    }
     if (unborn) {
-      await run(repo, ['update-ref', '-d', startRef!, from.hash!])
-      return
+      await moveRefs(repo, [...others, { ref: startRef!, from: from.hash, to: null }])
+      return settle()
     }
     if (to.hash && !from.hash && change.mode === 'soft') {
       // Redoing it: the branch is made again at the commit; the index already holds what it has.
-      await run(repo, ['update-ref', startRef ?? 'HEAD', to.hash, ''])
-      return
+      await moveRefs(repo, [...others, { ref: startRef ?? 'HEAD', from: null, to: to.hash }])
+      return settle()
     }
+    await moveRefs(repo, others)
     if (to.hash && to.hash !== from.hash) {
-      if (concludesMerge) {
-        // `reset --soft` refuses mid-merge; moving HEAD is all a soft reset does.
-        await run(repo, ['update-ref', 'HEAD', to.hash, from.hash!])
-        const dir = await gitDir(repo)
-        await Promise.all(MERGE_STATE.map((f) => fs.rm(join(dir, f), { force: true })))
-      } else {
-        await run(repo, ['reset', '-q', `--${change.mode}`, to.hash])
+      try {
+        if (concludesMerge) {
+          // `reset --soft` refuses mid-merge; moving HEAD is all a soft reset does.
+          await run(repo, ['update-ref', 'HEAD', to.hash, from.hash!])
+          const dir = await gitDir(repo)
+          await Promise.all(MERGE_STATE.map((f) => fs.rm(join(dir, f), { force: true })))
+        } else {
+          // `--keep` refuses local changes in its way, changing nothing.
+          await run(repo, ['reset', '-q', `--${change.mode}`, to.hash])
+        }
+      } catch (err) {
+        await moveRefsBack(repo, others)
+        throw err
       }
     }
+    await settle()
     if (change.mode === 'soft' && to.merge && !from.merge && from.hash) {
       // Undoing a merge commit: bring back the merge it concluded, ready to commit again.
       const message = await run(repo, ['log', '-1', '--format=%B', from.hash])
@@ -1998,12 +2030,31 @@ async function moveRefsAndHead(repo: string, change: RepoChange, concludesMerge:
     return
   }
 
-  // HEAD moves: create/move the target refs, switch, then update the branch we left and delete refs.
+  // HEAD moves: create/move the target refs, switch, then update the branch we left and delete refs. When a step
+  // fails, the ones before it are put back.
   const later = change.refs.filter((m) => m.ref === startRef || m.to === null)
-  for (const move of change.refs) if (!later.includes(move)) await moveRef(repo, move)
-  if (to.branch) await run(repo, ['checkout', '-q', to.branch, '--'])
-  else if (to.hash) await run(repo, ['checkout', '-q', '--detach', to.hash])
-  for (const move of later) await moveRef(repo, move)
+  const early = change.refs.filter((m) => !later.includes(m))
+  const checkout = (head: typeof to) =>
+    head.branch
+      ? run(repo, ['checkout', '-q', head.branch, '--'])
+      : head.hash
+        ? run(repo, ['checkout', '-q', '--detach', head.hash])
+        : Promise.resolve('')
+  await moveRefs(repo, early)
+  try {
+    await checkout(to)
+  } catch (err) {
+    await moveRefsBack(repo, early)
+    throw err
+  }
+  try {
+    await moveRefs(repo, later)
+  } catch (err) {
+    await checkout(from).catch(() => {})
+    await moveRefsBack(repo, early)
+    throw err
+  }
+  for (const move of change.refs) await moveBranchConfig(repo, move)
 }
 
 // ---------------------------------------------------------------------------
