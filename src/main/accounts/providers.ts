@@ -11,7 +11,7 @@ import type {
 export type FetchFn = (
   url: string,
   init?: { headers?: Record<string, string>; method?: string; body?: string }
-) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>
+) => Promise<{ ok: boolean; status: number; headers?: { get(name: string): string | null }; json(): Promise<unknown> }>
 
 const LABELS: Record<Provider, string> = {
   github: 'GitHub',
@@ -181,14 +181,24 @@ export async function listPullRequests(
         : provider === 'bitbucket'
           ? ['/pullrequests?state=OPEN&sort=-updated_on&pagelen=50', 50]
           : ['/pulls?state=open&sort=recentupdate&limit=50', 50]
+  // Gitea gives no more per page than its own limit (MAX_RESPONSE_ITEMS, which may be below 50), and says how many
+  // there are in all (X-Total-Count).
+  let total: number | null = null
+  const counting: FetchFn = async (url, init) => {
+    const res = await fetchFn(url, init)
+    const count = res.headers?.get('x-total-count')
+    total = count && /^\d+$/.test(count) ? Number(count) : null
+    return res
+  }
   const found = new Map<number, PullRequest>()
   for (let page = 1; found.size < PULL_REQUESTS_MAX; page++) {
     const url = projectPath(provider, path) + query + (page > 1 ? `&page=${page}` : '')
-    const rows = items(await getJson(provider, host, url, token, fetchFn))
+    const rows = items(await getJson(provider, host, url, token, counting))
     // One updated while the pages are read moves to the first: it may come twice.
     for (const pr of rows.map((r) => toPullRequest(provider, r))) if (!found.has(pr.number)) found.set(pr.number, pr)
-    // A page that is not full is the last one.
-    if (rows.length < size) break
+    // A page that is not full is the last one, unless the server said there are more (an empty one always is).
+    const more = total !== null ? rows.length > 0 && found.size < total : rows.length >= size
+    if (!more) break
   }
   return [...found.values()].slice(0, PULL_REQUESTS_MAX)
 }

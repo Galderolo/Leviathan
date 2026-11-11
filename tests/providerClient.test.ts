@@ -15,7 +15,7 @@ import {
 const TOKEN = 'tok_secret_value'
 
 /** Fake fetch that serves canned JSON per URL and records the request headers. */
-function fakeFetch(routes: Record<string, { status?: number; body: unknown }>) {
+function fakeFetch(routes: Record<string, { status?: number; body: unknown; headers?: Record<string, string> }>) {
   const calls: { url: string; headers: Record<string, string>; method?: string; body?: unknown }[] = []
   const fn: FetchFn = async (url, init) => {
     calls.push({
@@ -27,7 +27,8 @@ function fakeFetch(routes: Record<string, { status?: number; body: unknown }>) {
     const route = routes[url]
     if (!route) return { ok: false, status: 404, json: async () => ({}) }
     const status = route.status ?? 200
-    return { ok: status < 400, status, json: async () => route.body }
+    const headers = { get: (name: string) => route.headers?.[name.toLowerCase()] ?? null }
+    return { ok: status < 400, status, headers, json: async () => route.body }
   }
   return { fn, calls }
 }
@@ -213,6 +214,33 @@ describe('pull requests', () => {
       'https://git.example.com/api/v1/repos/org/app/pulls?state=open&sort=recentupdate&limit=50': { body: [ghPr] }
     })
     expect(await listPullRequests('gitea', 'git.example.com', 'org/app', TOKEN, fn)).toEqual([ghExpected])
+  })
+
+  it('lists every page of a Gitea server whose pages are smaller than asked for', async () => {
+    const prs = (from: number, count: number) =>
+      Array.from({ length: count }, (_, i) => ({ ...ghPr, number: from + i }))
+    const list = 'https://git.example.com/api/v1/repos/org/app/pulls?state=open&sort=recentupdate&limit=50'
+    // Its MAX_RESPONSE_ITEMS is 30: each page brings 30 at most, and X-Total-Count says how many there are.
+    const total = { 'x-total-count': '70' }
+    const { fn, calls } = fakeFetch({
+      [list]: { body: prs(1, 30), headers: total },
+      [`${list}&page=2`]: { body: prs(31, 30), headers: total },
+      [`${list}&page=3`]: { body: prs(61, 10), headers: total }
+    })
+    const listed = await listPullRequests('gitea', 'git.example.com', 'org/app', TOKEN, fn)
+    expect(listed.map((pr) => pr.number)).toEqual(prs(1, 70).map((pr) => pr.number))
+    expect(calls).toHaveLength(3)
+  })
+
+  it('stops at an empty page when fewer pull requests are left than the total said', async () => {
+    const list = 'https://git.example.com/api/v1/repos/org/app/pulls?state=open&sort=recentupdate&limit=50'
+    // One was closed while the pages were read.
+    const { fn, calls } = fakeFetch({
+      [list]: { body: [{ ...ghPr, number: 1 }], headers: { 'x-total-count': '2' } },
+      [`${list}&page=2`]: { body: [], headers: { 'x-total-count': '1' } }
+    })
+    expect(await listPullRequests('gitea', 'git.example.com', 'org/app', TOKEN, fn)).toHaveLength(1)
+    expect(calls).toHaveLength(2)
   })
 
   it('creates a draft pull request on GitHub', async () => {

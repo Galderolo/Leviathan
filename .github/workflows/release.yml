@@ -85,6 +85,25 @@ jobs:
           # Unsigned builds by default. Add signing secrets here when the project has certificates.
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      # The deb target writes resources/package-type into linux-unpacked, which the AppImage is made from too: in the
+      # AppImage, electron-updater would read it and update the app as a .deb. Extracting needs no FUSE.
+      - name: Check the AppImage updates itself as an AppImage
+        if: runner.os == 'Linux'
+        working-directory: dist
+        run: |
+          appimage=$(ls *.AppImage)
+          chmod +x "$appimage"
+          "./$appimage" --appimage-extract > /dev/null
+          if [ -e squashfs-root/resources/package-type ]; then
+            echo "::error::$appimage has resources/package-type ($(cat squashfs-root/resources/package-type)): it would update as that package"
+            exit 1
+          fi
+          if [ ! -e squashfs-root/resources/app-update.yml ]; then
+            echo "::error::$appimage has no resources/app-update.yml: it would not look for updates"
+            exit 1
+          fi
+          rm -rf squashfs-root
+
       - uses: actions/upload-artifact@v7
         with:
           name: installers-${{ matrix.os }}

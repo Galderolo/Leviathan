@@ -4,6 +4,11 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Fixed
+
+- **Every open pull request of a Gitea server that gives fewer than 50 per page is listed**: only its first page was (a server's `MAX_RESPONSE_ITEMS` may be lower). The app now goes on while the server says there are more.
+- **The changed files of a repository with thousands of Git LFS locks show faster**: each row went through the whole list of locks to find its own.
+
 ## [0.23.1] - 2026-11-05
 
 ### Fixed

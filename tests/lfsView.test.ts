@@ -60,6 +60,29 @@ describe('locks of files', () => {
     expect(lockFor(undefined, 'a.psd')).toBeNull()
   })
 
+  it('looks the locks up by path, without going through the whole list for each file', () => {
+    const many = Array.from({ length: 2000 }, (_, i) => lock(`art/${i}.psd`, false))
+    let reads = 0
+    const counted = new Proxy(many, {
+      get(target, key, receiver) {
+        if (typeof key === 'string' && /^\d+$/.test(key)) reads++
+        return Reflect.get(target, key, receiver)
+      }
+    })
+    for (let i = 0; i < many.length; i++) expect(lockFor(counted, `art/${i}.psd`)?.id).toBe(`art/${i}.psd`)
+    expect(lockFor(counted, 'art/missing.psd')).toBeNull()
+    // Reading the list once to index it, not once per file (2000 × 1000 on average).
+    expect(reads).toBeLessThanOrEqual(many.length)
+  })
+
+  it('reads a new list of locks again', () => {
+    const before = [lock('a.psd', true, 'me')]
+    expect(lockFor(before, 'a.psd')?.owner).toBe('me')
+    const after = [lock('a.psd', false, 'ana')]
+    expect(lockFor(after, 'a.psd')?.owner).toBe('ana')
+    expect(lockFor(before, 'a.psd')?.owner).toBe('me')
+  })
+
   it("lists changed files someone else locked, never the user's own or unknown ones", () => {
     expect(lockedByOthers(locks, ['a.psd', 'b.psd', 'c.psd', 'd.psd']).map((l) => l.path)).toEqual(['b.psd'])
   })
