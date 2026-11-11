@@ -228,6 +228,30 @@ The repository menu's *Reflog* sets `reflog` in a repository's view: `ReflogView
 
 `RepoState.bisect` (`currentBisect` in `repository.ts`, read on every refresh only when `BISECT_START` is in the git dir, so per worktree) holds where it started, git's terms (`BISECT_TERMS`, for a bisect started with `--term-old`/`--term-new` in a terminal), the commits marked (`refs/bisect/<bad>`, `<good>-*`, `skip-*`), what is left (`git rev-list --bisect-vars`), and `firstBad` once only the bad one is left, or `suspects` when only skipped ones are (git exits with 2 then: `bisectMark` takes it as done). `bisectStart` (refused while one is under way: git would drop it), `bisectMark` (the checked-out commit, or one picked in the graph) and `bisectReset` go through `unlessBlocked`: a block from uncommitted changes in the way of the next checkout is offered to be stashed (`runBisect` in `actions.ts`) and the step runs again. When the first checkout of a start fails, git undoes the start; when a mark's checkout fails, the mark stays and marking the same commit again only moves on. `BisectBar` sits under the toolbar across the window; the graph's marks are `bisectMarks` plus the commit to test (HEAD) and the suspects. Bisect steps are not recorded for undo: they move HEAD and git's own refs together, and *Stop bisecting* goes back.
 
+## Undo / redo
+
+What it records and how it is applied is in *Done in 0.3.0* above; its open problems are under Known minor issues.
+
+- One undo or redo runs at a time per repository (`historyRuns` in `actions.ts`): a press while one is applied is ignored.
+- An action recorded for undo waits for a background fetch under way, and none starts until it is recorded (`recording` in `actions.ts`): otherwise the tags it brought were part of the change.
+- Undoing the first commit of a branch with no commits before (an empty repository) deletes the branch again (`update-ref -d`) and keeps its files staged, as any undone commit does.
+- Undoing a hard reset brings back the uncommitted changes of tracked files it dropped; redoing it sets those files to HEAD first (`filesToHead`), as `reset --keep` refuses local changes.
+
+## Accounts
+
+- Tokens go through Electron's asynchronous safeStorage (`encryptStringAsync`, `decryptStringAsync`, `isAsyncEncryptionAvailable`); `AccountStore` encrypts a secret again when `shouldReEncrypt` says its key rotated. On Windows both calls write the same `v10` format, checked both ways, so an older version still reads tokens saved by this one.
+- Commit identity (`getCommitIdentity`, `setCommitIdentity`, `ensureDefaultIdentity` in `src/main/accounts/index.ts`, `src/main/git/identity.ts`, `src/shared/identity.ts`): a repository without a local `user.name`/`user.email` and not bound to an account is bound, when opened, to the account that owns its project (first path part = username, no request) or else the first on that host whose token may push (`canPush`: GitHub/Gitea `permissions.push`, GitLab Developer or above, Bitbucket write/admin). Nothing found is remembered for the session only. A local identity is never replaced; renaming an account only updates the repositories that still have its old identity. Picking an identity typed or the global one keeps the binding (its token still serves push and pull).
+- SSH aliases: `SshHosts` (`src/main/git/sshHosts.ts`) rewrites SSH remote URLs with the host `ssh -G <alias>` reports (once per name per session; names that could read as an option are never passed) before the accounts module looks for the account of a repository (pull requests, default identity, avatars, and `repoUsesHost` for the "this account's host is not among the remotes" hint after binding an account).
+- A repository's credentials (`setRepoGitArgs` in `src/main/git/runner.ts`) go to every git command run in it or in a folder inside it; with nested repositories the innermost one wins (`argsForCwd`), so a submodule opened in its own tab may use another account than its parent.
+
+## Avatars
+
+Off by default (`settings.avatars`): `getAvatars` in the main process asks nothing until then. Sources per email (`avatarSources`, `src/main/avatars.ts`): GitHub no-reply address -> `avatars.githubusercontent.com/u/<id>`, an own GitHub account's email -> `github.com/<user>.png`, then the repository's server through its account (`authorAvatar`: GitHub and Gitea by the author of one of their commits, Bitbucket by the user of that commit's author, GitLab by email with `/avatar`), then Gravatar (SHA-256, `d=404`). Pictures come to the window as data: URLs (its CSP allows no remote images), cached in `avatars.json` in the profile: found for 7 days, none for 1 day, an unreachable server not at all. Asked once per email per session.
+
+## Automatic updates
+
+Update checks (`locateRelease` in `src/main/autoUpdate.ts`, `newestPublished` in `src/shared/updates.ts`): before each one the app reads GitHub's releases feed and points electron-updater (generic provider, one range per request as GitHub's own provider) at the newest of the first five tags whose update file for this platform can be downloaded; a draft's cannot. electron-updater's GitHub provider takes the newest tag of the feed, so a tag pushed before its release was published hid every update until the installers were up. When the feed cannot be read, the GitHub provider is used as before. An update already found stays on show while later checks fail.
+
 ## Next steps
 
 ### 1. Pull requests on real servers
@@ -260,28 +284,24 @@ Set aside on 2026-10-29 by the user, until someone asks: signing in with the bro
 
 ### 5. Polishing (planned after 0.23.1)
 
-Two batches, each on its own `fix/…` branch, released together when asked:
+Fixes from Known minor issues below, on `fix/…` branches, each with a test that fails first, released together when asked:
 
-- **Fixes from Known minor issues below**, each with a test that fails first:
-  1. Interactive rebase: when the commit a squash group melds into ends up empty, its messages are lost; merge them into the previous commit.
-  2. Interactive rebase: a rebase that stopped for a conflict and was continued cannot be undone; record it.
-  3. Undo / redo: apply a change in one `git update-ref --stdin` transaction, so a failure leaves nothing half done.
-  4. Pull requests on Gitea: a server whose page limit is below 50 lists only its first page; ask its limit (`GET /api/v1/settings/api`, `max_response_items`) or keep going while pages come back full.
-  5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path, and add the CI check that the AppImage has no `package-type` file.
-  6. Git LFS: lock lookups per file row are linear in the number of locks; index them by path.
-- **Pruning this list**: check each entry against the code and drop what is already done (for example "Nested repositories match the first registered repository": compare with `argsForCwd` in `src/main/git/runner.ts`); move entries that only describe how something works (SSH aliases, Avatars, parts of Accounts and Automatic updates, the undo of an empty repository's first commit, which keeps its files staged as any undone commit does) to the section of that feature.
+1. Interactive rebase: when the commit a squash group melds into ends up empty, its messages are lost; merge them into the previous commit.
+2. Interactive rebase: a rebase that stopped for a conflict and was continued cannot be undone; record it.
+3. Undo / redo: apply a change in one `git update-ref --stdin` transaction, so a failure leaves nothing half done.
+4. Pull requests on Gitea: a server whose page limit is below 50 lists only its first page; ask its limit (`GET /api/v1/settings/api`, `max_response_items`) or keep going while pages come back full.
+5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path, and add the CI check that the AppImage has no `package-type` file.
+6. Git LFS: lock lookups per file row are linear in the number of locks; index them by path.
 
-Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): first the pruning (20–30 min, docs only), fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first.
+Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first. The list below was pruned on 2026-11-11: what was done went, and what only described how something works moved to its feature's section.
 
 ## Known minor issues
 
 Found by reviews and left for later; none loses work. Good first contributions.
 
 **Undo / redo**
-- Applying a change is not atomic (could use `update-ref --stdin`). One undo or redo runs at a time per repository (`historyRuns` in `actions.ts`): a press while one is applied is ignored.
-- An action recorded for undo waits for a background fetch under way, and none starts until it is recorded (`recording` in `actions.ts`): otherwise the tags it brought were part of the change.
-- Undoing the first commit of a branch with no commits before (an empty repository) deletes the branch again and leaves its files staged (`update-ref -d`).
-- Undoing a hard reset brings back the uncommitted changes of tracked files it dropped; redoing it sets those files to HEAD first (`filesToHead`), as `reset --keep` refuses local changes. Discarding everything during a merge or rebase is not recorded (it ends the operation).
+- Applying a change is not atomic (could use `update-ref --stdin`).
+- Discarding everything during a merge or rebase is not recorded (it ends the operation).
 - Undoing a branch rename restarts its reflog. Undoing a merge commit that could have fast-forwarded brings it back as `--no-ff` (`MERGE_MODE`), so committing again makes a merge.
 
 **Conflict editor**
@@ -306,18 +326,10 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - 403 messages are generic (no Gitea scope). A 401 in the side panel says the token stopped working and links to Settings → Accounts (0.13.0), matched on the "rejected the token" text.
 - Up to 500 open PRs are listed (`PULL_REQUESTS_MAX`), asked 100 at a time (50 on Bitbucket and Gitea) until a page is not full: a Gitea server whose page limit is below 50 lists only its first page. Fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 
-**SSH aliases**
-- `SshHosts` (`src/main/git/sshHosts.ts`) rewrites SSH remote URLs with the host `ssh -G <alias>` reports (once per name per session; names that could read as an option are never passed) before the accounts module looks for the account of a repository (pull requests, default identity, avatars, and `repoUsesHost` for the "this account's host is not among the remotes" hint after binding an account).
-
-**Avatars**
-- Off by default (`settings.avatars`): `getAvatars` in the main process asks nothing until then. Sources per email (`avatarSources`, `src/main/avatars.ts`): GitHub no-reply address -> `avatars.githubusercontent.com/u/<id>`, an own GitHub account's email -> `github.com/<user>.png`, then the repository's server through its account (`authorAvatar`: GitHub and Gitea by the author of one of their commits, Bitbucket by the user of that commit's author, GitLab by email with `/avatar`), then Gravatar (SHA-256, `d=404`). Pictures come to the window as data: URLs (its CSP allows no remote images), cached in `avatars.json` in the profile: found for 7 days, none for 1 day, an unreachable server not at all. Asked once per email per session.
-
 **Accounts**
 - Under investigation (2026-11-03): on one Windows computer the GitHub token stored by the app could not be read after each restart, so the user signed in daily; each sign-in makes a new token and GitHub keeps ten per account and app (OAuth App tokens never expire, but the oldest are revoked), which revoked the token of another computer. A failed read now keeps the system's reason (`AccountStore.unreadable`, `accountTokenState`), shown when the token is needed; a token the server refuses opens `explainAuth` (`authProblem` in `src/shared/authErrors.ts`) with *Sign in again* (`signInAgain`: Settings → Accounts starts the GitHub or GitLab sign-in at once). The cause on that computer is still unknown (Electron's key in `Local State` regenerated?).
-- Tokens go through Electron's asynchronous safeStorage (`encryptStringAsync`, `decryptStringAsync`, `isAsyncEncryptionAvailable`); `AccountStore` encrypts a secret again when `shouldReEncrypt` says its key rotated. On Windows both calls write the same `v10` format, checked both ways, so an older version still reads tokens saved by this one.
-- Commit identity (`getCommitIdentity`, `setCommitIdentity`, `ensureDefaultIdentity` in `src/main/accounts/index.ts`, `src/main/git/identity.ts`, `src/shared/identity.ts`): a repository without a local `user.name`/`user.email` and not bound to an account is bound, when opened, to the account that owns its project (first path part = username, no request) or else the first on that host whose token may push (`canPush`: GitHub/Gitea `permissions.push`, GitLab Developer or above, Bitbucket write/admin). Nothing found is remembered for the session only. A local identity is never replaced; renaming an account only updates the repositories that still have its old identity. Picking an identity typed or the global one keeps the binding (its token still serves push and pull).
-- Usernames with `%` or `@` in the askpass prompt; `*.ghe.com` API base and no-reply emails for hosts with a port.
-- Nested repositories match the first registered repository, not the deepest; Windows path casing in the repository → account map.
+- Usernames with `%` or `@` in the askpass prompt (git writes them as they are: `answerFromAccounts` reads the user up to the first `@` and decodes it as a URL); `*.ghe.com` API base and no-reply emails for hosts with a port.
+- The settings' repository → account map (`repoAccounts`, `getRepoAccount`) is looked up by the path exactly as given, so on Windows the same folder in another casing has no account there (the git runner's own map, `setRepoGitArgs`, ignores case and picks the innermost repository).
 - `other` accounts get an invented default email.
 - GitHub sign-in: network and server errors while waiting are asked again, three in a row end it; no local deadline besides GitHub's `expired_token`; secure storage is only checked after the browser step; a cancel pressed after GitHub issued the token still adds the account.
 
@@ -338,7 +350,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 - Folder history (`getFolderHistory`: `git log -- <folder>`, literal pathspec, 300 commits) loads the picked commit's whole file list (`getCommitDetails`) and keeps the folder's part (`filesInFolder`, moves in and out included), so a commit of 20 000 files costs the same as in the graph. Files compare with the first parent: a merge that brought the folder's changes may list nothing.
 
 **Automatic updates**
-- Update checks (`locateRelease` in `src/main/autoUpdate.ts`, `newestPublished` in `src/shared/updates.ts`): before each one the app reads GitHub's releases feed and points electron-updater (generic provider, one range per request as GitHub's own provider) at the newest of the first five tags whose update file for this platform can be downloaded; a draft's cannot. electron-updater's GitHub provider takes the newest tag of the feed, so a tag pushed before its release was published hid every update until the installers were up. When the feed cannot be read, the GitHub provider is used as before. An update already found stays on show while later checks fail.
 - Nothing proves an installer is ours beyond HTTPS and the GitHub account: set `publisherName` once Windows builds are signed. Each check sends electron-updater's random staging id to github.com.
 - AppImage updates replace `Leviathan-x.y.z.AppImage` with a file of the new name, which breaks launchers pointing at the old path.
 - The Linux release builds AppImage and .deb from the same folder; a CI check that the AppImage has no `package-type` file would guard the updater choice.
