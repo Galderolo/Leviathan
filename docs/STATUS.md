@@ -293,7 +293,7 @@ Fixes from Known minor issues below, on `fix/…` branches, each with a test tha
 5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path (the CI check that the AppImage has no `package-type` file is done).
 6. Git LFS: lock lookups per file row are linear in the number of locks; index them by path.
 
-Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first. Done on 2026-11-11 (`fix/minor-issues`): fix 6 (`lockFor` indexes each list of locks by path once), fix 4 (Gitea's `X-Total-Count`) and the CI check of fix 5 (the Release workflow extracts the AppImage and fails when it has `resources/package-type`, which the deb target writes into the folder both are made from, or no `app-update.yml`). The list below was pruned on 2026-11-11: what was done went, and what only described how something works moved to its feature's section.
+Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first. Done on 2026-11-11 (`fix/minor-issues`): fix 6 (`lockFor` indexes each list of locks by path once), fix 4 (Gitea's `X-Total-Count`) and the CI check of fix 5 (the Release workflow extracts the AppImage and fails when it has `resources/package-type`, which the deb target writes into the folder both are made from, or no `app-update.yml`); fix 1 (`fix/rebase-squash-empty`: when a group's own commit was dropped and HEAD still moved, the commit the squashed ones melded into is amended with its message and theirs, `squashed-<n>` in `planRebase`). The list below was pruned on 2026-11-11: what was done went, and what only described how something works moved to its feature's section.
 
 ## Known minor issues
 
@@ -313,7 +313,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **Interactive rebase**
 - A merge, cherry-pick, revert or rebase that stops for something other than conflicts shows only git's reason (`stopReason`: its errors, without progress, hints, or lines naming commands); a line git words differently in another version may still slip through.
 - A rebase that stopped for a conflict and was continued is not undoable.
-- If the commit a squash group melds into ends up empty, the squashed messages are not merged into the previous commit.
 - With merges in the range, commits keep their places (no reordering) and a merge keeps its message; a squash or fixup cannot cross a merge or a branch start.
 
 **Git LFS**
