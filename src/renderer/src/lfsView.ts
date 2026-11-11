@@ -22,8 +22,18 @@ export function attributesChanged(state: RepoState): boolean {
   return changedFiles(state).some((f) => isAttributesFile(f.path))
 }
 
+/** Each list of locks indexed by path, made the first time a file row asks (a new list comes with each reload). */
+const locksByPath = new WeakMap<LfsLock[], Map<string, LfsLock>>()
+
 export function lockFor(locks: LfsLock[] | undefined, path: string): LfsLock | null {
-  return locks?.find((l) => l.path === path) ?? null
+  if (!locks) return null
+  let byPath = locksByPath.get(locks)
+  if (!byPath) {
+    byPath = new Map()
+    for (const lock of locks) if (!byPath.has(lock.path)) byPath.set(lock.path, lock)
+    locksByPath.set(locks, byPath)
+  }
+  return byPath.get(path) ?? null
 }
 
 /** Locks someone else holds on these files: pushing changes to them will be refused. */

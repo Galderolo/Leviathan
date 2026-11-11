@@ -290,10 +290,10 @@ Fixes from Known minor issues below, on `fix/…` branches, each with a test tha
 2. Interactive rebase: a rebase that stopped for a conflict and was continued cannot be undone; record it.
 3. Undo / redo: apply a change in one `git update-ref --stdin` transaction, so a failure leaves nothing half done.
 4. Pull requests on Gitea: a server whose page limit is below 50 lists only its first page; ask its limit (`GET /api/v1/settings/api`, `max_response_items`) or keep going while pages come back full.
-5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path, and add the CI check that the AppImage has no `package-type` file.
+5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path (the CI check that the AppImage has no `package-type` file is done).
 6. Git LFS: lock lookups per file row are linear in the number of locks; index them by path.
 
-Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first. The list below was pruned on 2026-11-11: what was done went, and what only described how something works moved to its feature's section.
+Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first. Done on 2026-11-11 (`fix/minor-issues`): fix 6 (`lockFor` indexes each list of locks by path once), fix 4 (Gitea's `X-Total-Count`) and the CI check of fix 5 (the Release workflow extracts the AppImage and fails when it has `resources/package-type`, which the deb target writes into the folder both are made from, or no `app-update.yml`). The list below was pruned on 2026-11-11: what was done went, and what only described how something works moved to its feature's section.
 
 ## Known minor issues
 
@@ -319,12 +319,11 @@ Found by reviews and left for later; none loses work. Good first contributions.
 **Git LFS**
 - Loading locks can take up to four git-lfs runs (verify, then without it), and an interactive reload without a credential helper may ask several times. A host without the locks API (Bitbucket Cloud) is told apart by git-lfs's message (`NO_LOCKING_API` in `src/main/git/lfs.ts`: "not found", "not supported", 404), so a different wording from a server would show as an error again (0.13.0).
 - An own lock on a file deleted locally (deletion not committed) is released by id, skipping git-lfs's uncommitted-changes check.
-- Lock lookups per file row are linear in the number of locks (fine for hundreds).
 - A hook of another tool (husky…) stops `git lfs install` at the first one, setting none up. *Set up* then writes the missing hooks as git-lfs would, downloads the files and offers git-lfs's instructions (`git lfs update --manual`) for the other tool's hooks, which stay as they were: the section says "not set up" until those lines are added by hand. A hook that is husky's wrapper is read as it is (the lines may live in `.husky/pre-push`).
 
 **Pull requests**
 - 403 messages are generic (no Gitea scope). A 401 in the side panel says the token stopped working and links to Settings → Accounts (0.13.0), matched on the "rejected the token" text.
-- Up to 500 open PRs are listed (`PULL_REQUESTS_MAX`), asked 100 at a time (50 on Bitbucket and Gitea) until a page is not full: a Gitea server whose page limit is below 50 lists only its first page. Fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
+- Up to 500 open PRs are listed (`PULL_REQUESTS_MAX`), asked 100 at a time (50 on Bitbucket and Gitea) until a page is not full, or, when the server says how many there are (`X-Total-Count`, Gitea, whose pages may be smaller than asked for), until they are all there or a page comes back empty. Fork workflows (origin = personal fork) list the fork's PRs, not the parent's.
 
 **Accounts**
 - Under investigation (2026-11-03): on one Windows computer the GitHub token stored by the app could not be read after each restart, so the user signed in daily; each sign-in makes a new token and GitHub keeps ten per account and app (OAuth App tokens never expire, but the oldest are revoked), which revoked the token of another computer. A failed read now keeps the system's reason (`AccountStore.unreadable`, `accountTokenState`), shown when the token is needed; a token the server refuses opens `explainAuth` (`authProblem` in `src/shared/authErrors.ts`) with *Sign in again* (`signInAgain`: Settings → Accounts starts the GitHub or GitLab sign-in at once). The cause on that computer is still unknown (Electron's key in `Local State` regenerated?).
@@ -351,8 +350,7 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Automatic updates**
 - Nothing proves an installer is ours beyond HTTPS and the GitHub account: set `publisherName` once Windows builds are signed. Each check sends electron-updater's random staging id to github.com.
-- AppImage updates replace `Leviathan-x.y.z.AppImage` with a file of the new name, which breaks launchers pointing at the old path.
-- The Linux release builds AppImage and .deb from the same folder; a CI check that the AppImage has no `package-type` file would guard the updater choice.
+- AppImage updates replace `GitLeviathan-x.y.z.AppImage` with a file of the new name, which breaks launchers pointing at the old path.
 
 **Older items**
 - A new SSH key's passphrase reaches ssh-keygen through a one-off askpass bridge (`keygenWithPassphrase` in `src/main/ssh.ts`; `askpass.cmd` for Windows' own OpenSSH, which cannot run `askpass.sh`), then the key is checked to refuse an empty passphrase. Tried with OpenSSH for Windows 9.5; Git for Windows' own ssh-keygen (when it comes first in the PATH) running the `.cmd` is untested — if it cannot, the key is refused, not left unprotected.
