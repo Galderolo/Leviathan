@@ -53,11 +53,18 @@ describe('planRebase', () => {
       item('c3', 'drop'),
       item('d4', 'fixup'),
       item('e5', 'pick'),
-      item('f6', 'squash')
+      item('f6', 'squash'),
+      item('g7', 'reword', 'New G')
     ])
+    const amend = (name: string) =>
+      `git commit --amend --allow-empty --no-verify -q --cleanup=whitespace -F '/git/${name}'`
+    const made = (i: number) => `[ "$(cat '/git/after-${i}')" != "$(cat '/git/before-${i}')" ]`
+    // Its own commit dropped as empty: the squashed ones melded into the commit before, which takes their messages.
     const guard = (i: number) =>
-      `exec if [ "$(cat '/git/after-${i}')" != "$(cat '/git/before-${i}')" ]; then ` +
-      `git commit --amend --allow-empty --no-verify -q --cleanup=whitespace -F '/git/msg-${i}'; fi`
+      `exec if ${made(i)}; then ${amend(`msg-${i}`)}; ` +
+      `elif [ "$(git rev-parse HEAD)" != "$(cat '/git/after-${i}')" ]; then ` +
+      `git log -1 --no-show-signature --format=%B > '/git/joined-${i}' && ` +
+      `cat '/git/squashed-${i}' >> '/git/joined-${i}' && ${amend(`joined-${i}`)}; fi`
     expect(todo.split('\n')).toEqual([
       "exec git rev-parse HEAD > '/git/before-0'",
       'pick a1',
@@ -71,9 +78,20 @@ describe('planRebase', () => {
       "exec git rev-parse HEAD > '/git/after-4'",
       'fixup f6',
       guard(4),
+      "exec git rev-parse HEAD > '/git/before-6'",
+      'pick g7',
+      "exec git rev-parse HEAD > '/git/after-6'",
+      // Nothing squashed into it: when it is dropped, the commit before stays as it was.
+      `exec if ${made(6)}; then ${amend('msg-6')}; fi`,
       ''
     ])
-    expect(files).toEqual({ 'msg-0': 'New A\n\nB', 'msg-4': 'E\n\nF' })
+    expect(files).toEqual({
+      'msg-0': 'New A\n\nB',
+      'squashed-0': '\nB',
+      'msg-4': 'E\n\nF',
+      'squashed-4': '\nF',
+      'msg-6': 'New G'
+    })
   })
 })
 

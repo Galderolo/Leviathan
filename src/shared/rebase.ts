@@ -37,8 +37,10 @@ export interface RebasePlan {
  * fixup commits melded into it are picked and fixed up, then one amend sets the
  * group's message (new for a reword, joined for squashes) from a file. The amend
  * runs only if the group's own commit was made — when it ends up empty git drops
- * it, and the amend would otherwise rename the commit before it. Markers and
- * messages live at `path(name)`, so they still apply after a stop for a conflict.
+ * it, and the amend would otherwise rename the commit before it. What is squashed
+ * then melds into that commit, which keeps its message with the squashed ones
+ * after it, as git's own squash would. Markers and messages live at
+ * `path(name)`, so they still apply after a stop for a conflict.
  */
 export function planRebase(
   items: RebaseItem[],
@@ -49,6 +51,8 @@ export function planRebase(
     head: number
     last: number
     parts: string[]
+    /** The messages of the commits squashed into it. */
+    squashed: string[]
     amend: boolean
   }
   const groups: Group[] = []
@@ -60,6 +64,7 @@ export function planRebase(
         head: index,
         last: index,
         parts: [reword ? (item.message ?? '') : messageOf(item.hash)],
+        squashed: [],
         amend: reword
       })
       return
@@ -68,7 +73,9 @@ export function planRebase(
     const group = groups[groups.length - 1]
     group.last = index
     if (item.action === 'squash') {
-      group.parts.push(messageOf(item.hash))
+      const message = messageOf(item.hash)
+      group.parts.push(message)
+      group.squashed.push(message)
       group.amend = true
     }
   })
@@ -90,11 +97,19 @@ export function planRebase(
     const ending = groups.find((g) => g.last === index && g.amend)
     if (ending) {
       const i = ending.head
+      const amend = (name: string) =>
+        `git commit --amend --allow-empty --no-verify -q --cleanup=whitespace -F ${q(name)}`
       files[`msg-${i}`] = ending.parts.join('\n\n')
-      lines.push(
-        `exec if [ "$(cat ${q(`after-${i}`)})" != "$(cat ${q(`before-${i}`)})" ]; then ` +
-          `git commit --amend --allow-empty --no-verify -q --cleanup=whitespace -F ${q(`msg-${i}`)}; fi`
-      )
+      let line = `exec if [ "$(cat ${q(`after-${i}`)})" != "$(cat ${q(`before-${i}`)})" ]; then ${amend(`msg-${i}`)};`
+      if (ending.squashed.length) {
+        // Its own commit was dropped, and what was squashed went into the one before (HEAD moved): add their messages.
+        files[`squashed-${i}`] = '\n' + ending.squashed.join('\n\n')
+        line +=
+          ` elif [ "$(git rev-parse HEAD)" != "$(cat ${q(`after-${i}`)})" ]; then ` +
+          `git log -1 --no-show-signature --format=%B > ${q(`joined-${i}`)} && ` +
+          `cat ${q(`squashed-${i}`)} >> ${q(`joined-${i}`)} && ${amend(`joined-${i}`)};`
+      }
+      lines.push(`${line} fi`)
     }
   })
   return { todo: lines.join('\n') + '\n', files }

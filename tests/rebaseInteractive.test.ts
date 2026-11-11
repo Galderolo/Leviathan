@@ -214,6 +214,43 @@ describe('interactiveRebase', () => {
     expect(await messages()).toEqual(['three', 'two'])
   })
 
+  it('keeps the messages squashed into a commit that ends up empty, in the commit they meld into', async () => {
+    hashes.four = await commitFile('two.txt', '2\n', 'four')
+    hashes.five = await commitFile('two.txt', 'two\n', 'five')
+    hashes.six = await commitFile('two.txt', '2\n', 'six')
+    hashes.seven = await commitFile('seven.txt', 'seven\n', 'seven')
+    hashes.eight = await commitFile('eight.txt', 'eight\n', 'eight')
+    const items = [
+      pick('one'),
+      pick('two'),
+      pick('three'),
+      pick('four'),
+      // Without "five", "six" changes nothing: git stops there (or drops it at once), and going on drops it.
+      pick('five', 'drop'),
+      pick('six', 'reword', 'Six, reworded'),
+      pick('seven', 'squash'),
+      pick('eight', 'fixup')
+    ]
+    await repo.interactiveRebase(dir, base, items).catch(() => {})
+    if ((await repo.getState(dir)).operation) await repo.continueOperation(dir)
+    expect((await repo.getState(dir)).operation).toBeNull()
+    expect(await messages()).toEqual(['four\n\nseven', 'three', 'two', 'one'])
+    const files = (await git(['ls-tree', '--name-only', 'HEAD'], { cwd: dir })).stdout.split('\n')
+    expect(files).toEqual(expect.arrayContaining(['seven.txt', 'eight.txt']))
+  })
+
+  it('leaves the commit before one that ends up empty as it was when only fixups meld into it', async () => {
+    hashes.four = await commitFile('two.txt', '2\n', 'four')
+    hashes.five = await commitFile('two.txt', 'two\n', 'five')
+    hashes.six = await commitFile('two.txt', '2\n', 'six')
+    hashes.seven = await commitFile('seven.txt', 'seven\n', 'seven')
+    const items = [pick('one'), pick('two'), pick('three'), pick('four'), pick('five', 'drop'), pick('six')]
+    await repo.interactiveRebase(dir, base, [...items, pick('seven', 'fixup')]).catch(() => {})
+    if ((await repo.getState(dir)).operation) await repo.continueOperation(dir)
+    expect((await repo.getState(dir)).operation).toBeNull()
+    expect(await messages()).toEqual(['four', 'three', 'two', 'one'])
+  })
+
   it('runs a reword that failed again when continuing', async () => {
     // Signing fails, so the amend that rewords "three" fails once (the picks before it fast-forward,
     // so nothing else needs signing; rebase remembers the signing setting for its own commits).
