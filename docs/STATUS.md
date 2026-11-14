@@ -1,6 +1,6 @@
 # Development status
 
-Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-11-05, with 0.23.1 released (863 tests, 72 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
+Snapshot of where Leviathan stands and what comes next, so a new working session can pick up without digging through history. Last updated: 2026-11-14, with 0.24.0 released (901 tests, 75 end-to-end). Work goes on `feat/…` / `fix/…` branches pushed to GitHub and merged into `main` with a merge commit.
 
 For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [CHANGELOG.md](../CHANGELOG.md).
 
@@ -43,6 +43,7 @@ For long-term ideas see [ROADMAP.md](ROADMAP.md); for user-facing changes see [C
 | 0.22.1 | 2026-11-04 | A token the server refused is explained, with *Sign in again*; a stored token that cannot be read says why |
 | 0.23.0 | 2026-11-04 | Signed commits (shown verified or not, signing set per repository or for all), search in the changes (`git log -S`), reflog to get lost commits back, guided bisect; Windows OpenSSH asks for passphrases, interactive rebase with merges opens with uncommitted changes, compare with my changes lists untracked files |
 | 0.23.1 | 2026-11-05 | Updates offered while the next version is being built, the question about a new SSH host whole again on Windows, a bisect whose good commit comes after the bad one, interactive rebase with merges and `rebase.updateRefs`, compare leaves out a repository inside the working tree |
+| 0.24.0 | 2026-11-14 | Fixup: add the staged changes to an older commit from its menu; undo of a rebase, cherry-pick or revert that stopped part way, undo and redo all or nothing, the squashed messages of a commit that ends up empty kept, every Gitea pull request listed, faster changed files with many LFS locks, a repository keeps its account whatever the case of its path on Windows, the Linux AppImage keeps its place when it updates |
 
 All are published as pre-releases on GitHub. The 0.2.0 release has no Linux installers: the three build jobs ran in parallel and the Linux one most likely uploaded to a second draft release. The 0.3.0 release has no macOS installers: it was published while the macOS build was still waiting for a runner, and that build only uploaded into drafts. Since 0.3.1 the builds keep their installers as artifacts and a last job uploads them all and publishes, whatever the state of the release.
 
