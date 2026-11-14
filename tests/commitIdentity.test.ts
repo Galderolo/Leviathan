@@ -130,6 +130,26 @@ describe('commit identity of a repository', () => {
     expect(await accounts.getCommitIdentity(lib)).toMatchObject({ source: 'global' })
   })
 
+  // Windows folders do not tell case apart: the same repository may come in as D:\Work\Game or d:\work\game.
+  it.runIf(process.platform === 'win32')(
+    'knows the account of a repository whatever the case of its path',
+    async () => {
+      const dir = await repoWith('CasedRepo', 'git@github.com:ana/cased.git')
+      await accounts.setRepoAccount(dir, ana.id)
+      expect(accounts.getRepoAccount(dir.toLowerCase())).toBe(ana.id)
+      expect(accounts.getRepoAccount(dir.toUpperCase())).toBe(ana.id)
+
+      // Bound again or unbound under another case, it stays one entry of the settings.
+      await accounts.setRepoAccount(dir.toUpperCase(), ana.id)
+      const entries = () =>
+        Object.keys(loadSettings().repoAccounts).filter((r) => r.toLowerCase() === dir.toLowerCase())
+      expect(entries()).toHaveLength(1)
+      await accounts.setRepoAccount(dir.toLowerCase(), null)
+      expect(entries()).toHaveLength(0)
+      expect(accounts.getRepoAccount(dir)).toBeNull()
+    }
+  )
+
   it("renames the account's identity in the repositories that still have it, not in those given another", async () => {
     const kept = await repoWith('kept', 'git@github.com:ana/a.git')
     const changed = await repoWith('changed', 'git@github.com:ana/b.git')

@@ -28,7 +28,7 @@ import { fetchPullRequestRange, getRangeFiles } from '../git/repository'
 import { setAccountSource } from '../askpass'
 import { readIdentity, writeIdentity } from '../git/identity'
 import { SshHosts } from '../git/sshHosts'
-import { git, setRepoGitArgs } from '../git/runner'
+import { git, repoKey, setRepoGitArgs } from '../git/runner'
 import { loadSettings, saveSettings } from '../settings'
 import {
   addPullRequestComment,
@@ -233,7 +233,7 @@ const withoutDefaultIdentity = new Set<string>()
  * or else of one that may push to it. A repository with an identity of its own is never touched.
  */
 export async function ensureDefaultIdentity(repo: string): Promise<void> {
-  if (getRepoAccount(repo) || withoutDefaultIdentity.has(repo)) return
+  if (getRepoAccount(repo) || withoutDefaultIdentity.has(repoKey(repo))) return
   const { local } = await readIdentity(repo)
   if (local.name || local.email) return
   const account = await defaultIdentityAccount(await repoRemotes(repo), accounts().list(), async (a, path) => {
@@ -241,7 +241,7 @@ export async function ensureDefaultIdentity(repo: string): Promise<void> {
     return !!token && canPush(a.provider, a.host, path, token)
   })
   if (account) await setRepoAccount(repo, account.id)
-  else withoutDefaultIdentity.add(repo)
+  else withoutDefaultIdentity.add(repoKey(repo))
 }
 
 /**
@@ -272,8 +272,16 @@ export async function listAccountRepos(id: string): Promise<RemoteRepo[]> {
   return listRepos(account.provider, account.host, (await freshToken(id)) ?? '')
 }
 
+/** The entry of `repoAccounts` for `repo`, which may have been written in another case on Windows. */
+function repoEntry(map: Record<string, string>, repo: string): string | undefined {
+  const key = repoKey(repo)
+  return Object.keys(map).find((r) => repoKey(r) === key)
+}
+
 export function getRepoAccount(repo: string): string | null {
-  return loadSettings().repoAccounts?.[repo] ?? null
+  const map = loadSettings().repoAccounts ?? {}
+  const entry = repoEntry(map, repo)
+  return entry === undefined ? null : map[entry]
 }
 
 /**
@@ -282,6 +290,9 @@ export function getRepoAccount(repo: string): string | null {
  */
 export async function setRepoAccount(repo: string, accountId: string | null): Promise<void> {
   const map = { ...(loadSettings().repoAccounts ?? {}) }
+  // One entry per repository, whatever the case its path came in.
+  const entry = repoEntry(map, repo)
+  if (entry !== undefined) delete map[entry]
   if (accountId) {
     const account = requireAccount(accountId)
     await applyIdentity(repo, account)

@@ -86,7 +86,8 @@ export function setGitEnv(env: Record<string, string>): void {
 
 const repoArgs = new Map<string, string[]>()
 
-function repoKey(path: string): string {
+/** A repository's path as a key: Windows folders do not tell case apart. */
+export function repoKey(path: string): string {
   const full = resolve(path)
   return process.platform === 'win32' ? full.toLowerCase() : full
 }
