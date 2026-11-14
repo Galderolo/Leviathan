@@ -28,6 +28,7 @@ import type { ReleaseNote } from '../../shared/releaseNotes'
 import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import type { RebaseItem } from '../../shared/rebase'
+import type { FixupInfo } from '../../shared/fixup'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, leavingStashes, type RepoChange, type Snapshot } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
@@ -2340,6 +2341,35 @@ export async function setAmend(path: string, amend: boolean): Promise<void> {
   }
 }
 
+/**
+ * A `quiet` for `runOp` around a commit: a failure to sign it is kept in `into` (no error toast) unless it was not to
+ * be signed anyway, so the caller can offer to commit unsigned.
+ */
+function signingQuiet(path: string, noSign: boolean, into: { failed: string | null }) {
+  return (err: unknown): boolean => {
+    const text = errorMessage(err)
+    if (noSign || !signingFailed(text) || getRepo(path)?.signing?.effective.sign === false) return false
+    into.failed = text
+    return true
+  }
+}
+
+/** After a commit could not be signed (nothing was committed): true to commit unsigned this once. */
+async function commitUnsigned(failed: string): Promise<boolean> {
+  // The key could not sign: missing, locked, gpg not set up.
+  const choice = await choiceDialog({
+    title: t('signing.failedTitle'),
+    message: t('signing.failed'),
+    note: failed,
+    choices: [
+      { key: 'unsigned', label: t('signing.commitUnsigned'), primary: true },
+      { key: 'settings', label: t('signing.openSettings') }
+    ]
+  })
+  if (choice === 'settings') openSigningSettings()
+  return choice === 'unsigned'
+}
+
 /** Commits what is staged with the message typed; `noSign`: not signed this once (signing it failed). */
 export async function commit(path: string, noSign = false): Promise<boolean> {
   const view = getRepo(path)
@@ -2350,28 +2380,9 @@ export async function commit(path: string, noSign = false): Promise<boolean> {
   const signing = { failed: null as string | null }
   const ok = await runOp(path, () => api.commit(path, message, amend, noSign), {
     undo: { label: t(amend ? 'undo.amend' : 'undo.commit', { name: summary.trim() }), mode: 'soft' },
-    quiet: (err) => {
-      const text = errorMessage(err)
-      if (noSign || !signingFailed(text) || getRepo(path)?.signing?.effective.sign === false) return false
-      signing.failed = text
-      return true
-    }
+    quiet: signingQuiet(path, noSign, signing)
   })
-  if (signing.failed !== null) {
-    // Nothing was committed: the key could not sign (missing, locked, gpg not set up).
-    const choice = await choiceDialog({
-      title: t('signing.failedTitle'),
-      message: t('signing.failed'),
-      note: signing.failed,
-      choices: [
-        { key: 'unsigned', label: t('signing.commitUnsigned'), primary: true },
-        { key: 'settings', label: t('signing.openSettings') }
-      ]
-    })
-    if (choice === 'unsigned') return commit(path, true)
-    if (choice === 'settings') openSigningSettings()
-    return false
-  }
+  if (signing.failed !== null) return (await commitUnsigned(signing.failed)) ? commit(path, true) : false
   if (ok) {
     // The next commit starts from the template again.
     const template = getRepo(path)?.template
@@ -2385,6 +2396,57 @@ export async function commit(path: string, noSign = false): Promise<boolean> {
     }
   }
   return ok
+}
+
+/**
+ * Adds what is staged to `hash`, a commit of the current branch, rewriting those after it (git's `commit --fixup` and
+ * an autosquash rebase). Asks first when some of them are already on a remote. `noSign`: not signed this once, after
+ * signing failed (that question was answered already).
+ */
+export async function fixupInto(path: string, hash: string, noSign = false): Promise<boolean> {
+  const operation = getRepo(path)?.state?.operation
+  if (operation) {
+    toast('error', t('error.operationInProgress', { operation: t(`op.${operation}`) }))
+    return false
+  }
+  let info: FixupInfo
+  try {
+    info = await api.fixupInfo(path, hash)
+  } catch (err) {
+    toast('error', errorMessage(err))
+    return false
+  }
+  if (!info.ok) {
+    toast('error', t(`error.fixup.${info.reason}`))
+    return false
+  }
+  if (!noSign && info.published > 0) {
+    // Never force-pushed on its own, as after amending a pushed commit.
+    const ok = await confirmDialog({
+      title: t('dlg.fixupPublishedTitle'),
+      message: t('dlg.fixupPublished', { count: info.published }),
+      confirmText: t('dlg.fixupPublishedConfirm')
+    })
+    if (!ok) return false
+  }
+  const done = { hash: '' }
+  const signing = { failed: null as string | null }
+  const ok = await runOp(
+    path,
+    async () => {
+      done.hash = (await api.fixupCommit(path, hash, noSign)).hash
+    },
+    {
+      // Soft: undone, the changes are staged again. An autostash git kept in the stash list stays there.
+      undo: { label: t('undo.fixup', { name: info.subject }), mode: 'soft', stashes: false },
+      quiet: signingQuiet(path, noSign, signing)
+    }
+  )
+  if (signing.failed !== null) return (await commitUnsigned(signing.failed)) ? fixupInto(path, hash, true) : false
+  if (!ok) return false
+  toast('success', t('toast.fixupDone', { name: info.subject }))
+  await selectCommit(path, done.hash, true)
+  return true
 }
 
 // ---------------------------------------------------------------------------

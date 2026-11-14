@@ -25,6 +25,7 @@ import {
   discardAll,
   discardFiles,
   dropStash,
+  fixupInto,
   hideInGraph,
   ignorePattern,
   lockFiles,
@@ -180,6 +181,13 @@ function bisectItems(path: string, hash: string, target: string, isHead: boolean
   ]
 }
 
+/** Adding what is staged to this commit: offered while something is staged and nothing is under way. */
+function fixupItems(path: string, hash: string): MenuItem[] {
+  const state = getRepo(path)?.state
+  if (!state?.status.staged.length || state.operation || state.bisect) return []
+  return [{ label: t('menu.fixupHere'), onClick: () => void fixupInto(path, hash) }]
+}
+
 /** A commit's menu; `selected`: the commit selected before it was right-clicked, to compare with. */
 export function commitMenu(path: string, hash: string, selected: string | null = null): MenuItem[] {
   const { branch, head } = current(path)
@@ -199,6 +207,7 @@ export function commitMenu(path: string, hash: string, selected: string | null =
       disabled: isHead,
       onClick: () => void openInteractiveRebase(path, hash)
     },
+    ...fixupItems(path, hash),
     ...bisectItems(path, hash, target, isHead),
     { separator: true },
     {

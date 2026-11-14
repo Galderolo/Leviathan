@@ -435,6 +435,13 @@ const es: Record<keyof typeof en, string> = {
   'toast.fetched': 'Fetch completado',
   'toast.amendNotPushed':
     'El commit modificado ya estaba subido, así que no se ha vuelto a subir: usa Force push si quieres reemplazarlo en el remoto.',
+  'toast.fixupDone': 'Cambios añadidos a "{name}"',
+  'dlg.fixupPublishedTitle': '¿Reescribir commits ya subidos?',
+  'dlg.fixupPublished':
+    'Esto reescribe {count} commits que ya están en el remoto. Para subirlos después hará falta Force push.',
+  'dlg.fixupPublished_one':
+    'Esto reescribe 1 commit que ya está en el remoto. Para subirlo después hará falta Force push.',
+  'dlg.fixupPublishedConfirm': 'Añadir los cambios',
   'toast.pulledInto': 'Pull hecho en {branch}',
   'toast.upToDate': '{branch} ya está al día',
   'toast.pushed': 'Push de {branch} completado',
@@ -705,6 +712,7 @@ const es: Record<keyof typeof en, string> = {
   'toast.resolved': '{name} resuelto',
 
   'menu.interactiveRebase': 'Rebase interactivo desde aquí…',
+  'menu.fixupHere': 'Fixup: añadir los cambios staged aquí',
   'rebase.title': 'Rebase interactivo de {branch}',
   'rebase.hint':
     'Los commits posteriores a {base}, del más reciente al más antiguo. Arrastra uno por su asa para moverlo. Unir funde un commit en el de debajo; Editar para ahí para que lo cambies.',
@@ -726,6 +734,7 @@ const es: Record<keyof typeof en, string> = {
     'El commit más antiguo que mantienes no se puede unir: no hay nada debajo en lo que fundirlo.',
   'rebase.problem.noMessage': 'Un commit con el mensaje cambiado necesita un mensaje.',
   'undo.interactiveRebase': 'rebase interactivo',
+  'undo.fixup': 'fixup en "{name}"',
   'toast.rebased': 'Rebase terminado',
   'toast.rebaseStopped':
     'El rebase se ha parado antes de acabar: arregla lo que lo ha parado y pulsa Continuar en el aviso.',
@@ -923,6 +932,12 @@ const es: Record<keyof typeof en, string> = {
   'diff.fullFile': 'Archivo completo',
 
   'error.operationInProgress': '{operation}: termínalo o abórtalo antes.',
+  'error.fixup.operation': 'Termina o aborta antes lo que está en curso.',
+  'error.fixup.nothingStaged': 'No hay nada staged: pon antes en staged los cambios que quieres añadir.',
+  'error.fixup.notAncestor': 'Ese commit no está en la rama actual.',
+  'error.fixup.merges': 'Hay merges después de ese commit: usa Rebase interactivo desde aquí… en su lugar.',
+  'error.fixup.pendingFixups':
+    'Hay commits fixup o squash después de ese commit: usa Rebase interactivo desde aquí… en su lugar.',
   'error.stashUntrackedExist':
     '{count} archivos sin seguimiento del stash ya existían en la carpeta y se han dejado como estaban (git nunca sobrescribe un archivo); el resto del stash sí se ha aplicado. El stash se conserva.',
   'error.stashUntrackedExist_one':

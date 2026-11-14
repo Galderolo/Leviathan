@@ -19,6 +19,7 @@ import { AvatarCache } from './avatars'
 import { cloneWithAccount } from './clone'
 import { answerAskpass, askpassScripts } from './askpass'
 import { installCommandLine, takeLaunchFolders } from './cli'
+import * as fixup from './git/fixup'
 import * as lfs from './git/lfs'
 import * as lfsInstall from './lfsInstall'
 import * as reflog from './git/reflog'
@@ -141,6 +142,8 @@ const handlers: LeviathanInvokeApi = {
   applyChange: (path, change) => repo.applyChange(path, change),
   getRebaseCommits: (path, base) => repo.getRebaseCommits(path, base),
   interactiveRebase: (path, base, items) => repo.interactiveRebase(path, base, items),
+  fixupInfo: (path, target) => fixup.fixupInfo(path, target),
+  fixupCommit: (path, target, noSign) => fixup.fixupCommit(path, target, noSign === true),
 
   stage: (path, paths) => repo.stage(path, paths),
   stageAll: (path) => repo.stageAll(path),
