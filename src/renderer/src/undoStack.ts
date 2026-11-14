@@ -22,6 +22,8 @@ export interface StoppedAction {
   paths: string[]
   /** The entry on top of the undo stack when it stopped. */
   since: UndoEntry | null
+  /** false: the stash list is left out of what is recorded (`leavingStashes`). */
+  stashes?: boolean
 }
 
 export const MAX_UNDO = 50

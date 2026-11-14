@@ -429,6 +429,13 @@ const en = {
   'toast.fetched': 'Fetch complete',
   'toast.amendNotPushed':
     'The amended commit was already pushed, so it was not pushed again: use Force push if you want to replace it on the remote.',
+  'toast.fixupDone': 'Changes added to "{name}"',
+  'dlg.fixupPublishedTitle': 'Rewrite pushed commits?',
+  'dlg.fixupPublished':
+    'This rewrites {count} commits that are already on the remote. Pushing them afterwards needs Force push.',
+  'dlg.fixupPublished_one':
+    'This rewrites 1 commit that is already on the remote. Pushing it afterwards needs Force push.',
+  'dlg.fixupPublishedConfirm': 'Add the changes',
   'toast.pulledInto': 'Pulled into {branch}',
   'toast.upToDate': '{branch} is already up to date',
   'toast.pushed': 'Pushed {branch}',
@@ -697,6 +704,7 @@ const en = {
   'toast.resolved': 'Resolved {name}',
 
   'menu.interactiveRebase': 'Interactive rebase from here…',
+  'menu.fixupHere': 'Fixup: add staged changes here',
   'rebase.title': 'Interactive rebase of {branch}',
   'rebase.hint':
     'The commits after {base}, newest first. Drag one by its grip to move it. Squash and fixup meld a commit into the one below it; Edit stops there so you can change it.',
@@ -717,6 +725,7 @@ const en = {
   'rebase.problem.noBase': 'The oldest commit you keep cannot be squashed: there is nothing below it to meld into.',
   'rebase.problem.noMessage': 'A reworded commit needs a message.',
   'undo.interactiveRebase': 'interactive rebase',
+  'undo.fixup': 'fixup into "{name}"',
   'toast.rebased': 'Rebase finished',
   'toast.rebaseStopped': 'The rebase stopped before the end: fix what stopped it, then press Continue in the banner.',
   'toast.stoppedFor':
@@ -910,6 +919,12 @@ const en = {
   'diff.fullFile': 'Whole file',
 
   'error.operationInProgress': '{operation}: finish or abort it first.',
+  'error.fixup.operation': 'Finish or abort what is under way first.',
+  'error.fixup.nothingStaged': 'Nothing is staged: stage the changes to add first.',
+  'error.fixup.notAncestor': 'That commit is not on the current branch.',
+  'error.fixup.merges': 'There are merges after that commit: use Interactive rebase from here… instead.',
+  'error.fixup.pendingFixups':
+    'There are fixup or squash commits after that commit: use Interactive rebase from here… instead.',
   'error.stashUntrackedExist':
     '{count} untracked files of the stash already existed in the folder and were left as they are (git never overwrites a file); the rest of the stash was applied. The stash is kept.',
   'error.stashUntrackedExist_one':

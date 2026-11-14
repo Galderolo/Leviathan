@@ -35,6 +35,7 @@ import type { CommitSignature, GpgKey, SigningSetting, SigningState } from './si
 import type { LfsInfo, LfsLock, LfsPattern, LfsSetup } from './lfs'
 import type { LfsInstallOffer } from './lfsInstall'
 import type { RebaseItem } from './rebase'
+import type { FixupInfo } from './fixup'
 import type { Reflog } from './reflog'
 import type { ReleaseNote } from './releaseNotes'
 import type { RepoChange, Snapshot } from './undo'
@@ -131,6 +132,10 @@ export interface LeviathanInvokeApi {
   getRebaseCommits(repo: string, base: string): Promise<RebaseList>
   /** Refused when the branch no longer holds exactly the commits in `items`. */
   interactiveRebase(repo: string, base: string, items: RebaseItem[]): Promise<ChangesBlock | null>
+  /** Whether what is staged can be added to `target` now, or why not. */
+  fixupInfo(repo: string, target: string): Promise<FixupInfo>
+  /** Adds what is staged to `target`, a commit of the branch, and gives the commit it became; `noSign`: unsigned. */
+  fixupCommit(repo: string, target: string, noSign?: boolean): Promise<{ hash: string }>
 
   // Working tree
   stage(repo: string, paths: string[]): Promise<void>
@@ -428,6 +433,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   applyChange: true,
   getRebaseCommits: true,
   interactiveRebase: true,
+  fixupInfo: true,
+  fixupCommit: true,
   stage: true,
   stageAll: true,
   unstage: true,

@@ -83,7 +83,11 @@ export type ProgressFn = (line: string) => void
 
 const MAX_FILE_PREVIEW = 2 * 1024 * 1024
 
-async function run(repo: string, args: string[], extra: Partial<Parameters<typeof git>[1]> = {}): Promise<string> {
+export async function run(
+  repo: string,
+  args: string[],
+  extra: Partial<Parameters<typeof git>[1]> = {}
+): Promise<string> {
   const { stdout } = await git(args, { cwd: repo, ...extra })
   return stdout
 }
@@ -103,7 +107,7 @@ function pathspecInput(paths: string[]) {
   }
 }
 
-function assertSafeArg(value: string, what: string): void {
+export function assertSafeArg(value: string, what: string): void {
   if (!value || value.startsWith('-')) throw new Error(`Invalid ${what}: "${value}"`)
 }
 
@@ -165,7 +169,7 @@ export async function cloneRepo(
 
 const gitDirs = new Map<string, string>()
 
-async function gitDir(repo: string): Promise<string> {
+export async function gitDir(repo: string): Promise<string> {
   let dir = gitDirs.get(repo)
   if (!dir) {
     dir = (await run(repo, ['rev-parse', '--absolute-git-dir'])).trim()
@@ -174,7 +178,7 @@ async function gitDir(repo: string): Promise<string> {
   return dir
 }
 
-async function currentOperation(repo: string): Promise<RepoOperation> {
+export async function currentOperation(repo: string): Promise<RepoOperation> {
   const dir = await gitDir(repo)
   if (existsSync(join(dir, 'rebase-merge')) || existsSync(join(dir, 'rebase-apply'))) return 'rebase'
   if (existsSync(join(dir, 'MERGE_HEAD'))) return 'merge'
@@ -1087,11 +1091,25 @@ export async function reset(repo: string, hash: string, mode: ResetMode): Promis
   await run(repo, ['reset', `--${mode}`, '-q', hash])
 }
 
+/** The file in git's `rebase-merge` folder that marks the rebase as a fixup's (`fixupCommit`): the fixup commit. */
+export const FIXUP_MARK = 'leviathan-fixup'
+
+/** The fixup commit of the rebase under way when it is a fixup's (`fixupCommit`), else null. */
+async function stoppedFixup(repo: string): Promise<string | null> {
+  const text = await fs.readFile(join(await gitDir(repo), 'rebase-merge', FIXUP_MARK), 'utf8').catch(() => null)
+  return text?.trim() || null
+}
+
 export async function abortOperation(repo: string): Promise<void> {
   const op = await currentOperation(repo)
   if (!op) return
+  // A fixup's rebase goes back to the commit made of the staged changes: they are staged again, as before it.
+  const fixup = op === 'rebase' ? await stoppedFixup(repo) : null
   await run(repo, [op, '--abort'])
   await removeRebaseFiles(repo)
+  if (fixup && (await run(repo, ['rev-parse', 'HEAD'])).trim() === fixup) {
+    await run(repo, ['reset', '--soft', '-q', 'HEAD~1'])
+  }
 }
 
 export async function continueOperation(repo: string): Promise<void> {

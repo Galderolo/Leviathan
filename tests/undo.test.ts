@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { diffSnapshots, invertChange, type Snapshot } from '../src/shared/undo'
+import { diffSnapshots, invertChange, leavingStashes, type Snapshot } from '../src/shared/undo'
 
 const snap = (branch: string | null, hash: string, refs: Record<string, string>): Snapshot => ({
   head: { branch, hash },
@@ -51,5 +51,19 @@ describe('invertChange', () => {
       head: { from: { branch: 'main', hash: 'b' }, to: { branch: 'main', hash: 'a' } },
       mode: 'soft'
     })
+  })
+})
+
+describe('leavingStashes', () => {
+  it('records the stash list as it was, and tells the stashes that came', () => {
+    const mine = { commit: 's1', message: 'On main: mine' }
+    const autostash = { commit: 's2', message: 'autostash' }
+    const before: Snapshot = { ...snap('main', 'a', { 'refs/heads/main': 'a' }), stash: [mine] }
+    const after: Snapshot = { ...snap('main', 'b', { 'refs/heads/main': 'b' }), stash: [autostash, mine] }
+    const left = leavingStashes(before, after)
+    expect(left.came).toEqual([autostash])
+    const change = diffSnapshots(before, left.after, 'soft')
+    expect(change?.stash).toBeUndefined()
+    expect(change?.refs).toEqual([{ ref: 'refs/heads/main', from: 'a', to: 'b' }])
   })
 })
