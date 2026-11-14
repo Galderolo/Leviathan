@@ -83,7 +83,11 @@ export type ProgressFn = (line: string) => void
 
 const MAX_FILE_PREVIEW = 2 * 1024 * 1024
 
-export async function run(repo: string, args: string[], extra: Partial<Parameters<typeof git>[1]> = {}): Promise<string> {
+export async function run(
+  repo: string,
+  args: string[],
+  extra: Partial<Parameters<typeof git>[1]> = {}
+): Promise<string> {
   const { stdout } = await git(args, { cwd: repo, ...extra })
   return stdout
 }

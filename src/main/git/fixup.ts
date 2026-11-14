@@ -24,7 +24,8 @@ async function planFixup(repo: string, target: string): Promise<FixupPlan | Fixu
   assertSafeArg(target, 'commit')
   // A bisect has HEAD on a commit to test: rewriting the branch under it would lose its way.
   if ((await currentOperation(repo)) || existsSync(join(await gitDir(repo), 'BISECT_START'))) return 'operation'
-  if ((await git(['diff', '--cached', '--quiet'], { cwd: repo, okCodes: [0, 1] })).exitCode === 0) return 'nothingStaged'
+  if ((await git(['diff', '--cached', '--quiet'], { cwd: repo, okCodes: [0, 1] })).exitCode === 0)
+    return 'nothingStaged'
   const found = await git(['rev-parse', '--verify', '--quiet', `${target}^{commit}`], { cwd: repo, okCodes: [0, 1] })
   const hash = found.stdout.trim()
   if (!hash) return 'notAncestor'
@@ -77,10 +78,14 @@ export async function fixupCommit(repo: string, target: string, noSign = false):
   await run(repo, ['commit', '-q', ...sign, `--fixup=${plan.target}`])
   const fixup = await head()
   try {
-    await run(repo, ['rebase', '-i', '--autosquash', '--autostash', ...sign, ...(plan.base ? [plan.base] : ['--root'])], {
-      // Over a `sequence.editor` of the user's, which would win over GIT_EDITOR: git's own list, as it is.
-      env: { GIT_SEQUENCE_EDITOR: 'true' }
-    })
+    await run(
+      repo,
+      ['rebase', '-i', '--autosquash', '--autostash', ...sign, ...(plan.base ? [plan.base] : ['--root'])],
+      {
+        // Over a `sequence.editor` of the user's, which would win over GIT_EDITOR: git's own list, as it is.
+        env: { GIT_SEQUENCE_EDITOR: 'true' }
+      }
+    )
   } catch (err) {
     if (await currentOperation(repo)) {
       // Stopped part way. Git deletes its folder, and the mark with it, once the rebase is over however it ends.
