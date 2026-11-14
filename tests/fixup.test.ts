@@ -231,3 +231,47 @@ describe('fixupCommit', () => {
     expect(await out('show', 'HEAD~2:one.txt')).toBe('one\nmore')
   })
 })
+
+describe('a fixup stopped by a conflict', () => {
+  /** "four" changes one.txt again: staging a change of those lines conflicts once it goes into "one". */
+  async function stopped(): Promise<{ before: string; fixup: string }> {
+    await commitFile('one.txt', 'one\nfour\n', 'four')
+    await stageFile('one.txt', 'one\nfour\nstaged\n')
+    writeFileSync(join(dir, 'two.txt'), 'two\nlocal\n')
+    const before = await head()
+    await expect(fixupCommit(dir, hashes.one)).rejects.toThrow()
+    const mark = join(await out('rev-parse', '--absolute-git-dir'), 'rebase-merge', 'leviathan-fixup')
+    return { before, fixup: readFileSync(mark, 'utf8').trim() }
+  }
+
+  it('stops with the rebase under way, marked as a fixup', async () => {
+    const { before, fixup } = await stopped()
+    expect((await repo.getState(dir)).operation).toBe('rebase')
+    expect(await out('log', '-1', '--format=%s %P', fixup)).toBe(`fixup! one ${before}`)
+  })
+
+  it('leaves everything as before when aborted: the changes staged again, the others where they were', async () => {
+    const { before } = await stopped()
+    await repo.abortOperation(dir)
+    expect((await repo.getState(dir)).operation).toBeNull()
+    expect(await head()).toBe(before)
+    expect(await staged()).toBe('one.txt')
+    expect(readFileSync(join(dir, 'one.txt'), 'utf8')).toBe('one\nfour\nstaged\n')
+    expect(readFileSync(join(dir, 'two.txt'), 'utf8')).toBe('two\nlocal\n')
+    expect(await out('stash', 'list')).toBe('')
+  })
+
+  it('finishes once its conflicts are resolved and it is continued', async () => {
+    await stopped()
+    // It stops at each commit given the resolved file; "four", left with nothing of its own, is dropped by git.
+    for (let i = 0; i < 3 && (await repo.getState(dir)).operation; i++) {
+      writeFileSync(join(dir, 'one.txt'), 'one\nfour\nstaged\n')
+      await repo.stage(dir, ['one.txt'])
+      await repo.continueOperation(dir).catch(() => {})
+    }
+    expect((await repo.getState(dir)).operation).toBeNull()
+    expect(await subjects()).not.toContain('fixup! one')
+    expect(await out('show', 'HEAD:one.txt')).toBe('one\nfour\nstaged')
+    expect(readFileSync(join(dir, 'two.txt'), 'utf8')).toBe('two\nlocal\n')
+  })
+})

@@ -1090,11 +1090,22 @@ export async function reset(repo: string, hash: string, mode: ResetMode): Promis
 /** The file in git's `rebase-merge` folder that marks the rebase as a fixup's (`fixupCommit`): the fixup commit. */
 export const FIXUP_MARK = 'leviathan-fixup'
 
+/** The fixup commit of the rebase under way when it is a fixup's (`fixupCommit`), else null. */
+async function stoppedFixup(repo: string): Promise<string | null> {
+  const text = await fs.readFile(join(await gitDir(repo), 'rebase-merge', FIXUP_MARK), 'utf8').catch(() => null)
+  return text?.trim() || null
+}
+
 export async function abortOperation(repo: string): Promise<void> {
   const op = await currentOperation(repo)
   if (!op) return
+  // A fixup's rebase goes back to the commit made of the staged changes: they are staged again, as before it.
+  const fixup = op === 'rebase' ? await stoppedFixup(repo) : null
   await run(repo, [op, '--abort'])
   await removeRebaseFiles(repo)
+  if (fixup && (await run(repo, ['rev-parse', 'HEAD'])).trim() === fixup) {
+    await run(repo, ['reset', '--soft', '-q', 'HEAD~1'])
+  }
 }
 
 export async function continueOperation(repo: string): Promise<void> {
