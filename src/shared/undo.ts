@@ -105,6 +105,16 @@ export function diffSnapshots(before: Snapshot, after: Snapshot, mode: RepoChang
   return change
 }
 
+/**
+ * `after` as if the stash list had not changed since `before`, and the stashes that came meanwhile: for an action that
+ * leaves the stash list out of what it records. A fixup's autostash that git could not apply is kept there; undoing
+ * the fixup must not drop it, with the unstaged changes inside.
+ */
+export function leavingStashes(before: Snapshot, after: Snapshot): { after: Snapshot; came: StashEntry[] } {
+  const came = (after.stash ?? []).filter((s) => !(before.stash ?? []).some((b) => b.commit === s.commit))
+  return { after: { ...after, stash: before.stash }, came }
+}
+
 export function invertChange(change: RepoChange): RepoChange {
   const inverted: RepoChange = {
     refs: change.refs.map((m) => ({ ...m, from: m.to, to: m.from })),

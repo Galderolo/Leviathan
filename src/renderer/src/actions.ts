@@ -29,7 +29,7 @@ import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import type { RebaseItem } from '../../shared/rebase'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
-import { diffSnapshots, invertChange, type RepoChange, type Snapshot } from '../../shared/undo'
+import { diffSnapshots, invertChange, leavingStashes, type RepoChange, type Snapshot } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
 import { signingFailed, type SigningSetting } from '../../shared/signing'
 import { isFetchDue } from './autofetch'
@@ -842,6 +842,14 @@ async function refreshRepoNow(path: string, withLog: boolean): Promise<void> {
   await Promise.all([statePromise, logPromise])
 }
 
+/** What is recorded of `after`: with `stashes` false, the stash list as `before` had it; a stash that came is told. */
+function recordedAfter(before: Snapshot, after: Snapshot, stashes: boolean): Snapshot {
+  if (stashes) return after
+  const left = leavingStashes(before, after)
+  if (left.came.length) toast('info', t('toast.changesWaitInStash', { name: left.came[0].message }))
+  return left.after
+}
+
 /**
  * Records an action that stopped part way once what it left under way is over, however it ended: continued here or
  * in a terminal (its change, holding what was recorded meanwhile), or aborted (nothing).
@@ -853,7 +861,9 @@ async function settleStoppedAction(path: string): Promise<void> {
   patchRepo(path, { stopped: null })
   await whileRecording(path, async () => {
     const after = await api.getSnapshot(path, stopped.paths).catch(() => null)
-    const change = after ? diffSnapshots(stopped.before, after, stopped.mode) : null
+    const change = after
+      ? diffSnapshots(stopped.before, recordedAfter(stopped.before, after, stopped.stashes ?? true), stopped.mode)
+      : null
     patchRepo(path, (r) => settleStopped(r, stopped, change))
   })
 }
@@ -1158,14 +1168,15 @@ export async function nextChangeMatch(path: string, hashes: string[], backwards:
  * Runs `fn` and records what it changed (refs, HEAD, the stash list, and the files in `paths`) so it can be undone.
  * `'changes'` copies every uncommitted change as git sees it just before (a stash or discard of them all): the
  * last refresh may not have seen them all yet. Errors propagate; nothing is recorded when nothing changed, nor when a
- * file in `paths` is too large to keep.
+ * file in `paths` is too large to keep. `stashes` false: the stash list is left out (`leavingStashes`).
  */
 async function recordUndo<T>(
   path: string,
   label: string,
   mode: RepoChange['mode'],
   fn: () => Promise<T>,
-  paths: string[] | 'changes' = []
+  paths: string[] | 'changes' = [],
+  stashes = true
 ): Promise<T> {
   return whileRecording(path, async () => {
     const before = await api.getSnapshot(path, paths).catch(() => null)
@@ -1175,7 +1186,7 @@ async function recordUndo<T>(
       if (!before || before.tooLarge?.length) return false
       if (!leftUnderWay(before.operation ?? null, now?.operation ?? null)) return false
       patchRepo(path, (r) => ({
-        stopped: { label, mode, before, paths: copied, since: r.undo[r.undo.length - 1] ?? null }
+        stopped: { label, mode, before, paths: copied, since: r.undo[r.undo.length - 1] ?? null, stashes }
       }))
       return true
     }
@@ -1194,7 +1205,7 @@ async function recordUndo<T>(
     }
     const after = before ? await api.getSnapshot(path, copied).catch(() => null) : null
     if (waitsToEnd(after)) return result
-    const change = before && after ? diffSnapshots(before, after, mode) : null
+    const change = before && after ? diffSnapshots(before, recordedAfter(before, after, stashes), mode) : null
     if (change) patchRepo(path, (r) => pushEntry(r, { label, change }))
     return result
   })
@@ -1227,7 +1238,7 @@ async function runOp(
     success?: string
     log?: boolean
     /** `paths`: files it changes in the working tree or the index (a discard, a stash), copied to bring them back. */
-    undo?: { label: string; mode?: RepoChange['mode']; paths?: string[] | 'changes' }
+    undo?: { label: string; mode?: RepoChange['mode']; paths?: string[] | 'changes'; stashes?: boolean }
     /** Shown instead of git's message when the command fails. */
     errorText?: string
     /** Failures the caller handles itself (no error toast for them); `after` is the state they left. */
@@ -1239,8 +1250,10 @@ async function runOp(
   try {
     // Busy marks network work: it starts once a background fetch of the repository is over.
     if (opts.busy) await backgroundFetches.idle(path)
-    if (opts.undo) await recordUndo(path, opts.undo.label, opts.undo.mode ?? 'keep', fn, opts.undo.paths)
-    else await fn()
+    if (opts.undo) {
+      const { label, mode, paths, stashes } = opts.undo
+      await recordUndo(path, label, mode ?? 'keep', fn, paths, stashes ?? true)
+    } else await fn()
     if (opts.success) toast('success', opts.success)
     return true
   } catch (err) {
