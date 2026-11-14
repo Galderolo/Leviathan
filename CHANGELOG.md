@@ -10,6 +10,7 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ### Fixed
 
+- **The Linux AppImage keeps its place when it updates**: an update left a file of the new version's name, so launchers and the `leviathan` command (a link to the AppImage) pointed to nothing. The AppImage is now `GitLeviathan.AppImage`, with no version in its name, and each update replaces it where it is. An AppImage of 0.23.1 or earlier takes that name once, as it updates to this version.
 - **On Windows, a repository keeps its account whatever the case of its path**: opened as `d:\work\game` after being given an account as `D:\Work\Game`, it had no account (another commit identity, no credentials of its own for HTTPS). The app now finds it either way, and keeps one entry per repository in its settings.
 - **Every open pull request of a Gitea server that gives fewer than 50 per page is listed**: only its first page was (a server's `MAX_RESPONSE_ITEMS` may be lower). The app now goes on while the server says there are more.
 - **A rebase, cherry-pick or revert that stopped part way can be undone once it is over**: one that stopped for conflicts, or at a commit to edit, was not recorded, so after *Continue* there was nothing to undo. It is now recorded when it ends (continued here or in a terminal; an abort records nothing), as one step that holds what was done while it was stopped, such as amending the commit to edit. A merge is still undone through the commit that concludes it, which brings it back with what was resolved.
