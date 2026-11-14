@@ -252,6 +252,8 @@ Off by default (`settings.avatars`): `getAvatars` in the main process asks nothi
 
 ## Automatic updates
 
+The Linux AppImage is named `GitLeviathan.AppImage`, with no version, so an update replaces it where it is (`electron-builder.yml`, `tests/appImageName.test.ts`).
+
 Update checks (`locateRelease` in `src/main/autoUpdate.ts`, `newestPublished` in `src/shared/updates.ts`): before each one the app reads GitHub's releases feed and points electron-updater (generic provider, one range per request as GitHub's own provider) at the newest of the first five tags whose update file for this platform can be downloaded; a draft's cannot. electron-updater's GitHub provider takes the newest tag of the feed, so a tag pushed before its release was published hid every update until the installers were up. When the feed cannot be read, the GitHub provider is used as before. An update already found stays on show while later checks fail.
 
 ## Next steps
@@ -295,7 +297,7 @@ Fixes from Known minor issues below, on `fix/…` branches, each with a test tha
 5. Automatic updates on Linux: an AppImage update with a new file name breaks launchers; look at keeping the path (the CI check that the AppImage has no `package-type` file is done).
 6. Git LFS: lock lookups per file row are linear in the number of locks; index them by path.
 
-Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first. Done on 2026-11-11 (`fix/minor-issues`): fix 6 (`lockFor` indexes each list of locks by path once), fix 4 (Gitea's `X-Total-Count`) and the CI check of fix 5 (the Release workflow extracts the AppImage and fails when it has `resources/package-type`, which the deb target writes into the folder both are made from, or no `app-update.yml`); fix 1 (`fix/rebase-squash-empty`: when a group's own commit was dropped and HEAD still moved, the commit the squashed ones melded into is amended with its message and theirs, `squashed-<n>` in `planRebase`); fix 3 (`fix/undo-atomic`: the refs of a change move in one transaction, put back when the reset or checkout after them fails); fix 2 (`fix/undo-continued-rebase`: see *Undo / redo* above). The list below was pruned on 2026-11-11: what was done went, and what only described how something works moved to its feature's section.
+Order, by size (each with about 15 minutes of checks on top: vitest, build, e2e): fix 6 (10 min), fix 4 (15–20 min) and the CI check of fix 5 (10–15 min), together in one session; then fixes 1 (30–45 min), 3 (45 min or more: the core of undo) and 2 (45–60 min), on their own. Keeping the AppImage's path (fix 5) needs looking into first. Done on 2026-11-11 (`fix/minor-issues`): fix 6 (`lockFor` indexes each list of locks by path once), fix 4 (Gitea's `X-Total-Count`) and the CI check of fix 5 (the Release workflow extracts the AppImage and fails when it has `resources/package-type`, which the deb target writes into the folder both are made from, or no `app-update.yml`); fix 1 (`fix/rebase-squash-empty`: when a group's own commit was dropped and HEAD still moved, the commit the squashed ones melded into is amended with its message and theirs, `squashed-<n>` in `planRebase`); fix 3 (`fix/undo-atomic`: the refs of a change move in one transaction, put back when the reset or checkout after them fails); fix 2 (`fix/undo-continued-rebase`: see *Undo / redo* above). Done on 2026-11-14 (`fix/appimage-path`): fix 5, the AppImage is `GitLeviathan.AppImage`, with no version, which electron-updater's `AppImageUpdater` overwrites in place (a name with a version gets a file of the new name; `tests/appImageName.test.ts` checks the name). An AppImage of 0.23.x or earlier moves once, to that name, as its own updater installs 0.24.0. The list below was pruned on 2026-11-11: what was done went, and what only described how something works moved to its feature's section.
 
 ## Known minor issues
 
@@ -349,7 +351,6 @@ Found by reviews and left for later; none loses work. Good first contributions.
 
 **Automatic updates**
 - Nothing proves an installer is ours beyond HTTPS and the GitHub account: set `publisherName` once Windows builds are signed. Each check sends electron-updater's random staging id to github.com.
-- AppImage updates replace `GitLeviathan-x.y.z.AppImage` with a file of the new name, which breaks launchers pointing at the old path.
 
 **Older items**
 - A new SSH key's passphrase reaches ssh-keygen through a one-off askpass bridge (`keygenWithPassphrase` in `src/main/ssh.ts`; `askpass.cmd` for Windows' own OpenSSH, which cannot run `askpass.sh`), then the key is checked to refuse an empty passphrase. Tried with OpenSSH for Windows 9.5; Git for Windows' own ssh-keygen (when it comes first in the PATH) running the `.cmd` is untested — if it cannot, the key is refused, not left unprotected.

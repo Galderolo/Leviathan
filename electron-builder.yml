@@ -55,6 +55,8 @@ linux:
     entry:
       Name: Git Leviathan
 appImage:
-  artifactName: GitLeviathan-${version}.${ext}
+  # No version in the name: electron-updater then replaces the file in place, so launchers and the `leviathan` link
+  # keep working (with a version it leaves a file of the new name). tests/appImageName.test.ts holds it to that.
+  artifactName: GitLeviathan.${ext}
 publish:
   provider: github
