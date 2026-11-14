@@ -4,6 +4,8 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-14
+
 ### Added
 
 - **Staged changes can be added to an older commit**: right-click a commit of the current branch → *Fixup: add staged changes here*. The commits after it are rewritten with git's own fixup and autosquash, with no list to edit and no editor; unstaged changes are set aside and come back on their own. When some of those commits are already on a remote it asks first (pushing them again needs Force push). A conflict stops it with the usual banner, and *Abort* leaves everything as before, the changes staged again. One Undo takes it all back.
