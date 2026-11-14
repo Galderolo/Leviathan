@@ -83,7 +83,7 @@ export type ProgressFn = (line: string) => void
 
 const MAX_FILE_PREVIEW = 2 * 1024 * 1024
 
-async function run(repo: string, args: string[], extra: Partial<Parameters<typeof git>[1]> = {}): Promise<string> {
+export async function run(repo: string, args: string[], extra: Partial<Parameters<typeof git>[1]> = {}): Promise<string> {
   const { stdout } = await git(args, { cwd: repo, ...extra })
   return stdout
 }
@@ -103,7 +103,7 @@ function pathspecInput(paths: string[]) {
   }
 }
 
-function assertSafeArg(value: string, what: string): void {
+export function assertSafeArg(value: string, what: string): void {
   if (!value || value.startsWith('-')) throw new Error(`Invalid ${what}: "${value}"`)
 }
 
@@ -165,7 +165,7 @@ export async function cloneRepo(
 
 const gitDirs = new Map<string, string>()
 
-async function gitDir(repo: string): Promise<string> {
+export async function gitDir(repo: string): Promise<string> {
   let dir = gitDirs.get(repo)
   if (!dir) {
     dir = (await run(repo, ['rev-parse', '--absolute-git-dir'])).trim()
@@ -174,7 +174,7 @@ async function gitDir(repo: string): Promise<string> {
   return dir
 }
 
-async function currentOperation(repo: string): Promise<RepoOperation> {
+export async function currentOperation(repo: string): Promise<RepoOperation> {
   const dir = await gitDir(repo)
   if (existsSync(join(dir, 'rebase-merge')) || existsSync(join(dir, 'rebase-apply'))) return 'rebase'
   if (existsSync(join(dir, 'MERGE_HEAD'))) return 'merge'
