@@ -1087,6 +1087,9 @@ export async function reset(repo: string, hash: string, mode: ResetMode): Promis
   await run(repo, ['reset', `--${mode}`, '-q', hash])
 }
 
+/** The file in git's `rebase-merge` folder that marks the rebase as a fixup's (`fixupCommit`): the fixup commit. */
+export const FIXUP_MARK = 'leviathan-fixup'
+
 export async function abortOperation(repo: string): Promise<void> {
   const op = await currentOperation(repo)
   if (!op) return

@@ -1,7 +1,7 @@
-import { existsSync } from 'node:fs'
+import { existsSync, promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { pendingFixup, type FixupInfo, type FixupRefusal } from '../../shared/fixup'
-import { assertSafeArg, currentOperation, gitDir, run } from './repository'
+import { FIXUP_MARK, assertSafeArg, currentOperation, gitDir, run } from './repository'
 import { git } from './runner'
 
 /** What a fixup into a commit rewrites. */
@@ -49,4 +49,52 @@ export async function fixupInfo(repo: string, target: string): Promise<FixupInfo
   if (typeof plan === 'string') return { ok: false, reason: plan }
   const published = (await count(repo, plan.range)) - (await count(repo, [...plan.range, '--not', '--remotes']))
   return { ok: true, subject: plan.subject, published }
+}
+
+/** Why `fixupCommit` refuses (the renderer words its own, translated, from `fixupInfo`). */
+const REFUSED: Record<FixupRefusal, string> = {
+  operation: 'Finish or abort what is under way first.',
+  nothingStaged: 'Nothing is staged.',
+  notAncestor: 'That commit is not on the current branch.',
+  merges: 'There are merges after that commit.',
+  pendingFixups: 'There are fixup or squash commits after that commit.'
+}
+
+/**
+ * Adds what is staged to `target`, a commit of the current branch, rewriting those after it: git's `commit --fixup`,
+ * then `rebase -i --autosquash --autostash`, which sets the unstaged changes aside and brings them back. Gives the
+ * commit `target` became. Stops, like any rebase, at a commit that does not apply cleanly; aborting it then leaves
+ * everything as before (`abortOperation`). `noSign`: neither the fixup commit nor the rewritten ones are signed.
+ */
+export async function fixupCommit(repo: string, target: string, noSign = false): Promise<{ hash: string }> {
+  const plan = await planFixup(repo, target)
+  if (typeof plan === 'string') throw new Error(REFUSED[plan])
+  const head = async () => (await run(repo, ['rev-parse', 'HEAD'])).trim()
+  const before = await head()
+  const after = await count(repo, [`${plan.target}..HEAD`])
+  const sign = noSign ? ['--no-gpg-sign'] : []
+  // Through the user's hooks and signing, as any commit; failing, it has changed nothing.
+  await run(repo, ['commit', '-q', ...sign, `--fixup=${plan.target}`])
+  const fixup = await head()
+  try {
+    await run(repo, ['rebase', '-i', '--autosquash', '--autostash', ...sign, ...(plan.base ? [plan.base] : ['--root'])], {
+      // Over a `sequence.editor` of the user's, which would win over GIT_EDITOR: git's own list, as it is.
+      env: { GIT_SEQUENCE_EDITOR: 'true' }
+    })
+  } catch (err) {
+    if (await currentOperation(repo)) {
+      // Stopped part way. Git deletes its folder, and the mark with it, once the rebase is over however it ends.
+      await fs.writeFile(join(await gitDir(repo), 'rebase-merge', FIXUP_MARK), `${fixup}\n`).catch(() => {})
+    } else if ((await head()) === fixup) {
+      // It did not start (a pre-rebase hook said no): the changes are staged again.
+      await run(repo, ['reset', '--soft', '-q', before])
+    }
+    throw err
+  }
+  if ((await count(repo, plan.range)) !== after + 1) {
+    // Autosquash matched nothing and kept the fixup commit as one of its own. The tree is the same: back as before.
+    await run(repo, ['reset', '--soft', '-q', before])
+    throw new Error('git could not add the changes to that commit.')
+  }
+  return { hash: (await run(repo, ['rev-parse', `HEAD~${after}`])).trim() }
 }
