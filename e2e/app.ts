@@ -38,7 +38,9 @@ export class Sandbox {
       ...process.env,
       GIT_CONFIG_GLOBAL: gitconfig,
       GIT_CONFIG_NOSYSTEM: '1',
-      LEVIATHAN_USER_DATA: this.profile
+      LEVIATHAN_USER_DATA: this.profile,
+      // Off screen and never activated: the person at the computer keeps working while the tests run.
+      LEVIATHAN_BACKGROUND_WINDOW: '1'
     }
     delete this.env.ELECTRON_RUN_AS_NODE
   }

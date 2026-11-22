@@ -14,6 +14,15 @@ const isDev = !app.isPackaged
 // Lets contributors and automated tests run with an isolated profile.
 if (process.env.LEVIATHAN_USER_DATA) app.setPath('userData', process.env.LEVIATHAN_USER_DATA)
 
+// Automated tests run the window off screen, never activated: whoever is at the computer keeps the screen and the
+// keyboard. Chromium must not slow a window down for being out of sight, or the tests would wait on it.
+const backgroundWindow = !!process.env.LEVIATHAN_BACKGROUND_WINDOW
+if (backgroundWindow) {
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+  app.commandLine.appendSwitch('disable-renderer-backgrounding')
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+}
+
 // One window per profile: `leviathan <folder>` while it runs opens the folder there, in a new tab.
 const primary = app.requestSingleInstanceLock()
 if (!primary) app.quit()
@@ -54,8 +63,10 @@ function prefersDark(): boolean {
 
 function createWindow(): void {
   windowLoading()
+  const bounds = restoreBounds()
   const win = new BrowserWindow({
-    ...restoreBounds(),
+    ...bounds,
+    ...(backgroundWindow ? { x: -32000, y: -32000, skipTaskbar: true } : {}),
     minWidth: 900,
     minHeight: 560,
     show: false,
@@ -67,12 +78,13 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       sandbox: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      ...(backgroundWindow ? { backgroundThrottling: false } : {})
     }
   })
 
-  if (loadSettings().window?.maximized) win.maximize()
-  win.once('ready-to-show', () => win.show())
+  if (loadSettings().window?.maximized && !backgroundWindow) win.maximize()
+  win.once('ready-to-show', () => (backgroundWindow ? win.showInactive() : win.show()))
   // A reload restores the tabs again: folders from the command line wait for it.
   win.webContents.on('did-start-loading', windowLoading)
 

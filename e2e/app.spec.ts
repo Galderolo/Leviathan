@@ -1149,6 +1149,69 @@ test('adds an account again with a new token: one account, with the name typed, 
   await expect(section.locator('.ssh-key')).toContainText('Ana Work <')
 })
 
+test('offers to publish a repository without remotes when pushing, or to add a remote by its URL', async () => {
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+
+  await toolbarButton('Push').click()
+  const dialog = page.locator('.publish-modal')
+  await expect(dialog.locator('.modal-title')).toHaveText('Publish repository')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await toolbarButton('Push').click()
+  await expect(dialog).toContainText('add a GitHub, GitLab, Bitbucket or Gitea account')
+  await dialog.getByRole('button', { name: 'Add remote by URL' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.locator('.modal-title', { hasText: 'Add remote' })).toBeVisible()
+})
+
+test('an account without an API cannot publish a repository', async () => {
+  test.skip(process.platform === 'linux' && !!process.env.CI, 'no keyring for the account token')
+  const repo = box.repo('game', { 'a.txt': 'one\n' })
+  await open(repo)
+
+  await page.locator('.toolbar-right .icon-btn').click()
+  await page.locator('.settings-nav-item', { hasText: 'Accounts' }).click()
+  const section = page.locator('.settings-body:visible')
+  await section.getByRole('button', { name: 'Add account' }).click()
+  await section.locator('.account-form select').selectOption('other')
+  await section.getByPlaceholder('Host').fill('git.example.com')
+  await section.getByPlaceholder('Username').fill('ana')
+  await section.getByPlaceholder('Personal access token').fill('a-token')
+  await section.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.locator('.toasts')).toContainText('Account ana@git.example.com added')
+  await page.locator('.settings-nav-item', { hasText: 'General' }).click()
+  await page.keyboard.press('Escape')
+
+  await toolbarButton('Push').click()
+  const dialog = page.locator('.publish-modal')
+  await expect(dialog).toContainText('add a GitHub, GitLab, Bitbucket or Gitea account')
+  await dialog.getByRole('button', { name: 'Add account' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.locator('.settings-nav-item.active', { hasText: 'Accounts' })).toBeVisible()
+
+  // The Welcome form offers to publish only to accounts that have an API.
+  await page.keyboard.press('Escape')
+  await page.locator('.tab-new').click()
+  await page.locator('.welcome-card', { hasText: 'New repository' }).click()
+  const form = page.locator('.welcome-form')
+  await form.locator('.field', { hasText: 'Folder' }).locator('input').fill(join(box.root, 'later'))
+  await expect(form.getByText('Also publish to an account')).toHaveCount(0)
+})
+
+test('creates a repository from the Welcome screen, with no publish option without an account that has an API', async () => {
+  await open()
+  await page.locator('.welcome-card', { hasText: 'New repository' }).click()
+  const form = page.locator('.welcome-form')
+  await expect(form).toContainText('Initial branch')
+  await expect(form.getByText('Also publish to an account')).toHaveCount(0)
+
+  const folder = join(box.root, 'fresh')
+  await form.locator('.field', { hasText: 'Folder' }).locator('input').fill(folder)
+  await form.getByRole('button', { name: 'Create repository' }).click()
+  await expect.poll(() => existsSync(join(folder, '.git'))).toBe(true)
+})
+
 test('opens the terminal chosen in Settings in the repository folder', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   // A stand-in terminal: it writes down where it started and what it was given, then exits.

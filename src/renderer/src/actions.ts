@@ -29,6 +29,7 @@ import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import type { RebaseItem } from '../../shared/rebase'
 import type { FixupInfo } from '../../shared/fixup'
+import type { Published, PublishInput } from '../../shared/publish'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, leavingStashes, type RepoChange, type Snapshot } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
@@ -718,15 +719,34 @@ export async function chooseRepoAccount(path: string): Promise<void> {
   }
 }
 
-export async function initRepository(path: string, branch: string, tabId: string): Promise<boolean> {
+/**
+ * Creates a repository and opens it; with `publish`, then creates its project on the account and adds it as origin
+ * (nothing to push yet). The repository comes first: a project left on the server by a failed init helps nobody.
+ */
+export async function initRepository(
+  path: string,
+  branch: string,
+  tabId: string,
+  publish?: PublishInput
+): Promise<boolean> {
+  let repo: string
   try {
-    const repo = await api.initRepo(path, branch)
+    repo = await api.initRepo(path, branch)
     await openRepository(repo, tabId)
-    return true
   } catch (err) {
     toast('error', errorMessage(err))
     return false
   }
+  if (publish) {
+    try {
+      const published = await api.publishRepo(repo, publish)
+      await afterPublish(repo, published)
+      toast('success', t('toast.publishedEmpty', { where: `${published.host}/${published.fullName}` }))
+    } catch (err) {
+      toast('error', t('toast.publishFailed', { reason: errorMessage(err) }))
+    }
+  }
+  return true
 }
 
 /** Answers a git/ssh prompt (credentials, passphrase or unknown host key) with a dialog. */
@@ -1396,6 +1416,8 @@ export async function push(path: string, opts: { force?: boolean; branch?: strin
     toast('error', t('error.detachedPush'))
     return false
   }
+  // Nowhere to push yet: offer to create the project on an account (nothing to force, either).
+  if (state && state.remotes.length === 0) return publishAndPush(path, opts.branch, !opts.branch && !state.head.hash)
   if (opts.force) {
     const ok = await confirmDialog({
       title: t('menu.forcePush'),
@@ -2561,6 +2583,60 @@ export async function addRemote(path: string): Promise<void> {
   const name = values?.name?.trim()
   const url = values?.url?.trim()
   if (name && url && (await runOp(path, () => api.addRemote(path, name, url)))) void loadPullRequests(path)
+}
+
+/** Opens Publish repository for `path`; resolves with what was published, or null when it was closed. */
+export function publishRepository(path: string): Promise<Published | null> {
+  closePublish(null)
+  return new Promise((resolve) => useStore.setState({ publish: { path, resolve } }))
+}
+
+/** Closes Publish repository, handing what was published (null: nothing) to whoever opened it. */
+export function closePublish(published: Published | null): void {
+  const open = useStore.getState().publish
+  if (!open) return
+  useStore.setState({ publish: null })
+  open.resolve(published)
+}
+
+/** Settings → Accounts. */
+export function openAccountsSettings(): void {
+  useStore.setState({ settingsOpen: true, settingsSection: 'accounts', signInAgain: null })
+}
+
+/**
+ * After a repository was published: its new remote shown, the account and identity it was given loaded (awaited, so a
+ * push right after finds the account), its pull requests asked for, a failed account binding said.
+ */
+export async function afterPublish(path: string, published: Published): Promise<void> {
+  if (published.bindError) toast('error', t('toast.publishNotBound', { reason: published.bindError }))
+  void refreshRepo(path, { log: false })
+  await loadRepoAccount(path)
+}
+
+/**
+ * Push in a repository without remotes: publishes it (the dialog), then pushes the branch, unless it has no commits
+ * yet (`unborn`). `branch`: the branch pushed from its menu (undefined: the checked-out one).
+ */
+async function publishAndPush(path: string, branch: string | undefined, unborn: boolean): Promise<boolean> {
+  const published = await publishRepository(path)
+  if (!published) return false
+  await afterPublish(path, published)
+  const where = `${published.host}/${published.fullName}`
+  if (unborn) {
+    toast('success', t('toast.publishedEmpty', { where }))
+    return true
+  }
+  return runOp(path, () => api.push(path, { force: false, branch }), {
+    busy: 'push',
+    success: t('toast.published', { where }),
+    // Handles nothing: it adds the info toast and returns false, so runOp still shows the push error (or the account's
+    // sign-in explanation) as usual.
+    quiet: () => {
+      toast('info', t('toast.publishedPushFailed', { where }))
+      return false
+    }
+  })
 }
 
 export async function removeRemote(path: string, name: string): Promise<void> {

@@ -1,4 +1,5 @@
 import { apiBase, mergeMethods, noreplyEmail } from '../../shared/providers'
+import { bitbucketSlug, type CreatedProject, type NewProject } from '../../shared/publish'
 import type {
   MergeMethod,
   NewPullRequest,
@@ -36,6 +37,17 @@ function authHeaders(provider: Provider, token: string): Record<string, string> 
 
 type Json = Record<string, unknown>
 
+/** GitLab's validation errors, `{ name: ['has already been taken'] }`, as `name has already been taken`. */
+function fieldErrors(fields: Json): string {
+  return Object.entries(fields)
+    .map(([field, errors]) => {
+      const list = Array.isArray(errors) ? errors.map(String).filter(Boolean) : errors ? [String(errors)] : []
+      return list.length ? `${field} ${list.join(', ')}` : ''
+    })
+    .filter(Boolean)
+    .join(', ')
+}
+
 /** The provider's own explanation in an error body (GitHub, GitLab and Gitea shapes). */
 function reason(body: unknown): string | null {
   if (!body || typeof body !== 'object') return null
@@ -44,7 +56,11 @@ function reason(body: unknown): string | null {
   const detail = Array.isArray(b.errors)
     ? (b.errors as unknown[]).map((e) => (typeof e === 'string' ? e : (e as Json | null)?.message)).find(Boolean)
     : null
-  const message = Array.isArray(b.message) ? b.message.join(', ') : b.message
+  const message = Array.isArray(b.message)
+    ? b.message.join(', ')
+    : b.message && typeof b.message === 'object'
+      ? fieldErrors(b.message as Json) || undefined
+      : b.message
   // Bitbucket: { type: 'error', error: { message } }
   const nested = b.error && typeof b.error === 'object' ? (b.error as Json).message : undefined
   return String(detail ?? message ?? nested ?? '') || null
@@ -56,7 +72,8 @@ async function request(
   path: string,
   token: string,
   fetchFn: FetchFn,
-  send?: { method: 'POST' | 'PATCH' | 'PUT'; body: Json }
+  /** `need`: the permission the change needs, said when the server refuses the token (pull requests by default). */
+  send?: { method: 'POST' | 'PATCH' | 'PUT'; body: Json; need?: string }
 ): Promise<unknown> {
   const base = apiBase(provider, host)
   if (!base) throw new Error('This provider has no API support')
@@ -80,11 +97,14 @@ async function request(
     if (send && why && provider !== 'bitbucket') throw new Error(`${LABELS[provider]} refused (${res.status}): ${why}`)
     const scopes = provider === 'bitbucket' ? missingScopes(body) : ''
     const permission =
+      send?.need ??
       'permission to change pull requests (GitHub: repo, GitLab: api, Bitbucket: write:pullrequest:bitbucket)'
     // A refusal (403) that names no missing scope: the account's role on the project may be what is missing.
     if (send && res.status === 403 && !scopes) {
       throw new Error(
-        `${LABELS[provider]} refused the change (403): the account may not have the role on this project it needs, or the token ${permission}.`
+        send.need
+          ? `${LABELS[provider]} refused the change (403): the token may not have ${permission}.`
+          : `${LABELS[provider]} refused the change (403): the account may not have the role on this project it needs, or the token ${permission}.`
       )
     }
     const label = `${LABELS[provider]} rejected the token (${res.status})${scopes}`
@@ -438,12 +458,16 @@ async function bitbucketIdentity(
   return { username, name, email }
 }
 
-/** Bitbucket lists repositories per workspace (the account-wide list is gone). */
-async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Promise<RemoteRepo[]> {
-  const workspaces = items(await getJson('bitbucket', host, '/user/workspaces?pagelen=100', token, fetchFn))
+/** The slugs of the user's Bitbucket workspaces (where its repositories are, and where new ones can go). */
+export async function bitbucketWorkspaces(host: string, token: string, fetchFn: FetchFn = fetch): Promise<string[]> {
+  return items(await getJson('bitbucket', host, '/user/workspaces?pagelen=100', token, fetchFn))
     .map((w) => (w.workspace && typeof w.workspace === 'object' ? String((w.workspace as Json).slug ?? '') : ''))
     .filter(Boolean)
-    .slice(0, 50)
+}
+
+/** Bitbucket lists repositories per workspace (the account-wide list is gone). */
+async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Promise<RemoteRepo[]> {
+  const workspaces = (await bitbucketWorkspaces(host, token, fetchFn)).slice(0, 50)
   // No role filter: role=member only counts explicit access, which leaves out the repositories of a workspace
   // the user owns. Without it the list is every repository of the workspace the user can see.
   const pages = await Promise.all(
@@ -774,4 +798,79 @@ export async function allowedMergeMethods(
   } catch {
     return all
   }
+}
+
+// ---------------------------------------------------------------------------
+// Publishing a repository: creating its project on the user's account.
+
+export const CREATE_PERMISSION =
+  'permission to create repositories (GitHub: repo, or Administration: write for a fine-grained token; GitLab: api; Bitbucket: admin:repository:bitbucket)'
+
+/**
+ * Creates an empty project of the token's user (Bitbucket: in `input.workspace`), nothing in it: the repository is
+ * pushed to it afterwards. Its HTTPS address carries no username, so git uses the account the repository is bound to.
+ */
+export async function createProject(
+  provider: Provider,
+  host: string,
+  token: string,
+  input: NewProject,
+  fetchFn: FetchFn = fetch
+): Promise<CreatedProject> {
+  const post = async (path: string, body: Json) =>
+    (await request(provider, host, path, token, fetchFn, {
+      method: 'POST',
+      body,
+      need: CREATE_PERMISSION
+    })) as Json | null
+  const text = (value: unknown) => (typeof value === 'string' && value ? value : null)
+  let fullName: string | null
+  let cloneUrl: string | null
+  let webUrl: string | null
+  switch (provider) {
+    case 'github':
+    case 'gitea': {
+      const body: Json = { name: input.name, description: input.description, private: input.private, auto_init: false }
+      // Whether Gitea's first push into an empty repository makes its branch the default differs between versions.
+      if (provider === 'gitea' && input.branch) body.default_branch = input.branch
+      const created = await post('/user/repos', body)
+      ;[fullName, cloneUrl, webUrl] = [text(created?.full_name), text(created?.clone_url), text(created?.html_url)]
+      break
+    }
+    case 'gitlab': {
+      const created = await post('/projects', {
+        name: input.name,
+        path: input.name,
+        description: input.description,
+        visibility: input.private ? 'private' : 'public'
+      })
+      ;[fullName, cloneUrl, webUrl] = [
+        text(created?.path_with_namespace),
+        text(created?.http_url_to_repo),
+        text(created?.web_url)
+      ]
+      break
+    }
+    case 'bitbucket': {
+      if (!input.workspace) throw new Error('Pick the Bitbucket workspace the repository goes to')
+      const slug = bitbucketSlug(input.name)
+      // Without a project, Bitbucket puts the repository in the workspace's oldest one.
+      const created = await post(`/repositories/${encodeURIComponent(input.workspace)}/${encodeURIComponent(slug)}`, {
+        scm: 'git',
+        name: input.name,
+        description: input.description,
+        is_private: input.private
+      })
+      fullName = text(created?.full_name)
+      // Not Bitbucket's clone link, which carries the username (see bitbucketRepos).
+      cloneUrl = fullName && `https://${host}/${fullName}.git`
+      webUrl = text(at(at(created?.links, 'html'), 'href'))
+      break
+    }
+    default:
+      throw new Error('This provider has no API support')
+  }
+  if (!fullName || !cloneUrl || !webUrl)
+    throw new Error(`${LABELS[provider]} answered without the new project's address`)
+  return { fullName, cloneUrl, webUrl }
 }

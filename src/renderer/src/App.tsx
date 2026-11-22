@@ -35,6 +35,7 @@ import { DiffView } from './components/DiffView'
 import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import { RebaseDialog } from './components/RebaseDialog'
+import { PublishDialog } from './components/PublishDialog'
 import { FileView } from './components/FileViews'
 import { CompareView } from './components/CompareView'
 import { ReflogView } from './components/ReflogView'
@@ -116,8 +117,8 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState()
-      // A modal on top (dialog, menu, Settings, rebase): shortcuts must not act on the repository behind it.
-      if (s.dialog || s.menu || s.settingsOpen || s.whatsNewOpen || s.rebase) return
+      // A modal on top (dialog, menu, Settings, rebase, publish): shortcuts must not act on the repository behind it.
+      if (s.dialog || s.menu || s.settingsOpen || s.whatsNewOpen || s.rebase || s.publish) return
       const active = s.tabs.find((x) => x.id === s.activeTab)
       const repo = active?.path
       const shortcut = globalShortcut(e)
@@ -205,6 +206,7 @@ export function App() {
       <SettingsModal />
       <WhatsNew />
       <RebaseDialog />
+      <PublishDialog />
       <Dialog />
       <Toasts />
     </div>

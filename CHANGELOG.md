@@ -4,6 +4,10 @@ All notable changes to Leviathan are documented here. The format is based on [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **A repository made on this computer can be published to your account**: Push in a repository with no remotes opens *Publish repository*, which creates the project on one of your GitHub, GitLab, Bitbucket or Gitea accounts (private by default; on Bitbucket, in one of your workspaces), adds it as `origin` and pushes the branch. *New repository* on the Welcome screen can create the project too, with *Also publish to an account*. A name already taken, or a token without the permission, is said in the dialog, which stays open to try another name. Bitbucket API tokens need `admin:repository:bitbucket` to create repositories.
+
 ## [0.24.0] - 2026-11-14
 
 ### Added

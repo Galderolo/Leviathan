@@ -32,6 +32,7 @@ Items marked **good first issue** are self-contained and a nice way to learn the
 - [x] Review pull requests in the app (diff, comments, approve, merge)
 - [x] Submodule support in the side panel
 - [x] Git LFS: tracked files, locks, patterns, large-file warnings
+- [x] Publish a local repository to an account (create the project, add it as origin, push)
 
 ## Application
 

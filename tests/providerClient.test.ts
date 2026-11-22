@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   canPush,
   authorAvatar,
+  bitbucketWorkspaces,
   closePullRequest,
+  createProject,
   createPullRequest,
   defaultBranch,
   fetchIdentity,
@@ -612,5 +614,188 @@ describe('authorAvatar', () => {
     const other = fakeFetch({})
     expect(await authorAvatar('other', 'example.com', 'studio/game', author, TOKEN, other.fn)).toBeNull()
     expect(other.calls).toEqual([])
+  })
+})
+
+describe('createProject', () => {
+  const input = { name: 'game', description: 'A game', private: true, branch: 'main' }
+
+  it('creates a GitHub repository of the user', async () => {
+    const { fn, calls } = fakeFetch({
+      'https://api.github.com/user/repos': {
+        status: 201,
+        body: {
+          full_name: 'ana/game',
+          clone_url: 'https://github.com/ana/game.git',
+          html_url: 'https://github.com/ana/game'
+        }
+      }
+    })
+    expect(await createProject('github', 'github.com', TOKEN, input, fn)).toEqual({
+      fullName: 'ana/game',
+      cloneUrl: 'https://github.com/ana/game.git',
+      webUrl: 'https://github.com/ana/game'
+    })
+    expect(calls[0].method).toBe('POST')
+    expect(calls[0].body).toEqual({ name: 'game', description: 'A game', private: true, auto_init: false })
+  })
+
+  it('gives Gitea the default branch', async () => {
+    const { fn, calls } = fakeFetch({
+      'https://git.example.com/api/v1/user/repos': {
+        status: 201,
+        body: {
+          full_name: 'ana/game',
+          clone_url: 'https://git.example.com/ana/game.git',
+          html_url: 'https://git.example.com/ana/game'
+        }
+      }
+    })
+    await createProject('gitea', 'git.example.com', TOKEN, { ...input, branch: 'develop' }, fn)
+    expect(calls[0].body).toEqual({
+      name: 'game',
+      description: 'A game',
+      private: true,
+      auto_init: false,
+      default_branch: 'develop'
+    })
+  })
+
+  it('creates a GitLab project with its visibility', async () => {
+    const { fn, calls } = fakeFetch({
+      'https://gitlab.com/api/v4/projects': {
+        status: 201,
+        body: {
+          path_with_namespace: 'bo/game',
+          http_url_to_repo: 'https://gitlab.com/bo/game.git',
+          web_url: 'https://gitlab.com/bo/game'
+        }
+      }
+    })
+    const created = await createProject('gitlab', 'gitlab.com', TOKEN, { ...input, private: false }, fn)
+    expect(created.fullName).toBe('bo/game')
+    expect(calls[0].body).toEqual({ name: 'game', path: 'game', description: 'A game', visibility: 'public' })
+  })
+
+  it('creates a Bitbucket repository in a workspace, its address without a username', async () => {
+    const { fn, calls } = fakeFetch({
+      'https://api.bitbucket.org/2.0/repositories/team/my-game': {
+        body: {
+          full_name: 'team/my-game',
+          links: {
+            html: { href: 'https://bitbucket.org/team/my-game' },
+            clone: [{ name: 'https', href: 'https://ana@bitbucket.org/team/my-game.git' }]
+          }
+        }
+      }
+    })
+    const created = await createProject(
+      'bitbucket',
+      'bitbucket.org',
+      TOKEN,
+      { ...input, name: 'My-Game', workspace: 'team' },
+      fn
+    )
+    expect(created).toEqual({
+      fullName: 'team/my-game',
+      cloneUrl: 'https://bitbucket.org/team/my-game.git',
+      webUrl: 'https://bitbucket.org/team/my-game'
+    })
+    expect(calls[0].body).toEqual({ scm: 'git', name: 'My-Game', description: 'A game', is_private: true })
+  })
+
+  it('needs a workspace on Bitbucket', async () => {
+    const { fn, calls } = fakeFetch({})
+    await expect(createProject('bitbucket', 'bitbucket.org', TOKEN, input, fn)).rejects.toThrow(/workspace/)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('says why a name is taken (GitHub)', async () => {
+    const { fn } = fakeFetch({
+      'https://api.github.com/user/repos': {
+        status: 422,
+        body: {
+          message: 'Repository creation failed.',
+          errors: [
+            { resource: 'Repository', code: 'custom', field: 'name', message: 'name already exists on this account' }
+          ]
+        }
+      }
+    })
+    await expect(createProject('github', 'github.com', TOKEN, input, fn)).rejects.toThrow(
+      'GitHub answered with an error (422): name already exists on this account'
+    )
+  })
+
+  it("reads GitLab's errors per field", async () => {
+    const { fn } = fakeFetch({
+      'https://gitlab.com/api/v4/projects': {
+        status: 400,
+        body: { message: { name: ['has already been taken'], path: ['has already been taken'], limit_reached: [] } }
+      }
+    })
+    await expect(createProject('gitlab', 'gitlab.com', TOKEN, input, fn)).rejects.toThrow(
+      'GitLab answered with an error (400): name has already been taken, path has already been taken'
+    )
+  })
+
+  it('says why a name is taken (Gitea)', async () => {
+    const { fn } = fakeFetch({
+      'https://git.example.com/api/v1/user/repos': {
+        status: 409,
+        body: { message: 'The repository with the same name already exists.' }
+      }
+    })
+    await expect(createProject('gitea', 'git.example.com', TOKEN, input, fn)).rejects.toThrow(
+      'Gitea answered with an error (409): The repository with the same name already exists.'
+    )
+  })
+
+  it('names the Bitbucket permission a token lacks', async () => {
+    const { fn } = fakeFetch({
+      'https://api.bitbucket.org/2.0/repositories/team/game': {
+        status: 403,
+        body: {
+          type: 'error',
+          error: {
+            message: 'Your credentials lack one or more required privilege scopes.',
+            detail: { granted: ['read:repository:bitbucket'], required: ['admin:repository:bitbucket'] }
+          }
+        }
+      }
+    })
+    await expect(
+      createProject('bitbucket', 'bitbucket.org', TOKEN, { ...input, workspace: 'team' }, fn)
+    ).rejects.toThrow(/it needs admin:repository:bitbucket/)
+  })
+
+  it('speaks of creating repositories, not of pull requests, when refused', async () => {
+    const { fn } = fakeFetch({ 'https://api.github.com/user/repos': { status: 403, body: {} } })
+    const error = await createProject('github', 'github.com', TOKEN, input, fn).catch((e: Error) => e)
+    expect((error as Error).message).toMatch(/permission to create repositories/)
+    expect((error as Error).message).not.toContain('role on this project')
+  })
+
+  it('refuses an answer without the address of the project', async () => {
+    const { fn } = fakeFetch({ 'https://api.github.com/user/repos': { status: 201, body: { full_name: 'ana/game' } } })
+    await expect(createProject('github', 'github.com', TOKEN, input, fn)).rejects.toThrow(
+      "GitHub answered without the new project's address"
+    )
+  })
+
+  it('cannot create anything on a server without an API', async () => {
+    const { fn } = fakeFetch({})
+    await expect(createProject('other', 'git.example.com', TOKEN, input, fn)).rejects.toThrow(/no API/)
+  })
+})
+
+describe('bitbucketWorkspaces', () => {
+  it('lists the slugs of the workspaces of the user', async () => {
+    const { fn } = fakeFetch({
+      'https://api.bitbucket.org/2.0/user/workspaces?pagelen=100': {
+        body: { values: [{ workspace: { slug: 'ana' } }, { workspace: { slug: 'team' } }, { workspace: {} }] }
+      }
+    })
+    expect(await bitbucketWorkspaces('bitbucket.org', TOKEN, fn)).toEqual(['ana', 'team'])
   })
 })

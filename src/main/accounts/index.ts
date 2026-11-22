@@ -37,6 +37,7 @@ import {
   canPush,
   closePullRequest,
   authorAvatar,
+  bitbucketWorkspaces,
   createPullRequest,
   defaultBranch,
   fetchIdentity,
@@ -272,6 +273,27 @@ export async function listAccountRepos(id: string): Promise<RemoteRepo[]> {
   return listRepos(account.provider, account.host, (await freshToken(id)) ?? '')
 }
 
+/** Bitbucket: the workspaces of an account, where a repository can be created. Other providers: none. */
+export async function listAccountWorkspaces(id: string): Promise<string[]> {
+  const account = requireAccount(id)
+  if (account.provider !== 'bitbucket') return []
+  return bitbucketWorkspaces(account.host, (await freshToken(id)) ?? '')
+}
+
+/** An account that can create projects, with its token (renewed first when about to expire). */
+export async function publishingAccount(id: string): Promise<{ account: Account; token: string }> {
+  const account = requireAccount(id)
+  if (account.provider === 'other') throw new Error('This account has no API to create a repository with')
+  const token = await freshToken(id)
+  if (!token) {
+    const reason = accounts().unreadable(id)
+    throw new Error(
+      `The token of ${account.username}@${account.host} can no longer be read on this system${reason ? ` (${reason})` : ''}: add the account again.`
+    )
+  }
+  return { account, token }
+}
+
 /** The entry of `repoAccounts` for `repo`, which may have been written in another case on Windows. */
 function repoEntry(map: Record<string, string>, repo: string): string | undefined {
   const key = repoKey(repo)
@@ -286,16 +308,21 @@ export function getRepoAccount(repo: string): string | null {
 
 /**
  * Binds a repository to an account (its commit identity and HTTPS credentials),
- * or unbinds it with `null`. Unbinding leaves the repository's identity as it is.
+ * or unbinds it with `null`. Unbinding leaves the repository's identity as it is; so does binding with
+ * `keepIdentity` (a repository with an identity of its own, published to the account).
  */
-export async function setRepoAccount(repo: string, accountId: string | null): Promise<void> {
+export async function setRepoAccount(
+  repo: string,
+  accountId: string | null,
+  opts: { keepIdentity?: boolean } = {}
+): Promise<void> {
   const map = { ...(loadSettings().repoAccounts ?? {}) }
   // One entry per repository, whatever the case its path came in.
   const entry = repoEntry(map, repo)
   if (entry !== undefined) delete map[entry]
   if (accountId) {
     const account = requireAccount(accountId)
-    await applyIdentity(repo, account)
+    if (!opts.keepIdentity) await applyIdentity(repo, account)
     setRepoGitArgs(repo, credentialArgs(account))
     map[repo] = accountId
   } else {
