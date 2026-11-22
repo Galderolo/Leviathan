@@ -1,6 +1,6 @@
 # Publish a local repository to an account
 
-Date: 2026-11-22. Status: design approved, plan next.
+Date: 2026-11-22. Status: implemented (branch feat/publish-repository).
 
 ## Goal
 
