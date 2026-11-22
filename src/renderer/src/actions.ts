@@ -29,6 +29,7 @@ import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import type { RebaseItem } from '../../shared/rebase'
 import type { FixupInfo } from '../../shared/fixup'
+import type { Published } from '../../shared/publish'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, leavingStashes, type RepoChange, type Snapshot } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
@@ -1396,6 +1397,8 @@ export async function push(path: string, opts: { force?: boolean; branch?: strin
     toast('error', t('error.detachedPush'))
     return false
   }
+  // Nowhere to push yet: offer to create the project on an account (nothing to force, either).
+  if (state && state.remotes.length === 0) return publishAndPush(path, opts.branch, !opts.branch && !state.head.hash)
   if (opts.force) {
     const ok = await confirmDialog({
       title: t('menu.forcePush'),
@@ -2561,6 +2564,51 @@ export async function addRemote(path: string): Promise<void> {
   const name = values?.name?.trim()
   const url = values?.url?.trim()
   if (name && url && (await runOp(path, () => api.addRemote(path, name, url)))) void loadPullRequests(path)
+}
+
+/** Opens Publish repository for `path`; resolves with what was published, or null when it was closed. */
+export function publishRepository(path: string): Promise<Published | null> {
+  closePublish(null)
+  return new Promise((resolve) => useStore.setState({ publish: { path, resolve } }))
+}
+
+/** Closes Publish repository, handing what was published (null: nothing) to whoever opened it. */
+export function closePublish(published: Published | null): void {
+  const open = useStore.getState().publish
+  if (!open) return
+  useStore.setState({ publish: null })
+  open.resolve(published)
+}
+
+/** Settings → Accounts. */
+export function openAccountsSettings(): void {
+  useStore.setState({ settingsOpen: true, settingsSection: 'accounts', signInAgain: null })
+}
+
+/** After a repository was published: its new remote and pull requests shown, a failed account binding said. */
+export function afterPublish(path: string, published: Published): void {
+  if (published.bindError) toast('error', t('toast.publishNotBound', { reason: published.bindError }))
+  void refreshRepo(path, { log: false })
+  void loadPullRequests(path)
+}
+
+/**
+ * Push in a repository without remotes: publishes it (the dialog), then pushes the branch, unless it has no commits
+ * yet (`unborn`). `branch`: the branch pushed from its menu (undefined: the checked-out one).
+ */
+async function publishAndPush(path: string, branch: string | undefined, unborn: boolean): Promise<boolean> {
+  const published = await publishRepository(path)
+  if (!published) return false
+  afterPublish(path, published)
+  const where = `${published.host}/${published.fullName}`
+  if (unborn) {
+    toast('success', t('toast.publishedEmpty', { where }))
+    return true
+  }
+  return runOp(path, () => api.push(path, { force: false, branch }), {
+    busy: 'push',
+    success: t('toast.published', { where })
+  })
 }
 
 export async function removeRemote(path: string, name: string): Promise<void> {

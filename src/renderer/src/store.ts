@@ -23,6 +23,7 @@ import type { LfsInstallOffer } from '../../shared/lfsInstall'
 import type { UpdateState } from '../../shared/updates'
 import type { Worktree } from '../../shared/worktrees'
 import type { Lang } from './i18n'
+import type { Published } from '../../shared/publish'
 import type { StoppedAction, UndoEntry } from './undoStack'
 
 export type Selection =
@@ -291,6 +292,8 @@ export interface AppState {
   whatsNewOpen: boolean
   /** Interactive rebase dialog: the commits after `base` in repository `path`. */
   rebase: { path: string; base: string; commits: RebaseCommit[]; script: string | null } | null
+  /** Publish repository dialog for repository `path`; `resolve` gets what was published (null: closed). */
+  publish: { path: string; resolve: (published: Published | null) => void } | null
   cloneProgress: string | null
   versions: { app: string; git: string }
   /** How diffs are shown: one column, or old and new side by side. */
@@ -322,6 +325,7 @@ export const useStore = create<AppState>(() => ({
   signInAgain: null,
   whatsNewOpen: false,
   rebase: null,
+  publish: null,
   cloneProgress: null,
   versions: { app: '', git: '' },
   diffLayout: initialDiffLayout(),

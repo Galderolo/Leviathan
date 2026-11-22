@@ -35,6 +35,7 @@ import { DiffView } from './components/DiffView'
 import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import { RebaseDialog } from './components/RebaseDialog'
+import { PublishDialog } from './components/PublishDialog'
 import { FileView } from './components/FileViews'
 import { CompareView } from './components/CompareView'
 import { ReflogView } from './components/ReflogView'
@@ -205,6 +206,7 @@ export function App() {
       <SettingsModal />
       <WhatsNew />
       <RebaseDialog />
+      <PublishDialog />
       <Dialog />
       <Toasts />
     </div>

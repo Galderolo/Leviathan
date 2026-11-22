@@ -3137,6 +3137,11 @@ img.avatar {
   font-size: 12px;
 }
 
+.publish-problem {
+  color: var(--orange);
+  font-size: 12px;
+}
+
 .modal.wide {
   width: 560px;
 }
