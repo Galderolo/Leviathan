@@ -18,6 +18,7 @@ describe('projectName', () => {
     expect(projectName('My Game')).toBe('My-Game')
     expect(projectName('a  &  b')).toBe('a-b')
     expect(projectName('  padded  ')).toBe('padded')
+    expect(projectName('Game - Copy')).toBe('Game-Copy')
   })
 
   it('drops accents instead of the letters', () => {

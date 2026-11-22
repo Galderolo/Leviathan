@@ -1189,6 +1189,14 @@ test('an account without an API cannot publish a repository', async () => {
   await dialog.getByRole('button', { name: 'Add account' }).click()
   await expect(dialog).toHaveCount(0)
   await expect(page.locator('.settings-nav-item.active', { hasText: 'Accounts' })).toBeVisible()
+
+  // The Welcome form offers to publish only to accounts that have an API.
+  await page.keyboard.press('Escape')
+  await page.locator('.tab-new').click()
+  await page.locator('.welcome-card', { hasText: 'New repository' }).click()
+  const form = page.locator('.welcome-form')
+  await form.locator('.field', { hasText: 'Folder' }).locator('input').fill(join(box.root, 'later'))
+  await expect(form.getByText('Also publish to an account')).toHaveCount(0)
 })
 
 test('creates a repository from the Welcome screen, with no publish option without an account that has an API', async () => {

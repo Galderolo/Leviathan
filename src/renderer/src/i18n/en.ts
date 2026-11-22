@@ -43,7 +43,7 @@ const en = {
   'publish.addRemote': 'Add remote by URL',
   'publish.problem.empty': 'Type a name.',
   'publish.problem.tooLong': 'At most 100 characters.',
-  'publish.problem.characters': 'Only letters, digits, ".", "-" and "_".',
+  'publish.problem.characters': 'Only letters without accents (a–z), digits, ".", "-" and "_".',
   'publish.problem.dotGit': 'The name cannot end with ".git".',
   'publish.problem.edge': 'The name cannot start or end with "." or "-".',
   'publish.alsoPublish': 'Also publish to an account',

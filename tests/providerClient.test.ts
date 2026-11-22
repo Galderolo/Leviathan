@@ -771,9 +771,9 @@ describe('createProject', () => {
 
   it('speaks of creating repositories, not of pull requests, when refused', async () => {
     const { fn } = fakeFetch({ 'https://api.github.com/user/repos': { status: 403, body: {} } })
-    await expect(createProject('github', 'github.com', TOKEN, input, fn)).rejects.toThrow(
-      /permission to create repositories/
-    )
+    const error = await createProject('github', 'github.com', TOKEN, input, fn).catch((e: Error) => e)
+    expect((error as Error).message).toMatch(/permission to create repositories/)
+    expect((error as Error).message).not.toContain('role on this project')
   })
 
   it('refuses an answer without the address of the project', async () => {

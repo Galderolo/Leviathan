@@ -4,7 +4,7 @@ import * as accounts from './accounts'
 import { createProject } from './accounts/providers'
 import { readIdentity } from './git/identity'
 import * as repo from './git/repository'
-import { git } from './git/runner'
+import { git, repoKey } from './git/runner'
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err))
 
@@ -24,17 +24,18 @@ function validInput(input: PublishInput): boolean {
  * the account, so the push that follows goes through that account and no other stored credential. Nothing is
  * changed here when the server refuses; once the project exists, failing to bind the account is only reported.
  */
-export async function publishRepository(path: string, input: PublishInput): Promise<Published> {
+async function publish(path: string, input: PublishInput): Promise<Published> {
   if (!validInput(input)) throw new Error('Invalid repository to publish')
   const name = input.name.trim()
   if (projectNameProblem(name)) throw new Error(`Invalid repository name: "${name}"`)
-  const { account, token } = await accounts.publishingAccount(input.accountId)
-  if (account.provider === 'bitbucket' && !input.workspace) {
-    throw new Error('Pick the Bitbucket workspace the repository goes to')
-  }
+  // Before anything that may go over the network (renewing the token).
   const { stdout } = await git(['remote', '-v'], { cwd: path })
   if (parseRemotes(stdout).some((r) => r.name === 'origin')) {
     throw new Error('This repository already has a remote named origin')
+  }
+  const { account, token } = await accounts.publishingAccount(input.accountId)
+  if (account.provider === 'bitbucket' && !input.workspace) {
+    throw new Error('Pick the Bitbucket workspace the repository goes to')
   }
   // Also on a branch with no commits yet; '' on a detached HEAD.
   const head = await git(['symbolic-ref', '--short', '-q', 'HEAD'], { cwd: path, okCodes: [0, 1] })
@@ -45,6 +46,13 @@ export async function publishRepository(path: string, input: PublishInput): Prom
     branch: head.stdout.trim(),
     workspace: input.workspace
   })
+  // Only an HTTPS address becomes origin: a server answering http://, git:// or ssh:// would send the token's account
+  // over a channel it did not choose. A value with no scheme at all (a plain path) passes: only test doubles give one.
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(created.cloneUrl) && !/^https:\/\//i.test(created.cloneUrl)) {
+    throw new Error(
+      `The project was created at ${created.webUrl}, but the server gave no HTTPS address for it. Add it with Add remote.`
+    )
+  }
   try {
     await repo.addRemote(path, 'origin', created.cloneUrl)
   } catch (err) {
@@ -65,4 +73,21 @@ export async function publishRepository(path: string, input: PublishInput): Prom
       (err: unknown) => message(err)
     )
   return { fullName: created.fullName, webUrl: created.webUrl, host: account.host, bindError }
+}
+
+/** Repositories being published now. */
+const publishing = new Set<string>()
+
+export async function publishRepository(path: string, input: PublishInput): Promise<Published> {
+  if (!validInput(input)) throw new Error('Invalid repository to publish')
+  const key = repoKey(path)
+  // The Welcome form opens the repository before its publish returns, so a Push in that moment would otherwise start
+  // a second one.
+  if (publishing.has(key)) throw new Error('This repository is being published already')
+  publishing.add(key)
+  try {
+    return await publish(path, input)
+  } finally {
+    publishing.delete(key)
+  }
 }

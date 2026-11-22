@@ -102,7 +102,9 @@ async function request(
     // A refusal (403) that names no missing scope: the account's role on the project may be what is missing.
     if (send && res.status === 403 && !scopes) {
       throw new Error(
-        `${LABELS[provider]} refused the change (403): the account may not have the role on this project it needs, or the token ${permission}.`
+        send.need
+          ? `${LABELS[provider]} refused the change (403): the token may not have ${permission}.`
+          : `${LABELS[provider]} refused the change (403): the account may not have the role on this project it needs, or the token ${permission}.`
       )
     }
     const label = `${LABELS[provider]} rejected the token (${res.status})${scopes}`
@@ -802,7 +804,7 @@ export async function allowedMergeMethods(
 // Publishing a repository: creating its project on the user's account.
 
 export const CREATE_PERMISSION =
-  'permission to create repositories (GitHub: repo, GitLab: api, Bitbucket: admin:repository:bitbucket)'
+  'permission to create repositories (GitHub: repo, or Administration: write for a fine-grained token; GitLab: api; Bitbucket: admin:repository:bitbucket)'
 
 /**
  * Creates an empty project of the token's user (Bitbucket: in `input.workspace`), nothing in it: the repository is

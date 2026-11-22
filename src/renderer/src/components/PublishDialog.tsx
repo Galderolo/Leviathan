@@ -43,7 +43,12 @@ export interface PublishState {
  * The choices of a publish: the accounts that can create projects (`preferred` first picked when it is one of them),
  * the workspace on Bitbucket, and a name that follows `nameFrom` (a folder) until it is edited.
  */
-export function usePublishChoice(accounts: Account[], nameFrom: string, preferred: string | null): PublishState {
+export function usePublishChoice(
+  accounts: Account[],
+  nameFrom: string,
+  preferred: string | null,
+  enabled = true
+): PublishState {
   const usable = accounts.filter(canPublish)
   const [picked, setAccountId] = useState('')
   const accountId = usable.some((a) => a.id === picked)
@@ -57,8 +62,10 @@ export function usePublishChoice(accounts: Account[], nameFrom: string, preferre
   const [isPrivate, setPrivate] = useState(true)
 
   const bitbucket = account?.provider === 'bitbucket'
+  // Workspaces are only asked of Bitbucket once the choice is in use (the Welcome form: publishing ticked).
+  const loadWorkspaces = bitbucket && enabled
   useEffect(() => {
-    if (!bitbucket) {
+    if (!loadWorkspaces) {
       setWorkspaces({ state: 'none' })
       return
     }
@@ -71,7 +78,7 @@ export function usePublishChoice(accounts: Account[], nameFrom: string, preferre
     return () => {
       alive = false
     }
-  }, [accountId, bitbucket])
+  }, [accountId, loadWorkspaces])
 
   const slugs = workspaces.state === 'ready' ? workspaces.slugs : []
   const workspace = slugs.includes(pickedWorkspace) ? pickedWorkspace : (slugs[0] ?? '')
@@ -247,6 +254,19 @@ function PublishForm({ path }: { path: string }) {
   const publish = usePublishChoice(accounts ?? [], basename(path), preferred)
   const none = accounts !== null && publish.usable.length === 0
   const cancel = () => !running && closePublish(null)
+  const addRemoteButton = (
+    <button
+      type="button"
+      className="btn"
+      disabled={running}
+      onClick={() => {
+        closePublish(null)
+        void addRemote(path)
+      }}
+    >
+      {t('publish.addRemote')}
+    </button>
+  )
   const submit = async () => {
     if (!publish.input || running) return
     setRunning(true)
@@ -288,16 +308,7 @@ function PublishForm({ path }: { path: string }) {
           </button>
           {none ? (
             <>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  closePublish(null)
-                  void addRemote(path)
-                }}
-              >
-                {t('publish.addRemote')}
-              </button>
+              {addRemoteButton}
               <button
                 type="button"
                 className="btn btn-primary"
@@ -311,15 +322,18 @@ function PublishForm({ path }: { path: string }) {
               </button>
             </>
           ) : (
-            <button type="submit" className="btn btn-primary" disabled={!publish.input || running}>
-              {running ? (
-                <>
-                  <Spinner size={12} /> {t('publish.publishing')}
-                </>
-              ) : (
-                t('publish.submit')
-              )}
-            </button>
+            <>
+              {addRemoteButton}
+              <button type="submit" className="btn btn-primary" disabled={!publish.input || running}>
+                {running ? (
+                  <>
+                    <Spinner size={12} /> {t('publish.publishing')}
+                  </>
+                ) : (
+                  t('publish.submit')
+                )}
+              </button>
+            </>
           )}
         </div>
       </form>

@@ -258,7 +258,7 @@ function InitForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
   const [busy, setBusy] = useState(false)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [publishToo, setPublishToo] = useState(false)
-  const publish = usePublishChoice(accounts, basename(folder.trim()), null)
+  const publish = usePublishChoice(accounts, basename(folder.trim()), null, publishToo)
   const canPublishAny = publish.usable.length > 0
   const publishing = canPublishAny && publishToo
 

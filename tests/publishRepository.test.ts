@@ -87,6 +87,7 @@ describe('publishRepository', () => {
     await git(['remote', 'add', 'origin', bare], { cwd: work })
     await expect(publishRepository(work, input)).rejects.toThrow('This repository already has a remote named origin')
     expect(providers.createProject).not.toHaveBeenCalled()
+    expect(accounts.publishingAccount).not.toHaveBeenCalled()
   })
 
   it('leaves the repository as it was when the server refuses', async () => {
@@ -105,8 +106,31 @@ describe('publishRepository', () => {
       webUrl: 'https://github.com/ana/game'
     })
     await expect(publishRepository(work, input)).rejects.toThrow(
-      /The project was created at https:\/\/github\.com\/ana\/game, but it could not be added as origin/
+      /The project was created at https:\/\/github\.com\/ana\/game, but/
     )
+  })
+
+  it('does not take an address that is not HTTPS as origin', async () => {
+    vi.mocked(providers.createProject).mockResolvedValue({
+      fullName: 'ana/game',
+      cloneUrl: 'http://github.com/ana/game.git',
+      webUrl: 'https://github.com/ana/game'
+    })
+    await expect(publishRepository(work, input)).rejects.toThrow(
+      'The project was created at https://github.com/ana/game, but the server gave no HTTPS address for it. Add it with Add remote.'
+    )
+    expect(await remotes()).toBe('')
+  })
+
+  it('publishes one repository at a time', async () => {
+    let finish: (value: Awaited<ReturnType<typeof providers.createProject>>) => void = () => {}
+    vi.mocked(providers.createProject).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+    const first = publishRepository(work, input)
+    await expect(publishRepository(work, input)).rejects.toThrow('This repository is being published already')
+    finish({ fullName: 'ana/game', cloneUrl: bare, webUrl: 'https://github.com/ana/game' })
+    await expect(first).resolves.toMatchObject({ fullName: 'ana/game' })
+    // Released: the guard no longer refuses (origin exists now, which is another message).
+    await expect(publishRepository(work, input)).rejects.toThrow('This repository already has a remote named origin')
   })
 
   it('is published all the same when the account cannot be given to the repository', async () => {

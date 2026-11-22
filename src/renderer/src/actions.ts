@@ -2630,6 +2630,8 @@ async function publishAndPush(path: string, branch: string | undefined, unborn: 
   return runOp(path, () => api.push(path, { force: false, branch }), {
     busy: 'push',
     success: t('toast.published', { where }),
+    // Handles nothing: it adds the info toast and returns false, so runOp still shows the push error (or the account's
+    // sign-in explanation) as usual.
     quiet: () => {
       toast('info', t('toast.publishedPushFailed', { where }))
       return false
