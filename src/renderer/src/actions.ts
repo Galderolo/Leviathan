@@ -2585,7 +2585,10 @@ export function openAccountsSettings(): void {
   useStore.setState({ settingsOpen: true, settingsSection: 'accounts', signInAgain: null })
 }
 
-/** After a repository was published: its new remote and pull requests shown, a failed account binding said. */
+/**
+ * After a repository was published: its new remote shown, the account and identity it was given loaded (awaited, so a
+ * push right after finds the account), its pull requests asked for, a failed account binding said.
+ */
 export async function afterPublish(path: string, published: Published): Promise<void> {
   if (published.bindError) toast('error', t('toast.publishNotBound', { reason: published.bindError }))
   void refreshRepo(path, { log: false })
