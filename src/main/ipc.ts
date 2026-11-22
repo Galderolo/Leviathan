@@ -17,6 +17,7 @@ import type { SigningSetting } from '../shared/signing'
 import * as accounts from './accounts'
 import { AvatarCache } from './avatars'
 import { cloneWithAccount } from './clone'
+import { publishRepository } from './publish'
 import { answerAskpass, askpassScripts } from './askpass'
 import { installCommandLine, takeLaunchFolders } from './cli'
 import * as fixup from './git/fixup'
@@ -241,6 +242,8 @@ const handlers: LeviathanInvokeApi = {
   updateAccount: (id, patch) => accounts.updateAccount(id, patch),
   removeAccount: async (id) => accounts.removeAccount(id),
   listAccountRepos: (id) => accounts.listAccountRepos(id),
+  listAccountWorkspaces: (id) => accounts.listAccountWorkspaces(id),
+  publishRepo: (path, input) => publishRepository(path, input),
   getRepoAccount: async (path) => accounts.getRepoAccount(path),
   setRepoAccount: (path, id) => accounts.setRepoAccount(path, id),
   repoUsesHost: (path, host) => accounts.repoUsesHost(path, host),

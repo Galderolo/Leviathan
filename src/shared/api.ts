@@ -37,6 +37,7 @@ import type { LfsInstallOffer } from './lfsInstall'
 import type { RebaseItem } from './rebase'
 import type { FixupInfo } from './fixup'
 import type { Reflog } from './reflog'
+import type { PublishInput, Published } from './publish'
 import type { ReleaseNote } from './releaseNotes'
 import type { RepoChange, Snapshot } from './undo'
 import type { UpdateState } from './updates'
@@ -247,6 +248,10 @@ export interface LeviathanInvokeApi {
   updateAccount(id: string, patch: { name?: string; email?: string }): Promise<Account>
   removeAccount(id: string): Promise<void>
   listAccountRepos(id: string): Promise<RemoteRepo[]>
+  /** Bitbucket: the workspaces of an account (other providers: none). */
+  listAccountWorkspaces(id: string): Promise<string[]>
+  /** Creates the repository's project on an account, adds it as origin and gives the repository the account. */
+  publishRepo(repo: string, input: PublishInput): Promise<Published>
   getRepoAccount(repo: string): Promise<string | null>
   setRepoAccount(repo: string, accountId: string | null): Promise<void>
   /** Whether a remote of the repository reaches `host`, also through an SSH alias. */
@@ -498,6 +503,8 @@ const METHODS: Record<keyof LeviathanInvokeApi, true> = {
   updateAccount: true,
   removeAccount: true,
   listAccountRepos: true,
+  listAccountWorkspaces: true,
+  publishRepo: true,
   getRepoAccount: true,
   setRepoAccount: true,
   repoUsesHost: true,
