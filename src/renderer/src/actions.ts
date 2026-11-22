@@ -2586,10 +2586,10 @@ export function openAccountsSettings(): void {
 }
 
 /** After a repository was published: its new remote and pull requests shown, a failed account binding said. */
-export function afterPublish(path: string, published: Published): void {
+export async function afterPublish(path: string, published: Published): Promise<void> {
   if (published.bindError) toast('error', t('toast.publishNotBound', { reason: published.bindError }))
   void refreshRepo(path, { log: false })
-  void loadPullRequests(path)
+  await loadRepoAccount(path)
 }
 
 /**
@@ -2599,7 +2599,7 @@ export function afterPublish(path: string, published: Published): void {
 async function publishAndPush(path: string, branch: string | undefined, unborn: boolean): Promise<boolean> {
   const published = await publishRepository(path)
   if (!published) return false
-  afterPublish(path, published)
+  await afterPublish(path, published)
   const where = `${published.host}/${published.fullName}`
   if (unborn) {
     toast('success', t('toast.publishedEmpty', { where }))

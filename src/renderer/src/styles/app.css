@@ -2619,6 +2619,10 @@ img.avatar {
   background: rgba(0, 0, 0, 0.5);
 }
 
+.publish-modal:focus {
+  outline: none;
+}
+
 .modal {
   display: flex;
   flex-direction: column;

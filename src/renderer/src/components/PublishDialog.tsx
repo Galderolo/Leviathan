@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type Ref } from 'react'
 import {
   canPublish,
   projectLocation,
@@ -108,7 +108,17 @@ export function usePublishChoice(accounts: Account[], nameFrom: string, preferre
 }
 
 /** Account, workspace (Bitbucket), name, description and private: the Publish dialog's and the Welcome form's. */
-export function PublishFields({ publish, disabled }: { publish: PublishState; disabled?: boolean }) {
+export function PublishFields({
+  publish,
+  disabled,
+  autoFocus,
+  nameRef
+}: {
+  publish: PublishState
+  disabled?: boolean
+  autoFocus?: boolean
+  nameRef?: Ref<HTMLInputElement>
+}) {
   const t = useT()
   const { account, workspaces } = publish
   const bitbucket = account?.provider === 'bitbucket'
@@ -148,7 +158,8 @@ export function PublishFields({ publish, disabled }: { publish: PublishState; di
       <label className="field">
         <span>{t('publish.name')}</span>
         <input
-          autoFocus
+          autoFocus={autoFocus}
+          ref={nameRef}
           value={publish.name}
           spellCheck={false}
           disabled={disabled}
@@ -201,6 +212,15 @@ function PublishForm({ path }: { path: string }) {
   const [error, setError] = useState<string | null>(null)
   const runningRef = useRef(false)
   runningRef.current = running
+  const modalRef = useRef<HTMLFormElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  // Focus starts in the dialog, not on the toolbar button behind it; the fields take it over once they show.
+  useEffect(() => modalRef.current?.focus(), [])
+  // A refusal re-enables the name: focus goes back to it.
+  useEffect(() => {
+    if (error && !running) nameRef.current?.focus()
+  }, [error, running])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -244,6 +264,8 @@ function PublishForm({ path }: { path: string }) {
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && cancel()}>
       <form
+        ref={modalRef}
+        tabIndex={-1}
         className="modal publish-modal"
         onSubmit={(e) => {
           e.preventDefault()
@@ -256,7 +278,7 @@ function PublishForm({ path }: { path: string }) {
         {accounts !== null && !none && (
           <>
             <p className="modal-message">{t('publish.hint')}</p>
-            <PublishFields publish={publish} disabled={running} />
+            <PublishFields publish={publish} disabled={running} autoFocus nameRef={nameRef} />
           </>
         )}
         {error && <div className="publish-problem">{error}</div>}
