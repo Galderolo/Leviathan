@@ -60,7 +60,7 @@ function tidy(name: string): string {
 export function projectName(folder: string): string {
   const name = folder
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^A-Za-z0-9._-]+/g, '-')
   return tidy(tidy(name).slice(0, PROJECT_NAME_MAX))
 }
