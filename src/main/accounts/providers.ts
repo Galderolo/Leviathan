@@ -59,7 +59,7 @@ function reason(body: unknown): string | null {
   const message = Array.isArray(b.message)
     ? b.message.join(', ')
     : b.message && typeof b.message === 'object'
-      ? fieldErrors(b.message as Json)
+      ? fieldErrors(b.message as Json) || undefined
       : b.message
   // Bitbucket: { type: 'error', error: { message } }
   const nested = b.error && typeof b.error === 'object' ? (b.error as Json).message : undefined
@@ -456,7 +456,6 @@ async function bitbucketIdentity(
   return { username, name, email }
 }
 
-/** Bitbucket lists repositories per workspace (the account-wide list is gone). */
 /** The slugs of the user's Bitbucket workspaces (where its repositories are, and where new ones can go). */
 export async function bitbucketWorkspaces(host: string, token: string, fetchFn: FetchFn = fetch): Promise<string[]> {
   return items(await getJson('bitbucket', host, '/user/workspaces?pagelen=100', token, fetchFn))
@@ -464,6 +463,7 @@ export async function bitbucketWorkspaces(host: string, token: string, fetchFn: 
     .filter(Boolean)
 }
 
+/** Bitbucket lists repositories per workspace (the account-wide list is gone). */
 async function bitbucketRepos(host: string, token: string, fetchFn: FetchFn): Promise<RemoteRepo[]> {
   const workspaces = (await bitbucketWorkspaces(host, token, fetchFn)).slice(0, 50)
   // No role filter: role=member only counts explicit access, which leaves out the repositories of a workspace
