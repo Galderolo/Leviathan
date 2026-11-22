@@ -28,7 +28,7 @@ const es: Record<keyof typeof en, string> = {
   'init.branch': 'Rama inicial',
   'init.submit': 'Crear repositorio',
   'publish.title': 'Publicar repositorio',
-  'publish.hint': 'Crea el proyecto en tu cuenta, lo añade como origin y sube la rama.',
+  'publish.hint': 'Crea el proyecto en tu cuenta, lo añade como origin y sube la rama, si tiene commits.',
   'publish.account': 'Cuenta',
   'publish.workspace': 'Workspace',
   'publish.loadingWorkspaces': 'Cargando workspaces…',
@@ -51,6 +51,7 @@ const es: Record<keyof typeof en, string> = {
   'toast.published': 'Publicado en {where}',
   'toast.publishedEmpty': 'Creado {where}. Haz commit y luego Push para subirlo.',
   'toast.publishNotBound': 'Publicado, pero no se pudo asignar la cuenta al repositorio: {reason}',
+  'toast.publishedPushFailed': 'Creado {where}, pero falló la subida de la rama. Haz Push otra vez para reintentar.',
 
   'common.cancel': 'Cancelar',
   'tools.title': 'Herramientas externas',
@@ -568,7 +569,7 @@ const es: Record<keyof typeof en, string> = {
   'accounts.bitbucketTokenHint':
     'El token se guarda cifrado en este equipo. Bitbucket no tiene dirección no-reply: por defecto los commits usan el email principal de la cuenta (escribe otro arriba para usar ese).',
   'accounts.bitbucketHint':
-    'Créalo con "Create API token with scopes", app Bitbucket, y estos permisos: read:user, read:workspace, read:repository, write:repository, read:pullrequest y write:pullrequest (todos terminan en :bitbucket). Para publicar repositorios desde la app, también admin:repository.',
+    'Créalo con "Create API token with scopes", app Bitbucket, y estos permisos: read:user, read:workspace, read:repository, write:repository, read:pullrequest y write:pullrequest (todos terminan en :bitbucket). Para publicar repositorios desde la app, también admin:repository:bitbucket.',
   'accounts.name': 'Nombre en los commits',
   'accounts.email': 'Email en los commits',
   'accounts.optional': 'opcional',

@@ -26,7 +26,7 @@ const en = {
   'init.branch': 'Initial branch',
   'init.submit': 'Create repository',
   'publish.title': 'Publish repository',
-  'publish.hint': 'Creates the project on your account, adds it as origin and pushes the branch.',
+  'publish.hint': 'Creates the project on your account, adds it as origin and pushes the branch, if it has commits.',
   'publish.account': 'Account',
   'publish.workspace': 'Workspace',
   'publish.loadingWorkspaces': 'Loading workspaces…',
@@ -49,6 +49,7 @@ const en = {
   'toast.published': 'Published at {where}',
   'toast.publishedEmpty': 'Created {where}. Commit, then Push to upload it.',
   'toast.publishNotBound': 'Published, but the repository could not be given the account: {reason}',
+  'toast.publishedPushFailed': 'Created {where}, but pushing the branch failed. Push again to retry.',
 
   'common.cancel': 'Cancel',
   'tools.title': 'External tools',
@@ -561,7 +562,7 @@ const en = {
   'accounts.bitbucketTokenHint':
     'The token is stored encrypted on this computer. Bitbucket has no no-reply address: by default commits use the primary email of the account (type another one above to use it instead).',
   'accounts.bitbucketHint':
-    'Create it with "Create API token with scopes", app Bitbucket, and these scopes: read:user, read:workspace, read:repository, write:repository, read:pullrequest and write:pullrequest (all ending in :bitbucket). To publish repositories from the app, admin:repository as well.',
+    'Create it with "Create API token with scopes", app Bitbucket, and these scopes: read:user, read:workspace, read:repository, write:repository, read:pullrequest and write:pullrequest (all ending in :bitbucket). To publish repositories from the app, admin:repository:bitbucket as well.',
   'accounts.name': 'Commit name',
   'accounts.email': 'Commit email',
   'accounts.optional': 'optional',

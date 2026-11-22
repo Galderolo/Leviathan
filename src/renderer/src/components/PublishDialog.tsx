@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   canPublish,
   projectLocation,
@@ -148,6 +148,7 @@ export function PublishFields({ publish, disabled }: { publish: PublishState; di
       <label className="field">
         <span>{t('publish.name')}</span>
         <input
+          autoFocus
           value={publish.name}
           spellCheck={false}
           disabled={disabled}
@@ -157,7 +158,8 @@ export function PublishFields({ publish, disabled }: { publish: PublishState; di
       {publish.nameProblem ? (
         <div className="publish-problem">{t(`publish.problem.${publish.nameProblem}`)}</div>
       ) : (
-        account && (
+        account &&
+        (account.provider !== 'bitbucket' || publish.workspace !== '') && (
           <div className="dim small">
             {t('publish.location', { where: projectLocation(account, publish.workspace, publish.name.trim()) })}
           </div>
@@ -197,6 +199,16 @@ function PublishForm({ path }: { path: string }) {
   const [preferred, setPreferred] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const runningRef = useRef(false)
+  runningRef.current = running
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !useStore.getState().dialog && !runningRef.current) closePublish(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -220,7 +232,9 @@ function PublishForm({ path }: { path: string }) {
     setRunning(true)
     setError(null)
     try {
-      closePublish(await api.publishRepo(path, publish.input))
+      const published = await api.publishRepo(path, publish.input)
+      // Only the dialog it was opened for takes the result.
+      if (useStore.getState().publish?.path === path) closePublish(published)
     } catch (err) {
       setError(errorMessage(err))
       setRunning(false)
@@ -235,7 +249,6 @@ function PublishForm({ path }: { path: string }) {
           e.preventDefault()
           void submit()
         }}
-        onKeyDown={(e) => e.key === 'Escape' && cancel()}
       >
         <div className="modal-title">{t('publish.title')}</div>
         {accounts === null && <Spinner size={14} />}
@@ -266,6 +279,7 @@ function PublishForm({ path }: { path: string }) {
               <button
                 type="button"
                 className="btn btn-primary"
+                autoFocus
                 onClick={() => {
                   closePublish(null)
                   openAccountsSettings()

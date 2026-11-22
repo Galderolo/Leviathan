@@ -1156,6 +1156,9 @@ test('offers to publish a repository without remotes when pushing, or to add a r
   await toolbarButton('Push').click()
   const dialog = page.locator('.publish-modal')
   await expect(dialog.locator('.modal-title')).toHaveText('Publish repository')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await toolbarButton('Push').click()
   await expect(dialog).toContainText('add a GitHub, GitLab, Bitbucket or Gitea account')
   await dialog.getByRole('button', { name: 'Add remote by URL' }).click()
   await expect(dialog).toHaveCount(0)
@@ -1177,6 +1180,7 @@ test('an account without an API cannot publish a repository', async () => {
   await section.getByPlaceholder('Personal access token').fill('a-token')
   await section.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.locator('.toasts')).toContainText('Account ana@git.example.com added')
+  await page.locator('.settings-nav-item', { hasText: 'General' }).click()
   await page.keyboard.press('Escape')
 
   await toolbarButton('Push').click()

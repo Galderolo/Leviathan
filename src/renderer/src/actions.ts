@@ -2607,7 +2607,11 @@ async function publishAndPush(path: string, branch: string | undefined, unborn: 
   }
   return runOp(path, () => api.push(path, { force: false, branch }), {
     busy: 'push',
-    success: t('toast.published', { where })
+    success: t('toast.published', { where }),
+    quiet: () => {
+      toast('info', t('toast.publishedPushFailed', { where }))
+      return false
+    }
   })
 }
 

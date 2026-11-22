@@ -117,8 +117,8 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState()
-      // A modal on top (dialog, menu, Settings, rebase): shortcuts must not act on the repository behind it.
-      if (s.dialog || s.menu || s.settingsOpen || s.whatsNewOpen || s.rebase) return
+      // A modal on top (dialog, menu, Settings, rebase, publish): shortcuts must not act on the repository behind it.
+      if (s.dialog || s.menu || s.settingsOpen || s.whatsNewOpen || s.rebase || s.publish) return
       const active = s.tabs.find((x) => x.id === s.activeTab)
       const repo = active?.path
       const shortcut = globalShortcut(e)
