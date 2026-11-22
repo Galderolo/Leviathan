@@ -19,8 +19,9 @@ token at once), publishing a repository that already has remotes, a "publish" en
 
 ### Push in a repository without remotes
 
-Any push of a branch (toolbar Push, a branch's menu, commit and push) in a repository with no remotes opens the
-**Publish repository** dialog instead of failing. The check comes right after the "no branch" check and before the
+Any push of a branch (toolbar Push and its shortcut, a branch's menu) in a repository with no remotes opens the
+**Publish repository** dialog instead of failing. Pushing after a commit (the repository setting) only runs when
+there is a remote, so it never opens the dialog. The check comes right after the "no branch" check and before the
 force-push confirmation.
 
 Fields:
