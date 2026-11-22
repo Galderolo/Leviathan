@@ -7,6 +7,7 @@ import { useStore } from '../store'
 import { errorMessage, toast } from '../ui'
 import { basename, cx } from '../utils'
 import { Spinner } from './common'
+import { PublishFields, usePublishChoice } from './PublishDialog'
 
 type Mode = 'home' | 'clone' | 'init'
 
@@ -255,15 +256,27 @@ function InitForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
   const [folder, setFolder] = useState('')
   const [branch, setBranch] = useState('main')
   const [busy, setBusy] = useState(false)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [publishToo, setPublishToo] = useState(false)
+  const publish = usePublishChoice(accounts, basename(folder.trim()), null)
+  const canPublishAny = publish.usable.length > 0
+  const publishing = canPublishAny && publishToo
+
+  useEffect(() => {
+    api
+      .listAccounts()
+      .then(setAccounts)
+      .catch(() => {})
+  }, [])
 
   return (
     <form
       className="welcome-form"
       onSubmit={async (e) => {
         e.preventDefault()
-        if (!folder.trim() || !branch.trim()) return
+        if (!folder.trim() || !branch.trim() || (publishing && !publish.input)) return
         setBusy(true)
-        await initRepository(folder.trim(), branch.trim(), tabId)
+        await initRepository(folder.trim(), branch.trim(), tabId, publishing ? (publish.input ?? undefined) : undefined)
         setBusy(false)
       }}
     >
@@ -288,8 +301,19 @@ function InitForm({ tabId, onBack }: { tabId: string; onBack: () => void }) {
         <span>{t('init.branch')}</span>
         <input value={branch} spellCheck={false} onChange={(e) => setBranch(e.target.value)} />
       </label>
+      {canPublishAny && (
+        <label className="checkbox">
+          <input type="checkbox" checked={publishToo} onChange={(e) => setPublishToo(e.target.checked)} />
+          {t('publish.alsoPublish')}
+        </label>
+      )}
+      {publishing && <PublishFields publish={publish} disabled={busy} />}
       <div className="form-actions">
-        <button type="submit" className="btn btn-primary" disabled={busy || !folder.trim() || !branch.trim()}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={busy || !folder.trim() || !branch.trim() || (publishing && !publish.input)}
+        >
           {t('init.submit')}
         </button>
       </div>

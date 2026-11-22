@@ -29,7 +29,7 @@ import { buildPartialPatch } from '../../shared/patch'
 import { needsPushForPullRequest } from '../../shared/forge'
 import type { RebaseItem } from '../../shared/rebase'
 import type { FixupInfo } from '../../shared/fixup'
-import type { Published } from '../../shared/publish'
+import type { Published, PublishInput } from '../../shared/publish'
 import { ownSettings, settingsFor, withRepoSetting } from '../../shared/repoSettings'
 import { diffSnapshots, invertChange, leavingStashes, type RepoChange, type Snapshot } from '../../shared/undo'
 import type { Identity } from '../../shared/identity'
@@ -719,15 +719,34 @@ export async function chooseRepoAccount(path: string): Promise<void> {
   }
 }
 
-export async function initRepository(path: string, branch: string, tabId: string): Promise<boolean> {
+/**
+ * Creates a repository and opens it; with `publish`, then creates its project on the account and adds it as origin
+ * (nothing to push yet). The repository comes first: a project left on the server by a failed init helps nobody.
+ */
+export async function initRepository(
+  path: string,
+  branch: string,
+  tabId: string,
+  publish?: PublishInput
+): Promise<boolean> {
+  let repo: string
   try {
-    const repo = await api.initRepo(path, branch)
+    repo = await api.initRepo(path, branch)
     await openRepository(repo, tabId)
-    return true
   } catch (err) {
     toast('error', errorMessage(err))
     return false
   }
+  if (publish) {
+    try {
+      const published = await api.publishRepo(repo, publish)
+      await afterPublish(repo, published)
+      toast('success', t('toast.publishedEmpty', { where: `${published.host}/${published.fullName}` }))
+    } catch (err) {
+      toast('error', t('toast.publishFailed', { reason: errorMessage(err) }))
+    }
+  }
+  return true
 }
 
 /** Answers a git/ssh prompt (credentials, passphrase or unknown host key) with a dialog. */

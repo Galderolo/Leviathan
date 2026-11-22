@@ -48,6 +48,8 @@ const es: Record<keyof typeof en, string> = {
   'publish.problem.characters': 'Solo letras, números, ".", "-" y "_".',
   'publish.problem.dotGit': 'El nombre no puede terminar en ".git".',
   'publish.problem.edge': 'El nombre no puede empezar ni terminar con "." o "-".',
+  'publish.alsoPublish': 'Publicar también en una cuenta',
+  'toast.publishFailed': 'Se creó el repositorio, pero no se pudo publicar: {reason}',
   'toast.published': 'Publicado en {where}',
   'toast.publishedEmpty': 'Creado {where}. Haz commit y luego Push para subirlo.',
   'toast.publishNotBound': 'Publicado, pero no se pudo asignar la cuenta al repositorio: {reason}',

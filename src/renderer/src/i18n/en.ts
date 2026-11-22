@@ -46,6 +46,8 @@ const en = {
   'publish.problem.characters': 'Only letters, digits, ".", "-" and "_".',
   'publish.problem.dotGit': 'The name cannot end with ".git".',
   'publish.problem.edge': 'The name cannot start or end with "." or "-".',
+  'publish.alsoPublish': 'Also publish to an account',
+  'toast.publishFailed': 'The repository was created, but it could not be published: {reason}',
   'toast.published': 'Published at {where}',
   'toast.publishedEmpty': 'Created {where}. Commit, then Push to upload it.',
   'toast.publishNotBound': 'Published, but the repository could not be given the account: {reason}',

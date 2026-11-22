@@ -1191,6 +1191,19 @@ test('an account without an API cannot publish a repository', async () => {
   await expect(page.locator('.settings-nav-item.active', { hasText: 'Accounts' })).toBeVisible()
 })
 
+test('creates a repository from the Welcome screen, with no publish option without an account that has an API', async () => {
+  await open()
+  await page.locator('.welcome-card', { hasText: 'New repository' }).click()
+  const form = page.locator('.welcome-form')
+  await expect(form).toContainText('Initial branch')
+  await expect(form.getByText('Also publish to an account')).toHaveCount(0)
+
+  const folder = join(box.root, 'fresh')
+  await form.locator('.field', { hasText: 'Folder' }).locator('input').fill(folder)
+  await form.getByRole('button', { name: 'Create repository' }).click()
+  await expect.poll(() => existsSync(join(folder, '.git'))).toBe(true)
+})
+
 test('opens the terminal chosen in Settings in the repository folder', async () => {
   const repo = box.repo('game', { 'a.txt': 'one\n' })
   // A stand-in terminal: it writes down where it started and what it was given, then exits.
