@@ -52,10 +52,14 @@ export async function publishRepository(path: string, input: PublishInput): Prom
       `The project was created at ${created.webUrl}, but it could not be added as origin: ${message(err)}. Add it with Add remote.`
     )
   }
-  // A repository with an identity of its own keeps it; one without takes the account's, as when it is opened.
-  const { local } = await readIdentity(path).catch(() => ({ local: { name: '', email: '' } }))
+  // A repository with an identity of its own keeps it; one without takes the account's, as when it is opened. When
+  // it cannot be read, nothing is overwritten.
+  const local = await readIdentity(path).then(
+    (identity) => identity.local,
+    () => null
+  )
   const bindError = await accounts
-    .setRepoAccount(path, account.id, { keepIdentity: !!(local.name || local.email) })
+    .setRepoAccount(path, account.id, { keepIdentity: !local || !!(local.name || local.email) })
     .then(
       () => null,
       (err: unknown) => message(err)
